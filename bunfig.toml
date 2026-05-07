@@ -1,0 +1,9 @@
+[install]
+# Hoisted linker is friendlier with Next.js, Drizzle and Trigger.dev
+# than the default isolated mode. Switch to "isolated" once the ecosystem catches up.
+linker = "hoisted"
+
+[install.scopes]
+
+[run]
+bun = true

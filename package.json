@@ -1,0 +1,43 @@
+{
+  "name": "loyalty-app",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "bun@1.2.10",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "packages/tooling/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint -- --fix",
+    "format": "turbo run format",
+    "format:check": "turbo run format -- --check",
+    "typecheck": "turbo run typecheck",
+    "knip": "knip",
+    "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "db:generate": "bun --cwd packages/db run db:generate",
+    "db:migrate": "bun --cwd packages/db run db:migrate",
+    "db:studio": "bun --cwd packages/db run db:studio",
+    "jobs:dev": "bun --cwd packages/jobs run dev",
+    "jobs:deploy": "bun --cwd packages/jobs run deploy",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "@commitlint/types": "^19.5.0",
+    "@types/bun": "^1.2.0",
+    "knip": "^5.30.0",
+    "lefthook": "^1.10.0",
+    "oxlint": "^0.15.0",
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20",
+    "bun": ">=1.2"
+  }
+}

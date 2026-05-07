@@ -1,0 +1,23 @@
+{
+  "name": "@loyalty/jobs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./trigger.config.ts",
+  "scripts": {
+    "dev": "trigger dev",
+    "deploy": "trigger deploy",
+    "lint": "oxlint trigger",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .turbo .trigger node_modules"
+  },
+  "dependencies": {
+    "@trigger.dev/sdk": "^3.3.0"
+  },
+  "devDependencies": {
+    "@loyalty/tsconfig": "workspace:*",
+    "oxlint": "^0.15.0",
+    "trigger.dev": "^3.3.0",
+    "typescript": "^5.7.0"
+  }
+}

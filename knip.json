@@ -1,0 +1,27 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {},
+    "apps/admin": {
+      "entry": [
+        "app/**/{page,layout,loading,error,not-found,template,default,route}.{ts,tsx}",
+        "app/**/route.ts"
+      ],
+      "project": ["**/*.{ts,tsx}"]
+    },
+    "apps/web": {
+      "entry": [
+        "app/**/{page,layout,loading,error,not-found,template,default,route}.{ts,tsx}",
+        "app/**/route.ts"
+      ],
+      "project": ["**/*.{ts,tsx}"]
+    },
+    "packages/api": {},
+    "packages/auth": {},
+    "packages/db": { "entry": ["src/migrate.ts"] },
+    "packages/ui": {},
+    "packages/jobs": { "entry": ["trigger/**/*.ts"] }
+  },
+  "ignoreDependencies": ["@commitlint/cli", "oxlint", "next"],
+  "ignoreExportsUsedInFile": true
+}
