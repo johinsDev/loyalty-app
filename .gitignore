@@ -37,5 +37,5 @@ next-env.d.ts
 # trigger.dev
 .trigger
 
-# Claude Code (local-only settings; .mcp.json sí se versiona)
+# Claude Code (local-only settings; .mcp.json is versioned)
 .claude/settings.local.json
