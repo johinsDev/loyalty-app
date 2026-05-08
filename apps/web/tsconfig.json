@@ -1,7 +1,6 @@
 {
   "extends": "@loyalty/tsconfig/nextjs.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": { "@/*": ["./*"] },
     "noEmit": true
   },

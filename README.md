@@ -46,7 +46,7 @@ bun run db:generate
 bun run db:migrate
 
 # 4. Arranca los dos apps
-bun run dev   # admin en :3000, web en :3001
+bun run dev   # web en :3002, admin en :3003
 ```
 
 En otra terminal, opcional:
