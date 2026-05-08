@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack --port 3003",
-    "build": "next build",
-    "start": "next start --port 3003",
+    "dev": "dotenv -e ../../.env -- next dev --turbopack --port 3003",
+    "build": "dotenv -e ../../.env -- next build",
+    "start": "dotenv -e ../../.env -- next start --port 3003",
     "lint": "oxlint app lib",
     "format": "oxlint app lib --fix",
     "typecheck": "tsc --noEmit",
