@@ -127,4 +127,41 @@ describe("Logger", () => {
 
     expect(flush).toHaveBeenCalledOnce();
   });
+
+  it("use() returns the sibling Logger from the resolver", () => {
+    const sibling = buildLogger(fake);
+    const resolveChannel = vi.fn(() => sibling);
+    const logger = new Logger({
+      channel: "default",
+      transport: fake,
+      minLevel: "trace",
+      bindings: { service: "loy-test" },
+      resolveChannel,
+    });
+
+    const result = logger.use("audit");
+
+    expect(resolveChannel).toHaveBeenCalledWith("audit");
+    expect(result).toBe(sibling);
+  });
+
+  it("use() throws when no resolver was supplied", () => {
+    const logger = buildLogger(fake);
+    expect(() => logger.use("audit")).toThrow(/requires a LogManager/);
+  });
+
+  it("child() inherits the resolver so use() still works after child()", () => {
+    const sibling = buildLogger(fake);
+    const resolveChannel = vi.fn(() => sibling);
+    const logger = new Logger({
+      channel: "default",
+      transport: fake,
+      minLevel: "trace",
+      bindings: { service: "loy-test" },
+      resolveChannel,
+    });
+
+    expect(() => logger.child({ requestId: "r1" }).use("audit")).not.toThrow();
+    expect(resolveChannel).toHaveBeenCalledWith("audit");
+  });
 });

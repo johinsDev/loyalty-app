@@ -93,4 +93,17 @@ describe("LogManager", () => {
   it("channels() lists configured channel names", () => {
     expect(manager.channels().sort()).toEqual(["console", "pino", "silent"]);
   });
+
+  it("logger.use(channel) resolves to the manager's sibling channel", () => {
+    const fake = manager.fake();
+    manager.logger().use("console").info("audit-style line");
+    expect(fake.records).toHaveLength(1);
+    expect(fake.records[0]?.msg).toBe("audit-style line");
+  });
+
+  it("logger.use(unknown) throws UnknownChannelError", () => {
+    expect(() => manager.logger().use("nope" as never)).toThrow(
+      UnknownChannelError,
+    );
+  });
 });

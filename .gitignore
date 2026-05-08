@@ -58,5 +58,11 @@ TODO.md
 !.claude/skills/drizzle/**
 !.claude/skills/log
 !.claude/skills/log/**
+!.claude/skills/slack
+!.claude/skills/slack/**
+!.claude/skills/tooling
+!.claude/skills/tooling/**
 !.claude/skills/trpc
 !.claude/skills/trpc/**
+!.claude/skills/vercel
+!.claude/skills/vercel/**

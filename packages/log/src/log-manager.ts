@@ -139,6 +139,11 @@ export class LogManager<TChannels extends Record<string, ChannelConfig>> {
       transport,
       minLevel: this.#minLevel,
       bindings: this.#baseBindings,
+      // Lets call sites do `log.use("audit").info(...)` to route a
+      // single record through a specific channel without going through
+      // the manager directly.
+      resolveChannel: (channelName) =>
+        this.use(channelName as keyof TChannels & string),
     });
   }
 }

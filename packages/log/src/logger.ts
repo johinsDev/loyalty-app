@@ -11,26 +11,31 @@ interface LoggerOptions {
   transport: LogTransport;
   minLevel: LogLevel;
   bindings?: LogBindings;
+  /** Provided by LogManager so `logger.use("name")` resolves to a sibling
+   *  Logger. Loggers built outside a manager will throw on `.use()`. */
+  resolveChannel?: (channel: string) => Logger;
 }
 
 /**
  * Operational logger handed out by the manager. Wraps a single transport
  * and applies the active level filter + bindings before writing.
  *
- * Cheap to construct (no async work in `child()`), so build short-lived
- * children freely for request scopes, jobs, etc.
+ * Cheap to construct (no async work in `child()` / `use()`), so build
+ * short-lived children freely for request scopes, jobs, etc.
  */
 export class Logger {
   readonly channel: string;
   readonly #transport: LogTransport;
   readonly #minLevel: LogLevel;
   readonly #bindings: LogBindings;
+  readonly #resolveChannel?: (channel: string) => Logger;
 
   constructor(options: LoggerOptions) {
     this.channel = options.channel;
     this.#transport = options.transport;
     this.#minLevel = options.minLevel;
     this.#bindings = options.bindings ?? {};
+    this.#resolveChannel = options.resolveChannel;
   }
 
   /** Returns a new Logger with the supplied bindings merged into every record. */
@@ -40,7 +45,29 @@ export class Logger {
       transport: this.#transport,
       minLevel: this.#minLevel,
       bindings: { ...this.#bindings, ...bindings },
+      ...(this.#resolveChannel && { resolveChannel: this.#resolveChannel }),
     });
+  }
+
+  /**
+   * Returns a sibling Logger backed by a different channel. Useful when a
+   * call site wants to ship a record through a specific transport
+   * regardless of the manager's default — for example
+   * `log.use("audit").info(...)` to route audit logs to a dedicated source.
+   *
+   * Inherits the manager's base bindings, NOT this logger's call-time
+   * bindings. Add bindings on top with `.child(...)`:
+   *   log.use("audit").child({ requestId }).info(...)
+   *
+   * Throws if the Logger was constructed outside a LogManager (no resolver).
+   */
+  use(channel: string): Logger {
+    if (!this.#resolveChannel) {
+      throw new Error(
+        "Logger.use() requires a LogManager. This logger was constructed standalone.",
+      );
+    }
+    return this.#resolveChannel(channel);
   }
 
   trace(msgOrBindings?: string | LogBindings, msg?: string): void {
