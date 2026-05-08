@@ -12,7 +12,8 @@
     "clean": "rm -rf .turbo .trigger node_modules"
   },
   "dependencies": {
-    "@trigger.dev/sdk": "^3.3.0"
+    "@trigger.dev/sdk": "^3.3.0",
+    "dotenv": "^17.4.2"
   },
   "devDependencies": {
     "@loyalty/tsconfig": "workspace:*",
