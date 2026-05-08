@@ -15,9 +15,11 @@
   "dependencies": {
     "@loyalty/api": "workspace:*",
     "@loyalty/auth": "workspace:*",
+    "@loyalty/db": "workspace:*",
     "@loyalty/log": "workspace:*",
     "@loyalty/ui": "workspace:*",
     "@tanstack/react-query": "^5.62.0",
+    "drizzle-orm": "^0.36.0",
     "@trpc/client": "^11.0.0",
     "@trpc/server": "^11.0.0",
     "@trpc/tanstack-react-query": "^11.0.0",

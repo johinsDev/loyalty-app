@@ -12,6 +12,7 @@ const config: UserConfig = {
         "api",
         "auth",
         "db",
+        "e2e",
         "jobs",
         "log",
         "ui",

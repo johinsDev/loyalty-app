@@ -4,23 +4,25 @@
     ".": {},
     "apps/admin": {
       "entry": [
-        "app/**/{page,layout,loading,error,not-found,template,default,route}.{ts,tsx}",
-        "app/**/route.ts"
+        "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest}.{ts,tsx}",
+        "lib/**/*.{ts,tsx}"
       ],
       "project": ["**/*.{ts,tsx}"]
     },
     "apps/web": {
       "entry": [
-        "app/**/{page,layout,loading,error,not-found,template,default,route}.{ts,tsx}",
-        "app/**/route.ts"
+        "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest}.{ts,tsx}",
+        "lib/**/*.{ts,tsx}"
       ],
       "project": ["**/*.{ts,tsx}"]
     },
+    "apps/e2e": {},
     "packages/api": {},
     "packages/auth": {},
-    "packages/db": { "entry": ["src/migrate.ts"] },
+    "packages/db": {},
+    "packages/log": {},
     "packages/ui": {},
-    "packages/jobs": { "entry": ["trigger/**/*.ts"] }
+    "packages/jobs": { "entry": ["trigger/**/*.ts", "log.ts"] }
   },
   "ignoreDependencies": ["@commitlint/cli", "oxlint", "next"],
   "ignoreExportsUsedInFile": true

@@ -8,6 +8,9 @@
     ".": "./index.ts"
   },
   "files": ["index.ts"],
+  "devDependencies": {
+    "@loyalty/tsconfig": "workspace:*"
+  },
   "peerDependencies": {
     "vitest": "*"
   }

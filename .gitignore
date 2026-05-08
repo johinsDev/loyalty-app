@@ -54,6 +54,8 @@ TODO.md
 .claude/skills/*
 !.claude/skills/better-stack
 !.claude/skills/better-stack/**
+!.claude/skills/ci-cd
+!.claude/skills/ci-cd/**
 !.claude/skills/drizzle
 !.claude/skills/drizzle/**
 !.claude/skills/log

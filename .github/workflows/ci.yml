@@ -1,22 +1,35 @@
-name: CI
+name: ci
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
+# Cancel superseded runs on the same ref to keep CI snappy.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
 jobs:
-  check:
+  validate:
+    name: validate (lint, format, knip, typecheck, test)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     env:
-      DATABASE_URL: postgresql://user:pass@localhost:5432/db?sslmode=require
-      BETTER_AUTH_SECRET: ci-placeholder-secret-change-me
+      # Sane placeholders so build-time scripts that read env (e.g. dotenv-cli)
+      # don't fail. Real secrets aren't needed for unit tests.
+      DATABASE_URL: postgresql://user:pass@localhost:5432/db?sslmode=disable
+      BETTER_AUTH_SECRET: ci-placeholder-secret-change-me-32chars
       BETTER_AUTH_URL: http://localhost:3000
       NEXT_PUBLIC_APP_URL: http://localhost:3000
     steps:
@@ -26,9 +39,13 @@ jobs:
         with:
           bun-version: 1.2.10
 
-      - uses: actions/setup-node@v4
+      - name: Cache turbo
+        uses: actions/cache@v4
         with:
-          node-version: 20
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
 
       - name: Install
         run: bun install --frozen-lockfile
@@ -36,11 +53,177 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      - name: Format check
+        run: bun run format:check
+
+      - name: Knip (dead code / unused deps)
+        run: bun run knip
+
       - name: Typecheck
         run: bun run typecheck
 
-      - name: Knip
-        run: bun run knip
+      - name: Test
+        run: bun run test
 
-      - name: Build
-        run: bun run build
+  deploy-web:
+    name: deploy web
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    outputs:
+      url: ${{ steps.deploy-prod.outputs.url || steps.deploy-preview.outputs.url }}
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.10
+
+      - name: Install Vercel CLI
+        run: bun add -g vercel@latest
+
+      - name: Pull Vercel env (production)
+        if: github.ref == 'refs/heads/main'
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Pull Vercel env (preview)
+        if: github.ref != 'refs/heads/main'
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Install (workspace deps for the build)
+        run: bun install --frozen-lockfile
+
+      - name: Build (production)
+        if: github.ref == 'refs/heads/main'
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build (preview)
+        if: github.ref != 'refs/heads/main'
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy (production)
+        id: deploy-prod
+        if: github.ref == 'refs/heads/main'
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Production: $url"
+
+      - name: Deploy (preview)
+        id: deploy-preview
+        if: github.ref != 'refs/heads/main'
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Preview: $url"
+
+      - name: Comment preview URL on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: deploy-web
+          message: |
+            🌐 **web** preview: ${{ steps.deploy-preview.outputs.url }}
+
+  deploy-admin:
+    name: deploy admin
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    outputs:
+      url: ${{ steps.deploy-prod.outputs.url || steps.deploy-preview.outputs.url }}
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.10
+
+      - name: Install Vercel CLI
+        run: bun add -g vercel@latest
+
+      - name: Pull Vercel env (production)
+        if: github.ref == 'refs/heads/main'
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Pull Vercel env (preview)
+        if: github.ref != 'refs/heads/main'
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Install (workspace deps for the build)
+        run: bun install --frozen-lockfile
+
+      - name: Build (production)
+        if: github.ref == 'refs/heads/main'
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build (preview)
+        if: github.ref != 'refs/heads/main'
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy (production)
+        id: deploy-prod
+        if: github.ref == 'refs/heads/main'
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Production: $url"
+
+      - name: Deploy (preview)
+        id: deploy-preview
+        if: github.ref != 'refs/heads/main'
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Preview: $url"
+
+      - name: Comment preview URL on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: deploy-admin
+          message: |
+            🛠️  **admin** preview: ${{ steps.deploy-preview.outputs.url }}
+
+  e2e:
+    name: e2e (Playwright)
+    needs: [deploy-web, deploy-admin]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Skipped by default until apps/e2e/tests has real specs.
+    # Flip the condition to `always()` (or remove `if`) once specs land.
+    if: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.10
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Install browsers
+        run: bun --cwd apps/e2e exec playwright install --with-deps chromium webkit
+
+      - name: Run
+        run: bun --cwd apps/e2e run test
+        env:
+          E2E_WEB_URL: ${{ needs.deploy-web.outputs.url }}
+          E2E_ADMIN_URL: ${{ needs.deploy-admin.outputs.url }}
+
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: apps/e2e/test-results/
+          retention-days: 7
