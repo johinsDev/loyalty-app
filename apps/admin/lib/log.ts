@@ -22,8 +22,13 @@ const VALID_CHANNELS = new Set([
 ] as const);
 type Channel = typeof VALID_CHANNELS extends Set<infer T> ? T : never;
 
-const sourceToken = process.env.BETTER_STACK_SOURCE_TOKEN;
-const host = process.env.BETTER_STACK_INGESTING_HOST;
+// Per-service tokens take precedence (each Better Stack source has its
+// own ingest URL + token), with the generic vars as a fallback for
+// single-service setups.
+const sourceToken =
+  process.env.BETTER_STACK_SOURCE_TOKEN_ADMIN ?? process.env.BETTER_STACK_SOURCE_TOKEN;
+const host =
+  process.env.BETTER_STACK_INGESTING_HOST_ADMIN ?? process.env.BETTER_STACK_INGESTING_HOST;
 
 const channels: Record<Channel, ChannelConfig> = {
   pino: { channel: "pino" },
