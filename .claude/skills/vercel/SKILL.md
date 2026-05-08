@@ -73,6 +73,32 @@ Paste from the per-service section of `.env.example` (see the .env.example file 
 
 Apply them to **Production**, **Preview**, and **Development** unless you specifically want a difference.
 
+#### Fast path: bulk-import from a local `.env.<env>` file
+
+If you already have a local `.env` with the right values, the fastest way is via the Vercel CLI. **Run from the app directory** (each app is its own Vercel project):
+
+```bash
+# 1. Link this app dir to its Vercel project (one-time per clone).
+cd apps/web
+bunx vercel@latest link --yes --project loyalty-app-web
+
+# 2. Make a clean file with only the vars this app needs (no MCP / .env.example
+#    sections), then import it. `vercel env add` reads stdin or prompts;
+#    a tight loop is the most reliable path:
+while IFS='=' read -r key value; do
+  [[ -z "$key" || "$key" == \#* ]] && continue
+  printf '%s' "$value" | bunx vercel@latest env add "$key" production
+done < .env.web.production
+```
+
+Repeat for `apps/admin` (project `loyalty-app-admin`). For preview environment, change `production` → `preview`.
+
+UI alternative — Vercel project → Settings → Environment Variables → "Import .env" (paste the file contents).
+
+#### Minimum to pass the CI deploy step
+
+The build collects page data, which means it executes server modules at build time. If `DATABASE_URL` (or any var that's read at module scope) is missing, the build fails with `Error: <VAR> is not set` during "Collecting page data". For the very first deploy you can stub `BETTER_STACK_*` and `GOOGLE_*` (logger falls back to console; OAuth disabled) — but `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, and `NEXT_PUBLIC_APP_URL` must be real.
+
 ### d) Deploy
 
 6. Click **Deploy**. First build is 3-5 min; the bun install + turbo build are warmed by the global build cache after the first run.
