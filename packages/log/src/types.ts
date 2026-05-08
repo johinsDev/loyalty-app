@@ -65,10 +65,27 @@ export interface SilentChannelConfig {
   channel: "silent";
 }
 
+export interface BetterStackChannelConfig {
+  channel: "better-stack";
+  /** Source token from Better Stack -> Logs -> Sources. Required. */
+  sourceToken: string;
+  /** Ingest host. Defaults to `in.logs.betterstack.com`. */
+  host?: string;
+  /** Flush after this many buffered records. Defaults to 50. */
+  batchSize?: number;
+  /** Flush at most this often (ms). Defaults to 5_000. */
+  flushIntervalMs?: number;
+  /** Max retry attempts on 5xx. Defaults to 3. */
+  maxRetries?: number;
+  /** Override `fetch` — used in tests. */
+  fetch?: unknown;
+}
+
 export type ChannelConfig =
   | PinoChannelConfig
   | ConsoleChannelConfig
-  | SilentChannelConfig;
+  | SilentChannelConfig
+  | BetterStackChannelConfig;
 
 export interface LogManagerConfig<T extends Record<string, ChannelConfig>> {
   /** Name of the channel returned when `use()` is called without arguments. */

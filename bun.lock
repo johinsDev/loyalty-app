@@ -22,6 +22,7 @@
       "dependencies": {
         "@loyalty/api": "workspace:*",
         "@loyalty/auth": "workspace:*",
+        "@loyalty/log": "workspace:*",
         "@loyalty/ui": "workspace:*",
         "@tanstack/react-query": "^5.62.0",
         "@trpc/client": "^11.0.0",
@@ -52,6 +53,7 @@
       "dependencies": {
         "@loyalty/api": "workspace:*",
         "@loyalty/auth": "workspace:*",
+        "@loyalty/log": "workspace:*",
         "@loyalty/ui": "workspace:*",
         "@tanstack/react-query": "^5.62.0",
         "@trpc/client": "^11.0.0",
@@ -129,6 +131,7 @@
       "name": "@loyalty/jobs",
       "version": "0.0.0",
       "dependencies": {
+        "@loyalty/log": "workspace:*",
         "@trigger.dev/sdk": "^3.3.0",
         "dotenv": "^17.4.2",
       },

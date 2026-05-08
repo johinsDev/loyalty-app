@@ -12,6 +12,7 @@
     "clean": "rm -rf .turbo .trigger node_modules"
   },
   "dependencies": {
+    "@loyalty/log": "workspace:*",
     "@trigger.dev/sdk": "^3.3.0",
     "dotenv": "^17.4.2"
   },

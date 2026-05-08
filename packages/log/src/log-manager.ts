@@ -1,6 +1,7 @@
 import { UnknownChannelError } from "./errors";
 import { FakeLogger } from "./fake-logger";
 import { Logger } from "./logger";
+import { BetterStackTransport } from "./transports/better-stack";
 import { ConsoleTransport } from "./transports/console";
 import { PinoTransport } from "./transports/pino";
 import { SilentTransport } from "./transports/silent";
@@ -20,6 +21,8 @@ function createTransport(config: ChannelConfig): LogTransport {
       return new ConsoleTransport(config);
     case "silent":
       return new SilentTransport();
+    case "better-stack":
+      return new BetterStackTransport(config);
   }
 }
 

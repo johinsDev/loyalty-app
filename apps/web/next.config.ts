@@ -6,6 +6,7 @@ const config: NextConfig = {
     "@loyalty/api",
     "@loyalty/auth",
     "@loyalty/db",
+    "@loyalty/log",
     "@loyalty/ui",
   ],
   typedRoutes: true,

@@ -1,5 +1,5 @@
 {
   "extends": "@loyalty/tsconfig/base.json",
-  "include": ["trigger", "trigger.config.ts"],
+  "include": ["trigger", "log.ts", "trigger.config.ts"],
   "exclude": ["node_modules", "dist", ".trigger"]
 }
