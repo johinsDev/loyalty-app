@@ -18,6 +18,10 @@
         "Authorization": "Bearer ${BETTER_STACK_TELEMETRY_API_TOKEN}"
       }
     },
+    "vercel": {
+      "type": "http",
+      "url": "https://mcp.vercel.com/"
+    },
     "slack": {
       "type": "stdio",
       "command": "node_modules/.bin/dotenv",
