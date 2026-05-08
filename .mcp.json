@@ -5,8 +5,8 @@
       "url": "https://mcp.linear.app/mcp"
     },
     "better-stack": {
-      "type": "http",
-      "url": "https://api.betterstack.com/mcp",
+       "type": "http",
+      "url": "https://mcp.betterstack.com",
       "headers": {
         "Authorization": "Bearer ${BETTER_STACK_API_TOKEN}"
       }
