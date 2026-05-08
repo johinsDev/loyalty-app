@@ -201,7 +201,9 @@ For Trigger.dev tasks, do this in the `run` function after the work succeeds. Ne
 ### Slack — what you need to connect
 Slack integration is OAuth-based and is **not** done via MCP. One-time, manual:
 
-1. Open https://uptime.betterstack.com/team/integrations
+> **Important:** Slack lives in the **Uptime** sub-app (`uptime.betterstack.com`), **not** Telemetry. If you opened `telemetry.betterstack.com/team/integrations` you'll only see the MCP integration tab — switch surfaces.
+
+1. Open https://uptime.betterstack.com/team/integrations (note the `uptime.` subdomain).
 2. Click **Slack** → **Connect with Slack**.
 3. Authorize the Better Stack app on the Slack workspace you want alerts in (admin permission required in the workspace).
 4. Pick the destination channel — we use `#alerts-loyalty` by convention. Create it first if needed.
