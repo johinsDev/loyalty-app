@@ -5,11 +5,15 @@
       "url": "https://mcp.linear.app/mcp"
     },
     "better-stack": {
-       "type": "http",
+      "type": "http",
       "url": "https://mcp.betterstack.com",
       "headers": {
         "Authorization": "Bearer ${BETTER_STACK_API_TOKEN}"
       }
+    },
+    "slack": {
+      "type": "http",
+      "url": "https://mcp.slack.com/mcp"
     }
   }
 }
