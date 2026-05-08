@@ -22,7 +22,7 @@ env:
 
 jobs:
   validate:
-    name: validate (lint, format, knip, typecheck, test)
+    name: validate (lint, knip, typecheck, test)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -52,9 +52,6 @@ jobs:
 
       - name: Lint
         run: bun run lint
-
-      - name: Format check
-        run: bun run format:check
 
       - name: Knip (dead code / unused deps)
         run: bun run knip

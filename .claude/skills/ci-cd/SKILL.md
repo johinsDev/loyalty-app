@@ -152,11 +152,12 @@ Steps:
 2. Bun pinned to `1.2.10` (matches root `package.json#packageManager`).
 3. Cache `.turbo/` keyed by SHA → speeds repeat runs.
 4. `bun install --frozen-lockfile` — fails if `bun.lock` drifted.
-5. `bun run lint` — `oxlint` via turbo across every package.
-6. `bun run format:check` — same as lint with `--check`, no fixes applied.
-7. `bun run knip` — dead code, unused deps, unused exports. Config in `knip.json`.
-8. `bun run typecheck` — `tsc --noEmit` across every package.
-9. `bun run test` — vitest run across every package.
+5. `bun run lint` — `oxlint` via turbo across every package (read-only, no auto-fix).
+6. `bun run knip` — dead code, unused deps, unused exports. Config in `knip.json`.
+7. `bun run typecheck` — `tsc --noEmit` across every package.
+8. `bun run test` — vitest run across every package.
+
+> No `format:check` — with oxlint as the only formatter/linter, `lint` already validates style. The local `format` script (`oxlint --fix`) is a convenience for fixing auto-correctable issues; it has no read-only sibling worth running in CI.
 
 If any step fails, the job fails and **deploy jobs do not start** (`needs: validate`). The whole pipeline takes ~3-5 min on a warm cache.
 
