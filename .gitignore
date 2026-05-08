@@ -39,3 +39,5 @@ next-env.d.ts
 
 # Claude Code (local-only settings; .mcp.json is versioned)
 .claude/settings.local.json
+
+TODO.md

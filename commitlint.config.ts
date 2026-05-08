@@ -13,6 +13,7 @@ const config: UserConfig = {
         "auth",
         "db",
         "jobs",
+        "log",
         "ui",
         "tooling",
         "ci",
