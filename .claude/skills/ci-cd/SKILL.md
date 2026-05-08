@@ -44,21 +44,79 @@ The workflow file is `.github/workflows/ci.yml`. The Playwright workspace is `ap
 
 ### a) GitHub repo secrets
 
-Settings → Secrets and variables → Actions → **New repository secret**:
+Settings → Secrets and variables → Actions → **Secrets** tab → **New repository secret** (NOT environment-scoped — the workflow reads them at repo level so deploys work from any branch).
 
 | Name | What |
 | --- | --- |
-| `VERCEL_TOKEN` | Account-level token. Generate at https://vercel.com/account/tokens. |
-| `VERCEL_ORG_ID` | From `.vercel/project.json` after running `vercel link` once locally. Or Vercel dashboard → team settings → General → "Team ID". |
-| `VERCEL_PROJECT_ID_WEB` | The Vercel project id for `loyalty-web`. Find it in Vercel → project → Settings → General → "Project ID". |
+| `VERCEL_TOKEN` | Account-level token used by the CLI. |
+| `VERCEL_ORG_ID` | Your Vercel team / personal account id (`team_xxx` or `user_xxx`). |
+| `VERCEL_PROJECT_ID_WEB` | Vercel project id for `loyalty-web` (`prj_xxx…`). |
 | `VERCEL_PROJECT_ID_ADMIN` | Same for `loyalty-admin`. |
-| `TURBO_TOKEN` (optional) | Vercel's turbo remote cache token. Settings → Tokens. Speeds up CI. |
+| `TURBO_TOKEN` (optional) | Vercel turbo remote cache token. Only on Team plan; Hobby plan can't use Remote Cache. |
 
 GitHub variables (Settings → Variables → Actions):
 
 | Name | Value |
 | --- | --- |
-| `TURBO_TEAM` | The Vercel team slug (used by Turbo for cache scoping). Optional — only matters if `TURBO_TOKEN` is set. |
+| `TURBO_TEAM` (optional) | Your Vercel team URL slug. Only matters when `TURBO_TOKEN` is set. |
+
+#### Step-by-step extraction
+
+**`VERCEL_TOKEN`**
+1. https://vercel.com/account/tokens.
+2. **Create Token** → name `loyalty-app-ci`, scope your account (or team), expiration 1 year.
+3. Copy it once — Vercel never shows it again.
+
+**`VERCEL_ORG_ID` + `VERCEL_PROJECT_ID_WEB` + `VERCEL_PROJECT_ID_ADMIN` (fastest path: CLI)**
+
+```bash
+cd <repo-root>
+
+bunx vercel@latest link --yes --project loyalty-app-web
+cat .vercel/project.json
+# { "orgId": "team_xxx" | "user_xxx", "projectId": "prj_AAA…" }
+
+# orgId → VERCEL_ORG_ID
+# projectId → VERCEL_PROJECT_ID_WEB
+
+rm -rf .vercel
+bunx vercel@latest link --yes --project loyalty-app-admin
+cat .vercel/project.json
+# projectId → VERCEL_PROJECT_ID_ADMIN
+
+rm -rf .vercel  # don't ship the link file
+```
+
+`.vercel/` is already in `.gitignore`; the cleanup above just keeps the working tree tidy.
+
+**Same values via Vercel UI (alternative)**
+
+| Value | Path |
+| --- | --- |
+| `VERCEL_ORG_ID` | Vercel → avatar → Settings → General → "Your ID" (personal) or "Team ID" (team plan). |
+| `VERCEL_PROJECT_ID_WEB` | Vercel → `loyalty-app-web` → Settings → General → "Project ID". |
+| `VERCEL_PROJECT_ID_ADMIN` | Same path on `loyalty-app-admin`. |
+
+**`TURBO_TOKEN` (optional, Team plan only)**
+
+1. https://vercel.com/account/tokens → **Create Token**.
+2. Name `loyalty-turbo-cache`, scope your team, expiration 1 year.
+3. Copy → that's `TURBO_TOKEN`.
+
+**`TURBO_TEAM` (optional)**
+
+Vercel → team → Settings → General → "Team URL Slug" (e.g. `acme-loyalty`). Goes in the **Variables** tab in GitHub, not Secrets.
+
+#### Don't use GitHub Environments for these
+
+The workflow reads `secrets.VERCEL_TOKEN` at the repo level. If you put the secrets in an environment instead, jobs would also need `environment: <name>` to see them — extra plumbing without benefit until you actually want approval gates or per-env tokens. Add environments later only if you need:
+
+- **Manual approval** before promoting to prod ("someone has to click").
+- **Reviewers** required on prod deploys (audit trail).
+- **Different tokens** per env (e.g. staging Vercel team vs prod Vercel team).
+- **Branch restriction** ("only `main` may deploy to prod").
+
+For the MVP it's repo-level secrets and the branch logic in the workflow.
 
 ### b) Disable Vercel's native auto-deploy
 
