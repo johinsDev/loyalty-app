@@ -186,9 +186,6 @@
     "packages/tooling/vitest-config": {
       "name": "@loyalty/vitest-config",
       "version": "0.0.0",
-      "devDependencies": {
-        "@loyalty/tsconfig": "workspace:*",
-      },
       "peerDependencies": {
         "vitest": "*",
       },
