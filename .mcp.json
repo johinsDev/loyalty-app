@@ -13,12 +13,15 @@
     },
     "slack": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-slack"],
-      "env": {
-        "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
-        "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"
-      }
+      "command": "node_modules/.bin/dotenv",
+      "args": [
+        "-e",
+        ".env",
+        "--",
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-slack"
+      ]
     }
   }
 }

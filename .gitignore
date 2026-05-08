@@ -34,6 +34,9 @@ next-env.d.ts
 # bun
 .bun
 
+# direnv
+.direnv/
+
 # trigger.dev
 .trigger
 

@@ -36,11 +36,16 @@ The integration has three moving parts. Each lives in a specific file.
   }
 }
 ```
-The `${BETTER_STACK_API_TOKEN}` placeholder is resolved by Claude Code from the **process environment** at MCP-handshake time, not from the project's `.env` file. To make it work locally, load the env into your shell before launching Claude Code:
+The `${BETTER_STACK_API_TOKEN}` placeholder is resolved by Claude Code from the **process environment** at MCP-handshake time, not from the project's `.env` file. We solve this with **direnv** (`.envrc` is committed at the repo root):
 ```bash
-export $(grep -E '^BETTER_STACK_API_TOKEN=' /Users/<you>/Documents/personal-projects/loyalty-app/.env | xargs)
+brew install direnv
+echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc   # or your shell of choice
+exec zsh                                       # reload
+direnv allow .                                 # one-time consent for this repo
 ```
-or set it permanently in `~/.zshrc` / `~/.bashrc`.
+From that point on, any shell session that `cd`s into the repo loads every variable from `.env` automatically. Launch `claude` from that shell and the MCP handshake picks up the token.
+
+Stdio MCPs (e.g. Slack at `npx @modelcontextprotocol/server-slack`) skip this loop — they're wrapped with `node_modules/.bin/dotenv -e .env -- ...` in `.mcp.json`, so they always get the project `.env`.
 
 ### 2. Token type — Telemetry vs Uptime
 Better Stack issues several token kinds. The MCP needs **one Team API token** that has access to both Telemetry and Uptime APIs:
