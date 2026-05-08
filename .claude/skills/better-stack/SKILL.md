@@ -25,6 +25,8 @@ Day-to-day, you operate every one of those through the **Better Stack MCP** inst
 The integration has three moving parts. Each lives in a specific file.
 
 ### 1. MCP server registration — `.mcp.json`
+Better Stack splits its API into **two surfaces with separate tokens**: Uptime (monitors / heartbeats / status pages / incidents) and Telemetry (logs / sources / dashboards / alerts). One token never works for both, so we register two MCP entries pointing at the same endpoint and let the bearer pick which API a tool can call:
+
 ```json
 {
   "mcpServers": {
@@ -32,29 +34,74 @@ The integration has three moving parts. Each lives in a specific file.
       "type": "http",
       "url": "https://mcp.betterstack.com",
       "headers": { "Authorization": "Bearer ${BETTER_STACK_API_TOKEN}" }
+    },
+    "better-stack-telemetry": {
+      "type": "http",
+      "url": "https://mcp.betterstack.com",
+      "headers": { "Authorization": "Bearer ${BETTER_STACK_TELEMETRY_API_TOKEN}" }
     }
   }
 }
 ```
-The `${BETTER_STACK_API_TOKEN}` placeholder is resolved by Claude Code from the **process environment** at MCP-handshake time, not from the project's `.env` file. We solve this with **direnv** (`.envrc` is committed at the repo root):
+
+Tool routing rule:
+- `mcp__better-stack__uptime_*` → **Uptime token** (`BETTER_STACK_API_TOKEN`).
+- `mcp__better-stack-telemetry__telemetry_*` → **Telemetry token** (`BETTER_STACK_TELEMETRY_API_TOKEN`).
+- Calling a `telemetry_*` tool on the `better-stack` server (or vice-versa) returns 401 — pick the namespace that matches the token.
+
+The `${...}` placeholders are resolved by Claude Code from the **process environment** at MCP-handshake time, not from the project's `.env` file. We solve this with **direnv** (`.envrc` is committed at the repo root):
 ```bash
 brew install direnv
 echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc   # or your shell of choice
 exec zsh                                       # reload
 direnv allow .                                 # one-time consent for this repo
 ```
-From that point on, any shell session that `cd`s into the repo loads every variable from `.env` automatically. Launch `claude` from that shell and the MCP handshake picks up the token.
+From that point on, any shell session that `cd`s into the repo loads every variable from `.env` automatically. Launch `claude` from that shell and the MCP handshake picks up the tokens.
 
 Stdio MCPs (e.g. Slack at `npx @modelcontextprotocol/server-slack`) skip this loop — they're wrapped with `node_modules/.bin/dotenv -e .env -- ...` in `.mcp.json`, so they always get the project `.env`.
 
-### 2. Token type — Telemetry vs Uptime
-Better Stack issues several token kinds. The MCP needs **one Team API token** that has access to both Telemetry and Uptime APIs:
+### 2. Generate the two tokens
 
-- ✅ **Team API token** — Settings → API tokens → "Team API tokens" tab. Used for **Uptime, Status pages, Heartbeats**, AND for the MCP overall.
-- ✅ **Telemetry API token** — Settings → API tokens → "Telemetry API tokens" tab. Used by the MCP for **Logs / Sources / Dashboards / Alerts**.
-- ❌ A **source ingest token** is _not_ a Team API token. Source tokens are per-source secrets used by `BetterStackTransport` to push logs.
+**`BETTER_STACK_API_TOKEN` — Uptime API token (team-based)**
+> https://uptime.betterstack.com/team/api-tokens
+> → tab **"Team-based tokens"**
+> → section **"Uptime API tokens"**
+> → pick the team (e.g. `Loyalty app`) → name it (e.g. `Claude Code loyalty app`) → **Create**
 
-If `mcp__better-stack__telemetry_list_teams_tool` returns "No teams available" while `uptime_list_monitors_tool` returns a 401, your `BETTER_STACK_API_TOKEN` is either missing or has the wrong scope. Generate a token under Team API tokens and replace it.
+The token is short (~24 alphanumeric chars). That's normal.
+
+**`BETTER_STACK_TELEMETRY_API_TOKEN` — Telemetry API token**
+> https://logs.betterstack.com/team/api-tokens
+> → "Telemetry API tokens" → **Create**, scoped to the same team.
+
+Other tokens to **avoid** for the MCPs:
+- ❌ **Personal API tokens** (Global tokens tab) — work for some endpoints but not all.
+- ❌ **Source ingest tokens** — those are the per-source secrets `BetterStackTransport` uses (`BETTER_STACK_SOURCE_TOKEN`).
+
+Symptom map:
+- `mcp__better-stack__uptime_list_monitors_tool` → `401 Invalid Team API token` ⇒ Uptime token wrong/missing.
+- `mcp__better-stack-telemetry__telemetry_list_teams_tool` → `No teams available` ⇒ Telemetry token wrong/missing.
+- `/mcp` says `Authentication successful` but tools 401 ⇒ the Bearer reached the MCP server, but the underlying API call rejected it. Regenerate the token for that surface.
+
+### 3. What you can and cannot create via the MCP
+
+The MCP today is **read-mostly for Uptime** and **full CRUD for Telemetry**. Concretely:
+
+| Resource | Create via MCP? | How |
+| --- | --- | --- |
+| Uptime monitors | ❌ | Dashboard. Once created, list/get/update via MCP. |
+| Heartbeats | ❌ | Dashboard. List/get/availability via MCP. |
+| Status pages | ❌ | Dashboard. Reports + report updates **can** be created via MCP. |
+| Escalation policies | ❌ | Dashboard. List/get via MCP. |
+| Severities | ❌ | Dashboard. List via MCP. |
+| Incidents | ✅ | `uptime_create_incident_tool` — useful for synthetic alerts and runbooks. |
+| Incident comments / ack / resolve / escalate | ✅ | The full incident-response flow is MCP-driven. |
+| Telemetry sources / applications | ✅ | `telemetry_create_source_tool`, `telemetry_create_application_tool`. |
+| Dashboards / charts | ✅ | `telemetry_create_dashboard_tool`, `telemetry_add_chart_to_dashboard_tool`. |
+| Chart alerts (log-based) | ✅ | `telemetry_create_chart_alert_tool`. |
+| Cloud connections (ClickHouse) | ✅ | `telemetry_create_cloud_connection_tool`. |
+
+Practical implication: the **provisioning** of monitors/heartbeats/status-pages/policies happens in the BS dashboard once. After that, **operations** — ack/resolve/comment/escalate, list/get availability, build dashboards and chart alerts — are MCP-native.
 
 ### 3. Logger transport — `@loyalty/log`
 `BetterStackTransport` (in `packages/log/src/transports/better-stack.ts`) ships records to the source's ingest URL with `Authorization: Bearer ${BETTER_STACK_SOURCE_TOKEN}`. The bootstrap modules (`apps/web/lib/log.ts`, `apps/admin/lib/log.ts`, `packages/jobs/log.ts`) auto-switch from `pino` → `better-stack` when the source token is present. `LOG_LEVEL` and `LOG_CHANNEL` env vars can override behavior without redeploying.

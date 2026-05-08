@@ -11,6 +11,13 @@
         "Authorization": "Bearer ${BETTER_STACK_API_TOKEN}"
       }
     },
+    "better-stack-telemetry": {
+      "type": "http",
+      "url": "https://mcp.betterstack.com",
+      "headers": {
+        "Authorization": "Bearer ${BETTER_STACK_TELEMETRY_API_TOKEN}"
+      }
+    },
     "slack": {
       "type": "stdio",
       "command": "node_modules/.bin/dotenv",
