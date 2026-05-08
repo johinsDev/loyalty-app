@@ -205,6 +205,14 @@ Root Directory is set right (`apps/web`) but Vercel didn't `bun install` from th
 
 Missing env var on this project. Check Settings → Environment Variables → Production. Set it, then **Redeploy** (Vercel does NOT pick up new env vars on the existing deploy).
 
+### Build in CI fails with "DATABASE_URL is not set" but the var IS set in Vercel
+
+The var is probably marked **Sensitive**. Sensitive variables are encrypted at rest and Vercel only decrypts them inside its own runtime — they are NOT returned by `vercel pull` and NOT exposed to `vercel build` when the build runs outside Vercel infra (which is exactly our setup, since CI does `vercel build --prebuilt`).
+
+Fix: Settings → Environment Variables → click `⋯` on each var → **Edit** → uncheck **Sensitive** → Save. If Vercel refuses to edit a Sensitive var's value, **Remove** it and re-add as Plain Text.
+
+Plain Text doesn't mean "leaked": it's still encrypted at rest and in transit inside Vercel. It just means the project's CLI tokens (and our CI) can read it. Reserve Sensitive only for vars that are read **only** at runtime by Vercel-hosted code.
+
 ### `(0 , bun_1.spawnSync) is not a function` or similar Bun error
 
 Bun version mismatch. Either:
