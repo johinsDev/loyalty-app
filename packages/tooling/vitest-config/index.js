@@ -1,5 +1,3 @@
-import type { UserConfig } from "vitest/config";
-
 /**
  * Shared base Vitest config for every internal package.
  * Use it from a package's `vitest.config.ts`:
@@ -16,17 +14,20 @@ import type { UserConfig } from "vitest/config";
  * ```ts
  * export default defineConfig(baseConfig({ test: { setupFiles: ["./test/setup.ts"] } }));
  * ```
+ *
+ * @param {import("vitest/config").UserConfig} [overrides]
+ * @returns {import("vitest/config").UserConfig}
  */
-export function baseConfig(overrides: UserConfig = {}): UserConfig {
+export function baseConfig(overrides = {}) {
   const baseTest = {
     globals: false,
-    environment: "node" as const,
+    environment: "node",
     include: ["src/**/*.{test,spec}.ts", "src/**/__tests__/**/*.ts"],
     exclude: ["**/node_modules/**", "**/dist/**", "**/.turbo/**", "**/.next/**"],
     clearMocks: true,
     restoreMocks: true,
     coverage: {
-      provider: "v8" as const,
+      provider: "v8",
       reporter: ["text", "html", "lcov"],
       include: ["src/**/*.ts"],
       exclude: [

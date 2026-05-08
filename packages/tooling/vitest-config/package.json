@@ -3,14 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "main": "./index.ts",
+  "main": "./index.js",
   "exports": {
-    ".": "./index.ts"
+    ".": "./index.js"
   },
-  "files": ["index.ts"],
-  "devDependencies": {
-    "@loyalty/tsconfig": "workspace:*"
-  },
+  "files": ["index.js"],
   "peerDependencies": {
     "vitest": "*"
   }
