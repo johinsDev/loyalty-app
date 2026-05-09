@@ -7,8 +7,8 @@
     "dev": "dotenv -e ../../.env -- next dev --turbopack --port 3002",
     "build": "dotenv -e ../../.env -- next build",
     "start": "dotenv -e ../../.env -- next start --port 3002",
-    "lint": "oxlint app lib",
-    "format": "oxlint app lib --fix",
+    "lint": "oxlint app components lib",
+    "format": "oxlint app components lib --fix",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .next .turbo node_modules"
   },
@@ -25,11 +25,13 @@
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "serwist": "^9.0.0",
     "server-only": "^0.0.1",
     "superjson": "^2.2.0"
   },
   "devDependencies": {
     "@loyalty/tsconfig": "workspace:*",
+    "@serwist/next": "^9.0.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

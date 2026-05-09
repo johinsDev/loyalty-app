@@ -11,7 +11,9 @@
     },
     "apps/web": {
       "entry": [
-        "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest}.{ts,tsx}",
+        "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest,icon,apple-icon}.{ts,tsx}",
+        "app/sw.ts",
+        "components/**/*.{ts,tsx}",
         "lib/**/*.{ts,tsx}"
       ],
       "project": ["**/*.{ts,tsx}"]
