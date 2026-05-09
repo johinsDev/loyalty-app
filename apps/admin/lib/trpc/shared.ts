@@ -1,5 +1,10 @@
+import { getAppUrl } from "../app-url";
+
+/**
+ * tRPC client base URL. Empty in the browser so fetch goes
+ * relative (same origin); otherwise delegate to {@link getAppUrl}.
+ */
 export const getBaseUrl = (): string => {
   if (typeof window !== "undefined") return "";
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3003";
+  return getAppUrl();
 };

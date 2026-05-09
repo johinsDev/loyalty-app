@@ -1,0 +1,5 @@
+# Owners are auto-requested for review on every PR.
+# Branch protection enforces this when "Require review from Code Owners" is on.
+# Refine paths as the team grows; today the only owner is the founder/dev.
+
+* @johinsDev

@@ -5,7 +5,9 @@ description: Deploy and operate the loyalty-app monorepo on Vercel. Use when add
 
 # Vercel — deploy guide for the monorepo
 
-`loyalty-app` is a Turborepo with Bun. We deploy each Next.js app as its own Vercel project that points at the same GitHub repo with a different `Root Directory`. This skill is the boilerplate to reproduce the setup on a new app or a new clone.
+`loyalty-app` is a Turborepo with Bun. We deploy each Next.js app as its own Vercel project that points at the same GitHub repo with a different `Root Directory`. **Vercel's native Git auto-deploy is the canonical deploy path** — push to `main` triggers a Production deploy; opening a PR triggers a Preview deploy. CI (`.github/workflows/ci.yml`) only validates; it does NOT run `vercel build` (see the `ci-cd` skill for the why).
+
+This skill is the boilerplate to reproduce the setup on a new app or a new clone.
 
 ```
    github.com/johinsDev/loyalty-app
@@ -30,6 +32,7 @@ The MCP at https://mcp.vercel.com/ (OAuth) gives us read access to projects, dep
 - Vercel account → https://vercel.com/signup (you choose Hobby plan; upgrade later when you need teams/proddomain).
 - GitHub repo connected: in Vercel → Account → Settings → Git → install GitHub app, grant access to `loyalty-app`.
 - The repo's `package.json` at root pins `packageManager: "bun@<version>"`. Vercel auto-detects Bun and uses it.
+- Each Vercel project's Settings → Git → Production Branch = `main`; "Automatically deploy on push" = on. Preview deploys are on by default.
 
 ---
 

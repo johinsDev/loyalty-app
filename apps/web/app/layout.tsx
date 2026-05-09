@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
+import { InstallPrompt } from "../components/install-prompt";
 import { Providers } from "./providers";
 
 import "./globals.css";
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="es">
       <body>
         <Providers>{children}</Providers>
+        <InstallPrompt />
       </body>
     </html>
   );

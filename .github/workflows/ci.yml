@@ -30,8 +30,6 @@ jobs:
       # don't fail. Real secrets aren't needed for unit tests.
       DATABASE_URL: postgresql://user:pass@localhost:5432/db?sslmode=disable
       BETTER_AUTH_SECRET: ci-placeholder-secret-change-me-32chars
-      BETTER_AUTH_URL: http://localhost:3000
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
 
@@ -62,141 +60,16 @@ jobs:
       - name: Test
         run: bun run test
 
-  deploy-web:
-    name: deploy web
-    needs: validate
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
-    outputs:
-      url: ${{ steps.deploy-prod.outputs.url || steps.deploy-preview.outputs.url }}
-    env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.2.10
-
-      - name: Install Vercel CLI
-        run: bun add -g vercel@latest
-
-      - name: Pull Vercel env (production)
-        if: github.ref == 'refs/heads/main'
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Pull Vercel env (preview)
-        if: github.ref != 'refs/heads/main'
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Install (workspace deps for the build)
-        run: bun install --frozen-lockfile
-
-      - name: Build (production)
-        if: github.ref == 'refs/heads/main'
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build (preview)
-        if: github.ref != 'refs/heads/main'
-        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deploy (production)
-        id: deploy-prod
-        if: github.ref == 'refs/heads/main'
-        run: |
-          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "Production: $url"
-
-      - name: Deploy (preview)
-        id: deploy-preview
-        if: github.ref != 'refs/heads/main'
-        run: |
-          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "Preview: $url"
-
-      - name: Comment preview URL on PR
-        if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          header: deploy-web
-          message: |
-            🌐 **web** preview: ${{ steps.deploy-preview.outputs.url }}
-
-  deploy-admin:
-    name: deploy admin
-    needs: validate
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
-    outputs:
-      url: ${{ steps.deploy-prod.outputs.url || steps.deploy-preview.outputs.url }}
-    env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.2.10
-
-      - name: Install Vercel CLI
-        run: bun add -g vercel@latest
-
-      - name: Pull Vercel env (production)
-        if: github.ref == 'refs/heads/main'
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Pull Vercel env (preview)
-        if: github.ref != 'refs/heads/main'
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Install (workspace deps for the build)
-        run: bun install --frozen-lockfile
-
-      - name: Build (production)
-        if: github.ref == 'refs/heads/main'
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build (preview)
-        if: github.ref != 'refs/heads/main'
-        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deploy (production)
-        id: deploy-prod
-        if: github.ref == 'refs/heads/main'
-        run: |
-          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "Production: $url"
-
-      - name: Deploy (preview)
-        id: deploy-preview
-        if: github.ref != 'refs/heads/main'
-        run: |
-          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "Preview: $url"
-
-      - name: Comment preview URL on PR
-        if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          header: deploy-admin
-          message: |
-            🛠️  **admin** preview: ${{ steps.deploy-preview.outputs.url }}
-
   e2e:
     name: e2e (Playwright)
-    needs: [deploy-web, deploy-admin]
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Skipped by default until apps/e2e/tests has real specs.
-    # Flip the condition to `always()` (or remove `if`) once specs land.
+    # Skipped by default until apps/e2e/tests has real specs AND we have
+    # stable URLs to point at. With Vercel auto-deploy, the URLs come from
+    # repo Variables (set them when custom domains land — LOY-43):
+    #   - vars.WEB_PROD_URL
+    #   - vars.ADMIN_PROD_URL
     if: false
     steps:
       - uses: actions/checkout@v4
@@ -214,8 +87,8 @@ jobs:
       - name: Run
         run: bun --cwd apps/e2e run test
         env:
-          E2E_WEB_URL: ${{ needs.deploy-web.outputs.url }}
-          E2E_ADMIN_URL: ${{ needs.deploy-admin.outputs.url }}
+          E2E_WEB_URL: ${{ vars.WEB_PROD_URL }}
+          E2E_ADMIN_URL: ${{ vars.ADMIN_PROD_URL }}
 
       - name: Upload traces on failure
         if: failure()
