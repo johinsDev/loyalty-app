@@ -1,327 +1,217 @@
 ---
 name: ci-cd
-description: GitHub Actions pipeline for the loyalty-app monorepo (lint, format, knip, typecheck, vitest, Vercel CLI deploy, Playwright). Use when adding a step, debugging a failing run, rotating Vercel/Turbo secrets, disabling Vercel's native auto-deploy, or onboarding a teammate to "how does code reach production".
+description: GitHub Actions + branch protection + Vercel auto-deploy for the loyalty-app monorepo. Use when adding a CI step, debugging a failing run, configuring branch protection, opening a PR, or onboarding a teammate to "how does code reach production".
 ---
 
 # CI / CD — pipeline cookbook
 
-CI is the source of truth for **everything that touches main or a PR**. Vercel is a dumb deploy target: GitHub Actions runs every check, builds artifacts, and pushes them via the Vercel CLI. The Vercel UI's native Git auto-deploy is **disabled**; deploys ONLY happen via this pipeline.
+The contract is split: **GitHub Actions validates, Vercel deploys.** Every change goes through a Pull Request; `main` is locked.
 
 ```
-   push / PR
-      │
-      ▼
-   ┌────────────────────────────────────────────────┐
-   │ validate                                       │
-   │   bun install                                  │
-   │   lint  (oxlint via turbo)                     │
-   │   format check  (oxlint --check via turbo)     │
-   │   knip  (dead code / unused deps)              │
-   │   typecheck  (tsc via turbo)                   │
-   │   test  (vitest via turbo)                     │
-   └────────────────────────────────────────────────┘
-      │            │
-      ▼            ▼
-   deploy-web    deploy-admin
-      │            │
-      │ vercel pull --environment=preview|production
-      │ vercel build (--prod)
-      │ vercel deploy --prebuilt (--prod)
-      │ comment URL on PR
-      │            │
-      └─────┬──────┘
-            ▼
-         e2e (Playwright)
-            │ runs against deploy URLs
-            └─ uploads traces on failure
+   git push (any branch)
+         │
+         ▼
+   ┌─────────────────────────────────────────────┐
+   │ open a PR (gh pr create)                    │
+   └─────────────────────────────────────────────┘
+         │
+         ▼
+   ┌─────────────────────────────────────────────┐
+   │ GitHub Actions — validate                   │
+   │   bun install                               │
+   │   lint  (oxlint via turbo)                  │
+   │   knip  (dead code / unused deps)           │
+   │   typecheck  (tsc via turbo)                │
+   │   test  (vitest via turbo)                  │
+   └─────────────────────────────────────────────┘
+         │ green
+         ▼
+   ┌─────────────────────────────────────────────┐
+   │ Vercel Git integration (auto-deploy)        │
+   │   loyalty-app-web    → preview URL on PR    │
+   │   loyalty-app-admin  → preview URL on PR    │
+   └─────────────────────────────────────────────┘
+         │
+         ▼
+   merge to main → Vercel re-deploys to production
 ```
 
-The workflow file is `.github/workflows/ci.yml`. The Playwright workspace is `apps/e2e`.
+The workflow is `.github/workflows/ci.yml`. Vercel watches the GitHub repo directly via its native integration — there is no `vercel build` step in CI.
+
+---
+
+## Why CI is validate-only (not deploy)
+
+We tried CI-driven deploys with `vercel build --prebuilt` and hit a wall: env vars marked **Sensitive** in Vercel are encrypted at rest and only decrypted **inside Vercel's runtime**. `vercel pull` returns them empty when run from CI, so `vercel build` outside Vercel can't read `DATABASE_URL` and the build crashes.
+
+Splitting the contract this way:
+
+- Lets us keep Sensitive env vars Sensitive (no security regression).
+- Lets Vercel's optimized builders do their thing (faster, with their cache).
+- Keeps CI focused on the things only CI can do: lint, typecheck, test, dead-code detection.
+
+When this trade-off would flip:
+
+- Multi-target deploys (Vercel + AWS + …) — CI becomes the orchestrator.
+- Compliance forbids SaaS builds — CI must own the build.
+- Custom build steps Vercel can't run.
+
+Until one of those lands, the pipeline stays simple.
 
 ---
 
 ## 1. One-time setup
 
-### a) GitHub repo secrets
+### a) GitHub repo — branch protection
 
-Settings → Secrets and variables → Actions → **Secrets** tab → **New repository secret** (NOT environment-scoped — the workflow reads them at repo level so deploys work from any branch).
+Settings → Branches → Add ruleset for `main`:
 
-| Name | What |
-| --- | --- |
-| `VERCEL_TOKEN` | Account-level token used by the CLI. |
-| `VERCEL_ORG_ID` | Your Vercel team / personal account id (`team_xxx` or `user_xxx`). |
-| `VERCEL_PROJECT_ID_WEB` | Vercel project id for `loyalty-web` (`prj_xxx…`). |
-| `VERCEL_PROJECT_ID_ADMIN` | Same for `loyalty-admin`. |
-| `TURBO_TOKEN` (optional) | Vercel turbo remote cache token. Only on Team plan; Hobby plan can't use Remote Cache. |
+- ☑ **Restrict updates** — prevents direct pushes; PRs only.
+- ☑ **Require a pull request before merging**:
+  - Required approvals: **0** for solo dev (bump when team grows). Branch protection still requires the PR itself.
+  - ☑ Dismiss stale reviews when new commits are pushed.
+  - ☑ Require conversation resolution before merging.
+- ☑ **Require status checks to pass**:
+  - Required: `validate (lint, knip, typecheck, test)`.
+  - ☑ Require branches to be up to date before merging.
+- ☑ **Block force pushes**.
+- ☑ **Block deletions**.
+- ☑ **Require linear history** — squash/rebase merges only; cleaner main timeline.
+- ☐ Skip "Require signed commits" — overhead, low value at MVP stage.
 
-GitHub variables (Settings → Variables → Actions):
+PR settings (Settings → General → Pull Requests):
 
-| Name | Value |
-| --- | --- |
-| `TURBO_TEAM` (optional) | Your Vercel team URL slug. Only matters when `TURBO_TOKEN` is set. |
+- ☑ Allow squash merging — **default**.
+- ☐ Disable merge commits.
+- ☐ Disable rebase merging.
+- ☑ Auto-delete head branches after merge.
 
-#### Step-by-step extraction
+### b) GitHub repo — secrets and variables
 
-**`VERCEL_TOKEN`**
-1. https://vercel.com/account/tokens.
-2. **Create Token** → name `loyalty-app-ci`, scope your account (or team), expiration 1 year.
-3. Copy it once — Vercel never shows it again.
+For Turbo Remote Cache (optional, Vercel Team plan only):
 
-**`VERCEL_ORG_ID` + `VERCEL_PROJECT_ID_WEB` + `VERCEL_PROJECT_ID_ADMIN` (fastest path: CLI)**
+| Type | Name | What |
+| --- | --- | --- |
+| Secret | `TURBO_TOKEN` | Vercel turbo remote cache token. |
+| Variable | `TURBO_TEAM` | Your Vercel team URL slug. |
 
-```bash
-cd <repo-root>
+For when E2E specs land (deferred today):
 
-bunx vercel@latest link --yes --project loyalty-app-web
-cat .vercel/project.json
-# { "orgId": "team_xxx" | "user_xxx", "projectId": "prj_AAA…" }
+| Type | Name | What |
+| --- | --- | --- |
+| Variable | `WEB_PROD_URL` | Public URL of the customer PWA, e.g. `https://app.loyalty.com`. |
+| Variable | `ADMIN_PROD_URL` | Public URL of admin, e.g. `https://admin.loyalty.com`. |
 
-# orgId → VERCEL_ORG_ID
-# projectId → VERCEL_PROJECT_ID_WEB
+There are **no** `VERCEL_*` secrets in this repo. Vercel auto-deploy authenticates via the GitHub integration; no token is needed in CI.
 
-rm -rf .vercel
-bunx vercel@latest link --yes --project loyalty-app-admin
-cat .vercel/project.json
-# projectId → VERCEL_PROJECT_ID_ADMIN
+### c) Vercel — confirm Git auto-deploy
 
-rm -rf .vercel  # don't ship the link file
-```
+Each Vercel project (`loyalty-app-web`, `loyalty-app-admin`) → Settings → Git:
 
-`.vercel/` is already in `.gitignore`; the cleanup above just keeps the working tree tidy.
+- Connected Git Repository → `johinsDev/loyalty-app`.
+- Production Branch → `main`.
+- Ignored Build Step → empty (deploy every push).
+- Deploy Hooks → not used today.
 
-**Same values via Vercel UI (alternative)**
-
-| Value | Path |
-| --- | --- |
-| `VERCEL_ORG_ID` | Vercel → avatar → Settings → General → "Your ID" (personal) or "Team ID" (team plan). |
-| `VERCEL_PROJECT_ID_WEB` | Vercel → `loyalty-app-web` → Settings → General → "Project ID". |
-| `VERCEL_PROJECT_ID_ADMIN` | Same path on `loyalty-app-admin`. |
-
-**`TURBO_TOKEN` (optional, Team plan only)**
-
-1. https://vercel.com/account/tokens → **Create Token**.
-2. Name `loyalty-turbo-cache`, scope your team, expiration 1 year.
-3. Copy → that's `TURBO_TOKEN`.
-
-**`TURBO_TEAM` (optional)**
-
-Vercel → team → Settings → General → "Team URL Slug" (e.g. `acme-loyalty`). Goes in the **Variables** tab in GitHub, not Secrets.
-
-#### Don't use GitHub Environments for these
-
-The workflow reads `secrets.VERCEL_TOKEN` at the repo level. If you put the secrets in an environment instead, jobs would also need `environment: <name>` to see them — extra plumbing without benefit until you actually want approval gates or per-env tokens. Add environments later only if you need:
-
-- **Manual approval** before promoting to prod ("someone has to click").
-- **Reviewers** required on prod deploys (audit trail).
-- **Different tokens** per env (e.g. staging Vercel team vs prod Vercel team).
-- **Branch restriction** ("only `main` may deploy to prod").
-
-For the MVP it's repo-level secrets and the branch logic in the workflow.
-
-### b) Disable Vercel's native auto-deploy
-
-For each Vercel project (`loyalty-web`, `loyalty-admin`):
-
-1. Project → **Settings** → **Git**.
-2. Either:
-   - **Easiest**: scroll to "Production Branch" → click "Disconnect" (the project stays linked to GitHub for env loading but Vercel won't trigger builds).
-   - **More surgical**: leave the link but set "Ignored Build Step" to:
-     ```bash
-     exit 0
-     ```
-     This makes Vercel skip every push from Git. Builds/deploys happen only via `vercel deploy` from CI.
-3. Save.
-
-After this, pushing to GitHub triggers GitHub Actions only. Vercel waits passively for `vercel deploy` calls.
-
-### c) Verify
-
-```bash
-git push origin main      # GH Actions kicks in
-gh run list --limit 5     # confirm validate + deploy-web + deploy-admin all pass
-gh pr create ...          # PRs get sticky comments with preview URLs
-```
+When you push to `main`, both Vercel projects build and promote to Production. When you open a PR, both build a Preview deploy and Vercel posts the URLs as a comment on the PR.
 
 ---
 
 ## 2. The `validate` job (every push, every PR)
 
-Steps:
+`.github/workflows/ci.yml`. Steps:
 
 1. Checkout.
 2. Bun pinned to `1.2.10` (matches root `package.json#packageManager`).
-3. Cache `.turbo/` keyed by SHA → speeds repeat runs.
+3. Cache `.turbo/` keyed by SHA.
 4. `bun install --frozen-lockfile` — fails if `bun.lock` drifted.
 5. `bun run lint` — `oxlint` via turbo across every package (read-only, no auto-fix).
 6. `bun run knip` — dead code, unused deps, unused exports. Config in `knip.json`.
 7. `bun run typecheck` — `tsc --noEmit` across every package.
 8. `bun run test` — vitest run across every package.
 
-> No `format:check` — with oxlint as the only formatter/linter, `lint` already validates style. The local `format` script (`oxlint --fix`) is a convenience for fixing auto-correctable issues; it has no read-only sibling worth running in CI.
+> No `format:check` — with oxlint as the only formatter/linter, `lint` already validates style. `format` (auto-fix) is a local convenience.
 
-If any step fails, the job fails and **deploy jobs do not start** (`needs: validate`). The whole pipeline takes ~3-5 min on a warm cache.
+If any step fails the PR is blocked from merging. The whole job takes ~3-5 min on a warm cache.
 
 ### Placeholder env vars
 
-The validate job sets fake values for `DATABASE_URL`, `BETTER_AUTH_SECRET`, etc. Real secrets aren't needed for unit tests; this only exists so build/test scripts that read env via `dotenv -e .env --` don't spook out.
-
-If a test really needs a real-looking value (e.g. you start using `t3-env` and it validates URL format), add it here.
+The validate job sets fake `DATABASE_URL`, `BETTER_AUTH_SECRET` so build-time scripts that read env via `dotenv -e .env --` don't spook out. Real secrets aren't needed for unit tests.
 
 ---
 
-## 3. The `deploy-*` jobs
-
-`deploy-web` and `deploy-admin` run **after** `validate` succeeds. Both follow the same template — they only differ in `VERCEL_PROJECT_ID`.
-
-Each deploy:
-
-1. Installs Vercel CLI globally with bun.
-2. `vercel pull --environment=production|preview` — fetches the project's env vars + `.vercel/project.json`.
-3. `bun install --frozen-lockfile` — installs workspace deps so `vercel build` resolves them.
-4. `vercel build [--prod]` — builds locally using Vercel's own builder. Output goes to `.vercel/output/`.
-5. `vercel deploy --prebuilt [--prod]` — uploads the prebuilt output, no build server-side.
-6. Captures the deploy URL.
-7. On a PR, posts a sticky comment with the preview URL.
-
-### Why `--prebuilt`
-
-Building inside the GH Actions runner gives us:
-
-- One artifact format: if it builds in CI, it deploys; otherwise it never reaches Vercel.
-- Same `bun install` and `node_modules` as the rest of CI — no `Cannot find module @loyalty/log` mismatches.
-- Cheaper Vercel build minutes (we don't pay for their builder).
-
-### Production vs preview
-
-| Branch | Behavior |
-| --- | --- |
-| `main` push | `vercel pull --environment=production` + `vercel deploy --prod`. Promotes to the production domain. |
-| Any other branch / PR | `vercel pull --environment=preview` + `vercel deploy` (no `--prod`). Generates a unique preview URL. |
-
-### Rollback
-
-GitHub Actions does NOT manage rollbacks. To roll back:
-
-1. Vercel dashboard → project → Deployments.
-2. Find the last good deploy → ⋯ → **Promote to Production**.
-3. Open the affected app → confirm.
-4. Note in `#alerts-loyalty` what you did.
-
-The pipeline isn't gating rollbacks because they're rare and time-sensitive.
-
----
-
-## 4. The `e2e` job (Playwright)
-
-Currently **disabled** by `if: false` in the workflow (no specs to run yet). Specs live in `apps/e2e/tests/*.{web,admin}.spec.ts`.
-
-When you have specs worth running:
-
-1. Remove the `if: false` (or change to `if: always()`).
-2. Specs receive deploy URLs via env: `E2E_WEB_URL` and `E2E_ADMIN_URL` come from the `deploy-web` / `deploy-admin` job outputs.
-3. Failures upload `apps/e2e/test-results/` as a workflow artifact (traces, videos, screenshots).
-
-The Playwright config (`apps/e2e/playwright.config.ts`) defines 3 projects:
-
-- `web-chromium`: runs `*.web.spec.ts` against `E2E_WEB_URL`.
-- `admin-chromium`: runs `*.admin.spec.ts` against `E2E_ADMIN_URL`.
-- `web-webkit`: same as `web-chromium` but on Safari engine. iOS PWA coverage.
-
-Two smoke specs ship as a starting point: `health.web.spec.ts` and `health.admin.spec.ts`. They hit `/api/health` and assert `{ status: "ok" }`.
-
-### Running locally
+## 3. Opening a PR
 
 ```bash
-# point at running dev servers
-E2E_WEB_URL=http://localhost:3002 \
-E2E_ADMIN_URL=http://localhost:3003 \
-bun --cwd apps/e2e run test
+git checkout -b feat/<short-name>
+# … work …
+git commit -m "feat(<scope>): <subject>"
+git push -u origin feat/<short-name>
 
-# watch mode (UI)
-bun --cwd apps/e2e run test:ui
+gh pr create --fill-first
+# Then edit the description in your editor / on github.com using the
+# repo's PR template (.github/PULL_REQUEST_TEMPLATE.md).
 ```
 
-Browsers must be installed once:
+Required scopes for commit messages live in `commitlint.config.ts` (see the `tooling` skill).
 
-```bash
-bun --cwd apps/e2e exec playwright install --with-deps chromium webkit
-```
+The PR template asks for:
 
----
-
-## 5. Conventions
-
-- **Every PR must pass `validate`** before merge — set this as a required check in GitHub Settings → Branches → main → branch protection rules.
-- **Deploys are idempotent**: re-running `deploy-web` / `deploy-admin` regenerates the deploy from the same SHA.
-- **Don't add manual deploy steps in `package.json`**: the only way to deploy is through GitHub Actions. Local `vercel deploy` runs (without going through CI) are debugging-only — they don't pass through validate.
-- **Secrets rotation**: rotate `VERCEL_TOKEN` quarterly. After rotation, update GH secret + verify a single push deploys cleanly before walking away.
+- **Summary** — bullets describing what + why.
+- **Linear** — the LOY-XXX ticket.
+- **Test plan** — how you verified it.
+- **Screenshots** — for UI / PWA changes.
+- **Risk & rollback** — blast radius + how to undo.
 
 ---
 
-## 6. Adding a step
+## 4. The `e2e` job (deferred)
 
-Most common: a new check.
-
-1. Edit `.github/workflows/ci.yml`, add a step inside the `validate` job. Keep them under 2 min each so the whole job stays under 5 min.
-2. Mirror the same step in `lefthook.yml` if it makes sense as a pre-commit (typically lint, format, typecheck — not knip, not vitest because they're slow).
-3. PR → confirm CI passes → merge.
-
-Most common: a new deploy target (e.g. a future `apps/cashier`).
-
-1. Create the Vercel project the same way `loyalty-web` and `loyalty-admin` were created (see `.claude/skills/vercel/SKILL.md`).
-2. Add `VERCEL_PROJECT_ID_CASHIER` as a GH secret.
-3. Copy the `deploy-admin` job to `deploy-cashier` and swap the env var.
-4. PR.
+In `ci.yml` but gated `if: false`. Will run Playwright once specs exist in `apps/e2e/tests/*`. Reads `WEB_PROD_URL` and `ADMIN_PROD_URL` from repo Variables (set when LOY-43 lands). Until then, leave `if: false`.
 
 ---
 
-## 7. Troubleshooting
+## 5. Adding a new check to `validate`
 
-### "Couldn't find Vercel project linked to this directory"
+1. Create the script (script in a workspace's `package.json` or a top-level `bun run X`).
+2. Add a step in `ci.yml` between two existing steps. Naming: imperative, lowercase, e.g. `- name: Format check`.
+3. Open a PR with the change. The new step runs on the PR itself — meta-validation.
 
-`vercel pull` needs `VERCEL_ORG_ID` + `VERCEL_PROJECT_ID` env. Both come from `secrets`. If they're missing, the step exits with that message.
+---
 
-### "Failed to download `@vercel/build-utils`" / sporadic CLI errors
-
-Vercel CLI registry hiccup. Re-run the failed job — it's flaky once a month.
+## 6. Troubleshooting
 
 ### `bun install --frozen-lockfile` fails
 
-Lockfile drifted. Regenerate locally with `bun install`, commit `bun.lock`, push.
+Lockfile drifted. Run `bun install` locally, commit the updated `bun.lock`, push.
 
-### Deploy succeeds but the URL 500s
+### `oxlint`/`tsc` passes locally but fails in CI
 
-Almost always missing env var on the Vercel project. `vercel pull --environment=production` confirms what's there. Add the missing var via Vercel UI → Settings → Environment Variables → re-deploy by re-running the workflow.
+99% of the time: caching. Locally you have `.turbo/` warm; CI is cold. Run `bun run clean && bun install && bun run lint typecheck` locally to repro.
 
-### "ignored build step" still triggering Vercel-side build
+### Vercel preview is broken even though `validate` is green
 
-Check Settings → Git → Production Branch is disconnected (or Ignored Build Step really returns `exit 0`). Vercel sometimes caches the previous setting for ~1 min after toggling.
+Vercel auto-deploy is independent. Check the Vercel project → Deployments → click the failing one → Build Logs. Common causes:
 
-### Knip flags a real false positive
+- Env var missing in Vercel (Settings → Environment Variables).
+- Sensitive env var that needed to be Plain Text for build-time access (see `vercel` skill troubleshooting).
 
-Edit `knip.json` → add to `ignore` (path) or `ignoreDependencies` (package name). Don't suppress at the source-code level (`// knip-ignore`) unless really one-off.
+### "validate" check doesn't show on the PR
 
-### Test pollution between turbo runs
+The workflow file may have a syntax error. View Actions → workflow runs; if the workflow itself failed to parse, it shows as "no runs". Run `gh workflow view ci.yml` to confirm.
 
-Tests share a process per package. If a test mutates global state (env, mocks not restored) it'll fail in CI but pass locally. Fix: `vi.restoreAllMocks()` in `afterEach`.
+### PR can be merged without `validate` running
 
----
-
-## 8. Why this pipeline shape
-
-A few decisions worth recording:
-
-- **GH Actions over Vercel auto-deploy**: gives us pre-deploy gates (tests, knip) and a single audit trail. Vercel's native pipeline is great for "just deploy" but skips every check.
-- **Build with `--prebuilt`**: bun and turbo cache benefits stay in our control; same artifact tested in CI lands in prod.
-- **Sticky PR comments**: see preview URLs without leaving the PR. Use `marocchino/sticky-pull-request-comment@v2` to avoid comment spam on rebuilds.
-- **Playwright sectioned by app**: web and admin have different APIs/UX, so projects scoped by spec name (`*.web.spec.ts`, `*.admin.spec.ts`) prevent leaking expectations.
+Branch protection isn't enforcing the check. Settings → Branches → ruleset for `main` → "Require status checks" → make sure `validate (lint, knip, typecheck, test)` is in the required list. If you renamed the job, the old check name still appears as required and the new one isn't — re-add.
 
 ---
 
-## Where to look first
+## 7. References
 
-- `.github/workflows/ci.yml` — the actual workflow.
-- `knip.json` — dead-code config.
-- `apps/e2e/` — Playwright specs + config.
-- `.claude/skills/vercel/SKILL.md` — how the Vercel projects were created (referenced in deploy steps).
-- `.claude/skills/tooling/SKILL.md` — for lint/format/commitlint conventions referenced in `validate`.
+- Workflow: `.github/workflows/ci.yml`
+- PR template: `.github/PULL_REQUEST_TEMPLATE.md`
+- Code owners: `.github/CODEOWNERS`
+- Commit scopes: `commitlint.config.ts` (see the `tooling` skill)
+- Knip config: `knip.json`
+- Branch protection: GitHub repo Settings → Branches → ruleset for `main`
+- Vercel auto-deploy config: Vercel project → Settings → Git
