@@ -22,6 +22,7 @@
     "clean": "turbo run clean && rm -rf node_modules .turbo",
     "db:generate": "bun --cwd packages/db run db:generate",
     "db:migrate": "bun --cwd packages/db run db:migrate",
+    "db:push": "bun --cwd packages/db run db:push",
     "db:studio": "bun --cwd packages/db run db:studio",
     "jobs:dev": "bun --cwd packages/jobs run dev",
     "jobs:deploy": "bun --cwd packages/jobs run deploy",
