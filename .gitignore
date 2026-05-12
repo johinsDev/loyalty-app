@@ -95,3 +95,5 @@ apps/storybook/storybook-static/
 !.claude/skills/vercel/**
 !.claude/skills/whatsapp
 !.claude/skills/whatsapp/**
+!.claude/skills/api-filters
+!.claude/skills/api-filters/**

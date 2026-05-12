@@ -209,6 +209,14 @@ Visible in every env — empty in production (Twilio is the provider; the table 
 
 Columns on the list view: `sentAt`, `to`, `status`, body preview. Filter is by phone on the URL (`?to=+549…`); the tRPC query supports it but the UI hasn't wired a filter input yet — open a separate ticket when needed.
 
+## Dev view on apps/web
+
+`/<locale>/whatsapp-outbox` on the **customer PWA** (`apps/web`, port 3002 locally) is the dev/preview view for finding OTPs and other test messages. Comes with a search input, phone filter, status pills (All / Sent / Failed), and full pagination — URL-stateful via [nuqs](https://nuqs.47ng.com/) so refresh + share-link preserve filters.
+
+Gated by `apps/web/lib/dev-only.ts` — returns 404 when `VERCEL_ENV=production`. Same env gate as the JSON E2E endpoint, single source of truth.
+
+Backed by the same tRPC `whatsappOutbox.list` procedure that admin uses, now refactored into the features+filters pattern at `packages/api/src/features/whatsapp-outbox/`. See `.claude/skills/api-filters/SKILL.md` for the architecture.
+
 ---
 
 ## E2E fetch endpoint
