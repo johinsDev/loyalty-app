@@ -12,6 +12,8 @@ export const routing = defineRouting({
     "/customers": { es: "/clientes", en: "/customers" },
     "/rewards": { es: "/premios", en: "/rewards" },
     "/sign-in": { es: "/iniciar-sesion", en: "/sign-in" },
+    "/whatsapp-outbox": "/whatsapp-outbox",
+    "/whatsapp-outbox/[id]": "/whatsapp-outbox/[id]",
   },
 });
 
