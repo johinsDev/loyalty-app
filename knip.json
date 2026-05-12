@@ -5,9 +5,8 @@
     "apps/admin": {
       "entry": [
         "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest}.{ts,tsx}",
-        "components/**/*.{ts,tsx}",
-        "i18n/**/*.{ts,tsx}",
-        "lib/**/*.{ts,tsx}"
+        "src/env.ts",
+        "src/lib/whatsapp.ts"
       ],
       "project": ["**/*.{ts,tsx}"]
     },
@@ -15,9 +14,8 @@
       "entry": [
         "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest,icon,apple-icon}.{ts,tsx}",
         "app/sw.ts",
-        "components/**/*.{ts,tsx}",
-        "i18n/**/*.{ts,tsx}",
-        "lib/**/*.{ts,tsx}"
+        "src/env.ts",
+        "src/lib/whatsapp.ts"
       ],
       "project": ["**/*.{ts,tsx}"]
     },

@@ -3,7 +3,7 @@ import { whatsappOutbox } from "@loyalty/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-import { isOutboxEndpointEnabled } from "../gate";
+import { isDevOnlyEnabled } from "@/lib/dev-only";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,7 +15,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!isOutboxEndpointEnabled()) {
+  if (!isDevOnlyEnabled()) {
     return new NextResponse("not found", { status: 404 });
   }
 

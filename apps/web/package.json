@@ -7,8 +7,8 @@
     "dev": "dotenv -e ../../.env -- next dev --webpack --port 3002",
     "build": "dotenv -e ../../.env -- next build --webpack",
     "start": "dotenv -e ../../.env -- next start --port 3002",
-    "lint": "oxlint app components lib i18n proxy.ts",
-    "format": "oxlint app components lib i18n proxy.ts --fix",
+    "lint": "oxlint app src proxy.ts",
+    "format": "oxlint app src proxy.ts --fix",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .next .turbo node_modules"
   },
