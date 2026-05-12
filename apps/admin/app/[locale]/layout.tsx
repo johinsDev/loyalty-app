@@ -4,8 +4,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { LocaleSwitcher } from "../../components/locale-switcher";
-import { routing } from "../../i18n/routing";
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { routing } from "@/i18n/routing";
+
 import { Providers } from "./providers";
 
 type Props = {

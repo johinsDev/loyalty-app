@@ -72,6 +72,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 
 | Goal | Skill |
 | --- | --- |
+| New feature in apps/{web,admin}: where to put files, screen vs feature, no deep barrels | `architecture-guard` |
 | i18n: add a locale, translate a route, fix a `next/link` import | `next-intl` |
 | Add / tweak a UI component, brand colors, dark mode, Storybook | `ui` |
 | Build, install, or debug the PWA (sw, manifest, install prompt) | `pwa` |
@@ -84,7 +85,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `next-intl`, `ui`, `pwa`, `whatsapp`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `api-filters`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 
@@ -92,7 +93,8 @@ Skills authored locally for this repo: `next-intl`, `ui`, `pwa`, `whatsapp`, `ci
 
 - **Components are NOT npm deps.** `@loyalty/ui` ships shadcn components copied into the repo. To "upgrade" Button, edit `packages/ui/src/components/ui/button.tsx`. Don't `bunx shadcn add button --reinstall` and expect the old customizations to survive — review the diff manually.
 - **`@/cn` and `@/components/ui/*` aliases only work inside `packages/ui`.** When CLI-installed components arrive, their `@/` imports get rewritten to relative paths so consumer apps (which have their own `@/` aliasing) resolve correctly. See the `ui` skill for the sed pattern.
-- **`NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` are optional.** `apps/{web,admin}/lib/app-url.ts` derives the URL from `VERCEL_URL` automatically. Set them explicitly only for custom domains or cross-app preview testing.
+- **`NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` are optional.** `apps/{web,admin}/src/lib/app-url.ts` derives the URL from `VERCEL_URL` automatically. Set them explicitly only for custom domains or cross-app preview testing.
+- **`apps/{web,admin}` use a `src/` layout.** Everything except `app/` (routes) lives under `src/{lib,components,i18n,features,env.ts}`. The `@/*` alias resolves to `./src/*`. See `.claude/skills/architecture-guard/SKILL.md`.
 - **Sensitive env vars in Vercel.** Marked Sensitive = not returned by `vercel pull`, not readable to builds running outside Vercel. Keep build-time vars (DATABASE_URL etc.) as Plain Text.
 - **The web app's service worker is disabled in dev** so HMR works. Build + start (or check on a preview deploy) to exercise PWA behavior.
 - **Toast is `sonner`, not `Toast`.** Base UI doesn't ship a Toast primitive; we use `sonner` instead. There's a `<Toaster />` you mount once and `toast(...)` to call from anywhere.

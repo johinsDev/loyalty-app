@@ -3,7 +3,7 @@ import { whatsappOutbox } from "@loyalty/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-import { isOutboxEndpointEnabled } from "./gate";
+import { isDevOnlyEnabled } from "@/lib/dev-only";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,7 +14,7 @@ export const runtime = "nodejs";
  * only ever calls this against local dev or Vercel preview URLs.
  */
 export async function GET(request: Request) {
-  if (!isOutboxEndpointEnabled()) {
+  if (!isDevOnlyEnabled()) {
     return new NextResponse("not found", { status: 404 });
   }
 

@@ -4,9 +4,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { LocaleSwitcher } from "../../components/locale-switcher";
-import { InstallPrompt } from "../../components/install-prompt";
-import { routing } from "../../i18n/routing";
+import { InstallPrompt } from "@/components/install-prompt";
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { routing } from "@/i18n/routing";
+
 import { Providers } from "./providers";
 
 type Props = {

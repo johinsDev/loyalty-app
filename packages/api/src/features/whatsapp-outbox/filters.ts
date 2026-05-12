@@ -27,8 +27,13 @@ export class WhatsAppOutboxFilters<TBuilder extends WhereChainable> extends Filt
     return ["to", "status", "search"] as const;
   }
 
+  /**
+   * Partial, case-insensitive phone match. Users typing the area code
+   * (`+5491155`) should see every recipient that starts with it, not
+   * just exact-match rows. Drizzle's `ilike` maps to Postgres `ILIKE`.
+   */
   protected to(value: string): void {
-    this.builder = this.builder.where(eq(whatsappOutbox.to, value));
+    this.builder = this.builder.where(ilike(whatsappOutbox.to, `%${value}%`));
   }
 
   protected status(value: WhatsAppOutboxStatus): void {

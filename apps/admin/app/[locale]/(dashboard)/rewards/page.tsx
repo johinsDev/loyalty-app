@@ -1,16 +1,11 @@
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { setRequestLocale } from "next-intl/server";
+
+import { RewardsView } from "@/features/rewards/components/rewards-view";
 
 type Props = { params: Promise<{ locale: string }> };
 
 export default async function RewardsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("Rewards");
-
-  return (
-    <main className="mx-auto max-w-5xl p-6">
-      <h1 className="mb-6 text-2xl font-semibold">{t("title")}</h1>
-      <p className="text-sm text-muted-foreground">{t("placeholder")}</p>
-    </main>
-  );
+  return <RewardsView />;
 }

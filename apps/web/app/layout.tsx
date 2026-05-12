@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
-import { routing } from "../i18n/routing";
+import { routing } from "@/i18n/routing";
 
 import "./globals.css";
 
