@@ -28,6 +28,7 @@
     },
     "packages/api": {},
     "packages/auth": {},
+    "packages/date": { "entry": ["src/index.ts", "src/react/index.ts"] },
     "packages/db": {},
     "packages/log": {},
     "packages/ui": {},
