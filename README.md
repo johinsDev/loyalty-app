@@ -18,6 +18,7 @@ For a Claude Code session: start with [`CLAUDE.md`](./CLAUDE.md). Operational co
 - **DB:** Postgres (Neon) + Drizzle ORM
 - **Background jobs / cron:** Trigger.dev v3
 - **Observability:** Better Stack (logs + uptime + status + alerts) via `@loyalty/log`
+- **WhatsApp:** `@loyalty/whatsapp` — provider-agnostic (Twilio in prod, DB outbox in preview, log/folder in dev)
 - **UI:** shadcn/ui on top of Base UI primitives (`@base-ui/react`) in `packages/ui`
 - **Visual docs:** Storybook 9 in `apps/storybook` (auto-deployed as a third Vercel project)
 - **Lint:** oxlint · **Format:** `oxlint --fix` (oxformat once stable)
@@ -40,9 +41,10 @@ packages/
 ├── api/         tRPC v11 routers
 ├── auth/        Better Auth (server + client, organization plugin)
 ├── db/          Drizzle ORM + Neon client + schema
-├── jobs/        Trigger.dev v3 tasks
+├── jobs/        Trigger.dev v4 tasks
 ├── log/         Provider-agnostic logger (Pino + Better Stack + console + silent)
 ├── ui/          shadcn (Base UI) + Tailwind v4 tokens
+├── whatsapp/    Provider-agnostic WhatsApp sender (Twilio + log + folder + outbox)
 └── tooling/     Shared presets — tsconfig, oxlint, oxformat, vitest
 
 .claude/skills/  Operational runbooks per area (see "Skills" below)
@@ -221,11 +223,12 @@ Deep dive: `.claude/skills/ui/SKILL.md`.
 | `vercel` | Per-project setup, env vars, Sensitive trap, MCP usage, rollback |
 | `better-stack` | Logs/uptime/dashboards/alerts via BS MCP, source-token model |
 | `log` | `@loyalty/log` API, channel design, adding a new transport |
+| `whatsapp` | `@loyalty/whatsapp` API, four transports, outbox panel, E2E endpoint, FakeSender |
 | `slack` | Bot setup, scopes, token rotation, debugging "not_in_channel" |
 | `tooling` | oxlint + commitlint + lefthook conventions, valid scopes |
 | `drizzle` / `trpc` / `next-best-practices` / `bun` / `turborepo` / `neon-postgres` | Patterns + best practices per framework |
 
-Skills authored locally in this repo: `next-intl`, `ui`, `pwa`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest come from the broader Claude Code skills ecosystem.
+Skills authored locally in this repo: `next-intl`, `ui`, `pwa`, `whatsapp`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest come from the broader Claude Code skills ecosystem.
 
 ## MCP servers
 

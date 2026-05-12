@@ -19,9 +19,10 @@ packages/
 ├── api/         tRPC v11 routers (consumed by web + admin)
 ├── auth/        Better Auth (server + client, organization plugin = multi-tenant)
 ├── db/          Drizzle ORM + Neon Postgres client + schema
-├── jobs/        Trigger.dev v3 background tasks
+├── jobs/        Trigger.dev v4 background tasks
 ├── log/         Provider-agnostic logger (Pino + Better Stack + console + silent)
 ├── ui/          shadcn (Base UI) component library + Tailwind v4 tokens
+├── whatsapp/    Provider-agnostic WhatsApp sender (Twilio + log + folder + outbox)
 └── tooling/     Shared tsconfig / oxlint / oxformat / vitest presets
 ```
 
@@ -78,11 +79,12 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Vercel deploy targets, env vars, Sensitive trap, rollback | `vercel` |
 | Logs, dashboards, uptime monitors, alerts (Better Stack) | `better-stack` |
 | `@loyalty/log` API, adding a new transport | `log` |
+| Send a WhatsApp message, add a strategy, debug outbox / Twilio | `whatsapp` |
 | Slack bot setup, scopes, posting from MCP | `slack` |
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `next-intl`, `ui`, `pwa`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `next-intl`, `ui`, `pwa`, `whatsapp`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 
