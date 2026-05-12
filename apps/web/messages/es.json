@@ -25,5 +25,26 @@
   "Offline": {
     "title": "Sin conexión",
     "description": "Parece que perdiste la conexión. Cuando vuelvas a estar online la app va a recargarse automáticamente."
+  },
+  "WhatsAppOutbox": {
+    "title": "WhatsApp Outbox",
+    "subtitle": "Mensajes que el provider outbox de @loyalty/whatsapp guardó en la DB. Solo dev y preview.",
+    "searchPlaceholder": "Buscar en el mensaje…",
+    "phonePlaceholder": "+549...",
+    "statusAll": "Todos",
+    "statusSent": "Enviado",
+    "statusFailed": "Falló",
+    "colRecipient": "Destinatario",
+    "colBody": "Mensaje",
+    "colStatus": "Estado",
+    "colSent": "Enviado",
+    "emptyTitle": "No hay mensajes",
+    "emptyDescription": "Cuando algún flow dispare un envío con el provider outbox, vas a verlo acá.",
+    "emptyHint": "¿Esperás ver mensajes? Asegurate de que la app esté corriendo con WHATSAPP_PROVIDER=outbox.",
+    "detailTitle": "Mensaje",
+    "media": "Media:",
+    "contentSid": "Content SID:",
+    "providerMessageId": "Provider message ID:",
+    "variables": "Variables"
   }
 }
