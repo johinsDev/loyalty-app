@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Tailwind v4 auto-detects content next to this file, but consumer apps
+   (apps/{web,admin,storybook}) live outside this directory. Explicit
+   @source directives ensure their classes get generated. Paths are
+   relative to this CSS file (packages/ui/styles/globals.css). */
+@source "../src/**/*.{ts,tsx}";
+@source "../../../apps/web/{app,components,lib}/**/*.{ts,tsx}";
+@source "../../../apps/admin/{app,components,lib}/**/*.{ts,tsx}";
+@source "../../../apps/storybook/stories/**/*.{ts,tsx}";
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
