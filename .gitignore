@@ -43,12 +43,18 @@ next-env.d.ts
 # Claude Code (local-only settings; .mcp.json is versioned)
 .claude/settings.local.json
 
+# Claude Code worktrees (local-only isolated copies for agent work)
+.claude/worktrees/
+
 TODO.md
 
 # Serwist generated files (apps/web PWA service worker output)
 apps/web/public/sw.js
 apps/web/public/sw.js.map
 apps/web/public/swe-worker-*.js
+
+# Storybook static build output
+apps/storybook/storybook-static/
 
 # skills.sh CLI cache (regenerate with `npx skills install` from skills-lock.json)
 .agents/skills/
@@ -71,6 +77,8 @@ apps/web/public/swe-worker-*.js
 !.claude/skills/slack/**
 !.claude/skills/tooling
 !.claude/skills/tooling/**
+!.claude/skills/ui
+!.claude/skills/ui/**
 !.claude/skills/trpc
 !.claude/skills/trpc/**
 !.claude/skills/vercel
