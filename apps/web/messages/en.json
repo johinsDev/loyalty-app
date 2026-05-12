@@ -25,5 +25,26 @@
   "Offline": {
     "title": "Offline",
     "description": "Looks like you lost connection. When you're back online the app will reload automatically."
+  },
+  "WhatsAppOutbox": {
+    "title": "WhatsApp Outbox",
+    "subtitle": "Messages persisted by the outbox provider in @loyalty/whatsapp. Dev + preview only.",
+    "searchPlaceholder": "Search message body…",
+    "phonePlaceholder": "+1...",
+    "statusAll": "All",
+    "statusSent": "Sent",
+    "statusFailed": "Failed",
+    "colRecipient": "Recipient",
+    "colBody": "Message",
+    "colStatus": "Status",
+    "colSent": "Sent",
+    "emptyTitle": "No messages",
+    "emptyDescription": "When any flow triggers a send via the outbox provider, you'll see it here.",
+    "emptyHint": "Expecting messages? Make sure the app runs with WHATSAPP_PROVIDER=outbox.",
+    "detailTitle": "Message",
+    "media": "Media:",
+    "contentSid": "Content SID:",
+    "providerMessageId": "Provider message ID:",
+    "variables": "Variables"
   }
 }

@@ -1,0 +1,36 @@
+import { TRPCError } from "@trpc/server";
+import type { WhatsappOutboxRow } from "@loyalty/db/schema";
+
+import type {
+  WhatsAppOutboxRepository,
+  ListResult,
+} from "./repository";
+import type { ListInput, LatestForRecipientInput } from "./schemas";
+
+/**
+ * Thin pass-through today. Lives here so future business rules
+ * (mask content for non-admins, enforce opt-in, hide failed sends
+ * from non-staff) have a single home above the repository.
+ */
+export class WhatsAppOutboxService {
+  constructor(private readonly repo: WhatsAppOutboxRepository) {}
+
+  list(input: ListInput): Promise<ListResult> {
+    return this.repo.list(input);
+  }
+
+  async get(id: string): Promise<WhatsappOutboxRow> {
+    const row = await this.repo.findById(id);
+    if (!row) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: `whatsapp_outbox row "${id}" not found`,
+      });
+    }
+    return row;
+  }
+
+  latestForRecipient(input: LatestForRecipientInput): Promise<WhatsappOutboxRow[]> {
+    return this.repo.latestForRecipient(input);
+  }
+}

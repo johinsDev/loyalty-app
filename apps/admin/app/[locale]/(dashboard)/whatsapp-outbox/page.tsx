@@ -26,7 +26,7 @@ type Props = { params: Promise<{ locale: string }> };
 export default async function WhatsAppOutboxPage({ params }: Props) {
   const { locale: _locale } = await params;
   const api = await trpc();
-  const rows = await api.whatsappOutbox.list({ limit: 100 });
+  const { rows } = await api.whatsappOutbox.list({ page: 1, pageSize: 100 });
 
   return (
     <main className="mx-auto max-w-6xl p-6">
