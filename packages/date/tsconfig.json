@@ -1,9 +1,0 @@
-{
-  "extends": "@loyalty/tsconfig/base.json",
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
-  },
-  "include": ["src", "vitest.config.ts"],
-  "exclude": ["node_modules", "dist", "coverage"]
-}
