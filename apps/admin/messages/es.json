@@ -1,0 +1,32 @@
+{
+  "Metadata": {
+    "title": "Loyalty CRM",
+    "description": "Panel administrativo para programa de fidelización"
+  },
+  "Common": {
+    "switchLocale": "Cambiar idioma"
+  },
+  "Auth": {
+    "signInTitle": "Iniciar sesión",
+    "emailPlaceholder": "email",
+    "passwordPlaceholder": "contraseña",
+    "submit": "Entrar",
+    "submitting": "Entrando…",
+    "genericError": "No se pudo iniciar sesión"
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "healthServer": "Health (server)",
+    "healthServerDescription": "tRPC desde RSC",
+    "healthClient": "Health (client)",
+    "healthClientDescription": "tRPC + React Query desde el cliente"
+  },
+  "Customers": {
+    "title": "Clientes",
+    "placeholder": "Listado de clientes (placeholder)."
+  },
+  "Rewards": {
+    "title": "Premios",
+    "placeholder": "Catálogo de premios (placeholder)."
+  }
+}

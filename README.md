@@ -1,55 +1,57 @@
 # loyalty-app
 
-Monorepo para CRM + programa de fidelización. Pilot inicial en local de té T4, con arquitectura multi-tenant lista para SaaS.
+Monorepo for a CRM + loyalty program. Pilot launches in a single T4 tea-franchise store, with a multi-tenant architecture ready to SaaS-ify.
 
 ## Stack
 
 - **Runtime / package manager:** Bun
 - **Monorepo:** Turborepo
-- **Frontend:** Next.js 15 (App Router) · React 19 · Tailwind v4
-- **API:** tRPC v11 (en `packages/api`, listo para extraer a servicio standalone)
+- **Frontend:** Next.js 16 (App Router) · React 19 · Tailwind v4
+- **i18n:** next-intl (es default, en second locale) in `apps/web` and `apps/admin`
+- **API:** tRPC v11 (in `packages/api`, ready to extract into a standalone service)
 - **Auth:** Better Auth + organization plugin (multi-tenant)
 - **DB:** Postgres (Neon) + Drizzle ORM
 - **Background jobs / cron:** Trigger.dev v3
-- **Lint:** oxlint · **Format:** oxformat (fallback temporal: `oxlint --fix`)
+- **Lint:** oxlint · **Format:** oxformat (temporary fallback: `oxlint --fix`)
 - **Hooks:** lefthook · **Commits:** commitlint (Conventional)
 - **Dead code:** knip
 
-## Estructura
+## Layout
 
 ```
 apps/
-  admin/          # CRM web (Next.js, puerto 3000)
-  web/            # PWA cliente (Next.js, puerto 3001)
+  admin/          # CRM web (Next.js, port 3003)
+  web/            # Customer PWA (Next.js, port 3002)
 packages/
-  api/            # Routers tRPC
-  auth/           # Config Better Auth (server + client)
-  db/             # Schema Drizzle + cliente Neon
-  jobs/           # Tasks Trigger.dev
-  ui/             # Componentes compartidos + estilos Tailwind
+  api/            # tRPC routers
+  auth/           # Better Auth config (server + client)
+  db/             # Drizzle schema + Neon client
+  jobs/           # Trigger.dev tasks
+  log/            # Provider-agnostic logger
+  ui/             # Shared components + Tailwind tokens
   tooling/        # tsconfig / oxlint / oxformat presets
 ```
 
 ## Setup
 
 ```bash
-# 1. Instala dependencias
+# 1. Install dependencies
 bun install
 
-# 2. Copia env vars
+# 2. Copy env vars
 cp .env.example .env
-#    Llena DATABASE_URL (Neon), BETTER_AUTH_SECRET (openssl rand -base64 32),
-#    TRIGGER_PROJECT_ID y TRIGGER_SECRET_KEY.
+#    Fill in DATABASE_URL (Neon), BETTER_AUTH_SECRET (openssl rand -base64 32),
+#    TRIGGER_PROJECT_ID, and TRIGGER_SECRET_KEY.
 
-# 3. Genera y aplica migración inicial
+# 3. Generate and apply the initial migration
 bun run db:generate
 bun run db:migrate
 
-# 4. Arranca los dos apps
-bun run dev   # web en :3002, admin en :3003
+# 4. Start both apps
+bun run dev   # web on :3002, admin on :3003
 ```
 
-En otra terminal, opcional:
+Optional, in another terminal:
 
 ```bash
 bun run jobs:dev   # Trigger.dev dev server
@@ -57,48 +59,49 @@ bun run jobs:dev   # Trigger.dev dev server
 
 ## i18n
 
-`apps/web` está internacionalizado con **next-intl** (Spanish default, English como segundo idioma). El detalle vive en el skill `next-intl` (`.claude/skills/next-intl/SKILL.md`). Resumen:
+`apps/web` and `apps/admin` are internationalized with **next-intl** (Spanish default, English as the second locale). Full detail lives in the `next-intl` skill (`.claude/skills/next-intl/SKILL.md`). Quick reference:
 
-- **Idiomas:** `es` (default) y `en`. Para agregar uno, edita `apps/web/i18n/routing.ts` y crea `apps/web/messages/<code>.json`.
-- **URLs:** `localePrefix: "as-needed"` → `/perfil` (es) y `/en/profile` (en). Las carpetas bajo `app/[locale]/` van en inglés (`profile`, `card`) — son código. Los `pathnames` mapean cada ruta canónica a su URL pública por idioma.
-- **Detección de idioma:** middleware lee cookie `NEXT_LOCALE` → `Accept-Language` → fallback `es`.
-- **Strings:** nunca inline en JSX dentro de `app/[locale]/`. Van en `messages/{es,en}.json`.
-- **Navegación:** importa `Link` / `useRouter` / `usePathname` desde `@/i18n/navigation`, **nunca** desde `next/link` / `next/navigation`.
-- **Selector de idioma:** `apps/web/components/locale-switcher.tsx` (botón toggle sobre `@loyalty/ui` Button).
-- **VSCode:** instala la extensión recomendada **i18n Ally** (`.vscode/extensions.json`) para ver las traducciones inline y detectar keys faltantes.
-- `apps/admin` aún no está internacionalizado — el skill documenta los pasos para mirror cuando sea necesario.
+- **Locales:** `es` (default) and `en`. To add another, edit `apps/<app>/i18n/routing.ts` and create `apps/<app>/messages/<code>.json` in each app.
+- **URLs:** `localePrefix: "as-needed"` → `/perfil` (es) and `/en/profile` (en). Folders under `app/[locale]/` are in English (`profile`, `card`, `customers`, `rewards`) — they're code. The `pathnames` map translates each canonical route to its per-locale public URL.
+- **Language detection:** `proxy.ts` reads the `NEXT_LOCALE` cookie → `Accept-Language` header → falls back to `es`.
+- **Strings:** never inline in JSX inside `app/[locale]/`. They go in `messages/{es,en}.json`.
+- **Navigation:** import `Link` / `useRouter` / `usePathname` / `redirect` from `@/i18n/navigation`, **never** from `next/link` / `next/navigation`.
+- **Locale switcher:** `apps/<app>/components/locale-switcher.tsx` (toggle button on top of the `@loyalty/ui` `Button`).
+- **`proxy.ts`** (not `middleware.ts`): Next 16 renamed the file convention. Always use `proxy.ts`.
+- **VSCode:** install the recommended **i18n Ally** extension (see `.vscode/extensions.json`) for inline translations and missing-key detection across both apps.
 
-## Comandos
+## Commands
 
-| Script | Qué hace |
+| Script | What it does |
 |---|---|
-| `bun run dev` | Levanta admin (3000) y web (3001) |
-| `bun run build` | Build de todas las apps/packages |
-| `bun run lint` | oxlint sobre todo el repo |
-| `bun run lint:fix` | oxlint con autofix |
-| `bun run format` | oxformat (formato) |
-| `bun run typecheck` | tsc --noEmit en cada workspace |
-| `bun run knip` | Detecta exports/deps muertos |
-| `bun run db:generate` | Genera migración SQL desde el schema |
-| `bun run db:migrate` | Aplica migraciones a Neon |
-| `bun run db:studio` | Abre Drizzle Studio |
+| `bun run dev` | Start admin (3003) and web (3002) |
+| `bun run build` | Build every app and package |
+| `bun run lint` | oxlint across the whole repo |
+| `bun run lint:fix` | oxlint with autofix |
+| `bun run format` | oxformat |
+| `bun run typecheck` | `tsc --noEmit` in every workspace |
+| `bun run knip` | Detect dead exports/dependencies |
+| `bun run db:generate` | Generate a SQL migration from the schema |
+| `bun run db:migrate` | Apply migrations to Neon |
+| `bun run db:studio` | Open Drizzle Studio |
 | `bun run jobs:dev` | Trigger.dev dev server |
-| `bun run jobs:deploy` | Deploya jobs a Trigger.dev |
+| `bun run jobs:deploy` | Deploy jobs to Trigger.dev |
 
-## Convenciones
+## Conventions
 
 - **Commits:** Conventional Commits (`feat(admin): ...`, `fix(db): ...`).
-  Scopes válidos: `admin`, `web`, `api`, `auth`, `db`, `jobs`, `ui`, `tooling`, `ci`, `deps`, `repo`.
-- **Comentarios en código:** mínimos. Sólo cuando el "porqué" no es obvio.
-- **Nunca** edites `migrations/` a mano — modifica el schema y `bun run db:generate`.
+  Valid scopes: `admin`, `web`, `api`, `auth`, `db`, `e2e`, `jobs`, `log`, `ui`, `tooling`, `ci`, `deps`, `repo`.
+- **Code language:** code, comments, errors, and commit messages are in English. User-facing copy lives in `apps/<app>/messages/{es,en}.json`. Linear (issues, projects, milestones) is in Spanish.
+- **Comments:** minimal. Only when the *why* isn't obvious from the code.
+- **Never** edit `migrations/` by hand — modify the schema and run `bun run db:generate`.
 
-## Notas / gotchas
+## Notes / gotchas
 
-- **oxformat** está aún en beta a mayo 2026. El script `format` lo invoca; si tu versión de oxc no lo trae, el pre-commit hook usa `oxlint --fix` como fallback.
-- **Trigger.dev v3** usa Node ≥ 20 (su CLI). Bun corre todo lo demás. `node` y `bun` deben estar en `PATH`.
-- **Neon HTTP driver** funciona en RSC y edge. Si necesitas transacciones largas, cambia a `@neondatabase/serverless`'s `Pool` (websocket).
-- **Better Auth** comparte la instancia entre admin y web vía `packages/auth`. Si despliegas a hostnames distintos, ajusta `trustedOrigins` en `packages/auth/src/server.ts`.
+- **oxformat** is still in beta as of May 2026. The `format` script calls it; if your local oxc build doesn't include it, the pre-commit hook falls back to `oxlint --fix`.
+- **Trigger.dev v3** requires Node ≥ 20 (its CLI). Bun runs everything else. Both `node` and `bun` must be on `PATH`.
+- **Neon HTTP driver** works in RSC and edge runtimes. For long-running transactions, switch to `@neondatabase/serverless`'s websocket `Pool`.
+- **Better Auth** shares one instance between admin and web via `packages/auth`. If you deploy them on different hostnames, update `trustedOrigins` in `packages/auth/src/server.ts`.
 
-## Plan de scaffold
+## Scaffold plan
 
-Ver [`/Users/johan/.claude-personal/plans/empiezar-una-proyecto-con-calm-island.md`](file:///Users/johan/.claude-personal/plans/empiezar-una-proyecto-con-calm-island.md) — decisiones de arquitectura y rationale.
+See [`/Users/johan/.claude-personal/plans/empiezar-una-proyecto-con-calm-island.md`](file:///Users/johan/.claude-personal/plans/empiezar-una-proyecto-con-calm-island.md) — architecture decisions and rationale.

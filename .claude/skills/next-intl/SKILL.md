@@ -1,14 +1,16 @@
 ---
 name: next-intl
-description: How i18n is wired in the loyalty-app monorepo with next-intl. Use when adding a new locale, translating a route, wiring a new server/client component to translations, fixing a "Failed to compile" because someone imported from `next/link`, mirroring the setup into apps/admin, or onboarding a teammate to "where do the strings live and how is the language detected".
+description: How i18n is wired in the loyalty-app monorepo with next-intl. Both apps/web and apps/admin are internationalized with the same pattern. Use when adding a new locale, translating a route, wiring a new server/client component to translations, fixing a "Failed to compile" because someone imported from `next/link`, adding a new translatable route, or onboarding a teammate to "where do the strings live and how is the language detected".
 ---
 
-# next-intl — i18n for the loyalty PWA
+# next-intl — i18n for the loyalty monorepo
 
-Single i18n surface for `apps/web`. Locale-aware routing, server- and client-side translation APIs, automatic language detection, and a typed navigation API that replaces `next/link` and `next/navigation`.
+Single i18n pattern shared by `apps/web` (customer PWA) and `apps/admin` (internal CRM). Locale-aware routing, server- and client-side translation APIs, automatic language detection, and a typed navigation API that replaces `next/link` and `next/navigation`.
+
+Each app has the same shape:
 
 ```
-apps/web/
+apps/<app>/
 ├── i18n/
 │   ├── routing.ts         ← defineRouting: locales, defaultLocale, localePrefix, pathnames map
 │   ├── request.ts         ← getRequestConfig: load messages per locale
@@ -16,24 +18,25 @@ apps/web/
 ├── messages/
 │   ├── es.json            ← canonical source; keys live here first
 │   └── en.json
-├── middleware.ts          ← createMiddleware(routing) — locale detection + redirects (becomes proxy.ts in Next 16)
+├── proxy.ts               ← createMiddleware(routing) — locale detection + redirects (Next 16 file convention)
 ├── app/
 │   ├── layout.tsx         ← ROOT: html/body, reads NEXT_LOCALE cookie for <html lang>
 │   ├── [locale]/
-│   │   ├── layout.tsx     ← setRequestLocale + NextIntlClientProvider + InstallPrompt + LocaleSwitcher
-│   │   ├── page.tsx       ← server component, getTranslations("Home")
-│   │   ├── profile/       ← English canonical folder; public URL is /perfil (es) or /profile (en)
-│   │   └── card/          ← English canonical folder; public URL is /tarjeta (es) or /card (en)
-│   ├── offline/           ← locale-agnostic (excluded from middleware matcher)
-│   ├── api/               ← excluded from middleware matcher
-│   ├── manifest.ts        ← locale-agnostic PWA manifest
-│   └── sw.ts              ← service worker, fallback URL is /offline
+│   │   ├── layout.tsx     ← setRequestLocale + NextIntlClientProvider + LocaleSwitcher
+│   │   ├── page.tsx       ← server component, getTranslations(...)
+│   │   └── …routes        ← English-canonical folders; pathnames map translates public URLs
+│   └── api/               ← excluded from proxy matcher
 └── components/
-    ├── locale-switcher.tsx← client component, uses Button from @loyalty/ui
-    └── install-prompt.tsx ← client component, uses useTranslations("Common")
+    └── locale-switcher.tsx← client component, uses Button from @loyalty/ui
 ```
 
-Stack: **`next-intl@4`** + Next 15 App Router.
+App-specific extras:
+
+- `apps/web/app/offline/` + `apps/web/app/sw.ts` + `apps/web/app/manifest.ts` are locale-agnostic (PWA surface).
+- `apps/web/components/install-prompt.tsx` uses `useTranslations("Common")`.
+- `apps/admin` has no PWA layer.
+
+Stack: **`next-intl@4`** + **Next 16** App Router. The `proxy.ts` filename replaces `middleware.ts` (renamed in Next 16). Both apps run on the same convention; if you add a new app, copy the same trio (`i18n/`, `messages/`, `proxy.ts`).
 
 ---
 
@@ -138,19 +141,20 @@ If a teammate opens the repo and i18n-ally doesn't activate: check that `.vscode
 
 ---
 
-## Mirroring to apps/admin
+## Adding a new app
 
-Deferred to a follow-up PR. Steps are mechanical:
+Both `apps/web` and `apps/admin` are set up. If a third app joins the monorepo, mirror the same pattern:
 
-1. `bun add next-intl` in `apps/admin`.
-2. Copy `apps/web/i18n/` to `apps/admin/i18n/`. Decide whether admin needs different locales (probably the same — `es` for the franchise owner, `en` for productized future).
-3. Copy `apps/web/middleware.ts` to `apps/admin/middleware.ts`. Adjust the matcher if admin has different excludes.
-4. Wrap `apps/admin/next.config.ts` with `createNextIntlPlugin("./i18n/request.ts")`.
-5. Move `apps/admin/app/(auth)`, `(dashboard)`, `page.tsx`, `providers.tsx`, `layout.tsx` under `apps/admin/app/[locale]/`.
-6. Write the same minimal root `app/layout.tsx` + provider-bearing `[locale]/layout.tsx`.
-7. Seed `apps/admin/messages/{es,en}.json`.
-8. Build a `LocaleSwitcher` for admin (or factor a shared one — but only after both apps have one).
-9. Update `.vscode/settings.json`: `i18n-ally.localesPaths` becomes `["apps/web/messages", "apps/admin/messages"]`.
+1. `bun add next-intl --filter @loyalty/<new>` (or `cd apps/<new> && bun add next-intl`).
+2. Copy `apps/web/i18n/` to `apps/<new>/i18n/`. Adjust the `pathnames` map for routes specific to that app.
+3. Copy `apps/web/proxy.ts` to `apps/<new>/proxy.ts`. Adjust the matcher if the app has different excludes (admin's matcher is simpler — no PWA paths to skip).
+4. Wrap `apps/<new>/next.config.ts` with `createNextIntlPlugin("./i18n/request.ts")`.
+5. Move route folders under `apps/<new>/app/[locale]/`, renaming to English canonical names.
+6. Write the minimal root `app/layout.tsx` (html/body + cookie-driven `<html lang>`) and provider-bearing `[locale]/layout.tsx`.
+7. Seed `apps/<new>/messages/{es,en}.json`.
+8. Copy `apps/web/components/locale-switcher.tsx` (10 lines — duplicating is cheaper than abstracting it into `@loyalty/ui`, which is locale-agnostic by design).
+9. Update `.vscode/settings.json`: append the new app's `messages/` directory to `i18n-ally.localesPaths`.
+10. Update `apps/<new>/package.json` lint script to cover `i18n proxy.ts components` in addition to whatever was there.
 
 ---
 
@@ -190,19 +194,13 @@ For server components that use `getTranslations`, call `setRequestLocale(locale)
 
 ---
 
-## Pending: `middleware.ts` → `proxy.ts` (Next 16)
+## `proxy.ts`, not `middleware.ts`
 
-Next.js 16 renames the `middleware.ts` convention to `proxy.ts` (deprecation announced at v16.0.0). We're on `^15.1.0` today, where `middleware.ts` is still the only recognized name — a file called `proxy.ts` would be silently ignored on 15.x.
+Next 16 renamed the request-interception file convention. We use **`proxy.ts`** in both apps.
 
-When we bump Next to 16 (separate PR), the migration is a one-command codemod:
-
-```bash
-npx @next/codemod@canary middleware-to-proxy .
-```
-
-It renames the file and changes `export function middleware()` → `export function proxy()`. Our current export is `export default createMiddleware(routing)` from next-intl — the default-export pattern is supported under both names, so functionally nothing changes; only the filename and (for non-default exports) the exported function name do. next-intl's `createMiddleware` itself doesn't care which filename you use; Next.js is the one that loads it.
-
-Don't preemptively rename to `proxy.ts` on 15.x — it won't be picked up and locale routing will silently break.
+- `middleware.ts` is deprecated in Next 16 and will be removed. Don't create it.
+- next-intl's `createMiddleware` itself is unchanged — it returns the same function regardless of which file you put it in. The repo imports it as `createMiddleware` from `next-intl/middleware` (the package didn't rename its export), then default-exports it from `proxy.ts`. The next-intl docs still call this file `middleware.ts` in places; treat that as documentation drift — on Next 16, use `proxy.ts`.
+- If you upgrade an older repo from 15.x to 16.x and need the rename done for you, Next provides a codemod: `npx @next/codemod@canary middleware-to-proxy .`. It renames the file and (for non-default exports) the exported function name.
 
 ## See also
 

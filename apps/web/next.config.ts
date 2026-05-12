@@ -22,9 +22,6 @@ const config: NextConfig = {
     "@loyalty/ui",
   ],
   typedRoutes: true,
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 };
 
 export default withSerwist(withNextIntl(config));

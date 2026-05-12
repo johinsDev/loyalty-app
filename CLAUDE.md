@@ -16,7 +16,7 @@ Multi-tenant CRM + loyalty-card platform. The first pilot runs in a single T4 te
 - **DB:** Postgres (Neon) + Drizzle ORM
 - **Jobs / cron:** Trigger.dev v3
 - **Logger:** `@loyalty/log` (Pino-backed, swappable channels)
-- **i18n:** **next-intl** in `apps/web` (canonical). See the `next-intl` skill.
+- **i18n:** **next-intl** in `apps/web` and `apps/admin`. See the `next-intl` skill.
 - **Lint / format / commits:** oxlint · oxformat · commitlint (Conventional) · lefthook
 - **Deploy:** Vercel auto-deploys on merge to `main`
 
@@ -47,19 +47,18 @@ packages/
 
 - **Code, comments, errors, commits, file names:** English.
 - **Linear (issues, projects, milestones):** Spanish — the product owner reads it.
-- **User-facing copy:** lives in `apps/web/messages/{es,en}.json` (next-intl). Never hardcode in JSX inside `app/[locale]/`. Customer-facing default is Spanish; English is for the productized future.
-- **`apps/admin`:** Spanish-only for the MVP (no i18n setup yet). Will mirror `apps/web` when needed.
+- **User-facing copy:** lives in `apps/web/messages/{es,en}.json` and `apps/admin/messages/{es,en}.json` (next-intl). Never hardcode in JSX inside `app/[locale]/`. Default locale is Spanish; English is the second locale.
 
 ## i18n — the rules
 
-This is the most error-prone area for agents; read the `next-intl` skill before touching anything under `apps/web/app/[locale]/`. TL;DR:
+This is the most error-prone area for agents; read the `next-intl` skill before touching anything under `apps/*/app/[locale]/`. TL;DR:
 
-- **Never import from `next/link` or `next/navigation`** inside `apps/web/app/[locale]/**` or `apps/web/components/**`. Use `@/i18n/navigation` instead.
+- **Never import from `next/link` or `next/navigation`** inside `apps/*/app/[locale]/**` or `apps/*/components/**`. Use `@/i18n/navigation` instead. (`notFound` from `next/navigation` is fine — it's locale-agnostic.)
 - **Every page and layout that calls `getTranslations` must call `setRequestLocale(locale)` first** — otherwise static rendering breaks silently.
 - **`generateMetadata` always passes `locale` explicitly** to `getTranslations`.
-- **Add new locales by editing `apps/web/i18n/routing.ts` + creating `messages/<code>.json`** — no other code changes needed.
-- **Folder names under `app/[locale]/` are in English** (`profile`, `card`) — they're code. The visible URL is translated per locale via `pathnames`. `<Link href="...">` always takes the canonical English route key.
-- **Don't rename `middleware.ts` to `proxy.ts`** — that rename ships in Next 16. We're on 15.x; a `proxy.ts` file would be silently ignored.
+- **Add new locales by editing `apps/<app>/i18n/routing.ts` + creating `messages/<code>.json`** in BOTH apps — no other code changes needed.
+- **Folder names under `app/[locale]/` are in English** (`profile`, `card`, `customers`, `rewards`) — they're code. The visible URL is translated per locale via `pathnames`. `<Link href="...">` always takes the canonical English route key.
+- **The request-interception file is `proxy.ts`** (Next 16 renamed `middleware.ts`). Don't create `middleware.ts` — Next 16 still recognizes it but it's deprecated and will be removed.
 - **`/offline`, `/api/*`, `/sw.js`, `/manifest.webmanifest`** are locale-agnostic and excluded from the middleware matcher.
 
 ## UI conventions

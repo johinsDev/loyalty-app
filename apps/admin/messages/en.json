@@ -1,0 +1,32 @@
+{
+  "Metadata": {
+    "title": "Loyalty CRM",
+    "description": "Admin dashboard for the loyalty program"
+  },
+  "Common": {
+    "switchLocale": "Switch language"
+  },
+  "Auth": {
+    "signInTitle": "Sign in",
+    "emailPlaceholder": "email",
+    "passwordPlaceholder": "password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "genericError": "Could not sign in"
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "healthServer": "Health (server)",
+    "healthServerDescription": "tRPC from RSC",
+    "healthClient": "Health (client)",
+    "healthClientDescription": "tRPC + React Query from the client"
+  },
+  "Customers": {
+    "title": "Customers",
+    "placeholder": "Customer list (placeholder)."
+  },
+  "Rewards": {
+    "title": "Rewards",
+    "placeholder": "Reward catalog (placeholder)."
+  }
+}
