@@ -1,5 +1,5 @@
-import { hasLocale, NextIntlClientProvider } from "next-intl";
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { hasLocale } from "next-intl";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -33,14 +33,15 @@ export default async function LocaleLayout({ children, params }: Props) {
     notFound();
   }
   setRequestLocale(locale);
+  const messages = await getMessages();
 
   return (
-    <NextIntlClientProvider>
+    <Providers locale={locale} messages={messages}>
       <div className="absolute right-4 top-4 z-50">
         <LocaleSwitcher />
       </div>
-      <Providers>{children}</Providers>
+      {children}
       <InstallPrompt />
-    </NextIntlClientProvider>
+    </Providers>
   );
 }
