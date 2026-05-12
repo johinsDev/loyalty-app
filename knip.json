@@ -32,7 +32,12 @@
     "packages/db": {},
     "packages/log": {},
     "packages/ui": {},
-    "packages/jobs": { "entry": ["trigger/**/*.ts", "log.ts"] }
+    "packages/whatsapp": {
+      "ignoreDependencies": ["twilio"]
+    },
+    "packages/jobs": {
+      "entry": ["trigger/**/*.ts", "trigger.config.ts", "log.ts", "whatsapp.ts"]
+    }
   },
   "ignoreDependencies": ["@commitlint/cli", "oxlint", "next"],
   "ignoreExportsUsedInFile": true

@@ -17,6 +17,7 @@ const config: UserConfig = {
         "log",
         "ui",
         "tooling",
+        "whatsapp",
         "ci",
         "deps",
         "repo",
