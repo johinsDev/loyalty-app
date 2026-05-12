@@ -28,8 +28,9 @@ The contract is split: **GitHub Actions validates, Vercel deploys.** Every chang
          ▼
    ┌─────────────────────────────────────────────┐
    │ Vercel Git integration (auto-deploy)        │
-   │   loyalty-app-web    → preview URL on PR    │
-   │   loyalty-app-admin  → preview URL on PR    │
+   │   loyalty-app-web        → preview URL on PR│
+   │   loyalty-app-admin      → preview URL on PR│
+   │   loyalty-app-storybook  → preview URL on PR│
    └─────────────────────────────────────────────┘
          │
          ▼
