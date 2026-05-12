@@ -72,6 +72,8 @@ apps/storybook/storybook-static/
 !.claude/skills/next-intl/**
 !.claude/skills/ci-cd
 !.claude/skills/ci-cd/**
+!.claude/skills/date-fns
+!.claude/skills/date-fns/**
 !.claude/skills/drizzle
 !.claude/skills/drizzle/**
 !.claude/skills/log
