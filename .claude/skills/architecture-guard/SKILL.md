@@ -46,6 +46,24 @@ src/
 
 `@loyalty/ui` already holds the shadcn primitives — **don't duplicate them** inside an app. Feature components compose shadcn pieces from `@loyalty/ui`.
 
+### The same rule applies on the backend
+
+Feature-grouping is not a frontend-only convention. **The tRPC API in `packages/api/` follows the same shape** — every new domain (whatsapp-outbox, sms-outbox, customers, rewards, …) lives in its own folder under `packages/api/src/features/<feature>/`:
+
+```
+packages/api/src/features/<feature>/
+├── schemas.ts          zod inputs + exported types
+├── filters.ts          composable filter class (when the list endpoint filters)
+├── repository.ts       the ONLY file in the feature that touches Drizzle
+├── service.ts          business rules — throws TRPCError, masks fields, etc.
+├── router.ts           tRPC procedures, thin
+└── index.ts            barrel that re-exports the router only
+```
+
+When you add an outbound channel (SMS, WhatsApp, push, email) the *package* lives in `packages/<channel>/` (strategy pattern with transports), the *table* lives in `packages/db/src/schema/<channel>-outbox.ts`, and the *API surface* — list + get + filters + the dev view's tRPC backend — lives in `packages/api/src/features/<channel>-outbox/`. Reference: `packages/api/src/features/{whatsapp,sms}-outbox/` and the `api-filters` skill for the layering rules.
+
+Don't put domain queries inline in a tRPC router. Don't put Drizzle calls in a Next.js route handler — delegate to the tRPC caller (`trpc()` from `apps/<app>/src/lib/trpc/server.ts`), which routes through the same router → service → repository chain. Route handlers under `apps/<app>/app/api/` exist only for HTTP-shaped concerns (E2E hooks, health checks, auth callbacks).
+
 ---
 
 ## 2. Routing: layouts vs screens

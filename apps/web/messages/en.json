@@ -46,5 +46,27 @@
     "contentSid": "Content SID:",
     "providerMessageId": "Provider message ID:",
     "variables": "Variables"
+  },
+  "SmsOutbox": {
+    "title": "SMS Outbox",
+    "subtitle": "Messages persisted by the outbox provider in @loyalty/sms. Dev + preview only.",
+    "searchPlaceholder": "Search message body…",
+    "phonePlaceholder": "+1...",
+    "statusAll": "All",
+    "statusSent": "Sent",
+    "statusFailed": "Failed",
+    "colRecipient": "Recipient",
+    "colBody": "Message",
+    "colStatus": "Status",
+    "colSegments": "Segments",
+    "colSent": "Sent",
+    "emptyTitle": "No messages",
+    "emptyDescription": "When any flow triggers an SMS via the outbox provider, you'll see it here.",
+    "emptyHint": "Expecting messages? Make sure the app runs with SMS_PROVIDER=outbox.",
+    "detailTitle": "SMS Message",
+    "segment": "segment",
+    "segments": "segments",
+    "chars": "chars",
+    "providerMessageId": "Provider message ID:"
   }
 }
