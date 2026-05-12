@@ -8,7 +8,10 @@
     "TRIGGER_PROJECT_ID",
     "TRIGGER_SECRET_KEY",
     "NEXT_PUBLIC_APP_URL",
-    "NODE_ENV"
+    "NODE_ENV",
+    "LOG_*",
+    "BETTER_STACK_*",
+    "GOOGLE_*"
   ],
   "tasks": {
     "build": {
