@@ -1,9 +1,4 @@
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
-
 import type { StorybookConfig } from "@storybook/react-vite";
-
-const here = dirname(fileURLToPath(import.meta.url));
 
 const config: StorybookConfig = {
   stories: ["../stories/**/*.stories.@(ts|tsx)"],
@@ -14,15 +9,17 @@ const config: StorybookConfig = {
   },
   typescript: {
     check: false,
-    reactDocgen: "react-docgen-typescript",
-    // `apps/storybook/tsconfig.json` only includes the Storybook
-    // files; the components Storybook documents live under
-    // `packages/ui/src/components/ui/`. Point docgen-typescript at
-    // the UI package's tsconfig so it can resolve, parse, and emit
-    // props tables for every shadcn component.
-    reactDocgenTypescriptOptions: {
-      tsconfigPath: resolve(here, "../../../packages/ui/tsconfig.json"),
-    },
+    // `react-docgen` (the plain-JS docgen) works on shadcn's
+    // components without needing a TS Program. Tried
+    // `react-docgen-typescript` first (PR #13); Storybook's vite
+    // plugin loads a TS project rooted at cwd and silently ignores
+    // include additions from monorepo paths, so every component
+    // under `packages/ui/src/**` ended up in the "Skipping docgen …
+    // not in the active TypeScript project" list. `react-docgen`
+    // parses the file directly and emits the props table from the
+    // function signature — less precise on union types, but zero
+    // warnings and works across the monorepo.
+    reactDocgen: "react-docgen",
   },
 };
 
