@@ -12,13 +12,21 @@ This skill is the boilerplate to reproduce the setup on a new app or a new clone
 ```
    github.com/johinsDev/loyalty-app
               │
-              ├──► Vercel project: loyalty-web
+              ├──► Vercel project: loyalty-app-web
               │      Root Directory: apps/web
               │      Build: cd ../.. && bun run turbo build --filter=@loyalty/web
+              │      Env vars: DATABASE_URL, BETTER_AUTH_SECRET, etc. (Plain Text)
               │
-              ├──► Vercel project: loyalty-admin
+              ├──► Vercel project: loyalty-app-admin
               │      Root Directory: apps/admin
               │      Build: cd ../.. && bun run turbo build --filter=@loyalty/admin
+              │      Env vars: same as web + admin-specific
+              │
+              ├──► Vercel project: loyalty-app-storybook
+              │      Root Directory: apps/storybook
+              │      Build: cd ../.. && bun run turbo build --filter=@loyalty/storybook
+              │      Framework: Other (static output → storybook-static/)
+              │      Env vars: none (static, no auth, no DB)
               │
               └──► (future) loyalty-cashier, loyalty-marketing, etc.
 ```

@@ -1,5 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [".claude/worktrees/**"],
   "workspaces": {
     ".": {},
     "apps/admin": {
@@ -19,6 +20,11 @@
       "project": ["**/*.{ts,tsx}"]
     },
     "apps/e2e": {},
+    "apps/storybook": {
+      "entry": [".storybook/main.ts", ".storybook/preview.ts", "stories/**/*.stories.{ts,tsx}", "vite.config.ts"],
+      "project": ["**/*.{ts,tsx}"],
+      "ignore": ["storybook-static/**"]
+    },
     "packages/api": {},
     "packages/auth": {},
     "packages/db": {},

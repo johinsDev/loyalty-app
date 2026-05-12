@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "cd ../.. && bun run turbo build --filter=@loyalty/storybook",
+  "outputDirectory": "storybook-static",
+  "installCommand": "cd ../.. && bun install"
+}
