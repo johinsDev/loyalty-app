@@ -12,7 +12,9 @@
     "clean": "rm -rf .turbo .trigger node_modules"
   },
   "dependencies": {
+    "@loyalty/db": "workspace:*",
     "@loyalty/log": "workspace:*",
+    "@loyalty/whatsapp": "workspace:*",
     "@trigger.dev/sdk": "^4.4.0",
     "dotenv": "^17.4.2"
   },

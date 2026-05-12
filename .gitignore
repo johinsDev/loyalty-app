@@ -41,6 +41,9 @@ next-env.d.ts
 # trigger.dev
 .trigger
 
+# WhatsApp folder transport previews (local dev only)
+.whatsapp-previews/
+
 # Claude Code (local-only settings; .mcp.json is versioned)
 .claude/settings.local.json
 
@@ -88,3 +91,5 @@ apps/storybook/storybook-static/
 !.claude/skills/trpc/**
 !.claude/skills/vercel
 !.claude/skills/vercel/**
+!.claude/skills/whatsapp
+!.claude/skills/whatsapp/**

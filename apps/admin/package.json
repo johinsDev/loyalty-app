@@ -18,6 +18,7 @@
     "@loyalty/db": "workspace:*",
     "@loyalty/log": "workspace:*",
     "@loyalty/ui": "workspace:*",
+    "@loyalty/whatsapp": "workspace:*",
     "@tanstack/react-query": "^5.62.0",
     "drizzle-orm": "^0.36.0",
     "@trpc/client": "^11.0.0",
