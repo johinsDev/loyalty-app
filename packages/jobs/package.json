@@ -13,13 +13,13 @@
   },
   "dependencies": {
     "@loyalty/log": "workspace:*",
-    "@trigger.dev/sdk": "^3.3.0",
+    "@trigger.dev/sdk": "^4.4.0",
     "dotenv": "^17.4.2"
   },
   "devDependencies": {
     "@loyalty/tsconfig": "workspace:*",
     "oxlint": "^0.15.0",
-    "trigger.dev": "^3.3.0",
+    "trigger.dev": "^4.4.0",
     "typescript": "^5.7.0"
   }
 }
