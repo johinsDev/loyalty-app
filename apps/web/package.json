@@ -15,6 +15,7 @@
   "dependencies": {
     "@loyalty/api": "workspace:*",
     "@loyalty/auth": "workspace:*",
+    "@loyalty/date": "workspace:*",
     "@loyalty/db": "workspace:*",
     "@loyalty/log": "workspace:*",
     "@loyalty/ui": "workspace:*",
@@ -27,8 +28,10 @@
     "@trpc/server": "^11.0.0",
     "@trpc/tanstack-react-query": "^11.0.0",
     "better-auth": "^1.2.0",
+    "ahooks": "^3.8.0",
     "next": "^16.2.6",
     "next-intl": "^4.11.2",
+    "nuqs": "^2.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "server-only": "^0.0.1",
