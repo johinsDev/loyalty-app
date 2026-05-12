@@ -1,6 +1,7 @@
 import { db } from "@loyalty/db";
 import { WhatsAppManager, type ProviderConfig } from "@loyalty/whatsapp";
 
+import { env } from "./env";
 import { log } from "./log";
 
 /**
@@ -8,24 +9,19 @@ import { log } from "./log";
  * as the apps: log locally, outbox in preview, twilio in prod.
  */
 function pickDefaultProvider(): "log" | "outbox" | "twilio" {
-  const explicit = process.env.WHATSAPP_PROVIDER;
-  if (explicit === "log" || explicit === "outbox" || explicit === "twilio") {
-    return explicit;
-  }
+  if (env.WHATSAPP_PROVIDER) return env.WHATSAPP_PROVIDER;
   if (process.env.VERCEL_ENV === "production") return "twilio";
   if (process.env.VERCEL_ENV === "preview") return "outbox";
   return "log";
 }
 
 const twilioConfig: ProviderConfig | undefined =
-  process.env.TWILIO_ACCOUNT_SID &&
-  process.env.TWILIO_AUTH_TOKEN &&
-  process.env.TWILIO_WHATSAPP_FROM
+  env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_WHATSAPP_FROM
     ? {
         provider: "twilio",
-        accountSid: process.env.TWILIO_ACCOUNT_SID,
-        authToken: process.env.TWILIO_AUTH_TOKEN,
-        from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`,
+        accountSid: env.TWILIO_ACCOUNT_SID,
+        authToken: env.TWILIO_AUTH_TOKEN,
+        from: `whatsapp:${env.TWILIO_WHATSAPP_FROM}`,
       }
     : undefined;
 
