@@ -224,11 +224,12 @@ Deep dive: `.claude/skills/ui/SKILL.md`.
 | `better-stack` | Logs/uptime/dashboards/alerts via BS MCP, source-token model |
 | `log` | `@loyalty/log` API, channel design, adding a new transport |
 | `whatsapp` | `@loyalty/whatsapp` API, four transports, outbox panel, E2E endpoint, FakeSender |
+| `api-filters` | `packages/api/src/features/*` pattern — router → service → repository + composable Filters |
 | `slack` | Bot setup, scopes, token rotation, debugging "not_in_channel" |
 | `tooling` | oxlint + commitlint + lefthook conventions, valid scopes |
 | `drizzle` / `trpc` / `next-best-practices` / `bun` / `turborepo` / `neon-postgres` | Patterns + best practices per framework |
 
-Skills authored locally in this repo: `next-intl`, `ui`, `pwa`, `whatsapp`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest come from the broader Claude Code skills ecosystem.
+Skills authored locally in this repo: `next-intl`, `ui`, `pwa`, `whatsapp`, `api-filters`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest come from the broader Claude Code skills ecosystem.
 
 ## MCP servers
 
