@@ -157,33 +157,6 @@
         "react",
       ],
     },
-    "packages/date": {
-      "name": "@loyalty/date",
-      "version": "0.0.0",
-      "dependencies": {
-        "date-fns": "^4.1.0",
-      },
-      "devDependencies": {
-        "@loyalty/tsconfig": "workspace:*",
-        "@loyalty/vitest-config": "workspace:*",
-        "@types/node": "^22.0.0",
-        "@types/react": "^19.0.0",
-        "@vitest/coverage-v8": "^2.1.0",
-        "next-intl": "^4.11.2",
-        "oxlint": "^0.15.0",
-        "react": "^19.2.0",
-        "typescript": "^5.7.0",
-        "vitest": "^2.1.0",
-      },
-      "peerDependencies": {
-        "next-intl": "^4.0.0",
-        "react": "^19.0.0",
-      },
-      "optionalPeers": [
-        "next-intl",
-        "react",
-      ],
-    },
     "packages/db": {
       "name": "@loyalty/db",
       "version": "0.0.0",
@@ -574,8 +547,6 @@
     "@loyalty/api": ["@loyalty/api@workspace:packages/api"],
 
     "@loyalty/auth": ["@loyalty/auth@workspace:packages/auth"],
-
-    "@loyalty/date": ["@loyalty/date@workspace:packages/date"],
 
     "@loyalty/db": ["@loyalty/db@workspace:packages/db"],
 
