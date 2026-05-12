@@ -18,10 +18,10 @@ export default async function HomePage({ params }: Props) {
           <CardDescription>{t("cardDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <Link href="/tarjeta">
+          <Link href="/card">
             <Button className="w-full">{t("viewCard")}</Button>
           </Link>
-          <Link href="/perfil">
+          <Link href="/profile">
             <Button variant="outline" className="w-full">
               {t("myProfile")}
             </Button>

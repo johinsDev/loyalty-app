@@ -4,10 +4,13 @@ export const routing = defineRouting({
   locales: ["es", "en"],
   defaultLocale: "es",
   localePrefix: "as-needed",
+  // Folder names under app/[locale] are English (canonical internal route).
+  // Values are the public URL per locale — "/profile" → "/perfil" for es,
+  // "/profile" for en.
   pathnames: {
     "/": "/",
-    "/perfil": { es: "/perfil", en: "/profile" },
-    "/tarjeta": { es: "/tarjeta", en: "/card" },
+    "/profile": { es: "/perfil", en: "/profile" },
+    "/card": { es: "/tarjeta", en: "/card" },
   },
 });
 

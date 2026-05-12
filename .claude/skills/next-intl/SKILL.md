@@ -16,14 +16,14 @@ apps/web/
 ├── messages/
 │   ├── es.json            ← canonical source; keys live here first
 │   └── en.json
-├── middleware.ts          ← createMiddleware(routing) — locale detection + redirects
+├── middleware.ts          ← createMiddleware(routing) — locale detection + redirects (becomes proxy.ts in Next 16)
 ├── app/
 │   ├── layout.tsx         ← ROOT: html/body, reads NEXT_LOCALE cookie for <html lang>
 │   ├── [locale]/
 │   │   ├── layout.tsx     ← setRequestLocale + NextIntlClientProvider + InstallPrompt + LocaleSwitcher
 │   │   ├── page.tsx       ← server component, getTranslations("Home")
-│   │   ├── perfil/        ← Spanish canonical folder (English URL is /en/profile via pathnames)
-│   │   └── tarjeta/       ← Spanish canonical folder (English URL is /en/card)
+│   │   ├── profile/       ← English canonical folder; public URL is /perfil (es) or /profile (en)
+│   │   └── card/          ← English canonical folder; public URL is /tarjeta (es) or /card (en)
 │   ├── offline/           ← locale-agnostic (excluded from middleware matcher)
 │   ├── api/               ← excluded from middleware matcher
 │   ├── manifest.ts        ← locale-agnostic PWA manifest
@@ -90,15 +90,16 @@ export const routing = defineRouting({
   localePrefix: "as-needed",   // /perfil (es) vs /en/profile (en)
   pathnames: {
     "/": "/",
-    "/perfil":  { es: "/perfil",  en: "/profile" },
-    "/tarjeta": { es: "/tarjeta", en: "/card" },
+    "/profile": { es: "/perfil",  en: "/profile" },
+    "/card":    { es: "/tarjeta", en: "/card" },
   },
 });
 ```
 
-- **`localePrefix: "as-needed"`** keeps Spanish URLs clean (`/perfil`) and prefixes the English ones (`/en/profile`). Switching to `"always"` would force every URL to carry the prefix.
-- **`pathnames`** maps a canonical internal path (the folder name under `[locale]/`) to per-locale public URLs. Folders stay Spanish because Linear and copy are in Spanish; only the public URL changes per locale.
-- Adding a new translatable route: create the folder under `[locale]/`, add the slug to `pathnames`, add keys to `messages/{es,en}.json`.
+- **`localePrefix: "as-needed"`** keeps default-locale URLs clean (Spanish gets `/perfil`) and prefixes the others (English gets `/en/profile`). Switching to `"always"` would force every URL to carry the prefix.
+- **`pathnames`** maps a canonical *internal* route (the folder name under `[locale]/`) to per-locale *public* URLs. **Folders are in English** — they're code, and the repo convention is code-in-English — while the visible URL is translated per locale. So `[locale]/profile/page.tsx` is reachable at `/perfil` (es) and `/en/profile` (en).
+- Always write `<Link href="/profile">` (the canonical English route key). The typed navigation API auto-translates it to the user's current locale's URL at render time.
+- Adding a new translatable route: create the folder under `[locale]/` with an English name, add an entry to `pathnames` mapping the canonical key to the per-locale URLs, add keys to `messages/{es,en}.json`.
 
 ---
 
@@ -188,6 +189,20 @@ For server components that use `getTranslations`, call `setRequestLocale(locale)
 - **`<html lang>` hardcoded to `"es"` somewhere** — the root layout reads `NEXT_LOCALE` cookie; don't override it downstream.
 
 ---
+
+## Pending: `middleware.ts` → `proxy.ts` (Next 16)
+
+Next.js 16 renames the `middleware.ts` convention to `proxy.ts` (deprecation announced at v16.0.0). We're on `^15.1.0` today, where `middleware.ts` is still the only recognized name — a file called `proxy.ts` would be silently ignored on 15.x.
+
+When we bump Next to 16 (separate PR), the migration is a one-command codemod:
+
+```bash
+npx @next/codemod@canary middleware-to-proxy .
+```
+
+It renames the file and changes `export function middleware()` → `export function proxy()`. Our current export is `export default createMiddleware(routing)` from next-intl — the default-export pattern is supported under both names, so functionally nothing changes; only the filename and (for non-default exports) the exported function name do. next-intl's `createMiddleware` itself doesn't care which filename you use; Next.js is the one that loads it.
+
+Don't preemptively rename to `proxy.ts` on 15.x — it won't be picked up and locale routing will silently break.
 
 ## See also
 

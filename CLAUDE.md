@@ -58,6 +58,8 @@ This is the most error-prone area for agents; read the `next-intl` skill before 
 - **Every page and layout that calls `getTranslations` must call `setRequestLocale(locale)` first** — otherwise static rendering breaks silently.
 - **`generateMetadata` always passes `locale` explicitly** to `getTranslations`.
 - **Add new locales by editing `apps/web/i18n/routing.ts` + creating `messages/<code>.json`** — no other code changes needed.
+- **Folder names under `app/[locale]/` are in English** (`profile`, `card`) — they're code. The visible URL is translated per locale via `pathnames`. `<Link href="...">` always takes the canonical English route key.
+- **Don't rename `middleware.ts` to `proxy.ts`** — that rename ships in Next 16. We're on 15.x; a `proxy.ts` file would be silently ignored.
 - **`/offline`, `/api/*`, `/sw.js`, `/manifest.webmanifest`** are locale-agnostic and excluded from the middleware matcher.
 
 ## UI conventions
