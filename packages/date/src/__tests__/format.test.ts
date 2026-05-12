@@ -8,7 +8,11 @@ import {
   formatTime,
 } from "../format";
 
-const D = new Date("2026-05-11T15:30:00.000-05:00"); // 15:30 in Bogotá
+// Use local-time components so the wall-clock value (15:30 → "3:30 PM") is
+// invariant across host timezones. An absolute UTC instant like
+// `new Date("2026-05-11T15:30:00-05:00")` renders differently in Bogotá vs
+// UTC and breaks tests on CI runners.
+const D = new Date(2026, 4, 11, 15, 30, 0); // May 11, 2026 @ 15:30 local
 
 describe("formatDate", () => {
   test("medium preset, es default → '11 may 2026'", () => {
@@ -70,10 +74,11 @@ describe("formatDateTime", () => {
 });
 
 describe("formatDateRange", () => {
-  const start = new Date("2026-05-11T12:00:00Z");
-  const sameMonth = new Date("2026-05-13T12:00:00Z");
-  const sameYear = new Date("2026-06-05T12:00:00Z");
-  const nextYear = new Date("2027-01-02T12:00:00Z");
+  // Local-time noons keep the calendar day stable in any tz.
+  const start = new Date(2026, 4, 11, 12, 0, 0);
+  const sameMonth = new Date(2026, 4, 13, 12, 0, 0);
+  const sameYear = new Date(2026, 5, 5, 12, 0, 0);
+  const nextYear = new Date(2027, 0, 2, 12, 0, 0);
 
   test("same month collapses", () => {
     expect(formatDateRange(start, sameMonth, { locale: "es" })).toMatch(/^11 – 13 may 2026$/);

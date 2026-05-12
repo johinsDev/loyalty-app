@@ -44,14 +44,16 @@ describe("isValidDate", () => {
 });
 
 describe("isToday / isYesterday", () => {
-  const now = new Date("2026-05-11T15:30:00.000-05:00");
+  // Local-time components so `isSameDay` (which compares calendar days in the
+  // host's tz) gives stable answers regardless of where the test runs.
+  const now = new Date(2026, 4, 11, 15, 30, 0); // May 11, 2026 @ 15:30 local
 
   test("isToday with fixed clock", () => {
-    expect(isToday(new Date("2026-05-11T08:00:00-05:00"), now)).toBe(true);
-    expect(isToday(new Date("2026-05-10T23:59:59-05:00"), now)).toBe(false);
+    expect(isToday(new Date(2026, 4, 11, 8, 0, 0), now)).toBe(true);
+    expect(isToday(new Date(2026, 4, 10, 23, 59, 59), now)).toBe(false);
   });
   test("isYesterday with fixed clock", () => {
-    expect(isYesterday(new Date("2026-05-10T08:00:00-05:00"), now)).toBe(true);
-    expect(isYesterday(new Date("2026-05-11T00:00:00-05:00"), now)).toBe(false);
+    expect(isYesterday(new Date(2026, 4, 10, 8, 0, 0), now)).toBe(true);
+    expect(isYesterday(new Date(2026, 4, 11, 0, 0, 0), now)).toBe(false);
   });
 });
