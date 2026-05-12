@@ -1,11 +1,12 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignore": [".claude/worktrees/**"],
   "workspaces": {
     ".": {},
     "apps/admin": {
       "entry": [
         "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest}.{ts,tsx}",
+        "components/**/*.{ts,tsx}",
+        "i18n/**/*.{ts,tsx}",
         "lib/**/*.{ts,tsx}"
       ],
       "project": ["**/*.{ts,tsx}"]
@@ -15,15 +16,15 @@
         "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest,icon,apple-icon}.{ts,tsx}",
         "app/sw.ts",
         "components/**/*.{ts,tsx}",
+        "i18n/**/*.{ts,tsx}",
         "lib/**/*.{ts,tsx}"
       ],
       "project": ["**/*.{ts,tsx}"]
     },
     "apps/e2e": {},
     "apps/storybook": {
-      "entry": [".storybook/main.ts", ".storybook/preview.ts", "stories/**/*.stories.{ts,tsx}", "vite.config.ts"],
-      "project": ["**/*.{ts,tsx}"],
-      "ignore": ["storybook-static/**"]
+      "entry": ["stories/**/*.stories.{ts,tsx}"],
+      "project": ["**/*.{ts,tsx}"]
     },
     "packages/api": {},
     "packages/auth": {},
