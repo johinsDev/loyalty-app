@@ -2,10 +2,13 @@
 
 import { authClient } from "@loyalty/auth/client";
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@loyalty/ui";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type FormEvent, useState } from "react";
 
+import { useRouter } from "@/i18n/navigation";
+
 export default function SignInPage() {
+  const t = useTranslations("Auth");
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +22,7 @@ export default function SignInPage() {
     const { error } = await authClient.signIn.email({ email, password });
     setLoading(false);
     if (error) {
-      setError(error.message ?? "No se pudo iniciar sesión");
+      setError(error.message ?? t("genericError"));
       return;
     }
     router.push("/dashboard");
@@ -29,14 +32,14 @@ export default function SignInPage() {
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Iniciar sesión</CardTitle>
+          <CardTitle>{t("signInTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="flex flex-col gap-3">
             <input
               type="email"
               required
-              placeholder="email"
+              placeholder={t("emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="h-10 rounded-md border border-border px-3"
@@ -44,14 +47,14 @@ export default function SignInPage() {
             <input
               type="password"
               required
-              placeholder="contraseña"
+              placeholder={t("passwordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="h-10 rounded-md border border-border px-3"
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
             <Button type="submit" disabled={loading}>
-              {loading ? "Entrando…" : "Entrar"}
+              {loading ? t("submitting") : t("submit")}
             </Button>
           </form>
         </CardContent>

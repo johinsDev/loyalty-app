@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import {
@@ -9,6 +10,7 @@ import {
 } from "../lib/pwa";
 
 export function InstallPrompt() {
+  const t = useTranslations("Common");
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
 
@@ -33,7 +35,7 @@ export function InstallPrompt() {
       }}
       className="fixed bottom-4 right-4 rounded-full bg-green-600 px-5 py-3 text-sm font-medium text-white shadow-lg transition hover:bg-green-700"
     >
-      Instalar app
+      {t("install")}
     </button>
   );
 }

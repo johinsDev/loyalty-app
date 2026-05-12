@@ -1,0 +1,29 @@
+{
+  "Metadata": {
+    "title": "Loyalty",
+    "description": "Digital loyalty card"
+  },
+  "Common": {
+    "install": "Install app",
+    "switchLocale": "Switch language"
+  },
+  "Home": {
+    "cardTitle": "Your loyalty card",
+    "cardDescription": "Earn stamps on every purchase and redeem your rewards.",
+    "viewCard": "View my card",
+    "myProfile": "My profile"
+  },
+  "Profile": {
+    "title": "My profile",
+    "placeholder": "Edit your details (placeholder)."
+  },
+  "Card": {
+    "title": "My card",
+    "description": "Stamps earned (placeholder)",
+    "healthClient": "Health (client)"
+  },
+  "Offline": {
+    "title": "Offline",
+    "description": "Looks like you lost connection. When you're back online the app will reload automatically."
+  }
+}

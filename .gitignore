@@ -26,6 +26,7 @@ coverage
 .idea
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 
 # typescript
 *.tsbuildinfo
@@ -67,6 +68,8 @@ apps/storybook/storybook-static/
 !.claude/skills/ahooks/**
 !.claude/skills/better-stack
 !.claude/skills/better-stack/**
+!.claude/skills/next-intl
+!.claude/skills/next-intl/**
 !.claude/skills/ci-cd
 !.claude/skills/ci-cd/**
 !.claude/skills/drizzle

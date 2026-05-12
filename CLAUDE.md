@@ -2,7 +2,7 @@
 
 Multi-tenant CRM and loyalty program. Live pilot in a single T4 tea franchise; the architecture supports going SaaS without a rewrite.
 
-Stack one-liner: **Bun + Turborepo + Next 15 (App Router) + tRPC v11 + Better Auth + Drizzle + Neon Postgres + Trigger.dev v3 + Better Stack + Vercel auto-deploy + @serwist/next PWA + shadcn (Base UI) + Storybook 9.**
+Stack one-liner: **Bun + Turborepo + Next 16 (App Router) + tRPC v11 + Better Auth + Drizzle + Neon Postgres + Trigger.dev v3 + Better Stack + Vercel auto-deploy + @serwist/next PWA + shadcn (Base UI) + Storybook 9 + next-intl (es/en).**
 
 ---
 
@@ -10,8 +10,8 @@ Stack one-liner: **Bun + Turborepo + Next 15 (App Router) + tRPC v11 + Better Au
 
 ```
 apps/
-├── web/         Customer PWA — installable, offline-tolerant (Next 15, port 3002)
-├── admin/       Staff CRM — tenant management, dashboards (Next 15, port 3003)
+├── web/         Customer PWA — installable, offline-tolerant (Next 16, port 3002)
+├── admin/       Staff CRM — tenant management, dashboards (Next 16, port 3003)
 ├── storybook/   Visual docs for @loyalty/ui (Storybook 9, port 6006)
 └── e2e/         Playwright suite (scaffold, specs to come)
 
@@ -46,10 +46,24 @@ These have come up enough that they're load-bearing — break them and something
 
 - **PR-only on `main`.** Branch protection blocks direct pushes. Every change opens `gh pr create`, even tiny ones. The `validate` CI check is required.
 - **CI validates, Vercel deploys.** GitHub Actions runs lint + knip + typecheck + test. Vercel's Git integration handles all deploys for `loyalty-app-web`, `loyalty-app-admin`, and `loyalty-app-storybook`.
-- **English in repo, Spanish only in Linear.** Code, comments, errors, commits, PR descriptions, READMEs, skills → English. Visible Linear surfaces (issues, projects, milestones, labels) → Spanish.
+- **English in repo, Spanish only in Linear and in `messages/es.json`.** Code, comments, errors, commits, PR descriptions, READMEs, skills → English. Visible Linear surfaces (issues, projects, milestones, labels) → Spanish. User-facing copy is split per locale in `apps/<app>/messages/{es,en}.json`.
 - **Default to writing no comments.** Add one only when the *why* is non-obvious.
 - **Never hand-edit DB migrations.** Change the Drizzle schema, then `bun run db:generate`.
 - **shadcn copy-paste model.** Components in `packages/ui/src/components/ui/<name>.tsx` are *yours* — modify them directly. Don't wrap them in another abstraction layer.
+
+---
+
+## i18n rules
+
+Most error-prone area for agents. Read the `next-intl` skill before touching anything under `apps/*/app/[locale]/`. TL;DR:
+
+- **Never import from `next/link` or `next/navigation`** inside `apps/*/app/[locale]/**` or `apps/*/components/**`. Use `@/i18n/navigation` instead. (`notFound` from `next/navigation` is fine — it's locale-agnostic.)
+- **Every page and layout that calls `getTranslations` must call `setRequestLocale(locale)` first** — otherwise static rendering breaks silently.
+- **`generateMetadata` always passes `locale` explicitly** to `getTranslations`.
+- **Add new locales by editing `apps/<app>/i18n/routing.ts` + creating `messages/<code>.json`** in BOTH apps — no other code changes needed.
+- **Folder names under `app/[locale]/` are in English** (`profile`, `card`, `customers`, `rewards`) — they're code. The visible URL is translated per locale via `pathnames`. `<Link href="...">` always takes the canonical English route key.
+- **The request-interception file is `proxy.ts`** (Next 16 renamed `middleware.ts`). Don't create `middleware.ts` — it's deprecated and will be removed.
+- **`/offline`, `/api/*`, `/sw.js`, `/manifest.webmanifest`** are locale-agnostic and excluded from the proxy matcher.
 
 ---
 
@@ -57,6 +71,7 @@ These have come up enough that they're load-bearing — break them and something
 
 | Goal | Skill |
 | --- | --- |
+| i18n: add a locale, translate a route, fix a `next/link` import | `next-intl` |
 | Add / tweak a UI component, brand colors, dark mode, Storybook | `ui` |
 | Build, install, or debug the PWA (sw, manifest, install prompt) | `pwa` |
 | Anything CI: failing run, branch protection, opening a PR | `ci-cd` |
@@ -65,9 +80,9 @@ These have come up enough that they're load-bearing — break them and something
 | `@loyalty/log` API, adding a new transport | `log` |
 | Slack bot setup, scopes, posting from MCP | `slack` |
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
-| Drizzle migrations, Neon, tRPC patterns, Next 15 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
+| Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `ui`, `pwa`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `next-intl`, `ui`, `pwa`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 
@@ -79,6 +94,7 @@ Skills authored locally for this repo: `ui`, `pwa`, `ci-cd`, `vercel`, `better-s
 - **Sensitive env vars in Vercel.** Marked Sensitive = not returned by `vercel pull`, not readable to builds running outside Vercel. Keep build-time vars (DATABASE_URL etc.) as Plain Text.
 - **The web app's service worker is disabled in dev** so HMR works. Build + start (or check on a preview deploy) to exercise PWA behavior.
 - **Toast is `sonner`, not `Toast`.** Base UI doesn't ship a Toast primitive; we use `sonner` instead. There's a `<Toaster />` you mount once and `toast(...)` to call from anywhere.
+- **Next 16 renders dynamic by default.** Pages under `app/[locale]/` are server-rendered on demand unless you opt into `cacheComponents: true` + `"use cache"` directives. This is fine for an auth-aware app — most pages need to be dynamic anyway.
 
 ---
 

@@ -1,0 +1,29 @@
+{
+  "Metadata": {
+    "title": "Loyalty",
+    "description": "Tarjeta digital de fidelización"
+  },
+  "Common": {
+    "install": "Instalar app",
+    "switchLocale": "Cambiar idioma"
+  },
+  "Home": {
+    "cardTitle": "Tu tarjeta de fidelización",
+    "cardDescription": "Acumula sellos en cada compra y reclama tus premios.",
+    "viewCard": "Ver mi tarjeta",
+    "myProfile": "Mi perfil"
+  },
+  "Profile": {
+    "title": "Mi perfil",
+    "placeholder": "Edita tus datos (placeholder)."
+  },
+  "Card": {
+    "title": "Mi tarjeta",
+    "description": "Sellos acumulados (placeholder)",
+    "healthClient": "Health (client)"
+  },
+  "Offline": {
+    "title": "Sin conexión",
+    "description": "Parece que perdiste la conexión. Cuando vuelvas a estar online la app va a recargarse automáticamente."
+  }
+}

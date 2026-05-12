@@ -1,21 +1,25 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
-import { Providers } from "./providers";
+import { routing } from "../i18n/routing";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Loyalty CRM",
-  description: "Panel administrativo para programa de fidelización",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const cookieStore = await cookies();
+  const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value;
+  const lang = routing.locales.includes(cookieLocale as (typeof routing.locales)[number])
+    ? cookieLocale
+    : routing.defaultLocale;
+
   return (
-    <html lang="es">
-      <body>
-        <Providers>{children}</Providers>
-      </body>
+    <html lang={lang}>
+      <body>{children}</body>
     </html>
   );
 }

@@ -1,250 +1,266 @@
 # loyalty-app
 
-Monorepo para CRM + programa de fidelización. Pilot inicial en local de té T4, con arquitectura multi-tenant lista para SaaS.
+Monorepo for a CRM + loyalty program. Pilot launches in a single T4 tea-franchise store, with a multi-tenant architecture ready to SaaS-ify.
 
-> **Status:** MVP en desarrollo activo. PWA cliente, CRM admin, observabilidad, CI/CD, deploy pipeline, biblioteca de UI y docs visuales ya conectados. El siguiente milestone es la lógica de dominio (puntos, canjes, KPIs).
+> **Status:** MVP under active development. Customer PWA, admin CRM, observability, CI/CD, deploy pipeline, UI library, visual docs, and i18n are all wired up. Next milestone is the domain logic (points, redemptions, KPIs).
 
-Para una sesión de Claude Code: empezá por [`CLAUDE.md`](./CLAUDE.md). Las convenciones operacionales viven en [`.claude/skills/<area>/SKILL.md`](./.claude/skills/).
+For a Claude Code session: start with [`CLAUDE.md`](./CLAUDE.md). Operational conventions live in [`.claude/skills/<area>/SKILL.md`](./.claude/skills/).
 
 ## Stack
 
 - **Runtime / package manager:** Bun 1.2
 - **Monorepo:** Turborepo 2
-- **Frontend:** Next.js 15 (App Router) · React 19 · Tailwind v4
-- **PWA:** `@serwist/next` (instalable, offline-tolerant)
-- **API:** tRPC v11 (en `packages/api`, listo para extraer a servicio standalone)
+- **Frontend:** Next.js 16 (App Router) · React 19.2 · Tailwind v4
+- **i18n:** next-intl in `apps/web` and `apps/admin` (es default, en second locale)
+- **PWA:** `@serwist/next` (installable, offline-tolerant) in `apps/web`
+- **API:** tRPC v11 (in `packages/api`, ready to extract into a standalone service)
 - **Auth:** Better Auth + organization plugin (multi-tenant)
 - **DB:** Postgres (Neon) + Drizzle ORM
 - **Background jobs / cron:** Trigger.dev v3
-- **Observabilidad:** Better Stack (logs + uptime + status + alertas) vía `@loyalty/log`
-- **UI:** shadcn/ui sobre Base UI primitives (`@base-ui/react`) en `packages/ui`
-- **Docs visuales:** Storybook 9 en `apps/storybook` (deploy auto como tercer proyecto Vercel)
-- **Lint:** oxlint · **Format:** `oxlint --fix` (oxformat cuando estabilice)
+- **Observability:** Better Stack (logs + uptime + status + alerts) via `@loyalty/log`
+- **UI:** shadcn/ui on top of Base UI primitives (`@base-ui/react`) in `packages/ui`
+- **Visual docs:** Storybook 9 in `apps/storybook` (auto-deployed as a third Vercel project)
+- **Lint:** oxlint · **Format:** `oxlint --fix` (oxformat once stable)
 - **Hooks:** lefthook · **Commits:** commitlint (Conventional Commits)
 - **Dead code:** knip
 - **Tests:** vitest (unit) + Playwright (e2e, scaffolded)
-- **Hosting:** Vercel (auto-deploy desde Git) — un proyecto por app
-- **CI:** GitHub Actions — validate-only (lint + knip + typecheck + test). El deploy lo hace Vercel.
+- **Hosting:** Vercel (auto-deploy from Git) — one project per app
+- **CI:** GitHub Actions — validate-only (lint + knip + typecheck + test). Vercel handles deploys.
 
-## Estructura
+## Layout
 
 ```
 apps/
-├── web/         PWA cliente — instalable, offline-tolerant (Next 15, puerto 3002)
-├── admin/       CRM staff — gestión de tenant, dashboards (Next 15, puerto 3003)
-├── storybook/   Docs visuales de @loyalty/ui (Storybook 9, puerto 6006)
-└── e2e/         Suite Playwright (scaffold; specs a venir)
+├── web/         Customer PWA — installable, offline-tolerant (Next 16, port 3002)
+├── admin/       Staff CRM — tenant management, dashboards (Next 16, port 3003)
+├── storybook/   Visual docs for @loyalty/ui (Storybook 9, port 6006)
+└── e2e/         Playwright suite (scaffold; specs to come)
 
 packages/
-├── api/         Routers tRPC v11
-├── auth/        Better Auth (server + client, plugin organization)
-├── db/          Drizzle ORM + cliente Neon + schema
-├── jobs/        Tasks Trigger.dev v3
-├── log/         Logger provider-agnostic (Pino + Better Stack + console + silent)
-├── ui/          shadcn (Base UI) + tokens Tailwind v4
-└── tooling/     Presets compartidos — tsconfig, oxlint, oxformat, vitest
+├── api/         tRPC v11 routers
+├── auth/        Better Auth (server + client, organization plugin)
+├── db/          Drizzle ORM + Neon client + schema
+├── jobs/        Trigger.dev v3 tasks
+├── log/         Provider-agnostic logger (Pino + Better Stack + console + silent)
+├── ui/          shadcn (Base UI) + Tailwind v4 tokens
+└── tooling/     Shared presets — tsconfig, oxlint, oxformat, vitest
 
-.claude/skills/  Runbooks operacionales por área (ver "Skills" abajo)
+.claude/skills/  Operational runbooks per area (see "Skills" below)
 .github/         CI workflow + CODEOWNERS + PR template
 ```
 
 ## Setup
 
 ```bash
-# 1. Instala dependencias (Bun 1.2+ requerido)
+# 1. Install dependencies (Bun 1.2+ required)
 bun install
 
-# 2. Copia y completa env vars
+# 2. Copy and fill in env vars
 cp .env.example .env
-#    Mínimo para correr la app:
-#      DATABASE_URL          (connection string pooled de Neon)
+#    Minimum to run the app:
+#      DATABASE_URL          (Neon pooled connection string)
 #      BETTER_AUTH_SECRET    (openssl rand -base64 32)
-#    Para jobs:
+#    For jobs:
 #      TRIGGER_PROJECT_ID
 #      TRIGGER_SECRET_KEY
-#    Ver .env.example — vars agrupadas por consumidor.
+#    See .env.example — vars grouped by consumer.
 
-# 3. Genera y aplica la migración inicial
+# 3. Generate and apply the initial migration
 bun run db:generate
 bun run db:migrate
 
-# 4. Arranca las apps
-bun run dev   # web en :3002, admin en :3003
+# 4. Start the apps
+bun run dev   # web on :3002, admin on :3003
 ```
 
-En otra terminal (opcional):
+In another terminal (optional):
 
 ```bash
 bun run jobs:dev                   # Trigger.dev dev server
-bun --cwd apps/storybook run dev   # Storybook en :6006
+bun --cwd apps/storybook run dev   # Storybook on :6006
 ```
 
-## Comandos
+## i18n
 
-| Script | Qué hace |
+Both `apps/web` and `apps/admin` are internationalized with **next-intl** (Spanish default, English second locale). Full details in the `next-intl` skill (`.claude/skills/next-intl/SKILL.md`). Quick reference:
+
+- **Locales:** `es` (default) and `en`. To add another, edit `apps/<app>/i18n/routing.ts` and create `apps/<app>/messages/<code>.json` in each app.
+- **URLs:** `localePrefix: "as-needed"` → `/perfil` (es) and `/en/profile` (en). Folders under `app/[locale]/` are in English (`profile`, `card`, `customers`, `rewards`) — they're code. The `pathnames` map translates each canonical route to its per-locale public URL.
+- **Language detection:** `proxy.ts` reads the `NEXT_LOCALE` cookie → `Accept-Language` header → falls back to `es`.
+- **Strings:** never inline in JSX inside `app/[locale]/`. They go in `messages/{es,en}.json`.
+- **Navigation:** import `Link` / `useRouter` / `usePathname` / `redirect` from `@/i18n/navigation`, **never** from `next/link` / `next/navigation`.
+- **Locale switcher:** `apps/<app>/components/locale-switcher.tsx` (toggle button on top of the `@loyalty/ui` `Button`).
+- **`proxy.ts`** (not `middleware.ts`): Next 16 renamed the file convention. Always use `proxy.ts`.
+- **VSCode:** install the recommended **i18n Ally** extension (`.vscode/extensions.json`) for inline translations and missing-key detection across both apps.
+
+## Commands
+
+| Script | What it does |
 |---|---|
-| `bun run dev` | Levanta web (3002) + admin (3003) en paralelo |
-| `bun run build` | Build de todas las apps/packages |
-| `bun run lint` | oxlint sobre todo el repo (read-only) |
-| `bun run lint:fix` | oxlint con autofix |
-| `bun run format` | Equivalente a `lint:fix` hoy (oxformat cuando estabilice) |
-| `bun run typecheck` | `tsc --noEmit` en cada workspace |
-| `bun run test` | Vitest en cada package (excluye `apps/e2e`) |
-| `bun run e2e` | Playwright (cuando aterricen specs) |
+| `bun run dev` | Start web (3002) + admin (3003) in parallel |
+| `bun run build` | Build every app and package |
+| `bun run lint` | oxlint across the whole repo (read-only) |
+| `bun run lint:fix` | oxlint with autofix |
+| `bun run format` | Equivalent to `lint:fix` today (oxformat once it stabilizes) |
+| `bun run typecheck` | `tsc --noEmit` in every workspace |
+| `bun run test` | Vitest in every package (excludes `apps/e2e`) |
+| `bun run e2e` | Playwright (once specs land) |
 | `bun run knip` | Dead code / unused deps / unused exports |
-| `bun run db:generate` | Genera migración Drizzle desde el schema |
-| `bun run db:migrate` | Aplica migraciones a Neon |
-| `bun run db:studio` | Abre Drizzle Studio |
+| `bun run db:generate` | Generate a Drizzle migration from the schema |
+| `bun run db:migrate` | Apply migrations to Neon |
+| `bun run db:studio` | Open Drizzle Studio |
 | `bun run jobs:dev` | Trigger.dev dev server |
-| `bun run jobs:deploy` | Deploya jobs a Trigger.dev cloud |
-| `bun --cwd apps/storybook run dev` | Storybook local (puerto 6006) |
-| `bun --cwd apps/storybook run build` | Build estático de Storybook (`storybook-static/`) |
-| `bun run clean` | Limpia `.next`, `.turbo`, `node_modules` en todos lados |
+| `bun run jobs:deploy` | Deploy jobs to Trigger.dev cloud |
+| `bun --cwd apps/storybook run dev` | Storybook locally (port 6006) |
+| `bun --cwd apps/storybook run build` | Static Storybook build (`storybook-static/`) |
+| `bun run clean` | Wipe `.next`, `.turbo`, `node_modules` everywhere |
 
-## Cómo llega el código a producción
+## How code reaches production
 
 ```
-git checkout -b feat/<nombre>          # 1. branch desde main
-… editar, commit …                     #    (Conventional Commits con commitlint)
-git push -u origin feat/<nombre>      # 2. push
-gh pr create                           # 3. abrís PR (template auto-rellenado)
-                                       # 4. CI corre el job `validate`
+git checkout -b feat/<name>            # 1. branch from main
+… edit, commit …                       #    (Conventional Commits via commitlint)
+git push -u origin feat/<name>         # 2. push
+gh pr create                           # 3. open PR (template auto-filled)
+                                       # 4. CI runs the `validate` job
                                        #    (lint + knip + typecheck + test)
-                                       # 5. Vercel auto-deploya las 3 apps
-                                       #    a URLs preview (comentadas en el PR)
-                                       # 6. merge → Vercel promueve a producción
+                                       # 5. Vercel auto-deploys the 3 apps
+                                       #    to preview URLs (commented on the PR)
+                                       # 6. merge → Vercel promotes to production
 ```
 
-Direct pushes a `main` están bloqueados por branch protection. La regla full está en `.claude/skills/ci-cd/SKILL.md`.
+Direct pushes to `main` are blocked by branch protection. The full rule is in `.claude/skills/ci-cd/SKILL.md`.
 
-## Convenciones
+## Conventions
 
 - **Commits:** Conventional Commits (`feat(admin): ...`, `fix(db): ...`).
-  Scopes válidos: `admin`, `web`, `api`, `auth`, `db`, `e2e`, `jobs`, `log`, `ui`, `tooling`, `ci`, `deps`, `repo`.
-- **Idioma:** código, comentarios, errores, commits, PR descriptions y READMEs en **inglés**. Linear (issues, projects, milestones) en **español**.
-- **Comentarios en código:** mínimos. Sólo cuando el "porqué" no es obvio.
-- **Componentes UI:** shadcn copy-paste model — edita los archivos en `packages/ui/src/components/ui/<name>.tsx` directamente. No los envuelvas en wrappers.
-- **Nunca** edites `migrations/` a mano — modifica el schema y `bun run db:generate`.
+  Valid scopes: `admin`, `web`, `api`, `auth`, `db`, `e2e`, `jobs`, `log`, `ui`, `tooling`, `ci`, `deps`, `repo`.
+- **Language:** code, comments, errors, commits, PR descriptions, and READMEs in **English**. Linear (issues, projects, milestones) in **Spanish**. User-facing copy split per locale in `messages/{es,en}.json`.
+- **Code comments:** minimal. Only when the *why* isn't obvious.
+- **UI components:** shadcn copy-paste model — edit the files in `packages/ui/src/components/ui/<name>.tsx` directly. Don't wrap them.
+- **Never** edit `migrations/` by hand — modify the schema and run `bun run db:generate`.
 
-## Boundaries de configuración
+## Configuration boundaries
 
-| Variable / secret | `.env` local | Vercel project env | Trigger.dev project env |
+| Variable / secret | local `.env` | Vercel project env | Trigger.dev project env |
 | --- | :-: | :-: | :-: |
-| `DATABASE_URL` | sí | ambas apps | sí |
-| `BETTER_AUTH_SECRET` | sí | sólo admin | no |
-| `BETTER_AUTH_URL` | override opcional | override opcional | no |
-| `NEXT_PUBLIC_APP_URL` | override opcional | override opcional | no |
-| `BETTER_STACK_SOURCE_TOKEN_<APP>` | sí (por app) | por app | por servicio |
-| `BETTER_STACK_API_TOKEN` | sí | **no** (sólo MCP) | **no** |
-| `SLACK_BOT_TOKEN` | sí | **no** (sólo MCP) | **no** |
-| `TRIGGER_PROJECT_ID` / `TRIGGER_SECRET_KEY` | sí | no | sí |
+| `DATABASE_URL` | yes | both apps | yes |
+| `BETTER_AUTH_SECRET` | yes | admin only | no |
+| `BETTER_AUTH_URL` | optional override | optional override | no |
+| `NEXT_PUBLIC_APP_URL` | optional override | optional override | no |
+| `BETTER_STACK_SOURCE_TOKEN_<APP>` | yes (per app) | per app | per service |
+| `BETTER_STACK_API_TOKEN` | yes | **no** (MCP only) | **no** |
+| `SLACK_BOT_TOKEN` | yes | **no** (MCP only) | **no** |
+| `TRIGGER_PROJECT_ID` / `TRIGGER_SECRET_KEY` | yes | no | yes |
 
-`.env.example` es la lista canónica con rationale por variable.
+`.env.example` is the canonical list with rationale per variable.
 
-### Por qué `NEXT_PUBLIC_APP_URL` y `BETTER_AUTH_URL` son opcionales
+### Why `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` are optional
 
-`apps/{web,admin}/lib/app-url.ts` tiene un helper `getAppUrl()` que va en cascada:
+`apps/{web,admin}/lib/app-url.ts` exposes a `getAppUrl()` helper that cascades:
 
 ```
 browser  → window.location.origin
-server   → env explícito > VERCEL_URL (auto-inyectado por Vercel) > localhost:300{2,3}
+server   → explicit env > VERCEL_URL (auto-injected by Vercel) > localhost:300{2,3}
 ```
 
-Sólo se setean explícitamente cuando hay custom domain en prod, o para testing cross-app de auth en preview.
+Set them explicitly only when there's a custom domain in production, or for cross-app auth testing on preview deploys.
 
-## Observabilidad
+## Observability
 
-Una sola superficie de logger (`@loyalty/log`), múltiples sinks elegidos en runtime.
+One logger surface (`@loyalty/log`), multiple sinks chosen at runtime.
 
-- **Channels disponibles:** `pino`, `console`, `silent`, `better-stack`.
-- **Activación automática:** si `BETTER_STACK_SOURCE_TOKEN_*` está seteado, el bootstrap usa `better-stack`. Sino, `pino` en dev.
-- **Sources separados por servicio:** web, admin, jobs cada uno con su ingest dedicado.
-- **Uptime monitors:** Better Stack polea `/api/health` en web + admin cada 3 min. Failures escalan a Slack `#alerts-loyalty`.
-- **Alertas:** chart-alerts sobre niveles de log (ej. spike de errors) + uptime, routed a Slack.
+- **Available channels:** `pino`, `console`, `silent`, `better-stack`.
+- **Auto-activation:** if `BETTER_STACK_SOURCE_TOKEN_*` is set, the bootstrap uses `better-stack`. Otherwise, `pino` in dev.
+- **Sources per service:** web, admin, jobs each have their own dedicated ingest.
+- **Uptime monitors:** Better Stack polls `/api/health` on web + admin every 3 min. Failures escalate to Slack `#alerts-loyalty`.
+- **Alerts:** chart-alerts on log levels (e.g. error spikes) + uptime, routed to Slack.
 
-Operación día-a-día vía Better Stack MCP (registrado en `.mcp.json`). Ver `.claude/skills/better-stack/SKILL.md`.
+Day-to-day operation via the Better Stack MCP (registered in `.mcp.json`). See `.claude/skills/better-stack/SKILL.md`.
 
 ## PWA (apps/web)
 
-La app cliente ships como PWA instalable.
+The customer app ships as an installable PWA.
 
-- Manifest en `/manifest.webmanifest` (declarado en `apps/web/app/manifest.ts`).
-- Service worker en `/sw.js`, generado por `@serwist/next` desde `apps/web/app/sw.ts`.
-- Página offline en `/offline`.
-- `<InstallPrompt />` captura `beforeinstallprompt` y ofrece Add-to-Home-Screen donde el browser lo soporta.
+- Manifest at `/manifest.webmanifest` (declared in `apps/web/app/manifest.ts`).
+- Service worker at `/sw.js`, generated by `@serwist/next` from `apps/web/app/sw.ts`.
+- Offline page at `/offline`.
+- `<InstallPrompt />` captures `beforeinstallprompt` and offers Add-to-Home-Screen where the browser supports it.
 - Cache strategy:
-  - `_next/static/*` → cache-first (TTL largo).
-  - Páginas HTML → network-first, fallback a `/offline`.
-  - `/api/*`, `/trpc/*` → **no cacheado** (auth-bound, user-scoped).
-  - Imágenes → cache-first (30-day TTL).
-- PWA está **deshabilitada en dev** para que HMR funcione. Build + start para probar PWA local.
+  - `_next/static/*` → cache-first (long TTL).
+  - HTML pages → network-first, fallback to `/offline`.
+  - `/api/*`, `/trpc/*` → **not cached** (auth-bound, user-scoped).
+  - Images → cache-first (30-day TTL).
+- PWA is **disabled in dev** so HMR works. Build + start to exercise PWA behavior locally.
 
 Deep dive: `.claude/skills/pwa/SKILL.md`.
 
 ## UI library (apps/storybook + packages/ui)
 
-`@loyalty/ui` expone todos los componentes shadcn/ui con primitives de **Base UI** (`@base-ui/react`), no Radix. ~55 componentes copiados al repo — vos los editás en `packages/ui/src/components/ui/<name>.tsx`.
+`@loyalty/ui` ships every shadcn/ui component on top of **Base UI** primitives (`@base-ui/react`), not Radix. ~55 components copied into the repo — you edit them in `packages/ui/src/components/ui/<name>.tsx`.
 
-- **Tokens de theme** en `packages/ui/styles/globals.css` (oklch, neutral base, brand verde T4 placeholder hasta el brand kit).
-- **Dark mode** vía clase `.dark` en `<html>`.
-- **Stories** en `apps/storybook/stories/<name>.stories.tsx` (CSF 3, una por componente, con autodocs).
-- **Storybook deploy:** Vercel project `loyalty-app-storybook`, auto-deploy desde `main`, preview por PR.
+- **Theme tokens** in `packages/ui/styles/globals.css` (oklch, neutral base, T4 brand green placeholder until the brand kit).
+- **Dark mode** via a `.dark` class on `<html>`.
+- **Stories** in `apps/storybook/stories/<name>.stories.tsx` (CSF 3, one per component, with autodocs).
+- **Storybook deploy:** Vercel project `loyalty-app-storybook`, auto-deployed from `main`, preview per PR.
 
-Para agregar un componente: `bunx shadcn@latest add <name>` desde `packages/ui`, después patch `@/cn` → `../../cn` y agregar al barrel.
+To add a component: `bunx shadcn@latest add <name>` from `packages/ui`, then patch `@/cn` → `../../cn` and add to the barrel.
 
 Deep dive: `.claude/skills/ui/SKILL.md`.
 
-## Skills (runbooks en el repo)
+## Skills (repo runbooks)
 
-`.claude/skills/<area>/SKILL.md` — referencia canónica por área operacional. Escritos para Claude Code y teammates.
+`.claude/skills/<area>/SKILL.md` — canonical reference per operational area. Written for Claude Code and teammates.
 
-| Skill | Cubre |
+| Skill | Covers |
 | --- | --- |
+| `next-intl` | i18n setup, server vs client patterns, locale switching, adding locales |
 | `ui` | Component library, Base UI primitives, theme tokens, dark mode, Storybook |
-| `pwa` | Install/offline, cache strategy, refresh de icons + brand, Lighthouse, gotchas |
-| `ci-cd` | Pipeline (validate-only), branch protection, abrir PRs, troubleshooting |
-| `vercel` | Setup por proyecto, env vars, trap de Sensitive, MCP usage, rollback |
-| `better-stack` | Logs/uptime/dashboards/alerts vía BS MCP, modelo de source tokens |
-| `log` | API `@loyalty/log`, diseño de channels, agregar un nuevo transport |
-| `slack` | Bot setup, scopes, rotación de token, debug "not_in_channel" |
-| `tooling` | oxlint + commitlint + lefthook conventions, scopes válidos |
-| `drizzle` / `trpc` / `next-best-practices` / `bun` / `turborepo` / `neon-postgres` | Patterns + best practices por framework |
+| `pwa` | Install/offline, cache strategy, refreshing icons + brand, Lighthouse, gotchas |
+| `ci-cd` | Pipeline (validate-only), branch protection, opening PRs, troubleshooting |
+| `vercel` | Per-project setup, env vars, Sensitive trap, MCP usage, rollback |
+| `better-stack` | Logs/uptime/dashboards/alerts via BS MCP, source-token model |
+| `log` | `@loyalty/log` API, channel design, adding a new transport |
+| `slack` | Bot setup, scopes, token rotation, debugging "not_in_channel" |
+| `tooling` | oxlint + commitlint + lefthook conventions, valid scopes |
+| `drizzle` / `trpc` / `next-best-practices` / `bun` / `turborepo` / `neon-postgres` | Patterns + best practices per framework |
 
-Skills locales del repo: `ui`, `pwa`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. El resto viene del ecosistema general de Claude Code skills.
+Skills authored locally in this repo: `next-intl`, `ui`, `pwa`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest come from the broader Claude Code skills ecosystem.
 
 ## MCP servers
 
-Cableados en `.mcp.json` para uso desde Claude Code:
+Wired up in `.mcp.json` for use from Claude Code:
 
-| Server | Surface | Notas |
+| Server | Surface | Notes |
 | --- | --- | --- |
-| `linear-server` | HTTP, OAuth | Tickets, proyectos, milestones (todo en español) |
-| `vercel` | HTTP, OAuth | Read-only sobre projects, deployments, runtime + build logs |
+| `linear-server` | HTTP, OAuth | Tickets, projects, milestones (all in Spanish) |
+| `vercel` | HTTP, OAuth | Read-only across projects, deployments, runtime + build logs |
 | `better-stack` | HTTP, bearer | Uptime API (monitors, status pages, incidents) |
 | `better-stack-telemetry` | HTTP, bearer | Telemetry API (sources, dashboards, charts, alerts) |
-| `slack` | stdio (`@modelcontextprotocol/server-slack`) | Postea mensajes, reacciones, channel history |
+| `slack` | stdio (`@modelcontextprotocol/server-slack`) | Posts messages, reactions, channel history |
 
-Los tokens viven en `.env`. Los servers HTTP no leen `.env` directo — el repo trae un `.envrc` que direnv sourcea al shell para que Claude Code resuelva `${VAR}` al handshake.
+Tokens live in `.env`. HTTP MCP servers don't read `.env` directly — the repo ships an `.envrc` that direnv sources into the shell so Claude Code resolves `${VAR}` at handshake time.
 
-## Gotchas comunes de dev local
+## Common local-dev gotchas
 
-- **Trigger.dev v3 necesita Node ≥ 20** (su CLI). Bun corre todo lo demás. Ambos en `$PATH`.
-- **Neon HTTP driver** funciona en RSC y Edge. Para transacciones largas, usa `Pool` de `@neondatabase/serverless` (websocket).
-- **Better Auth `trustedOrigins`** se deriva dinámicamente de `VERCEL_URL` + overrides explícitos (ver `packages/auth/src/server.ts`). Cross-app auth en preview deploys requiere `NEXT_PUBLIC_APP_URL` / `BETTER_AUTH_URL` seteados explícitamente — los previews de admin y web tienen diferente `VERCEL_URL`.
-- **Service worker deshabilitado en dev** — set en `apps/web/next.config.ts` para no pelear con HMR. Build + start para probar PWA local.
-- **Sensitive env vars en Vercel** — Vercel no las devuelve por `vercel pull`. Mark Plain Text para cualquier var que el build necesite leer en compile time. Full explainer en `.claude/skills/vercel/SKILL.md`.
-- **`@/cn` aliases sólo en packages/ui** — los componentes shadcn instalados por el CLI escriben `@/cn` que sólo resuelve dentro de packages/ui. Patch a paths relativos cuando agregás nuevos componentes (ver skill `ui`).
+- **Trigger.dev v3 requires Node ≥ 20** (its CLI). Bun runs everything else. Both must be on `$PATH`.
+- **Neon HTTP driver** works in RSC and Edge runtimes. For long transactions, use `Pool` from `@neondatabase/serverless` (websocket).
+- **Better Auth `trustedOrigins`** is derived dynamically from `VERCEL_URL` + explicit overrides (see `packages/auth/src/server.ts`). Cross-app auth on preview deploys needs `NEXT_PUBLIC_APP_URL` / `BETTER_AUTH_URL` set explicitly — admin and web preview deploys have different `VERCEL_URL`s.
+- **Service worker disabled in dev** — set in `apps/web/next.config.ts` so it doesn't fight HMR. Build + start to test PWA locally.
+- **Sensitive env vars in Vercel** — Vercel won't return them via `vercel pull`. Mark Plain Text for any var the build needs to read at compile time. Full explainer in `.claude/skills/vercel/SKILL.md`.
+- **`@/cn` aliases only inside packages/ui** — shadcn components installed by the CLI write `@/cn`, which only resolves inside `packages/ui`. Patch to relative paths when adding new components (see the `ui` skill).
+- **Next 16 renders dynamic by default.** Cache Components is opt-in (`cacheComponents: true` + `"use cache"` directives). The repo doesn't enable it yet — most loyalty pages need to be dynamic anyway (auth-aware).
 
-## Decisiones de arquitectura que sorprenden
+## Architecture decisions that surprise
 
-- **CI NO deploya.** GitHub Actions sólo valida (lint/knip/typecheck/test). Vercel auto-deploy hace el resto. Probamos CI-driven con `vercel build --prebuilt` y el modelo Sensitive de Vercel no lo permite limpio.
-- **Un proyecto Vercel por app**, nunca reutilizados. Tedioso para env vars pero aísla accidentes — admin caído no se lleva web.
-- **Sin `vercel.json` salvo para storybook** (que necesita Build Command custom). El UI de Vercel cubre el caso común.
-- **Workspace deps via `workspace:*`**. Internal packages se importan por nombre (`@loyalty/db`) y resuelven vía workspaces de Bun — sin `paths` mapping en tsconfig.
-- **Singleton Better Auth** en `packages/auth`. Auth vive en `/api/auth/*` en cualquier app donde el user esté; el client usa URLs relativas.
-- **shadcn copy-paste, no npm dep.** Los componentes están en el repo; los modificás directo. No te peleás contra una API de wrappers.
-- **Linear en español, repo en inglés.** Cada superficie visible de Linear (tickets, projects, milestones) en español. Código, commits, comments, READMEs en inglés. La fricción del boundary desaparece cuando lo internalizás.
+- **CI does NOT deploy.** GitHub Actions only validates (lint/knip/typecheck/test). Vercel auto-deploy does the rest. We tried CI-driven with `vercel build --prebuilt` and Vercel's Sensitive model doesn't allow it cleanly.
+- **One Vercel project per app**, never reused. Tedious for env vars but isolates accidents — admin going down doesn't take down web.
+- **No `vercel.json` except for storybook** (which needs a custom Build Command). Vercel's UI covers the common case.
+- **Workspace deps via `workspace:*`.** Internal packages are imported by name (`@loyalty/db`) and resolved via Bun's workspace mechanism — no `paths` mapping in tsconfig.
+- **Singleton Better Auth** in `packages/auth`. Auth lives at `/api/auth/*` in whichever app the user is in; the client uses relative URLs.
+- **shadcn copy-paste, not npm dep.** Components are in the repo; you modify them directly. No fighting against a wrapper API.
+- **Linear in Spanish, repo in English.** Every visible Linear surface (tickets, projects, milestones) is Spanish. Code, commits, comments, READMEs in English. The boundary friction disappears once you internalize it.
 
-## Licencia
+## License
 
-Privado — fase pilot. Decisión de licencia diferida a post-MVP.
+Private — pilot phase. License decision deferred to post-MVP.
