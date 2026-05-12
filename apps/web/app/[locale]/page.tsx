@@ -1,21 +1,29 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@loyalty/ui";
-import Link from "next/link";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
-export default function HomePage() {
+import { Link } from "@/i18n/navigation";
+
+type Props = { params: Promise<{ locale: string }> };
+
+export default async function HomePage({ params }: Props) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations("Home");
+
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-6 p-6">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Tu tarjeta de fidelización</CardTitle>
-          <CardDescription>Acumula sellos en cada compra y reclama tus premios.</CardDescription>
+          <CardTitle>{t("cardTitle")}</CardTitle>
+          <CardDescription>{t("cardDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Link href="/tarjeta">
-            <Button className="w-full">Ver mi tarjeta</Button>
+            <Button className="w-full">{t("viewCard")}</Button>
           </Link>
           <Link href="/perfil">
             <Button variant="outline" className="w-full">
-              Mi perfil
+              {t("myProfile")}
             </Button>
           </Link>
         </CardContent>

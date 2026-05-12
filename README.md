@@ -55,6 +55,19 @@ En otra terminal, opcional:
 bun run jobs:dev   # Trigger.dev dev server
 ```
 
+## i18n
+
+`apps/web` está internacionalizado con **next-intl** (Spanish default, English como segundo idioma). El detalle vive en el skill `next-intl` (`.claude/skills/next-intl/SKILL.md`). Resumen:
+
+- **Idiomas:** `es` (default) y `en`. Para agregar uno, edita `apps/web/i18n/routing.ts` y crea `apps/web/messages/<code>.json`.
+- **URLs:** `localePrefix: "as-needed"` → `/perfil` (es) y `/en/profile` (en). Las rutas se mapean en `pathnames`.
+- **Detección de idioma:** middleware lee cookie `NEXT_LOCALE` → `Accept-Language` → fallback `es`.
+- **Strings:** nunca inline en JSX dentro de `app/[locale]/`. Van en `messages/{es,en}.json`.
+- **Navegación:** importa `Link` / `useRouter` / `usePathname` desde `@/i18n/navigation`, **nunca** desde `next/link` / `next/navigation`.
+- **Selector de idioma:** `apps/web/components/locale-switcher.tsx` (botón toggle sobre `@loyalty/ui` Button).
+- **VSCode:** instala la extensión recomendada **i18n Ally** (`.vscode/extensions.json`) para ver las traducciones inline y detectar keys faltantes.
+- `apps/admin` aún no está internacionalizado — el skill documenta los pasos para mirror cuando sea necesario.
+
 ## Comandos
 
 | Script | Qué hace |

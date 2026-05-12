@@ -1,14 +1,12 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
-import { InstallPrompt } from "../components/install-prompt";
-import { Providers } from "./providers";
+import { routing } from "../i18n/routing";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Loyalty",
-  description: "Tarjeta digital de fidelización",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -25,13 +23,16 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const cookieStore = await cookies();
+  const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value;
+  const lang = routing.locales.includes(cookieLocale as (typeof routing.locales)[number])
+    ? cookieLocale
+    : routing.defaultLocale;
+
   return (
-    <html lang="es">
-      <body>
-        <Providers>{children}</Providers>
-        <InstallPrompt />
-      </body>
+    <html lang={lang}>
+      <body>{children}</body>
     </html>
   );
 }
