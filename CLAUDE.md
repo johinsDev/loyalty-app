@@ -18,6 +18,7 @@ apps/
 packages/
 ├── api/         tRPC v11 routers (consumed by web + admin)
 ├── auth/        Better Auth (server + client, organization plugin = multi-tenant)
+├── cache/       Provider-agnostic cache (Upstash + memory + ioredis)
 ├── db/          Drizzle ORM + Neon Postgres client + schema
 ├── jobs/        Trigger.dev v4 background tasks
 ├── log/         Provider-agnostic logger (Pino + Better Stack + console + silent)
@@ -83,11 +84,12 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | `@loyalty/log` API, adding a new transport | `log` |
 | Send a WhatsApp message, add a strategy, debug outbox / Twilio | `whatsapp` |
 | Send an SMS, add a strategy, debug segments, view outbox | `sms` |
+| Cache a query, invalidate, add a provider (upstash/redis/memory) | `cache` |
 | Slack bot setup, scopes, posting from MCP | `slack` |
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `api-filters`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `api-filters`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 
