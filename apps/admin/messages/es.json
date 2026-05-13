@@ -11,7 +11,8 @@
     "customers": "Clientes",
     "rewards": "Premios",
     "whatsappOutbox": "WhatsApp Outbox",
-    "smsOutbox": "SMS Outbox"
+    "smsOutbox": "SMS Outbox",
+    "emailOutbox": "Email Outbox"
   },
   "Auth": {
     "signInTitle": "Iniciar sesión",

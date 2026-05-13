@@ -15,6 +15,13 @@
       "when": 1778626337604,
       "tag": "0001_old_elektra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778701189688,
+      "tag": "0002_smiling_alex_wilder",
+      "breakpoints": true
     }
   ]
 }

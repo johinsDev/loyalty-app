@@ -7,6 +7,7 @@
         "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest}.{ts,tsx}",
         "src/env.ts",
         "src/lib/cache.ts",
+        "src/lib/email.ts",
         "src/lib/sms.ts",
         "src/lib/whatsapp.ts"
       ],
@@ -18,6 +19,7 @@
         "app/sw.ts",
         "src/env.ts",
         "src/lib/cache.ts",
+        "src/lib/email.ts",
         "src/lib/sms.ts",
         "src/lib/whatsapp.ts"
       ],
@@ -36,6 +38,12 @@
     "packages/ui": {},
     "packages/cache": {
       "ignoreDependencies": ["@upstash/redis", "ioredis"]
+    },
+    "packages/email": {
+      "ignoreDependencies": ["resend"]
+    },
+    "packages/email-templates": {
+      "entry": ["src/index.ts", "emails/**/*.{ts,tsx}"]
     },
     "packages/sms": {
       "ignoreDependencies": ["twilio"]

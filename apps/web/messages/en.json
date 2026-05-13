@@ -70,5 +70,30 @@
     "segments": "segments",
     "chars": "chars",
     "providerMessageId": "Provider message ID:"
+  },
+  "EmailOutbox": {
+    "title": "Email Outbox",
+    "subtitle": "Emails persisted by the outbox provider in @loyalty/email. Dev + preview only.",
+    "searchPlaceholder": "Search subject…",
+    "recipientPlaceholder": "Search recipient…",
+    "statusAll": "All",
+    "statusSent": "Sent",
+    "statusFailed": "Failed",
+    "colRecipient": "Recipient",
+    "colSubject": "Subject",
+    "colStatus": "Status",
+    "colSent": "Sent",
+    "emptyTitle": "No emails",
+    "emptyDescription": "When any flow triggers an email via the outbox provider, you'll see it here.",
+    "emptyHint": "Expecting emails? Make sure the app runs with EMAIL_PROVIDER=outbox.",
+    "detailTitle": "Email",
+    "labelFrom": "From:",
+    "labelTo": "To:",
+    "labelCc": "Cc:",
+    "labelBcc": "Bcc:",
+    "labelReplyTo": "Reply-To:",
+    "noBody": "(no body)",
+    "metadataTitle": "Metadata",
+    "providerMessageId": "Provider message ID:"
   }
 }
