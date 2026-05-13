@@ -12,11 +12,23 @@
       "sourceType": "well-known",
       "computedHash": "0e28bd2e559519456449223b42e7ef814bb1ea99132e68a912db28ff6bdc0833"
     },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "063a0e6448123cd359ad0044cc46b0e490cc7964d45ef4bb9fd842bd2ffbca67"
+    },
     "gh-cli": {
       "source": "github/awesome-copilot",
       "sourceType": "github",
       "skillPath": "skills/gh-cli/SKILL.md",
       "computedHash": "cbe644b0c6760ae2a1eaafa39133920d889331327065d92a131675a665273e56"
+    },
+    "github-actions-docs": {
+      "source": "xixu-me/skills",
+      "sourceType": "github",
+      "skillPath": "skills/github-actions-docs/SKILL.md",
+      "computedHash": "e9ac24e79715ef3060bd4ae376052f8d863b830604e69cb513b39764bf47ee53"
     },
     "neon-postgres": {
       "source": "neondatabase/agent-skills",
@@ -41,6 +53,18 @@
       "sourceType": "github",
       "skillPath": "skills/react-email/SKILL.md",
       "computedHash": "f086aedad8c9d9e00fa133f7c3ce33762ba60413c664fb3faf4f3a69a83bd1b1"
+    },
+    "shadcn": {
+      "source": "shadcn/ui",
+      "sourceType": "github",
+      "skillPath": "skills/shadcn/SKILL.md",
+      "computedHash": "80a6226e78f6d1fe464214ae0ef449d49d8ffaa3e7704f011e9b418c678ad4d1"
+    },
+    "tailwind-design-system": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/frontend-mobile-development/skills/tailwind-design-system/SKILL.md",
+      "computedHash": "988d80e52c67c3692d43cc963b6a048a239895e88b272b061de55370d0f8efc3"
     },
     "turborepo": {
       "source": "vercel/turborepo",
