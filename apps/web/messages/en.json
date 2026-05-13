@@ -11,7 +11,9 @@
     "cardTitle": "Your loyalty card",
     "cardDescription": "Earn stamps on every purchase and redeem your rewards.",
     "viewCard": "View my card",
-    "myProfile": "My profile"
+    "myProfile": "My profile",
+    "devToolsTitle": "Dev tools",
+    "devToolsDescription": "Visible only on dev + preview. Empty in production."
   },
   "Profile": {
     "title": "My profile",

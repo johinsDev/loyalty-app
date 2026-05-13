@@ -11,7 +11,9 @@
     "cardTitle": "Tu tarjeta de fidelización",
     "cardDescription": "Acumula sellos en cada compra y reclama tus premios.",
     "viewCard": "Ver mi tarjeta",
-    "myProfile": "Mi perfil"
+    "myProfile": "Mi perfil",
+    "devToolsTitle": "Herramientas de desarrollo",
+    "devToolsDescription": "Solo visibles en dev y preview. Vacías en producción."
   },
   "Profile": {
     "title": "Mi perfil",
