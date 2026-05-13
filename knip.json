@@ -43,7 +43,8 @@
       "ignoreDependencies": ["resend"]
     },
     "packages/email-templates": {
-      "entry": ["src/index.ts", "emails/**/*.{ts,tsx}"]
+      "entry": ["src/index.ts", "emails/**/*.{ts,tsx}"],
+      "ignoreDependencies": ["@react-email/preview-server"]
     },
     "packages/sms": {
       "ignoreDependencies": ["twilio"]
