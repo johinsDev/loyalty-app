@@ -33,4 +33,13 @@ export class WhatsAppOutboxService {
   latestForRecipient(input: LatestForRecipientInput): Promise<WhatsappOutboxRow[]> {
     return this.repo.latestForRecipient(input);
   }
+
+  /**
+   * Delete rows older than `olderThanDays`. Called by the daily
+   * `prune-outboxes` Trigger.dev task in `packages/jobs/`. Returns
+   * the row count for logging / observability.
+   */
+  prune(olderThanDays: number): Promise<number> {
+    return this.repo.deleteOlderThan(olderThanDays);
+  }
 }
