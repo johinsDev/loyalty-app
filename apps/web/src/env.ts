@@ -18,6 +18,7 @@ const whatsappProvider = z
   .enum(["log", "folder", "outbox", "twilio"])
   .optional();
 const smsProvider = z.enum(["log", "folder", "outbox", "twilio"]).optional();
+const cacheProvider = z.enum(["memory", "upstash", "redis"]).optional();
 
 const requireWhen = (field: string, predicate: () => boolean, reason: string) =>
   z
@@ -30,6 +31,8 @@ const requireWhen = (field: string, predicate: () => boolean, reason: string) =>
 const isWhatsAppTwilio = () => process.env.WHATSAPP_PROVIDER === "twilio";
 const isSmsTwilio = () => process.env.SMS_PROVIDER === "twilio";
 const isAnyTwilio = () => isWhatsAppTwilio() || isSmsTwilio();
+const isCacheUpstash = () => process.env.CACHE_PROVIDER === "upstash";
+const isCacheRedis = () => process.env.CACHE_PROVIDER === "redis";
 
 export const env = createEnv({
   server: {
@@ -75,6 +78,23 @@ export const env = createEnv({
       "TWILIO_SMS_FROM",
       isSmsTwilio,
       "SMS_PROVIDER=twilio",
+    ),
+
+    CACHE_PROVIDER: cacheProvider,
+    UPSTASH_REDIS_REST_URL: requireWhen(
+      "UPSTASH_REDIS_REST_URL",
+      isCacheUpstash,
+      "CACHE_PROVIDER=upstash",
+    ),
+    UPSTASH_REDIS_REST_TOKEN: requireWhen(
+      "UPSTASH_REDIS_REST_TOKEN",
+      isCacheUpstash,
+      "CACHE_PROVIDER=upstash",
+    ),
+    REDIS_URL: requireWhen(
+      "REDIS_URL",
+      isCacheRedis,
+      "CACHE_PROVIDER=redis",
     ),
   },
   client: {

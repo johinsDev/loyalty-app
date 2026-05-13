@@ -15,6 +15,7 @@
   "dependencies": {
     "@loyalty/api": "workspace:*",
     "@loyalty/auth": "workspace:*",
+    "@loyalty/cache": "workspace:*",
     "@loyalty/db": "workspace:*",
     "@loyalty/log": "workspace:*",
     "@loyalty/sms": "workspace:*",

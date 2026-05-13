@@ -22,6 +22,7 @@
       "dependencies": {
         "@loyalty/api": "workspace:*",
         "@loyalty/auth": "workspace:*",
+        "@loyalty/cache": "workspace:*",
         "@loyalty/db": "workspace:*",
         "@loyalty/log": "workspace:*",
         "@loyalty/sms": "workspace:*",
@@ -98,6 +99,7 @@
       "dependencies": {
         "@loyalty/api": "workspace:*",
         "@loyalty/auth": "workspace:*",
+        "@loyalty/cache": "workspace:*",
         "@loyalty/date": "workspace:*",
         "@loyalty/db": "workspace:*",
         "@loyalty/log": "workspace:*",
@@ -169,6 +171,27 @@
       },
       "optionalPeers": [
         "react",
+      ],
+    },
+    "packages/cache": {
+      "name": "@loyalty/cache",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@loyalty/tsconfig": "workspace:*",
+        "@loyalty/vitest-config": "workspace:*",
+        "@types/node": "^22.0.0",
+        "@vitest/coverage-v8": "^2.1.0",
+        "oxlint": "^0.15.0",
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
+      },
+      "peerDependencies": {
+        "@upstash/redis": "^1.34.0",
+        "ioredis": "^5.4.0",
+      },
+      "optionalPeers": [
+        "@upstash/redis",
+        "ioredis",
       ],
     },
     "packages/date": {
@@ -638,6 +661,8 @@
     "@loyalty/api": ["@loyalty/api@workspace:packages/api"],
 
     "@loyalty/auth": ["@loyalty/auth@workspace:packages/auth"],
+
+    "@loyalty/cache": ["@loyalty/cache@workspace:packages/cache"],
 
     "@loyalty/date": ["@loyalty/date@workspace:packages/date"],
 

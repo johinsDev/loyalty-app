@@ -11,6 +11,7 @@ const config: UserConfig = {
         "web",
         "api",
         "auth",
+        "cache",
         "db",
         "e2e",
         "jobs",
