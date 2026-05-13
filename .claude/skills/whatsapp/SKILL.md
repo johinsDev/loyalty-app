@@ -219,6 +219,14 @@ Backed by the same tRPC `whatsappOutbox.list` procedure that admin uses, now ref
 
 ---
 
+## Outbox retention
+
+The `whatsapp_outbox` table is pruned daily by the `prune-outboxes` Trigger.dev task in `packages/jobs/trigger/prune-outboxes.ts` — rows older than `OUTBOX_RETENTION_DAYS` (default 30) are deleted at 04:00 UTC. The same job covers `sms_outbox` + `email_outbox` in one transaction.
+
+Production rows never grow because Twilio is the provider — the table only fills locally + on preview deploys. Bump `OUTBOX_RETENTION_DAYS=90` in the Trigger.dev project env if you need to keep more history; pause the task from the dashboard to disable cleanup entirely.
+
+---
+
 ## E2E fetch endpoint
 
 ```bash

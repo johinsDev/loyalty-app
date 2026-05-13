@@ -35,4 +35,13 @@ export class SmsOutboxService {
   ): Promise<SmsOutboxRow[]> {
     return this.repo.latestForRecipient(input);
   }
+
+  /**
+   * Delete rows older than `olderThanDays`. Called by the daily
+   * `prune-outboxes` Trigger.dev task. Returns the row count for
+   * logging / observability.
+   */
+  prune(olderThanDays: number): Promise<number> {
+    return this.repo.deleteOlderThan(olderThanDays);
+  }
 }
