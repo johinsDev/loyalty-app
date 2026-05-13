@@ -99,3 +99,5 @@ apps/storybook/storybook-static/
 !.claude/skills/api-filters/**
 !.claude/skills/architecture-guard
 !.claude/skills/architecture-guard/**
+!.claude/skills/sms
+!.claude/skills/sms/**

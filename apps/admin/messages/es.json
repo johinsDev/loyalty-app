@@ -6,6 +6,13 @@
   "Common": {
     "switchLocale": "Cambiar idioma"
   },
+  "Nav": {
+    "dashboard": "Dashboard",
+    "customers": "Clientes",
+    "rewards": "Premios",
+    "whatsappOutbox": "WhatsApp Outbox",
+    "smsOutbox": "SMS Outbox"
+  },
   "Auth": {
     "signInTitle": "Iniciar sesión",
     "emailPlaceholder": "email",

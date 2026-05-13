@@ -6,6 +6,7 @@
       "entry": [
         "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest}.{ts,tsx}",
         "src/env.ts",
+        "src/lib/sms.ts",
         "src/lib/whatsapp.ts"
       ],
       "project": ["**/*.{ts,tsx}"]
@@ -15,6 +16,7 @@
         "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest,icon,apple-icon}.{ts,tsx}",
         "app/sw.ts",
         "src/env.ts",
+        "src/lib/sms.ts",
         "src/lib/whatsapp.ts"
       ],
       "project": ["**/*.{ts,tsx}"]
@@ -30,6 +32,9 @@
     "packages/db": {},
     "packages/log": {},
     "packages/ui": {},
+    "packages/sms": {
+      "ignoreDependencies": ["twilio"]
+    },
     "packages/whatsapp": {
       "ignoreDependencies": ["twilio"]
     },

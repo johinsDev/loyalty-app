@@ -15,6 +15,7 @@ const config: UserConfig = {
         "e2e",
         "jobs",
         "log",
+        "sms",
         "ui",
         "tooling",
         "whatsapp",

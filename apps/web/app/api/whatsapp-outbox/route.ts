@@ -1,17 +1,22 @@
-import { db } from "@loyalty/db";
-import { whatsappOutbox } from "@loyalty/db/schema";
-import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { isDevOnlyEnabled } from "@/lib/dev-only";
+import { trpc } from "@/lib/trpc/server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+const DEFAULT_LIMIT = 20;
+const MAX_LIMIT = 100;
 
 /**
  * E2E hook. Returns the most recent rows in `whatsapp_outbox`, optionally
  * filtered by `?to=<phone>`. Disabled in production deploys — Playwright
  * only ever calls this against local dev or Vercel preview URLs.
+ *
+ * Delegates to the tRPC `whatsappOutbox.list` procedure so the Drizzle
+ * query lives in `packages/api/src/features/whatsapp-outbox/repository.ts`
+ * — the only file in the feature that touches the db.
  */
 export async function GET(request: Request) {
   if (!isDevOnlyEnabled()) {
@@ -19,19 +24,15 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const to = url.searchParams.get("to");
-  const limit = Math.min(
-    Number.parseInt(url.searchParams.get("limit") ?? "20", 10) || 20,
-    100,
+  const to = url.searchParams.get("to") ?? undefined;
+  const parsedLimit = Number.parseInt(url.searchParams.get("limit") ?? "", 10);
+  const pageSize = Math.min(
+    Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : DEFAULT_LIMIT,
+    MAX_LIMIT,
   );
 
-  const query = db.select().from(whatsappOutbox);
-  const rows = await (to
-    ? query.where(eq(whatsappOutbox.to, to))
-    : query
-  )
-    .orderBy(desc(whatsappOutbox.sentAt))
-    .limit(limit);
+  const api = await trpc();
+  const { rows } = await api.whatsappOutbox.list({ to, pageSize, page: 1 });
 
   return NextResponse.json({ rows });
 }

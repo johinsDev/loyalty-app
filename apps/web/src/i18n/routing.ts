@@ -11,6 +11,10 @@ export const routing = defineRouting({
     "/": "/",
     "/profile": { es: "/perfil", en: "/profile" },
     "/card": { es: "/tarjeta", en: "/card" },
+    "/whatsapp-outbox": "/whatsapp-outbox",
+    "/whatsapp-outbox/[id]": "/whatsapp-outbox/[id]",
+    "/sms-outbox": "/sms-outbox",
+    "/sms-outbox/[id]": "/sms-outbox/[id]",
   },
 });
 

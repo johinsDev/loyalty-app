@@ -17,16 +17,19 @@ import { z } from "zod";
 const whatsappProvider = z
   .enum(["log", "folder", "outbox", "twilio"])
   .optional();
+const smsProvider = z.enum(["log", "folder", "outbox", "twilio"]).optional();
 
-const requireWhen = (field: string, predicate: () => boolean) =>
+const requireWhen = (field: string, predicate: () => boolean, reason: string) =>
   z
     .string()
     .optional()
     .refine((v) => !predicate() || (v && v.length > 0), {
-      message: `${field} is required when WHATSAPP_PROVIDER=twilio`,
+      message: `${field} is required when ${reason}`,
     });
 
 const isWhatsAppTwilio = () => process.env.WHATSAPP_PROVIDER === "twilio";
+const isSmsTwilio = () => process.env.SMS_PROVIDER === "twilio";
+const isAnyTwilio = () => isWhatsAppTwilio() || isSmsTwilio();
 
 export const env = createEnv({
   server: {
@@ -45,13 +48,34 @@ export const env = createEnv({
     BETTER_STACK_INGESTING_HOST: z.string().optional(),
 
     WHATSAPP_PROVIDER: whatsappProvider,
-    TWILIO_ACCOUNT_SID: requireWhen("TWILIO_ACCOUNT_SID", isWhatsAppTwilio),
-    TWILIO_AUTH_TOKEN: requireWhen("TWILIO_AUTH_TOKEN", isWhatsAppTwilio),
-    TWILIO_WHATSAPP_FROM: requireWhen("TWILIO_WHATSAPP_FROM", isWhatsAppTwilio),
     WHATSAPP_PREVIEW_DIR: z.string().optional(),
     WHATSAPP_OUTBOX_ENDPOINT_ENABLED: z
       .enum(["true", "false"])
       .optional(),
+
+    SMS_PROVIDER: smsProvider,
+    SMS_PREVIEW_DIR: z.string().optional(),
+
+    TWILIO_ACCOUNT_SID: requireWhen(
+      "TWILIO_ACCOUNT_SID",
+      isAnyTwilio,
+      "WHATSAPP_PROVIDER=twilio or SMS_PROVIDER=twilio",
+    ),
+    TWILIO_AUTH_TOKEN: requireWhen(
+      "TWILIO_AUTH_TOKEN",
+      isAnyTwilio,
+      "WHATSAPP_PROVIDER=twilio or SMS_PROVIDER=twilio",
+    ),
+    TWILIO_WHATSAPP_FROM: requireWhen(
+      "TWILIO_WHATSAPP_FROM",
+      isWhatsAppTwilio,
+      "WHATSAPP_PROVIDER=twilio",
+    ),
+    TWILIO_SMS_FROM: requireWhen(
+      "TWILIO_SMS_FROM",
+      isSmsTwilio,
+      "SMS_PROVIDER=twilio",
+    ),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url().optional(),

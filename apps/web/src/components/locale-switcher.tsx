@@ -23,7 +23,13 @@ export function LocaleSwitcher() {
 
   const onClick = () => {
     startTransition(() => {
-      router.replace(pathname, { locale: next });
+      // Cast: next-intl preserves dynamic segments at runtime, but TS
+      // narrows `pathname` to a union that includes route templates
+      // like "/whatsapp-outbox/[id]" which `replace` only accepts in
+      // `{ pathname, params }` form. Safe in this round-trip context.
+      router.replace(pathname as Parameters<typeof router.replace>[0], {
+        locale: next,
+      });
     });
   };
 

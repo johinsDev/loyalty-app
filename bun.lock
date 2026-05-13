@@ -24,6 +24,7 @@
         "@loyalty/auth": "workspace:*",
         "@loyalty/db": "workspace:*",
         "@loyalty/log": "workspace:*",
+        "@loyalty/sms": "workspace:*",
         "@loyalty/ui": "workspace:*",
         "@loyalty/whatsapp": "workspace:*",
         "@t3-oss/env-nextjs": "^0.13.0",
@@ -100,6 +101,7 @@
         "@loyalty/date": "workspace:*",
         "@loyalty/db": "workspace:*",
         "@loyalty/log": "workspace:*",
+        "@loyalty/sms": "workspace:*",
         "@loyalty/ui": "workspace:*",
         "@loyalty/whatsapp": "workspace:*",
         "@t3-oss/env-nextjs": "^0.13.0",
@@ -244,6 +246,31 @@
         "typescript": "^5.7.0",
         "vitest": "^2.1.0",
       },
+    },
+    "packages/sms": {
+      "name": "@loyalty/sms",
+      "version": "0.0.0",
+      "dependencies": {
+        "zod": "^3.23.0",
+      },
+      "devDependencies": {
+        "@loyalty/db": "workspace:*",
+        "@loyalty/tsconfig": "workspace:*",
+        "@loyalty/vitest-config": "workspace:*",
+        "@types/node": "^22.0.0",
+        "@vitest/coverage-v8": "^2.1.0",
+        "oxlint": "^0.15.0",
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
+      },
+      "peerDependencies": {
+        "@loyalty/db": "workspace:*",
+        "twilio": "^5.0.0",
+      },
+      "optionalPeers": [
+        "@loyalty/db",
+        "twilio",
+      ],
     },
     "packages/tooling/oxformat": {
       "name": "@loyalty/oxformat-config",
@@ -625,6 +652,8 @@
     "@loyalty/oxformat-config": ["@loyalty/oxformat-config@workspace:packages/tooling/oxformat"],
 
     "@loyalty/oxlint-config": ["@loyalty/oxlint-config@workspace:packages/tooling/oxlint"],
+
+    "@loyalty/sms": ["@loyalty/sms@workspace:packages/sms"],
 
     "@loyalty/storybook": ["@loyalty/storybook@workspace:apps/storybook"],
 
