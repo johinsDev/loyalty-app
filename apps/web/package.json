@@ -18,6 +18,7 @@
     "@loyalty/cache": "workspace:*",
     "@loyalty/date": "workspace:*",
     "@loyalty/db": "workspace:*",
+    "@loyalty/email": "workspace:*",
     "@loyalty/log": "workspace:*",
     "@loyalty/sms": "workspace:*",
     "@loyalty/ui": "workspace:*",

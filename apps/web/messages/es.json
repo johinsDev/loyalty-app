@@ -70,5 +70,30 @@
     "segments": "segmentos",
     "chars": "caracteres",
     "providerMessageId": "Provider message ID:"
+  },
+  "EmailOutbox": {
+    "title": "Email Outbox",
+    "subtitle": "Emails que el provider outbox de @loyalty/email guardó en la DB. Solo dev y preview.",
+    "searchPlaceholder": "Buscar en el asunto…",
+    "recipientPlaceholder": "Buscar destinatario…",
+    "statusAll": "Todos",
+    "statusSent": "Enviado",
+    "statusFailed": "Falló",
+    "colRecipient": "Destinatario",
+    "colSubject": "Asunto",
+    "colStatus": "Estado",
+    "colSent": "Enviado",
+    "emptyTitle": "No hay emails",
+    "emptyDescription": "Cuando algún flow dispare un email con el provider outbox, vas a verlo acá.",
+    "emptyHint": "¿Esperás ver emails? Asegurate de que la app esté corriendo con EMAIL_PROVIDER=outbox.",
+    "detailTitle": "Email",
+    "labelFrom": "De:",
+    "labelTo": "Para:",
+    "labelCc": "Cc:",
+    "labelBcc": "Cco:",
+    "labelReplyTo": "Responder a:",
+    "noBody": "(sin cuerpo)",
+    "metadataTitle": "Metadata",
+    "providerMessageId": "Provider message ID:"
   }
 }

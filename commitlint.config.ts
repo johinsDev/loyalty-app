@@ -14,6 +14,7 @@ const config: UserConfig = {
         "cache",
         "db",
         "e2e",
+        "email",
         "jobs",
         "log",
         "sms",

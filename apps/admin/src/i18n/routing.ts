@@ -16,6 +16,8 @@ export const routing = defineRouting({
     "/whatsapp-outbox/[id]": "/whatsapp-outbox/[id]",
     "/sms-outbox": "/sms-outbox",
     "/sms-outbox/[id]": "/sms-outbox/[id]",
+    "/email-outbox": "/email-outbox",
+    "/email-outbox/[id]": "/email-outbox/[id]",
   },
 });
 

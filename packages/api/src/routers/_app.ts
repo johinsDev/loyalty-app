@@ -1,3 +1,4 @@
+import { emailOutboxRouter } from "../features/email-outbox";
 import { smsOutboxRouter } from "../features/sms-outbox";
 import { whatsappOutboxRouter } from "../features/whatsapp-outbox";
 import { router } from "../trpc";
@@ -11,6 +12,7 @@ export const appRouter = router({
   clientes: clientesRouter,
   sellos: sellosRouter,
   premios: premiosRouter,
+  emailOutbox: emailOutboxRouter,
   smsOutbox: smsOutboxRouter,
   whatsappOutbox: whatsappOutboxRouter,
 });
