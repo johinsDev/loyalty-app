@@ -157,6 +157,14 @@ The detail page shows the full body, segment info, and the provider's message id
 
 ---
 
+## Outbox retention
+
+The `sms_outbox` table is pruned daily by the `prune-outboxes` Trigger.dev task in `packages/jobs/trigger/prune-outboxes.ts` — rows older than `OUTBOX_RETENTION_DAYS` (default 30) get deleted at 04:00 UTC alongside `whatsapp_outbox` + `email_outbox`.
+
+In production this table stays empty (Twilio is the provider), so retention only matters for local dev + preview deploys. Bump `OUTBOX_RETENTION_DAYS=90` in the Trigger.dev project env to keep more history; pause the task to disable cleanup.
+
+---
+
 ## API surface
 
 Three tRPC procedures under `smsOutbox`:

@@ -1,6 +1,6 @@
 import type { db as Db } from "@loyalty/db";
 import { whatsappOutbox, type WhatsappOutboxRow } from "@loyalty/db/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, lt, sql } from "drizzle-orm";
 
 import { WhatsAppOutboxFilters } from "./filters";
 import type { ListInput, LatestForRecipientInput } from "./schemas";
@@ -56,5 +56,18 @@ export class WhatsAppOutboxRepository {
       .where(eq(whatsappOutbox.to, input.to))
       .orderBy(desc(whatsappOutbox.sentAt))
       .limit(input.limit);
+  }
+
+  /**
+   * Delete rows older than `olderThanDays`. Used by the daily
+   * `prune-outboxes` Trigger.dev task. Returns the row count for
+   * observability.
+   */
+  async deleteOlderThan(olderThanDays: number): Promise<number> {
+    const cutoff = sql<string>`NOW() - INTERVAL '1 day' * ${olderThanDays}`;
+    const result = await this.db
+      .delete(whatsappOutbox)
+      .where(lt(whatsappOutbox.sentAt, cutoff));
+    return result.rowCount ?? 0;
   }
 }

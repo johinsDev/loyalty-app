@@ -290,6 +290,7 @@
       "name": "@loyalty/jobs",
       "version": "0.0.0",
       "dependencies": {
+        "@loyalty/api": "workspace:*",
         "@loyalty/db": "workspace:*",
         "@loyalty/log": "workspace:*",
         "@loyalty/whatsapp": "workspace:*",

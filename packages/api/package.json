@@ -8,7 +8,10 @@
   "exports": {
     ".": "./src/index.ts",
     "./trpc": "./src/trpc.ts",
-    "./root": "./src/routers/_app.ts"
+    "./root": "./src/routers/_app.ts",
+    "./features/whatsapp-outbox": "./src/features/whatsapp-outbox/index.ts",
+    "./features/sms-outbox": "./src/features/sms-outbox/index.ts",
+    "./features/email-outbox": "./src/features/email-outbox/index.ts"
   },
   "scripts": {
     "lint": "oxlint src",
