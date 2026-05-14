@@ -120,6 +120,27 @@
     "metadataTitle": "Metadata",
     "providerMessageId": "Provider message ID:"
   },
+  "Auth": {
+    "title": "Sign in",
+    "subtitle": "Welcome to T4",
+    "googleButton": "Continue with Google",
+    "or": "or",
+    "phoneLabel": "Phone",
+    "phonePlaceholder": "300 000 0000",
+    "sendCodeButton": "Send code",
+    "sending": "Sending…",
+    "codeLabel": "Verification code",
+    "codeSentTo": "We sent a code to {phone} via WhatsApp",
+    "verifyButton": "Verify",
+    "verifying": "Verifying…",
+    "resendCode": "Resend code",
+    "resendIn": "Resend in {seconds}s",
+    "changePhone": "Change number",
+    "errorInvalidPhone": "Invalid phone number",
+    "errorOtpFailed": "The code is incorrect or expired",
+    "errorGoogleFailed": "We couldn't sign you in with Google",
+    "genericError": "Something went wrong, try again"
+  },
   "Realtime": {
     "title": "Realtime smoke",
     "notConfiguredTitle": "PartyKit not configured",
