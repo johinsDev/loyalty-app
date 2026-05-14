@@ -17,6 +17,9 @@ const pushProvider = z
   .enum(["log", "outbox", "webpush", "expo", "auto"])
   .optional();
 
+const isRealtimeEnabled = () =>
+  !!(process.env.PARTYKIT_HOST && process.env.PARTYKIT_PROJECT);
+
 const requireWhen = (field: string, predicate: () => boolean, reason: string) =>
   z
     .string()
@@ -130,6 +133,14 @@ export const env = createEnv({
       "PUSH_PROVIDER=webpush or auto",
     ),
     EXPO_ACCESS_TOKEN: z.string().optional(),
+
+    PARTYKIT_HOST: z.string().optional(),
+    PARTYKIT_PROJECT: z.string().optional(),
+    REALTIME_AUTH_SECRET: requireWhen(
+      "REALTIME_AUTH_SECRET",
+      isRealtimeEnabled,
+      "PARTYKIT_HOST + PARTYKIT_PROJECT are set",
+    ),
   },
   client: {},
   experimental__runtimeEnv: process.env,

@@ -1,18 +1,29 @@
+import { auth } from "@loyalty/auth/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@loyalty/ui";
+import { headers } from "next/headers";
 import { getTranslations } from "next-intl/server";
 
+import { env } from "@/env";
 import { trpc } from "@/lib/trpc/server";
 
 import { HealthPingClient } from "./health-ping-client";
+import { StampEarnedListener } from "./stamp-earned-listener";
 
 /**
  * Loyalty card screen body. Hits the health ping over RSC + ships a
  * client-side ping below to exercise both transports.
+ *
+ * Mounts `<StampEarnedListener />` so when the cashier adds a stamp
+ * (via `api.sellos.add`) and that mutation publishes `stamp.earned`
+ * into the customer's realtime room, the UI live-updates without a
+ * reload. Graceful no-op when realtime isn't configured.
  */
 export async function CardView() {
   const t = await getTranslations("Card");
   const api = await trpc();
   const ping = await api.health.ping();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const customerId = session?.user?.id ?? null;
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-6">
@@ -33,6 +44,12 @@ export async function CardView() {
           <HealthPingClient />
         </CardContent>
       </Card>
+      {customerId ? (
+        <StampEarnedListener
+          customerId={customerId}
+          partykitHost={env.NEXT_PUBLIC_PARTYKIT_HOST}
+        />
+      ) : null}
     </main>
   );
 }

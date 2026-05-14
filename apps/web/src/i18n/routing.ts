@@ -19,6 +19,7 @@ export const routing = defineRouting({
     "/email-outbox/[id]": "/email-outbox/[id]",
     "/push-outbox": "/push-outbox",
     "/push-outbox/[id]": "/push-outbox/[id]",
+    "/realtime": "/realtime",
   },
 });
 

@@ -261,6 +261,12 @@ Push rows are the lightest of the four (just title + body + a small JSON payload
 
 ---
 
+## Realtime is the complement, not a substitute
+
+Push wakes a user who's offline; **realtime** lights up the screen they already have open. A single "stamp earned" event ideally fires on both: realtime so the loyalty card animates while the user looks at it, push so the phone in the pocket also buzzes. See `.claude/skills/realtime/SKILL.md` for the PartyKit channel and how to publish events that match the push payloads.
+
+---
+
 ## Why Expo for native + VAPID for web
 
 Both are managed protocols on top of FCM/APNs:

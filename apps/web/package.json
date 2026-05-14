@@ -21,6 +21,7 @@
     "@loyalty/email": "workspace:*",
     "@loyalty/log": "workspace:*",
     "@loyalty/push": "workspace:*",
+    "@loyalty/realtime": "workspace:*",
     "@loyalty/sms": "workspace:*",
     "@loyalty/ui": "workspace:*",
     "@loyalty/whatsapp": "workspace:*",

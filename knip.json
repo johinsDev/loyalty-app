@@ -9,6 +9,7 @@
         "src/lib/cache.ts",
         "src/lib/email.ts",
         "src/lib/push.ts",
+        "src/lib/realtime.ts",
         "src/lib/sms.ts",
         "src/lib/whatsapp.ts"
       ],
@@ -23,10 +24,13 @@
         "src/lib/email.ts",
         "src/lib/push.ts",
         "src/lib/push-subscription.ts",
+        "src/lib/realtime.ts",
         "src/lib/sms.ts",
         "src/lib/whatsapp.ts",
         "src/features/push/hooks/use-push-subscription.ts",
-        "src/features/push/components/push-enable-button.tsx"
+        "src/features/push/components/push-enable-button.tsx",
+        "src/features/realtime/hooks/use-customer-room.ts",
+        "src/features/realtime/components/connection-badge.tsx"
       ],
       "project": ["**/*.{ts,tsx}"]
     },
@@ -53,6 +57,12 @@
     },
     "packages/push": {
       "ignoreDependencies": ["expo-server-sdk", "web-push"]
+    },
+    "packages/realtime": {
+      "entry": ["src/index.ts", "src/client/index.ts"]
+    },
+    "partykit": {
+      "entry": ["src/server.ts", "src/parties/**/*.ts"]
     },
     "packages/sms": {
       "ignoreDependencies": ["twilio"]

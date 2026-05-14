@@ -20,6 +20,7 @@ For a Claude Code session: start with [`CLAUDE.md`](./CLAUDE.md). Operational co
 - **Observability:** Better Stack (logs + uptime + status + alerts) via `@loyalty/log`
 - **WhatsApp:** `@loyalty/whatsapp` — provider-agnostic (Twilio in prod, DB outbox in preview, log/folder in dev)
 - **Push notifications:** `@loyalty/push` — unified Web Push (VAPID) + Expo Push abstraction, with `auto` fan-out by token platform
+- **Real-time:** `@loyalty/realtime` + `partykit/` — Cloudflare WebSockets via PartyKit. One Party per concern (customer rooms today, org/chat documented for later), HMAC-signed publishes from Next, HS256 tickets for browser auth
 - **UI:** shadcn/ui on top of Base UI primitives (`@base-ui/react`) in `packages/ui`
 - **Visual docs:** Storybook 9 in `apps/storybook` (auto-deployed as a third Vercel project)
 - **Lint:** oxlint · **Format:** `oxlint --fix` (oxformat once stable)
@@ -226,12 +227,13 @@ Deep dive: `.claude/skills/ui/SKILL.md`.
 | `log` | `@loyalty/log` API, channel design, adding a new transport |
 | `whatsapp` | `@loyalty/whatsapp` API, four transports, outbox panel, E2E endpoint, FakeSender |
 | `push` | `@loyalty/push` API, Web Push + Expo Push transports, subscription flow, outbox + token tables |
+| `realtime` | `@loyalty/realtime` + `partykit/`, party patterns, ticket + HMAC auth, smoke page, future chatbot/org party stubs |
 | `api-filters` | `packages/api/src/features/*` pattern — router → service → repository + composable Filters |
 | `slack` | Bot setup, scopes, token rotation, debugging "not_in_channel" |
 | `tooling` | oxlint + commitlint + lefthook conventions, valid scopes |
 | `drizzle` / `trpc` / `next-best-practices` / `bun` / `turborepo` / `neon-postgres` | Patterns + best practices per framework |
 
-Skills authored locally in this repo: `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `email`, `push`, `api-filters`, `architecture-guard`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest come from the broader Claude Code skills ecosystem.
+Skills authored locally in this repo: `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `email`, `push`, `realtime`, `api-filters`, `architecture-guard`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest come from the broader Claude Code skills ecosystem.
 
 ## MCP servers
 

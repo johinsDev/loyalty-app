@@ -18,6 +18,7 @@ const config: UserConfig = {
         "jobs",
         "log",
         "push",
+        "realtime",
         "sms",
         "ui",
         "tooling",

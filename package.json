@@ -6,7 +6,8 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "packages/tooling/*"
+    "packages/tooling/*",
+    "partykit"
   ],
   "scripts": {
     "build": "turbo run build",
@@ -26,6 +27,8 @@
     "db:studio": "bun run --cwd packages/db db:studio",
     "jobs:dev": "bun run --cwd packages/jobs dev",
     "jobs:deploy": "bun run --cwd packages/jobs deploy",
+    "partykit:dev": "bun run --cwd partykit dev",
+    "partykit:deploy": "bun run --cwd partykit deploy",
     "prepare": "lefthook install"
   },
   "devDependencies": {

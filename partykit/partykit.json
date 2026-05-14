@@ -1,0 +1,9 @@
+{
+  "$schema": "https://www.partykit.io/schema.json",
+  "name": "loyalty-realtime",
+  "main": "src/server.ts",
+  "compatibilityDate": "2026-01-01",
+  "parties": {
+    "customer": "src/parties/customer.ts"
+  }
+}
