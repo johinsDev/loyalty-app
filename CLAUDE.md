@@ -25,10 +25,14 @@ packages/
 ├── jobs/        Trigger.dev v4 background tasks
 ├── log/         Provider-agnostic logger (Pino + Better Stack + console + silent)
 ├── push/        Provider-agnostic push notifications (Web Push + Expo + log + outbox)
+├── realtime/    Real-time channel (publisher + React hook) backed by partykit/
 ├── sms/         Provider-agnostic SMS sender (Twilio + log + folder + outbox)
+├── storage/     Provider-agnostic file storage (memory + local + R2 + presigned URLs)
 ├── ui/          shadcn (Base UI) component library + Tailwind v4 tokens
 ├── whatsapp/    Provider-agnostic WhatsApp sender (Twilio + log + folder + outbox)
 └── tooling/     Shared tsconfig / oxlint / oxformat / vitest presets
+
+partykit/       Cloudflare Workers + Durable Objects deploy (real-time party server)
 ```
 
 ---
@@ -90,11 +94,14 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Cache a query, invalidate, add a provider (upstash/redis/memory) | `cache` |
 | Send an email, author a React Email template, debug Resend / outbox | `email` |
 | Send a push (web + Expo), register a device token, debug outbox | `push` |
+| Real-time events via PartyKit, add a party, debug WebSocket | `realtime` |
+| Upload + serve files (presigned URLs, R2 setup), add a provider | `storage` |
+| Dropzone primitive + useFileUpload + react-hook-form bridge | `file-upload` |
 | Slack bot setup, scopes, posting from MCP | `slack` |
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `email`, `push`, `api-filters`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `email`, `push`, `realtime`, `storage`, `file-upload`, `api-filters`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 

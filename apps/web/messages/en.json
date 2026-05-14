@@ -119,5 +119,18 @@
     "dataTitle": "Data payload",
     "metadataTitle": "Metadata",
     "providerMessageId": "Provider message ID:"
+  },
+  "Realtime": {
+    "title": "Realtime smoke",
+    "notConfiguredTitle": "PartyKit not configured",
+    "notConfiguredDescription": "Set NEXT_PUBLIC_PARTYKIT_HOST + PARTYKIT_HOST + PARTYKIT_PROJECT + REALTIME_AUTH_SECRET to enable the channel.",
+    "sendTitle": "Send yourself a hello",
+    "sendDescription": "Publishes a dev.hello event into your own room. You'll see it below within milliseconds.",
+    "messagePlaceholder": "message (max 280)",
+    "sendButton": "Send",
+    "sending": "Sending…",
+    "eventsTitle": "Received events",
+    "eventsDescription": "Last 25 live events in your room.",
+    "emptyLog": "No events yet. Wait for the handshake (should be instant) and fire a hello."
   }
 }

@@ -24,6 +24,12 @@ const pushProvider = z
   .enum(["log", "outbox", "webpush", "expo", "auto"])
   .optional();
 
+const isRealtimeEnabled = () =>
+  !!(process.env.PARTYKIT_HOST && process.env.PARTYKIT_PROJECT);
+
+const storageProvider = z.enum(["memory", "local", "r2"]).optional();
+const isStorageR2 = () => process.env.STORAGE_PROVIDER === "r2";
+
 const requireWhen = (field: string, predicate: () => boolean, reason: string) =>
   z
     .string()
@@ -134,14 +140,31 @@ export const env = createEnv({
       "PUSH_PROVIDER=webpush or auto",
     ),
     EXPO_ACCESS_TOKEN: z.string().optional(),
+
+    PARTYKIT_HOST: z.string().optional(),
+    PARTYKIT_PROJECT: z.string().optional(),
+    REALTIME_AUTH_SECRET: requireWhen(
+      "REALTIME_AUTH_SECRET",
+      isRealtimeEnabled,
+      "PARTYKIT_HOST + PARTYKIT_PROJECT are set",
+    ),
+
+    STORAGE_PROVIDER: storageProvider,
+    R2_ACCOUNT_ID: requireWhen("R2_ACCOUNT_ID", isStorageR2, "STORAGE_PROVIDER=r2"),
+    R2_ACCESS_KEY_ID: requireWhen("R2_ACCESS_KEY_ID", isStorageR2, "STORAGE_PROVIDER=r2"),
+    R2_SECRET_ACCESS_KEY: requireWhen("R2_SECRET_ACCESS_KEY", isStorageR2, "STORAGE_PROVIDER=r2"),
+    R2_BUCKET: requireWhen("R2_BUCKET", isStorageR2, "STORAGE_PROVIDER=r2"),
+    R2_PUBLIC_URL: z.string().url().optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url().optional(),
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
+    NEXT_PUBLIC_PARTYKIT_HOST: z.string().optional(),
   },
   experimental__runtimeEnv: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    NEXT_PUBLIC_PARTYKIT_HOST: process.env.NEXT_PUBLIC_PARTYKIT_HOST,
   },
   emptyStringAsUndefined: true,
 });

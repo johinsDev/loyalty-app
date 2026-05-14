@@ -41,6 +41,12 @@ next-env.d.ts
 # trigger.dev
 .trigger
 
+# partykit
+.partykit
+
+# Local storage provider — bytes written by `@loyalty/storage` in dev
+.storage/
+
 # WhatsApp folder transport previews (local dev only)
 .whatsapp-previews/
 
@@ -107,6 +113,12 @@ apps/storybook/storybook-static/
 !.claude/skills/email/**
 !.claude/skills/push
 !.claude/skills/push/**
+!.claude/skills/realtime
+!.claude/skills/realtime/**
+!.claude/skills/storage
+!.claude/skills/storage/**
+!.claude/skills/file-upload
+!.claude/skills/file-upload/**
 
 # Ad-hoc dev seed scripts (not for CI). Run locally with
 #   bun --env-file=../../.env scripts/seed-<name>.ts
