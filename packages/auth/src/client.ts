@@ -1,4 +1,7 @@
-import { organizationClient } from "better-auth/client/plugins";
+import {
+  organizationClient,
+  phoneNumberClient,
+} from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 /**
@@ -16,7 +19,7 @@ const baseURL = ((): string => {
 
 export const authClient = createAuthClient({
   baseURL,
-  plugins: [organizationClient()],
+  plugins: [organizationClient(), phoneNumberClient()],
 });
 
 export const { signIn, signUp, signOut, useSession } = authClient;
