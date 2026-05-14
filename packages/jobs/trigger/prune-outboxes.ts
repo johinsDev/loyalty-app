@@ -4,6 +4,10 @@ import {
   EmailOutboxService,
 } from "@loyalty/api/features/email-outbox";
 import {
+  PushOutboxRepository,
+  PushOutboxService,
+} from "@loyalty/api/features/push-outbox";
+import {
   SmsOutboxRepository,
   SmsOutboxService,
 } from "@loyalty/api/features/sms-outbox";
@@ -26,10 +30,10 @@ import { env } from "../env";
  *
  * Why this exists: the `outbox` transport for each channel persists
  * a row per send so devs/PMs can review messages in preview deploys.
- * Production uses Twilio / Resend directly, so these tables stay
- * empty there — but local dev + preview can pile up over time. The
- * email rows are particularly heavy because they store the full HTML
- * body.
+ * Production uses Twilio / Resend / Expo / WebPush directly, so these
+ * tables stay empty there — but local dev + preview can pile up over
+ * time. Email rows are particularly heavy because they store the full
+ * HTML body.
  *
  * Cron is 04:00 UTC (off-peak in AR). Safe to widen via env or to
  * pause the task in the Trigger.dev dashboard.
@@ -45,14 +49,16 @@ export const pruneOutboxesTask = schedules.task({
     );
     const smsService = new SmsOutboxService(new SmsOutboxRepository(db));
     const emailService = new EmailOutboxService(new EmailOutboxRepository(db));
+    const pushService = new PushOutboxService(new PushOutboxRepository(db));
 
-    const [whatsapp, sms, email] = await Promise.all([
+    const [whatsapp, sms, email, push] = await Promise.all([
       whatsappService.prune(retentionDays),
       smsService.prune(retentionDays),
       emailService.prune(retentionDays),
+      pushService.prune(retentionDays),
     ]);
 
-    const result = { retentionDays, whatsapp, sms, email };
+    const result = { retentionDays, whatsapp, sms, email, push };
     logger.info("prune-outboxes done", result);
     return result;
   },

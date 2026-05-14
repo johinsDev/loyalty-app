@@ -11,7 +11,9 @@
     "./root": "./src/routers/_app.ts",
     "./features/whatsapp-outbox": "./src/features/whatsapp-outbox/index.ts",
     "./features/sms-outbox": "./src/features/sms-outbox/index.ts",
-    "./features/email-outbox": "./src/features/email-outbox/index.ts"
+    "./features/email-outbox": "./src/features/email-outbox/index.ts",
+    "./features/push-outbox": "./src/features/push-outbox/index.ts",
+    "./features/push-tokens": "./src/features/push-tokens/index.ts"
   },
   "scripts": {
     "lint": "oxlint src",
@@ -21,6 +23,7 @@
   "dependencies": {
     "@loyalty/auth": "workspace:*",
     "@loyalty/db": "workspace:*",
+    "@loyalty/push": "workspace:*",
     "@trpc/server": "^11.0.0",
     "drizzle-orm": "^0.36.0",
     "superjson": "^2.2.0",

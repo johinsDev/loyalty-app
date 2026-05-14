@@ -95,5 +95,29 @@
     "noBody": "(sin cuerpo)",
     "metadataTitle": "Metadata",
     "providerMessageId": "Provider message ID:"
+  },
+  "PushOutbox": {
+    "title": "Push Outbox",
+    "subtitle": "Notificaciones push que el provider outbox de @loyalty/push guardó en la DB. Solo dev y preview.",
+    "searchPlaceholder": "Buscar por título…",
+    "tokenPlaceholder": "Filtrar por token…",
+    "platformAll": "Todas",
+    "platformWebpush": "Web push",
+    "platformExpo": "Expo",
+    "statusAll": "Todos",
+    "statusSent": "Enviado",
+    "statusFailed": "Falló",
+    "colDevice": "Dispositivo",
+    "colTitle": "Título",
+    "colStatus": "Estado",
+    "colSent": "Enviado",
+    "emptyTitle": "No hay notificaciones",
+    "emptyDescription": "Cuando algún flow dispare un push con el provider outbox, vas a verlo acá.",
+    "emptyHint": "¿Esperás ver notificaciones? Asegurate de que la app esté corriendo con PUSH_PROVIDER=outbox.",
+    "detailTitle": "Notificación",
+    "tokenLabel": "Token completo",
+    "dataTitle": "Data payload",
+    "metadataTitle": "Metadata",
+    "providerMessageId": "Provider message ID:"
   }
 }

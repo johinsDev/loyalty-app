@@ -20,6 +20,7 @@
     "@loyalty/db": "workspace:*",
     "@loyalty/email": "workspace:*",
     "@loyalty/log": "workspace:*",
+    "@loyalty/push": "workspace:*",
     "@loyalty/sms": "workspace:*",
     "@loyalty/ui": "workspace:*",
     "@loyalty/whatsapp": "workspace:*",

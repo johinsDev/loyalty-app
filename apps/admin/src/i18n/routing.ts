@@ -18,6 +18,8 @@ export const routing = defineRouting({
     "/sms-outbox/[id]": "/sms-outbox/[id]",
     "/email-outbox": "/email-outbox",
     "/email-outbox/[id]": "/email-outbox/[id]",
+    "/push-outbox": "/push-outbox",
+    "/push-outbox/[id]": "/push-outbox/[id]",
   },
 });
 

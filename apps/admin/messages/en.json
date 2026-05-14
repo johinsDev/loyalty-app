@@ -12,7 +12,8 @@
     "rewards": "Rewards",
     "whatsappOutbox": "WhatsApp Outbox",
     "smsOutbox": "SMS Outbox",
-    "emailOutbox": "Email Outbox"
+    "emailOutbox": "Email Outbox",
+    "pushOutbox": "Push Outbox"
   },
   "Auth": {
     "signInTitle": "Sign in",

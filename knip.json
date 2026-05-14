@@ -8,6 +8,7 @@
         "src/env.ts",
         "src/lib/cache.ts",
         "src/lib/email.ts",
+        "src/lib/push.ts",
         "src/lib/sms.ts",
         "src/lib/whatsapp.ts"
       ],
@@ -20,8 +21,12 @@
         "src/env.ts",
         "src/lib/cache.ts",
         "src/lib/email.ts",
+        "src/lib/push.ts",
+        "src/lib/push-subscription.ts",
         "src/lib/sms.ts",
-        "src/lib/whatsapp.ts"
+        "src/lib/whatsapp.ts",
+        "src/features/push/hooks/use-push-subscription.ts",
+        "src/features/push/components/push-enable-button.tsx"
       ],
       "project": ["**/*.{ts,tsx}"]
     },
@@ -45,6 +50,9 @@
     "packages/email-templates": {
       "entry": ["src/index.ts", "emails/**/*.{ts,tsx}"],
       "ignoreDependencies": ["@react-email/preview-server"]
+    },
+    "packages/push": {
+      "ignoreDependencies": ["expo-server-sdk", "web-push"]
     },
     "packages/sms": {
       "ignoreDependencies": ["twilio"]
