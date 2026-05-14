@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "main": "./trigger.config.ts",
+  "exports": {
+    ".": "./trigger.config.ts",
+    "./trigger/*": "./trigger/*.ts"
+  },
   "scripts": {
     "dev": "trigger dev",
     "deploy": "trigger deploy",
