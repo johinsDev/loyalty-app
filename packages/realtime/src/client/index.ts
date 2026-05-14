@@ -50,6 +50,12 @@ export function usePartyRoom<E extends { event: string } = RealtimeEvent>(
   const [lastEvent, setLastEvent] = useState<E | null>(null);
   const onEventRef = useRef(options.onEvent);
   onEventRef.current = options.onEvent;
+  // Stabilize getTicket — callers typically build it inline from a tRPC
+  // mutation that returns a new identity per render, which would
+  // otherwise re-run the effect on every render and re-issue tickets in
+  // a tight loop.
+  const getTicketRef = useRef(options.getTicket);
+  getTicketRef.current = options.getTicket;
 
   useEffect(() => {
     if (!roomId) {
@@ -64,7 +70,7 @@ export function usePartyRoom<E extends { event: string } = RealtimeEvent>(
       setStatus("connecting");
       let ticket: RealtimeTicket;
       try {
-        ticket = await options.getTicket(roomId);
+        ticket = await getTicketRef.current(roomId);
       } catch {
         if (!cancelled) setStatus("closed");
         return;
@@ -114,7 +120,7 @@ export function usePartyRoom<E extends { event: string } = RealtimeEvent>(
       if (refreshTimer) clearTimeout(refreshTimer);
       socket?.close();
     };
-  }, [roomId, options.host, options.protocol, options.getTicket]);
+  }, [roomId, options.host, options.protocol]);
 
   return { status, lastEvent };
 }
