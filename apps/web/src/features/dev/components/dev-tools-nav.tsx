@@ -6,7 +6,8 @@ type DevTool = {
     | "/sms-outbox"
     | "/email-outbox"
     | "/push-outbox"
-    | "/realtime";
+    | "/realtime"
+    | "/storage";
   label: string;
 };
 
@@ -16,6 +17,7 @@ const TOOLS: readonly DevTool[] = [
   { href: "/email-outbox", label: "Email Outbox" },
   { href: "/push-outbox", label: "Push Outbox" },
   { href: "/realtime", label: "Realtime" },
+  { href: "/storage", label: "Storage" },
 ];
 
 /**

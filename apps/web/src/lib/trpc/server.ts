@@ -4,8 +4,9 @@ import { appRouter, createContext } from "@loyalty/api";
 import { headers } from "next/headers";
 
 import { realtime } from "../realtime";
+import { storage } from "../storage";
 
 export const trpc = async () => {
   const ctx = await createContext({ headers: await headers() });
-  return appRouter.createCaller({ ...ctx, realtime });
+  return appRouter.createCaller({ ...ctx, realtime, storage });
 };

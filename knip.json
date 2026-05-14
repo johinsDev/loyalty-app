@@ -11,6 +11,7 @@
         "src/lib/push.ts",
         "src/lib/realtime.ts",
         "src/lib/sms.ts",
+        "src/lib/storage.ts",
         "src/lib/whatsapp.ts"
       ],
       "project": ["**/*.{ts,tsx}"]
@@ -26,11 +27,15 @@
         "src/lib/push-subscription.ts",
         "src/lib/realtime.ts",
         "src/lib/sms.ts",
+        "src/lib/storage.ts",
         "src/lib/whatsapp.ts",
         "src/features/push/hooks/use-push-subscription.ts",
         "src/features/push/components/push-enable-button.tsx",
         "src/features/realtime/hooks/use-customer-room.ts",
-        "src/features/realtime/components/connection-badge.tsx"
+        "src/features/realtime/components/connection-badge.tsx",
+        "src/features/storage/hooks/use-file-upload.ts",
+        "src/features/storage/components/file-upload.tsx",
+        "src/features/storage/components/rhf-file-upload.tsx"
       ],
       "project": ["**/*.{ts,tsx}"]
     },
@@ -66,6 +71,9 @@
     },
     "packages/sms": {
       "ignoreDependencies": ["twilio"]
+    },
+    "packages/storage": {
+      "ignoreDependencies": ["@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner"]
     },
     "packages/whatsapp": {
       "ignoreDependencies": ["twilio"]

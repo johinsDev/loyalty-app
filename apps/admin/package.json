@@ -22,6 +22,7 @@
     "@loyalty/push": "workspace:*",
     "@loyalty/realtime": "workspace:*",
     "@loyalty/sms": "workspace:*",
+    "@loyalty/storage": "workspace:*",
     "@loyalty/ui": "workspace:*",
     "@loyalty/whatsapp": "workspace:*",
     "@t3-oss/env-nextjs": "^0.13.0",

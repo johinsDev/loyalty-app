@@ -20,6 +20,7 @@ const config: UserConfig = {
         "push",
         "realtime",
         "sms",
+        "storage",
         "ui",
         "tooling",
         "whatsapp",

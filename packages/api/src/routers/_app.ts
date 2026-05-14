@@ -3,6 +3,7 @@ import { pushOutboxRouter } from "../features/push-outbox";
 import { pushTokensRouter } from "../features/push-tokens";
 import { realtimeRouter } from "../features/realtime";
 import { smsOutboxRouter } from "../features/sms-outbox";
+import { storageRouter } from "../features/storage";
 import { whatsappOutboxRouter } from "../features/whatsapp-outbox";
 import { router } from "../trpc";
 import { clientesRouter } from "./clientes";
@@ -20,6 +21,7 @@ export const appRouter = router({
   pushTokens: pushTokensRouter,
   realtime: realtimeRouter,
   smsOutbox: smsOutboxRouter,
+  storage: storageRouter,
   whatsappOutbox: whatsappOutboxRouter,
 });
 

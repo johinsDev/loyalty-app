@@ -1,6 +1,7 @@
 import { auth, type Session } from "@loyalty/auth/server";
 import { db } from "@loyalty/db";
 import type { FakeRealtime, RealtimeClient } from "@loyalty/realtime";
+import type { StorageDisk } from "@loyalty/storage";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
@@ -14,6 +15,16 @@ import { ZodError } from "zod";
 export type RealtimeBinding = Pick<RealtimeClient, "publish"> &
   Partial<Pick<FakeRealtime, "published">>;
 
+/**
+ * Structural slice of `StorageManager`. Apps bind their configured
+ * instance regardless of how many disks they declare — the router only
+ * cares about `.disk(name?)`. Avoiding the generic in `Context` keeps
+ * `apps/{web,admin}` free of TS variance gripes.
+ */
+export interface StorageBinding {
+  disk(name?: string): StorageDisk;
+}
+
 export type Context = {
   db: typeof db;
   session: Session | null;
@@ -25,6 +36,12 @@ export type Context = {
    * Optional because some tools (CLI scripts, tests) don't need it.
    */
   realtime?: RealtimeBinding;
+  /**
+   * Storage manager. Same pattern as `realtime` — apps bind a
+   * configured `StorageManager` so the storage router doesn't import
+   * the apps' bootstrap singleton.
+   */
+  storage?: StorageBinding;
 };
 
 export const createContext = async (opts: { headers: Headers }): Promise<Context> => {

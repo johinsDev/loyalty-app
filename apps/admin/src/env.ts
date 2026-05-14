@@ -20,6 +20,9 @@ const pushProvider = z
 const isRealtimeEnabled = () =>
   !!(process.env.PARTYKIT_HOST && process.env.PARTYKIT_PROJECT);
 
+const storageProvider = z.enum(["memory", "local", "r2"]).optional();
+const isStorageR2 = () => process.env.STORAGE_PROVIDER === "r2";
+
 const requireWhen = (field: string, predicate: () => boolean, reason: string) =>
   z
     .string()
@@ -141,6 +144,13 @@ export const env = createEnv({
       isRealtimeEnabled,
       "PARTYKIT_HOST + PARTYKIT_PROJECT are set",
     ),
+
+    STORAGE_PROVIDER: storageProvider,
+    R2_ACCOUNT_ID: requireWhen("R2_ACCOUNT_ID", isStorageR2, "STORAGE_PROVIDER=r2"),
+    R2_ACCESS_KEY_ID: requireWhen("R2_ACCESS_KEY_ID", isStorageR2, "STORAGE_PROVIDER=r2"),
+    R2_SECRET_ACCESS_KEY: requireWhen("R2_SECRET_ACCESS_KEY", isStorageR2, "STORAGE_PROVIDER=r2"),
+    R2_BUCKET: requireWhen("R2_BUCKET", isStorageR2, "STORAGE_PROVIDER=r2"),
+    R2_PUBLIC_URL: z.string().url().optional(),
   },
   client: {},
   experimental__runtimeEnv: process.env,

@@ -20,6 +20,7 @@ export const routing = defineRouting({
     "/push-outbox": "/push-outbox",
     "/push-outbox/[id]": "/push-outbox/[id]",
     "/realtime": "/realtime",
+    "/storage": "/storage",
   },
 });
 
