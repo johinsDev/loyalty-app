@@ -20,6 +20,9 @@ const whatsappProvider = z
 const smsProvider = z.enum(["log", "folder", "outbox", "twilio"]).optional();
 const cacheProvider = z.enum(["memory", "upstash", "redis"]).optional();
 const emailProvider = z.enum(["log", "folder", "outbox", "resend"]).optional();
+const pushProvider = z
+  .enum(["log", "outbox", "webpush", "expo", "auto"])
+  .optional();
 
 const requireWhen = (field: string, predicate: () => boolean, reason: string) =>
   z
@@ -35,6 +38,8 @@ const isAnyTwilio = () => isWhatsAppTwilio() || isSmsTwilio();
 const isCacheUpstash = () => process.env.CACHE_PROVIDER === "upstash";
 const isCacheRedis = () => process.env.CACHE_PROVIDER === "redis";
 const isEmailResend = () => process.env.EMAIL_PROVIDER === "resend";
+const isPushWebOrAuto = () =>
+  ["webpush", "auto"].includes(process.env.PUSH_PROVIDER ?? "");
 
 export const env = createEnv({
   server: {
@@ -111,12 +116,32 @@ export const env = createEnv({
       isEmailResend,
       "EMAIL_PROVIDER=resend",
     ),
+
+    PUSH_PROVIDER: pushProvider,
+    VAPID_PUBLIC_KEY: requireWhen(
+      "VAPID_PUBLIC_KEY",
+      isPushWebOrAuto,
+      "PUSH_PROVIDER=webpush or auto",
+    ),
+    VAPID_PRIVATE_KEY: requireWhen(
+      "VAPID_PRIVATE_KEY",
+      isPushWebOrAuto,
+      "PUSH_PROVIDER=webpush or auto",
+    ),
+    VAPID_SUBJECT: requireWhen(
+      "VAPID_SUBJECT",
+      isPushWebOrAuto,
+      "PUSH_PROVIDER=webpush or auto",
+    ),
+    EXPO_ACCESS_TOKEN: z.string().optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
   },
   experimental__runtimeEnv: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
   },
   emptyStringAsUndefined: true,
 });

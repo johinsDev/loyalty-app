@@ -1,6 +1,6 @@
 import type { db as Db } from "@loyalty/db";
 import { emailOutbox, type EmailOutboxRow } from "@loyalty/db/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, lt, sql } from "drizzle-orm";
 
 import { EmailOutboxFilters } from "./filters";
 import type { LatestForRecipientInput, ListInput } from "./schemas";
@@ -56,5 +56,18 @@ export class EmailOutboxRepository {
       .where(eq(emailOutbox.to, input.to))
       .orderBy(desc(emailOutbox.sentAt))
       .limit(input.limit);
+  }
+
+  /**
+   * Delete rows older than `olderThanDays`. Used by the daily
+   * `prune-outboxes` Trigger.dev task. Returns the row count for
+   * observability.
+   */
+  async deleteOlderThan(olderThanDays: number): Promise<number> {
+    const cutoff = sql<string>`NOW() - INTERVAL '1 day' * ${olderThanDays}`;
+    const result = await this.db
+      .delete(emailOutbox)
+      .where(lt(emailOutbox.sentAt, cutoff));
+    return result.rowCount ?? 0;
   }
 }

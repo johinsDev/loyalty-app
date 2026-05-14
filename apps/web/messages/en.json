@@ -95,5 +95,29 @@
     "noBody": "(no body)",
     "metadataTitle": "Metadata",
     "providerMessageId": "Provider message ID:"
+  },
+  "PushOutbox": {
+    "title": "Push Outbox",
+    "subtitle": "Push notifications persisted by the outbox provider in @loyalty/push. Dev + preview only.",
+    "searchPlaceholder": "Search title…",
+    "tokenPlaceholder": "Filter by token…",
+    "platformAll": "All",
+    "platformWebpush": "Web push",
+    "platformExpo": "Expo",
+    "statusAll": "All",
+    "statusSent": "Sent",
+    "statusFailed": "Failed",
+    "colDevice": "Device",
+    "colTitle": "Title",
+    "colStatus": "Status",
+    "colSent": "Sent",
+    "emptyTitle": "No notifications",
+    "emptyDescription": "When any flow triggers a push via the outbox provider, you'll see it here.",
+    "emptyHint": "Expecting pushes? Make sure the app runs with PUSH_PROVIDER=outbox.",
+    "detailTitle": "Notification",
+    "tokenLabel": "Full token",
+    "dataTitle": "Data payload",
+    "metadataTitle": "Metadata",
+    "providerMessageId": "Provider message ID:"
   }
 }

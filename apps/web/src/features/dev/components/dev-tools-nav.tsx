@@ -1,7 +1,11 @@
 import { Link } from "@/i18n/navigation";
 
 type DevTool = {
-  href: "/whatsapp-outbox" | "/sms-outbox" | "/email-outbox";
+  href:
+    | "/whatsapp-outbox"
+    | "/sms-outbox"
+    | "/email-outbox"
+    | "/push-outbox";
   label: string;
 };
 
@@ -9,6 +13,7 @@ const TOOLS: readonly DevTool[] = [
   { href: "/whatsapp-outbox", label: "WhatsApp Outbox" },
   { href: "/sms-outbox", label: "SMS Outbox" },
   { href: "/email-outbox", label: "Email Outbox" },
+  { href: "/push-outbox", label: "Push Outbox" },
 ];
 
 /**

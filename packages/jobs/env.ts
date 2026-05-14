@@ -44,6 +44,8 @@ export const env = createEnv({
     TWILIO_ACCOUNT_SID: requireWhen("TWILIO_ACCOUNT_SID", isWhatsAppTwilio),
     TWILIO_AUTH_TOKEN: requireWhen("TWILIO_AUTH_TOKEN", isWhatsAppTwilio),
     TWILIO_WHATSAPP_FROM: requireWhen("TWILIO_WHATSAPP_FROM", isWhatsAppTwilio),
+
+    OUTBOX_RETENTION_DAYS: z.coerce.number().int().min(1).optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

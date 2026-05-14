@@ -138,7 +138,7 @@ Service worker entries aren't imported by app code (Serwist injects the manifest
 
 ## When to bring it further (out of MVP scope)
 
-- **Push notifications** — VAPID keys + `/api/push/subscribe` endpoint + service-worker `push` event handler. Requires backend support; tracked in Linear.
+- **Push notifications** — Implemented in `@loyalty/push` + `apps/web/app/sw.ts` (`push` + `notificationclick` listeners). The browser subscription helper is `apps/web/src/lib/push-subscription.ts`; the React hook + button live in `apps/web/src/features/push/`. See `.claude/skills/push/SKILL.md` for the full data flow, registration UX, and how the abstraction shares with Expo Push for the future native app.
 - **Background sync** — IndexedDB queue for actions taken offline (e.g. "I scanned my QR but had no signal"), reconciliation when online. Bigger refactor of tRPC mutations; tracked in Linear.
 - **Periodic sync** — refresh user's points on a schedule even when the app is closed. Limited browser support; revisit when more devices ship it.
 

@@ -12,14 +12,16 @@ type NavItem = {
     | "/rewards"
     | "/whatsapp-outbox"
     | "/sms-outbox"
-    | "/email-outbox";
+    | "/email-outbox"
+    | "/push-outbox";
   key:
     | "dashboard"
     | "customers"
     | "rewards"
     | "whatsappOutbox"
     | "smsOutbox"
-    | "emailOutbox";
+    | "emailOutbox"
+    | "pushOutbox";
 };
 
 const ITEMS: readonly NavItem[] = [
@@ -29,6 +31,7 @@ const ITEMS: readonly NavItem[] = [
   { href: "/whatsapp-outbox", key: "whatsappOutbox" },
   { href: "/sms-outbox", key: "smsOutbox" },
   { href: "/email-outbox", key: "emailOutbox" },
+  { href: "/push-outbox", key: "pushOutbox" },
 ];
 
 /**
