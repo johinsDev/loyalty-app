@@ -12,9 +12,11 @@ export default async function RealtimeSmokePage({ params }: Props) {
   setRequestLocale(locale);
 
   // The (dev) layout already runs `isDevOnlyEnabled()` so we get here
-  // only in dev / preview. Still need a session to mint tickets.
+  // only in dev / preview. Still need a session to mint tickets — the
+  // realtime.issueTicket mutation is `protectedProcedure`, so pass
+  // `null` when signed out and let the dev page render a sign-in hint.
   const session = await auth.api.getSession({ headers: await headers() });
-  const selfId = session?.user?.id ?? "anonymous";
+  const selfId = session?.user?.id ?? null;
 
   return (
     <RealtimeDevPage

@@ -12,8 +12,8 @@ import { useCustomerRoom } from "../hooks/use-customer-room";
 import { ConnectionBadge } from "./connection-badge";
 
 interface Props {
-  /** Authenticated session user id — doubles as the customer id in v1. */
-  selfId: string;
+  /** Authenticated session user id — doubles as the customer id in v1. `null` when signed out. */
+  selfId: string | null;
   partykitHost: string | undefined;
 }
 
@@ -63,6 +63,17 @@ export function RealtimeDevPage({ selfId, partykitHost }: Props) {
         </Card>
       ) : null}
 
+      {!selfId ? (
+        <Card className="mb-4 border-amber-500/40 bg-amber-50 dark:bg-amber-950/40">
+          <CardHeader>
+            <CardTitle>Sign in required</CardTitle>
+            <CardDescription>
+              The realtime channel mints tickets per signed-in user. Sign in (or open /sign-in) to test the round-trip.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : null}
+
       <Card className="mb-4">
         <CardHeader>
           <CardTitle className="text-base">{t("sendTitle")}</CardTitle>
@@ -78,12 +89,13 @@ export function RealtimeDevPage({ selfId, partykitHost }: Props) {
           />
           <Button
             onClick={() =>
+              selfId &&
               publishHello.mutate({
                 roomId: `customer:${selfId}`,
                 message,
               })
             }
-            disabled={publishHello.isPending || !partykitHost}
+            disabled={publishHello.isPending || !partykitHost || !selfId}
           >
             {publishHello.isPending ? t("sending") : t("sendButton")}
           </Button>

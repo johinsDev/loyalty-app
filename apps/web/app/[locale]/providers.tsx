@@ -31,7 +31,11 @@ export const Providers = ({ children, locale, messages }: Props) => {
   );
 
   return (
-    <NextIntlClientProvider locale={locale} messages={messages}>
+    <NextIntlClientProvider
+      locale={locale}
+      messages={messages}
+      timeZone="America/Bogota"
+    >
       <NuqsAdapter>
         <QueryClientProvider client={queryClient}>
           <TRPCProvider queryClient={queryClient}>{children}</TRPCProvider>

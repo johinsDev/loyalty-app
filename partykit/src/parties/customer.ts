@@ -27,13 +27,14 @@ import type { RealtimeEvent } from "./_shared/types";
 export default class CustomerParty implements Party.Server {
   constructor(readonly room: Party.Room) {}
 
-  async onBeforeConnect(
+  static async onBeforeConnect(
     request: Party.Request,
+    lobby: Party.Lobby,
   ): Promise<Party.Request | Response> {
     const url = new URL(request.url);
     const token = url.searchParams.get("token");
     if (!token) return new Response("missing token", { status: 401 });
-    const secret = (this.room.env as Record<string, string | undefined>)
+    const secret = (lobby.env as Record<string, string | undefined>)
       .REALTIME_AUTH_SECRET;
     if (!secret) {
       return new Response("server missing REALTIME_AUTH_SECRET", {
@@ -41,7 +42,7 @@ export default class CustomerParty implements Party.Server {
       });
     }
     try {
-      await verifyTicket(token, secret, this.room.id);
+      await verifyTicket(token, secret, lobby.id);
     } catch {
       return new Response("invalid token", { status: 401 });
     }
