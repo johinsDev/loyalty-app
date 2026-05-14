@@ -33,6 +33,7 @@ export * from "./components/ui/hover-card";
 export * from "./components/ui/input";
 export * from "./components/ui/input-group";
 export * from "./components/ui/input-otp";
+export * from "./components/ui/input-phone";
 export * from "./components/ui/item";
 export * from "./components/ui/kbd";
 export * from "./components/ui/label";
