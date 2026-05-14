@@ -29,6 +29,13 @@
       "when": 1778716071744,
       "tag": "0003_chunky_proteus",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778797013676,
+      "tag": "0004_faulty_magdalene",
+      "breakpoints": true
     }
   ]
 }
