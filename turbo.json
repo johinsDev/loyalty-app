@@ -11,7 +11,9 @@
     "NODE_ENV",
     "LOG_*",
     "BETTER_STACK_*",
-    "GOOGLE_*"
+    "GOOGLE_*",
+    "STORAGE_PROVIDER",
+    "R2_*"
   ],
   "tasks": {
     "build": {
