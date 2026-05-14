@@ -17,10 +17,10 @@
   },
   "Auth": {
     "signInTitle": "Iniciar sesión",
-    "emailPlaceholder": "email",
-    "passwordPlaceholder": "contraseña",
-    "submit": "Entrar",
-    "submitting": "Entrando…",
+    "signInSubtitle": "Acceso para empleados con cuenta corporativa",
+    "googleButton": "Continuar con Google",
+    "googleError": "No pudimos iniciar sesión con Google",
+    "submitting": "Iniciando…",
     "genericError": "No se pudo iniciar sesión"
   },
   "Dashboard": {
