@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Alert,
+  AlertDescription,
   Button,
   Card,
   CardContent,
@@ -15,6 +17,7 @@ import {
   Separator,
 } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
@@ -25,6 +28,8 @@ import { GoogleSignInButton } from "./google-sign-in-button";
 export function SignInForm() {
   const t = useTranslations("Auth");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const forbidden = searchParams.get("error") === "forbidden";
   const otp = usePhoneOtp();
   const [phoneInput, setPhoneInput] = useState<string | undefined>("");
   const [codeInput, setCodeInput] = useState("");
@@ -54,6 +59,11 @@ export function SignInForm() {
         <CardDescription>{t("subtitle")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {forbidden ? (
+          <Alert variant="default" className="border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+            <AlertDescription>{t("errorForbidden")}</AlertDescription>
+          </Alert>
+        ) : null}
         <GoogleSignInButton />
 
         <div className="relative">

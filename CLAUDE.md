@@ -98,10 +98,11 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Upload + serve files (presigned URLs, R2 setup), add a provider | `storage` |
 | Dropzone primitive + useFileUpload + react-hook-form bridge | `file-upload` |
 | Slack bot setup, scopes, posting from MCP | `slack` |
+| Define / check roles, gate a route, procedure, or /api handler, seed owner | `auth` |
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `email`, `push`, `realtime`, `storage`, `file-upload`, `api-filters`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `email`, `push`, `realtime`, `storage`, `file-upload`, `api-filters`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 

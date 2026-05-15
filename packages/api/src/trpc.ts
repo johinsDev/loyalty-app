@@ -1,4 +1,12 @@
-import { auth, type Session } from "@loyalty/auth/server";
+import {
+  auth,
+  getUserRole,
+  MANAGER_OR_ABOVE,
+  OWNER_ONLY,
+  STAFF_OR_ABOVE,
+  type Role,
+  type Session,
+} from "@loyalty/auth/server";
 import { db } from "@loyalty/db";
 import type { FakeRealtime, RealtimeClient } from "@loyalty/realtime";
 import type { StorageDisk } from "@loyalty/storage";
@@ -78,3 +86,29 @@ const enforceAuth = t.middleware(({ ctx, next }) => {
 });
 
 export const protectedProcedure = t.procedure.use(enforceAuth);
+
+/**
+ * Role-aware middleware factory. Builds on `enforceAuth` (so callers
+ * always get a non-null `ctx.session`) and adds a `member.role` lookup
+ * + check. Adds the resolved role to the context so downstream
+ * resolvers can inspect it without re-querying.
+ */
+const enforceRole = (allowed: readonly Role[]) =>
+  t.middleware(async ({ ctx, next }) => {
+    if (!ctx.session?.user) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+    const role = await getUserRole(ctx.session.user.id);
+    if (!allowed.includes(role)) {
+      throw new TRPCError({ code: "FORBIDDEN" });
+    }
+    return next({
+      ctx: { ...ctx, session: ctx.session, role },
+    });
+  });
+
+/** Procedures gated by `member.role`. Replace `protectedProcedure` with one of these
+ *  when a feature should be off-limits to plain customers. */
+export const staffProcedure = t.procedure.use(enforceRole(STAFF_OR_ABOVE));
+export const managerProcedure = t.procedure.use(enforceRole(MANAGER_OR_ABOVE));
+export const ownerProcedure = t.procedure.use(enforceRole(OWNER_ONLY));

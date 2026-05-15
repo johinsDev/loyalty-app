@@ -25,6 +25,7 @@
     "db:migrate": "bun run --cwd packages/db db:migrate",
     "db:push": "bun run --cwd packages/db db:push",
     "db:studio": "bun run --cwd packages/db db:studio",
+    "db:seed:owner": "bun run --cwd packages/db src/seed-owner.ts",
     "jobs:dev": "bun run --cwd packages/jobs dev",
     "jobs:deploy": "bun run --cwd packages/jobs deploy",
     "partykit:dev": "bun run --cwd partykit dev",

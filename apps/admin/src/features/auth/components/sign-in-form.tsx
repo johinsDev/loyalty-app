@@ -2,6 +2,8 @@
 
 import { authClient } from "@loyalty/auth/client";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Card,
   CardContent,
@@ -10,10 +12,13 @@ import {
   CardTitle,
 } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 export function SignInForm() {
   const t = useTranslations("Auth");
+  const searchParams = useSearchParams();
+  const forbidden = searchParams.get("error") === "forbidden";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +42,12 @@ export function SignInForm() {
           <CardTitle>{t("signInTitle")}</CardTitle>
           <CardDescription>{t("signInSubtitle")}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {forbidden ? (
+            <Alert variant="default" className="border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+              <AlertDescription>{t("errorForbidden")}</AlertDescription>
+            </Alert>
+          ) : null}
           <Button
             type="button"
             variant="outline"
@@ -49,7 +59,7 @@ export function SignInForm() {
             {loading ? t("submitting") : t("googleButton")}
           </Button>
           {error ? (
-            <p className="text-destructive mt-3 text-sm">{error}</p>
+            <p className="text-destructive text-sm">{error}</p>
           ) : null}
         </CardContent>
       </Card>
