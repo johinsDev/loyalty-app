@@ -5,6 +5,18 @@ import { APIError } from "better-auth/api";
 import { organization, phoneNumber } from "better-auth/plugins";
 import { and, eq, gte, sql } from "drizzle-orm";
 
+import { coerceRole, ROLES, type Role } from "./roles";
+
+export {
+  ROLES,
+  type Role,
+  STAFF_OR_ABOVE,
+  MANAGER_OR_ABOVE,
+  OWNER_ONLY,
+  coerceRole,
+  isStaffRole,
+} from "./roles";
+
 export type AuthDeps = {
   sendOtp?: (args: { phoneNumber: string; code: string }) => Promise<void>;
 };
@@ -126,3 +138,26 @@ export const auth = createAuth();
 
 export type Auth = ReturnType<typeof createAuth>;
 export type Session = Auth["$Infer"]["Session"];
+
+/**
+ * Resolve a user's role from the `member` table. A user with no
+ * member row is treated as a `customer` — that's the default for
+ * everyone who signs up via apps/web. Staff/manager/owner are
+ * explicitly inserted by `bun run db:seed:owner --email=...` or by
+ * the future invite-staff flow.
+ *
+ * Falls back to `customer` for unknown role strings (least privilege).
+ *
+ * v1 assumes a single operator org, so we don't filter by
+ * `organizationId`. When multi-tenancy lands, this reads
+ * `session.user.activeOrganizationId` and narrows by it.
+ */
+export async function getUserRole(userId: string): Promise<Role> {
+  const [row] = await db
+    .select({ role: schema.member.role })
+    .from(schema.member)
+    .where(eq(schema.member.userId, userId))
+    .limit(1);
+  if (!row) return ROLES.customer;
+  return coerceRole(row.role);
+}
