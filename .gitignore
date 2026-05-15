@@ -121,7 +121,14 @@ apps/storybook/storybook-static/
 !.claude/skills/file-upload/**
 !.claude/skills/auth
 !.claude/skills/auth/**
+!.claude/skills/env-deploy
+!.claude/skills/env-deploy/**
 
-# Ad-hoc dev seed scripts (not for CI). Run locally with
-#   bun --env-file=../../.env scripts/seed-<name>.ts
-scripts/
+# scripts/ holds two kinds of files:
+#   1. ad-hoc dev seeds (NOT tracked) — run locally with
+#        bun --env-file=../../.env scripts/seed-<name>.ts
+#   2. tracked env/deploy tooling (whitelisted below), same deny-all +
+#      explicit-allow pattern used for .claude/skills/* above.
+scripts/*
+!scripts/with-infisical.sh
+!scripts/infisical-bootstrap.sh

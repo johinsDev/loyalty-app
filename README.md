@@ -60,21 +60,21 @@ packages/
 # 1. Install dependencies (Bun 1.2+ required)
 bun install
 
-# 2. Copy and fill in env vars
-cp .env.example .env
-#    Minimum to run the app:
-#      DATABASE_URL          (Neon pooled connection string)
-#      BETTER_AUTH_SECRET    (openssl rand -base64 32)
-#    For jobs:
-#      TRIGGER_PROJECT_ID
-#      TRIGGER_SECRET_KEY
-#    See .env.example — vars grouped by consumer.
+# 2. Env: Infisical is the source of truth (dev / preview / prod).
+brew install infisical/get-cli/infisical
+infisical login && infisical init          # writes .infisical.json (commit it)
+bun run env:bootstrap                       # create the folder structure
+#    Migrating an old .env once:
+#      bun run env:bootstrap -- --import .env --env dev
+#    Until .infisical.json exists, the scripts fall back to .env / direnv,
+#    so this migration is non-breaking. Full matrix: .env.example header.
+#    Full runbook: .claude/skills/env-deploy/SKILL.md
 
 # 3. Generate and apply the initial migration
 bun run db:generate
 bun run db:migrate
 
-# 4. Start the apps
+# 4. Start the apps (secrets auto-injected via scripts/with-infisical.sh)
 bun run dev   # web on :3002, admin on :3003
 ```
 
@@ -111,6 +111,9 @@ Both `apps/web` and `apps/admin` are internationalized with **next-intl** (Spani
 | `bun run test` | Vitest in every package (excludes `apps/e2e`) |
 | `bun run e2e` | Playwright (once specs land) |
 | `bun run knip` | Dead code / unused deps / unused exports |
+| `bun run env:bootstrap` | Create the Infisical folder structure (`-- --import .env --env dev` to migrate an old `.env`) |
+| `bun run env:pull` | Export the current Infisical env as dotenv to stdout |
+| `bun run env:check` | List every secret in the current Infisical env |
 | `bun run db:generate` | Generate a Drizzle migration from the schema |
 | `bun run db:migrate` | Apply migrations to Neon |
 | `bun run db:studio` | Open Drizzle Studio |
@@ -147,18 +150,23 @@ Direct pushes to `main` are blocked by branch protection. The full rule is in `.
 
 ## Configuration boundaries
 
-| Variable / secret | local `.env` | Vercel project env | Trigger.dev project env |
-| --- | :-: | :-: | :-: |
-| `DATABASE_URL` | yes | both apps | yes |
-| `BETTER_AUTH_SECRET` | yes | admin only | no |
-| `BETTER_AUTH_URL` | optional override | optional override | no |
-| `NEXT_PUBLIC_APP_URL` | optional override | optional override | no |
-| `BETTER_STACK_SOURCE_TOKEN_<APP>` | yes (per app) | per app | per service |
-| `BETTER_STACK_API_TOKEN` | yes | **no** (MCP only) | **no** |
-| `SLACK_BOT_TOKEN` | yes | **no** (MCP only) | **no** |
-| `TRIGGER_PROJECT_ID` / `TRIGGER_SECRET_KEY` | yes | no | yes |
+**Infisical is the single source of truth** for every secret across
+`dev` / `preview` / `prod`. Secrets are organized into folders by consumer
+and synced to each runtime — nothing is hand-entered into Vercel,
+Trigger.dev or PartyKit.
 
-`.env.example` is the canonical list with rationale per variable.
+| Infisical folder | Consumed by | Examples |
+| --- | --- | --- |
+| `/shared` | web + admin + jobs | `DATABASE_URL`, `*_PROVIDER`, `TWILIO_*`, `R2_*` |
+| `/web` | apps/web only | `NEXT_PUBLIC_*`, `BETTER_STACK_*_WEB` |
+| `/admin` | apps/admin only | `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_*` |
+| `/jobs` | packages/jobs (Trigger.dev) | `TRIGGER_*`, `OUTBOX_RETENTION_DAYS` |
+| `/partykit` | the realtime worker | `PARTYKIT_HOST`, `PARTYKIT_PROJECT` |
+| `/mcp` | Claude Code MCP + CI **only** | `BETTER_STACK_API_TOKEN`, `SLACK_BOT_TOKEN` |
+
+`.env.example` is the canonical matrix (variable → folder → which envs
+differ → static/on-fly). The full runbook — setup, rotation, Vercel/CI/MCP
+integration, troubleshooting — is in `.claude/skills/env-deploy/SKILL.md`.
 
 ### Why `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` are optional
 
@@ -222,6 +230,7 @@ Deep dive: `.claude/skills/ui/SKILL.md`.
 | `next-intl` | i18n setup, server vs client patterns, locale switching, adding locales |
 | `ui` | Component library, Base UI primitives, theme tokens, dark mode, Storybook |
 | `pwa` | Install/offline, cache strategy, refreshing icons + brand, Lighthouse, gotchas |
+| `env-deploy` | Infisical source of truth, folder→runtime mapping, local/Vercel/CI/MCP injection, secret rotation |
 | `ci-cd` | Pipeline (validate-only), branch protection, opening PRs, troubleshooting |
 | `vercel` | Per-project setup, env vars, Sensitive trap, MCP usage, rollback |
 | `better-stack` | Logs/uptime/dashboards/alerts via BS MCP, source-token model |
@@ -236,7 +245,7 @@ Deep dive: `.claude/skills/ui/SKILL.md`.
 | `tooling` | oxlint + commitlint + lefthook conventions, valid scopes |
 | `drizzle` / `trpc` / `next-best-practices` / `bun` / `turborepo` / `neon-postgres` | Patterns + best practices per framework |
 
-Skills authored locally in this repo: `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `email`, `push`, `realtime`, `storage`, `file-upload`, `api-filters`, `architecture-guard`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest come from the broader Claude Code skills ecosystem.
+Skills authored locally in this repo: `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `email`, `push`, `realtime`, `storage`, `file-upload`, `api-filters`, `architecture-guard`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `tooling`. The rest come from the broader Claude Code skills ecosystem.
 
 ## MCP servers
 
