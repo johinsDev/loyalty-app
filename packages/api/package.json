@@ -28,6 +28,7 @@
     "@loyalty/push": "workspace:*",
     "@loyalty/realtime": "workspace:*",
     "@loyalty/storage": "workspace:*",
+    "@trigger.dev/sdk": "^4.4.0",
     "@trpc/server": "^11.0.0",
     "drizzle-orm": "^0.36.0",
     "mime-types": "^2.1.35",

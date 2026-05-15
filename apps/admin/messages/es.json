@@ -128,7 +128,11 @@
     "tokenLabel": "Token completo",
     "dataTitle": "Data payload",
     "metadataTitle": "Metadata",
-    "providerMessageId": "Provider message ID:"
+    "providerMessageId": "Provider message ID:",
+    "testButton": "Probar push",
+    "testSending": "Enviando…",
+    "testSent": "Push enviado a {count, plural, one {# dispositivo} other {# dispositivos}}. Aparecerá abajo en unos segundos.",
+    "testFailedGeneric": "No se pudo enviar la prueba"
   },
   "Realtime": {
     "title": "Realtime smoke",

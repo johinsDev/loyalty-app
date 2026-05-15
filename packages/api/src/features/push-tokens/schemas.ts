@@ -8,7 +8,7 @@ import { z } from "zod";
 export const pushPlatformSchema = z.enum(["webpush", "expo"]);
 
 export const registerInputSchema = z.object({
-  customerId: z.string().uuid(),
+  customerId: z.string().min(1),
   organizationId: z.string().min(1),
   platform: pushPlatformSchema,
   token: z.string().min(1),
@@ -16,13 +16,13 @@ export const registerInputSchema = z.object({
 });
 
 export const revokeInputSchema = z.object({
-  customerId: z.string().uuid(),
+  customerId: z.string().min(1),
   organizationId: z.string().min(1),
   token: z.string().min(1),
 });
 
 export const listForCustomerInputSchema = z.object({
-  customerId: z.string().uuid(),
+  customerId: z.string().min(1),
   organizationId: z.string().min(1),
 });
 
