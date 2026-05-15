@@ -6,32 +6,14 @@ import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
 type NavItem = {
-  href:
-    | "/dashboard"
-    | "/customers"
-    | "/rewards"
-    | "/whatsapp-outbox"
-    | "/sms-outbox"
-    | "/email-outbox"
-    | "/push-outbox";
-  key:
-    | "dashboard"
-    | "customers"
-    | "rewards"
-    | "whatsappOutbox"
-    | "smsOutbox"
-    | "emailOutbox"
-    | "pushOutbox";
+  href: "/dashboard" | "/customers" | "/rewards";
+  key: "dashboard" | "customers" | "rewards";
 };
 
 const ITEMS: readonly NavItem[] = [
   { href: "/dashboard", key: "dashboard" },
   { href: "/customers", key: "customers" },
   { href: "/rewards", key: "rewards" },
-  { href: "/whatsapp-outbox", key: "whatsappOutbox" },
-  { href: "/sms-outbox", key: "smsOutbox" },
-  { href: "/email-outbox", key: "emailOutbox" },
-  { href: "/push-outbox", key: "pushOutbox" },
 ];
 
 /**
