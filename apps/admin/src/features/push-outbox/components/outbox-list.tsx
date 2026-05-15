@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 
+import { RefreshButton } from "@/components/refresh-button";
+
 import {
   type RawSearchParams,
   parsePushSearchParams,
@@ -18,15 +20,18 @@ export async function OutboxList({ searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-6xl p-6">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+        </div>
+        <RefreshButton />
       </header>
 
       <FiltersForm />
 
       <Suspense
-        key={JSON.stringify(params)}
+        key={JSON.stringify(searchParams)}
         fallback={<OutboxTableSkeleton />}
       >
         <OutboxTable

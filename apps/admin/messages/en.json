@@ -4,7 +4,8 @@
     "description": "Admin dashboard for the loyalty program"
   },
   "Common": {
-    "switchLocale": "Switch language"
+    "switchLocale": "Switch language",
+    "refresh": "Refresh"
   },
   "Nav": {
     "dashboard": "Dashboard",
