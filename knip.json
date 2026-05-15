@@ -6,6 +6,7 @@
       "entry": [
         "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest}.{ts,tsx}",
         "src/env.ts",
+        "src/lib/auth-guard.ts",
         "src/lib/cache.ts",
         "src/lib/email.ts",
         "src/lib/push.ts",
@@ -21,6 +22,7 @@
         "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest,icon,apple-icon}.{ts,tsx}",
         "app/sw.ts",
         "src/env.ts",
+        "src/lib/auth-guard.ts",
         "src/lib/cache.ts",
         "src/lib/email.ts",
         "src/lib/push.ts",
@@ -45,9 +47,13 @@
       "project": ["**/*.{ts,tsx}"]
     },
     "packages/api": {},
-    "packages/auth": {},
+    "packages/auth": {
+      "entry": ["src/index.ts", "src/server.ts", "src/client.ts", "src/api-guard.ts"]
+    },
     "packages/date": { "entry": ["src/index.ts", "src/react/index.ts"] },
-    "packages/db": {},
+    "packages/db": {
+      "entry": ["src/index.ts", "src/migrate.ts", "src/seed-owner.ts"]
+    },
     "packages/log": {},
     "packages/ui": {},
     "packages/cache": {
