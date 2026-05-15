@@ -1,5 +1,6 @@
 import { MissingDependencyError, ProviderError } from "../errors";
 import type { CacheProvider, RedisProviderConfig } from "../types";
+import { dynamicImport } from "./_lazy";
 
 /**
  * Traditional Redis provider via `ioredis`. Good for long-lived
@@ -24,8 +25,7 @@ export class RedisProvider implements CacheProvider {
     if (this.#client) return this.#client as RedisClientLike;
     let mod: { default: new (url: string) => RedisClientLike };
     try {
-      // @ts-expect-error `ioredis` is an optional peer dep.
-      mod = (await import("ioredis")) as unknown as typeof mod;
+      mod = (await dynamicImport("ioredis")) as unknown as typeof mod;
     } catch {
       throw new MissingDependencyError("redis", "ioredis");
     }
