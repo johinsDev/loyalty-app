@@ -81,14 +81,15 @@ export class R2Provider implements StorageProvider {
       ) => Promise<string>;
     };
     try {
-      // @ts-expect-error optional peer dep
+      // Optional peer dep; the cast keeps this compiling even when the
+      // package isn't installed in the consumer.
       const mod = await import("@aws-sdk/client-s3");
       s3Module = mod as unknown as typeof s3Module;
     } catch {
       throw new MissingDependencyError("r2", "@aws-sdk/client-s3");
     }
     try {
-      // @ts-expect-error optional peer dep
+      // Optional peer dep; cast same as above.
       const mod = await import("@aws-sdk/s3-request-presigner");
       presignerModule = mod as unknown as typeof presignerModule;
     } catch {
@@ -155,12 +156,17 @@ export class R2Provider implements StorageProvider {
     options: PutSignedUrlOptions,
   ): Promise<PresignedUpload> {
     await this.#ensure();
+    // Do NOT include ContentLength here: AWS SDK signs `content-length`
+    // into the URL, then R2 rejects the PUT with 403 because the browser
+    // sends the actual file size, not `maxSize`. Size is enforced
+    // client-side by `useFileUpload` before the URL is even requested.
+    // Same for Metadata — would force the client to send matching
+    // x-amz-meta-* headers, but the upload hook only forwards
+    // `content-type`.
     const cmd = new this.#commands!.PutObjectCommand({
       Bucket: this.#config.bucket,
       Key: key,
       ContentType: options.contentType,
-      ContentLength: options.maxSize,
-      Metadata: options.metadata,
     });
     const expiresIn = options.expiresIn ?? 300;
     const url = await this.#presigner!(this.#client!, cmd, { expiresIn });
