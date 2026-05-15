@@ -1,6 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { type ReactNode, useState } from "react";
 
 import { TRPCProvider } from "@/lib/trpc/client";
@@ -16,8 +17,10 @@ export const Providers = ({ children }: { children: ReactNode }) => {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TRPCProvider queryClient={queryClient}>{children}</TRPCProvider>
-    </QueryClientProvider>
+    <NuqsAdapter>
+      <QueryClientProvider client={queryClient}>
+        <TRPCProvider queryClient={queryClient}>{children}</TRPCProvider>
+      </QueryClientProvider>
+    </NuqsAdapter>
   );
 };
