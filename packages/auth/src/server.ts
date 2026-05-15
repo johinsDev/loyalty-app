@@ -15,6 +15,16 @@ export type CreateAuthOptions = {
    * keeps email/password enabled so existing admin sessions don't drop.
    */
   emailAndPasswordEnabled?: boolean;
+  /**
+   * Per-app base URL. Better Auth uses this to mint the OAuth redirect
+   * URI (`{baseURL}/api/auth/callback/google`) and to set cookie
+   * attributes. Web and admin live on different ports / domains, so
+   * each app's `/api/auth/[...all]/route.ts` MUST pass its own value
+   * (typically `getAppUrl()` from `@/lib/app-url`). Falling back to a
+   * global env var here would send Google a redirect URI that points
+   * at the wrong app.
+   */
+  baseURL?: string;
 };
 
 const PHONE_OTP_WINDOW_SECONDS = 30 * 60;
@@ -24,7 +34,7 @@ const vercelUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : null;
 
-const baseURL =
+const defaultBaseURL =
   process.env.BETTER_AUTH_URL ?? vercelUrl ?? "http://localhost:3003";
 
 const webURL =
@@ -37,11 +47,13 @@ export function createAuth(
   const googleConfigured =
     !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
 
+  const baseURL = options.baseURL ?? defaultBaseURL;
+
   return betterAuth({
     database: drizzleAdapter(db, { provider: "pg" }),
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL,
-    trustedOrigins: [baseURL, webURL, "http://localhost:3002"],
+    trustedOrigins: [baseURL, webURL, "http://localhost:3002", "http://localhost:3003"],
     rateLimit: {
       enabled: true,
       window: 60,
