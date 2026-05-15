@@ -12,6 +12,19 @@ const config: NextConfig = {
     "@loyalty/log",
     "@loyalty/ui",
   ],
+  // Optional provider deps are loaded lazily via `await import(...)` in
+  // @loyalty/{push,sms,whatsapp,cache,email,storage}. Mark them external
+  // so the dev bundler doesn't try to resolve them at build time when
+  // they're not the selected provider. (Same fix as packages/jobs'
+  // trigger.config.ts build.external.)
+  serverExternalPackages: [
+    "web-push",
+    "expo-server-sdk",
+    "twilio",
+    "ioredis",
+    "@upstash/redis",
+    "resend",
+  ],
   typedRoutes: true,
 };
 

@@ -21,6 +21,17 @@ const config: NextConfig = {
     "@loyalty/log",
     "@loyalty/ui",
   ],
+  // Optional provider deps loaded via `await import(...)` in
+  // @loyalty/{push,sms,whatsapp,cache,email,storage}. Mark external
+  // so the dev bundler doesn't try to resolve uninstalled ones.
+  serverExternalPackages: [
+    "web-push",
+    "expo-server-sdk",
+    "twilio",
+    "ioredis",
+    "@upstash/redis",
+    "resend",
+  ],
   typedRoutes: true,
 };
 
