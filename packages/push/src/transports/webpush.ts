@@ -5,6 +5,7 @@ import {
   SubscriptionExpiredError,
 } from "../errors";
 import { webPushSubscriptionSchema } from "../schemas";
+import { dynamicImport } from "./_lazy";
 import type {
   PushMessageData,
   PushResponse,
@@ -46,7 +47,14 @@ export class WebPushTransport implements PushTransport {
     if (this.#initialized && this.#lib) return this.#lib;
     let mod: unknown;
     try {
-      mod = await import("web-push");
+      // Function-constructor indirection hides the optional peer dep
+      // from Turbopack / Webpack static analysis. Plain `await import("…")`
+      // (and even `const name = "…"; await import(name)`) get traced
+      // because the bundler does constant propagation. Building the
+      // import body via `new Function` blocks that propagation entirely,
+      // so the dev server stops emitting "Module not found" warnings
+      // for providers the runtime never selects.
+      mod = await dynamicImport("web-push");
     } catch {
       throw new MissingDependencyError("webpush", "web-push");
     }

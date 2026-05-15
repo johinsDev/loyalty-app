@@ -1,5 +1,6 @@
 import { MissingDependencyError, ProviderError } from "../errors";
 import type { CacheProvider, UpstashProviderConfig } from "../types";
+import { dynamicImport } from "./_lazy";
 
 /**
  * Upstash Redis provider. Serverless-friendly (REST-based, no
@@ -25,8 +26,7 @@ export class UpstashProvider implements CacheProvider {
     if (this.#client) return this.#client as UpstashClientLike;
     let mod: { Redis: { fromEnv: () => UpstashClientLike; new (init: { url: string; token: string }): UpstashClientLike } };
     try {
-      // @ts-expect-error `@upstash/redis` is an optional peer dep.
-      mod = (await import("@upstash/redis")) as unknown as typeof mod;
+      mod = (await dynamicImport("@upstash/redis")) as unknown as typeof mod;
     } catch {
       throw new MissingDependencyError("upstash", "@upstash/redis");
     }

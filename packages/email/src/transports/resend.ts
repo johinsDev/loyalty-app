@@ -4,6 +4,7 @@ import {
   RateLimitError,
 } from "../errors";
 import { priorityToXPriority } from "../schemas";
+import { dynamicImport } from "./_lazy";
 import type {
   EmailMessageData,
   EmailResponse,
@@ -48,8 +49,7 @@ export class ResendTransport implements EmailTransport {
     if (this.#client) return this.#client as ResendClientLike;
     let mod: { Resend: new (apiKey: string) => ResendClientLike };
     try {
-      // @ts-expect-error `resend` is an optional peer dep.
-      mod = (await import("resend")) as unknown as typeof mod;
+      mod = (await dynamicImport("resend")) as unknown as typeof mod;
     } catch {
       throw new MissingDependencyError("resend", "resend");
     }
