@@ -6,13 +6,28 @@ import { routing } from "./src/i18n/routing";
 
 const intl = createMiddleware(routing);
 
-const SIGN_IN_PATHS = new Set(["/iniciar-sesion", "/sign-in"]);
+const SIGN_IN_PATHS = ["/iniciar-sesion", "/sign-in"];
 
-function isSignInPath(pathname: string): boolean {
-  for (const path of SIGN_IN_PATHS) {
+const PUBLIC_DEV_PATHS = [
+  "/whatsapp-outbox",
+  "/sms-outbox",
+  "/email-outbox",
+  "/push-outbox",
+];
+
+function endsWithAny(pathname: string, paths: readonly string[]): boolean {
+  for (const path of paths) {
     if (pathname === path || pathname.endsWith(path)) return true;
+    if (pathname.includes(`${path}/`)) return true;
   }
   return false;
+}
+
+function isPublicPath(pathname: string): boolean {
+  return (
+    endsWithAny(pathname, SIGN_IN_PATHS) ||
+    endsWithAny(pathname, PUBLIC_DEV_PATHS)
+  );
 }
 
 export default function proxy(request: NextRequest) {
@@ -20,7 +35,7 @@ export default function proxy(request: NextRequest) {
 
   const intlResponse = intl(request);
 
-  if (isSignInPath(pathname)) return intlResponse;
+  if (isPublicPath(pathname)) return intlResponse;
 
   const session = getSessionCookie(request);
   if (session) return intlResponse;
