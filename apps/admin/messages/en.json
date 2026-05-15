@@ -23,6 +23,7 @@
     "submitting": "Signing in…",
     "signOut": "Sign out",
     "signingOut": "Signing out…",
+    "errorForbidden": "You don't have access to that section. Sign in with an authorized account.",
     "genericError": "Could not sign in"
   },
   "Dashboard": {
