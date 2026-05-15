@@ -19,6 +19,7 @@
     "@loyalty/api": "workspace:*",
     "@loyalty/db": "workspace:*",
     "@loyalty/log": "workspace:*",
+    "@loyalty/push": "workspace:*",
     "@loyalty/whatsapp": "workspace:*",
     "@t3-oss/env-core": "^0.13.0",
     "@trigger.dev/sdk": "^4.4.0",

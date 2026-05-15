@@ -1,3 +1,4 @@
+import { Toaster } from "@loyalty/ui";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { Metadata } from "next";
@@ -40,6 +41,7 @@ export default async function LocaleLayout({ children, params }: Props) {
         <LocaleSwitcher />
       </div>
       <Providers>{children}</Providers>
+      <Toaster position="top-right" />
     </NextIntlClientProvider>
   );
 }

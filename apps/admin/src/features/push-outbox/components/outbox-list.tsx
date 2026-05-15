@@ -11,6 +11,7 @@ import {
 import { FiltersForm } from "./filters-form";
 import { OutboxTable } from "./outbox-table";
 import { OutboxTableSkeleton } from "./outbox-table-skeleton";
+import { SendTestPushButton } from "./send-test-button";
 
 type Props = { searchParams: RawSearchParams };
 
@@ -25,6 +26,8 @@ export async function OutboxList({ searchParams }: Props) {
           <h1 className="text-2xl font-semibold">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
+        <SendTestPushButton />
+        
         <RefreshButton />
       </header>
 
