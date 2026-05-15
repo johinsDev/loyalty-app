@@ -21,6 +21,8 @@
     "googleButton": "Continuar con Google",
     "googleError": "No pudimos iniciar sesión con Google",
     "submitting": "Iniciando…",
+    "signOut": "Cerrar sesión",
+    "signingOut": "Cerrando…",
     "genericError": "No se pudo iniciar sesión"
   },
   "Dashboard": {

@@ -21,6 +21,8 @@
     "googleButton": "Continue with Google",
     "googleError": "We couldn't sign you in with Google",
     "submitting": "Signing in…",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
     "genericError": "Could not sign in"
   },
   "Dashboard": {

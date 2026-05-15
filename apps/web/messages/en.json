@@ -136,6 +136,8 @@
     "resendCode": "Resend code",
     "resendIn": "Resend in {seconds}s",
     "changePhone": "Change number",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
     "errorInvalidPhone": "Invalid phone number",
     "errorOtpFailed": "The code is incorrect or expired",
     "errorGoogleFailed": "We couldn't sign you in with Google",
