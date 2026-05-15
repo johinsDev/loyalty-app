@@ -10,31 +10,11 @@ const intl = createMiddleware(routing);
 // `routing.pathnames["/sign-in"]`.
 const SIGN_IN_PATHS = ["/iniciar-sesion", "/sign-in"];
 
-// Dev-only outboxes need to be reachable without a session so PMs in
-// preview can grab the OTP they need to log in (chicken-and-egg if we
-// gated them). The `(dev)` layout already 404s in production, so this
-// only opens the door in dev + preview.
-const PUBLIC_DEV_PATHS = [
-  "/whatsapp-outbox",
-  "/sms-outbox",
-  "/email-outbox",
-  "/push-outbox",
-];
-
-function endsWithAny(pathname: string, paths: readonly string[]): boolean {
-  for (const path of paths) {
+function isSignInPath(pathname: string): boolean {
+  for (const path of SIGN_IN_PATHS) {
     if (pathname === path || pathname.endsWith(path)) return true;
-    // `/whatsapp-outbox/<id>` style detail routes
-    if (pathname.includes(`${path}/`)) return true;
   }
   return false;
-}
-
-function isPublicPath(pathname: string): boolean {
-  return (
-    endsWithAny(pathname, SIGN_IN_PATHS) ||
-    endsWithAny(pathname, PUBLIC_DEV_PATHS)
-  );
 }
 
 export default function proxy(request: NextRequest) {
@@ -43,7 +23,7 @@ export default function proxy(request: NextRequest) {
   // Always run next-intl first so the request URL is canonicalized.
   const intlResponse = intl(request);
 
-  if (isPublicPath(pathname)) return intlResponse;
+  if (isSignInPath(pathname)) return intlResponse;
 
   const session = getSessionCookie(request);
   if (session) return intlResponse;
