@@ -51,6 +51,11 @@ export const env = createEnv({
   server: {
     DATABASE_URL: z.string().min(1),
 
+    BETTER_AUTH_SECRET: z.string().min(32),
+    BETTER_AUTH_URL: z.string().url().optional(),
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
+
     LOG_LEVEL: z
       .enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"])
       .optional(),

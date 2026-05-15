@@ -44,7 +44,8 @@ export class TwilioTransport implements SmsTransport {
 
   async #getClient(): Promise<TwilioClientLike> {
     if (!this.#client) {
-      // @ts-expect-error `twilio` is an optional peer dep; resolved at runtime.
+      // `twilio` is an optional peer dep; the cast keeps this compiling
+      // even when the package isn't installed in the consumer.
       const twilio = (await import("twilio")) as unknown as {
         default: (
           accountSid: string,

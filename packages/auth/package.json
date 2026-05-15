@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./server": "./src/server.ts",
-    "./client": "./src/client.ts"
+    "./client": "./src/client.ts",
+    "./api-guard": "./src/api-guard.ts"
   },
   "scripts": {
     "lint": "oxlint src",
@@ -17,7 +18,8 @@
   },
   "dependencies": {
     "@loyalty/db": "workspace:*",
-    "better-auth": "^1.2.0"
+    "better-auth": "^1.2.0",
+    "drizzle-orm": "^0.36.0"
   },
   "devDependencies": {
     "@loyalty/tsconfig": "workspace:*",
@@ -25,9 +27,11 @@
     "typescript": "^5.7.0"
   },
   "peerDependencies": {
+    "next": "^16.0.0",
     "react": "^19.0.0"
   },
   "peerDependenciesMeta": {
+    "next": { "optional": true },
     "react": { "optional": true }
   }
 }

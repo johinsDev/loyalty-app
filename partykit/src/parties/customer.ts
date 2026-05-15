@@ -42,7 +42,11 @@ export default class CustomerParty implements Party.Server {
       });
     }
     try {
-      await verifyTicket(token, secret, lobby.id);
+      // The ticket is signed against the full `customer:<id>` room name
+      // (see RealtimeService.issueTicket). `lobby.id` is just the
+      // <id> portion — PartyKit splits the kind off into the URL path.
+      // Reconstruct the canonical room name before verifying.
+      await verifyTicket(token, secret, `customer:${lobby.id}`);
     } catch {
       return new Response("invalid token", { status: 401 });
     }

@@ -32,4 +32,19 @@ export default defineConfig({
     },
   },
   dirs: ["./trigger"],
+  build: {
+    // Mark every optional provider dep as external so esbuild stops
+    // tracing the dynamic `await import("…")` chains in
+    // @loyalty/{whatsapp,sms,cache,email,push}. They're only loaded
+    // when the matching provider is selected at runtime; if a task
+    // ever needs one, install it in this package so it resolves then.
+    external: [
+      "twilio",
+      "ioredis",
+      "@upstash/redis",
+      "resend",
+      "expo-server-sdk",
+      "web-push",
+    ],
+  },
 });

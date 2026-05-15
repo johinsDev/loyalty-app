@@ -17,10 +17,13 @@
   },
   "Auth": {
     "signInTitle": "Iniciar sesión",
-    "emailPlaceholder": "email",
-    "passwordPlaceholder": "contraseña",
-    "submit": "Entrar",
-    "submitting": "Entrando…",
+    "signInSubtitle": "Acceso para empleados con cuenta corporativa",
+    "googleButton": "Continuar con Google",
+    "googleError": "No pudimos iniciar sesión con Google",
+    "submitting": "Iniciando…",
+    "signOut": "Cerrar sesión",
+    "signingOut": "Cerrando…",
+    "errorForbidden": "No tenés permisos para acceder a esa sección. Iniciá sesión con una cuenta autorizada.",
     "genericError": "No se pudo iniciar sesión"
   },
   "Dashboard": {

@@ -17,10 +17,13 @@
   },
   "Auth": {
     "signInTitle": "Sign in",
-    "emailPlaceholder": "email",
-    "passwordPlaceholder": "password",
-    "submit": "Sign in",
+    "signInSubtitle": "Staff access — sign in with your work Google account",
+    "googleButton": "Continue with Google",
+    "googleError": "We couldn't sign you in with Google",
     "submitting": "Signing in…",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
+    "errorForbidden": "You don't have access to that section. Sign in with an authorized account.",
     "genericError": "Could not sign in"
   },
   "Dashboard": {

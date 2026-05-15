@@ -10,12 +10,16 @@ import { log } from "./log";
  * triggered by staff actions (e.g. cashier adds a stamp → realtime
  * event fans out to the customer's connected devices).
  */
+const isLocalHost = (host: string | undefined) =>
+  !!host && /^(127\.0\.0\.1|localhost)(:|$)/.test(host);
+
 export const realtime =
   env.PARTYKIT_HOST && env.PARTYKIT_PROJECT && env.REALTIME_AUTH_SECRET
     ? new RealtimeClient({
         host: env.PARTYKIT_HOST,
         project: env.PARTYKIT_PROJECT,
         secret: env.REALTIME_AUTH_SECRET,
+        protocol: isLocalHost(env.PARTYKIT_HOST) ? "http" : "https",
       })
     : (() => {
         log.warn(

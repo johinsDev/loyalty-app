@@ -20,12 +20,19 @@ import { log } from "./log";
  *
  * See `.claude/skills/realtime/SKILL.md` for the deploy flow.
  */
+// Local PartyKit serves plain HTTP; production is HTTPS. RealtimeClient
+// defaults to `https`, which silently hangs the publisher for ~10s when
+// pointed at `127.0.0.1` and you wonder why publishHello times out.
+const isLocalHost = (host: string | undefined) =>
+  !!host && /^(127\.0\.0\.1|localhost)(:|$)/.test(host);
+
 export const realtime =
   env.PARTYKIT_HOST && env.PARTYKIT_PROJECT && env.REALTIME_AUTH_SECRET
     ? new RealtimeClient({
         host: env.PARTYKIT_HOST,
         project: env.PARTYKIT_PROJECT,
         secret: env.REALTIME_AUTH_SECRET,
+        protocol: isLocalHost(env.PARTYKIT_HOST) ? "http" : "https",
       })
     : (() => {
         log.warn(
