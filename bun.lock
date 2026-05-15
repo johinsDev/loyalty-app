@@ -39,6 +39,7 @@
         "@trpc/tanstack-react-query": "^11.0.0",
         "better-auth": "^1.2.0",
         "drizzle-orm": "^0.36.0",
+        "lucide-react": "^0.469.0",
         "next": "^16.2.6",
         "next-intl": "^4.11.2",
         "react": "^19.2.0",
@@ -126,6 +127,7 @@
         "ahooks": "^3.8.0",
         "better-auth": "^1.2.0",
         "drizzle-orm": "^0.36.0",
+        "lucide-react": "^0.469.0",
         "next": "^16.2.6",
         "next-intl": "^4.11.2",
         "nuqs": "^2.0.0",
@@ -187,9 +189,11 @@
         "typescript": "^5.7.0",
       },
       "peerDependencies": {
+        "next": "^16.0.0",
         "react": "^19.0.0",
       },
       "optionalPeers": [
+        "next",
         "react",
       ],
     },
