@@ -1,4 +1,4 @@
-import { publicProcedure, router } from "../../trpc";
+import { ownerProcedure, router } from "../../trpc";
 import { WhatsAppOutboxRepository } from "./repository";
 import {
   getInputSchema,
@@ -8,13 +8,13 @@ import {
 import { WhatsAppOutboxService } from "./service";
 
 /**
- * `publicProcedure` on purpose: the dev view on apps/web is gated by
- * env (`apps/web/lib/dev-only.ts`), not by auth — devs hunting for an
- * OTP aren't logged in yet. Production deploys serve 404 at the
- * page + endpoint layer, so this router stays safely empty in prod.
+ * `ownerProcedure` on purpose: only the operator's owner role can
+ * inspect outbox traffic. The matching admin pages (apps/admin under
+ * `(dev)/`) also gate at the layout level via `requireRole(OWNER_ONLY)`
+ * + `isDevOnlyEnabled()`, so this router stays unreachable in prod.
  */
 export const whatsappOutboxRouter = router({
-  list: publicProcedure
+  list: ownerProcedure
     .input(listInputSchema)
     .query(({ ctx, input }) => {
       const service = new WhatsAppOutboxService(
@@ -23,7 +23,7 @@ export const whatsappOutboxRouter = router({
       return service.list(input);
     }),
 
-  get: publicProcedure
+  get: ownerProcedure
     .input(getInputSchema)
     .query(({ ctx, input }) => {
       const service = new WhatsAppOutboxService(
@@ -32,7 +32,7 @@ export const whatsappOutboxRouter = router({
       return service.get(input.id);
     }),
 
-  latestForRecipient: publicProcedure
+  latestForRecipient: ownerProcedure
     .input(latestForRecipientInputSchema)
     .query(({ ctx, input }) => {
       const service = new WhatsAppOutboxService(

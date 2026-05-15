@@ -1,8 +1,10 @@
+import { OWNER_ONLY } from "@loyalty/auth/server";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import type { ReactNode } from "react";
 
 import { DevToolsNav } from "@/features/dev/components/dev-tools-nav";
+import { requireRole } from "@/lib/auth-guard";
 import { isDevOnlyEnabled } from "@/lib/dev-only";
 
 type Props = {
@@ -11,17 +13,22 @@ type Props = {
 };
 
 /**
- * Shared shell for dev-only tools (`/whatsapp-outbox`, `/sms-outbox`,
- * future debug pages). Runs the env gate once for every child route
- * and renders a small nav strip so links between tools live in one
- * place.
+ * Shared shell for dev-only tools (the four message outboxes, plus the
+ * storage + realtime smoke pages). Three gates, in order:
  *
- * Returns 404 in production; preview + local dev fall through.
+ *   1. `isDevOnlyEnabled()` — 404 in production. Preview + local dev
+ *      fall through.
+ *   2. `requireRole(OWNER_ONLY)` — only the owner role can see this
+ *      tree; staff / managers get bounced to /sign-in?error=forbidden.
+ *      Seed the first owner with `bun run db:seed:owner --email=...`.
+ *   3. The page itself can add its own checks (`protectedProcedure`,
+ *      etc.) but the layout's role check covers the broad case.
  */
 export default async function DevLayout({ children, params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   if (!isDevOnlyEnabled()) notFound();
+  await requireRole(OWNER_ONLY);
 
   return (
     <>
