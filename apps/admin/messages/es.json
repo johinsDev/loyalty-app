@@ -4,7 +4,8 @@
     "description": "Panel administrativo para programa de fidelización"
   },
   "Common": {
-    "switchLocale": "Cambiar idioma"
+    "switchLocale": "Cambiar idioma",
+    "refresh": "Refrescar"
   },
   "Nav": {
     "dashboard": "Dashboard",
