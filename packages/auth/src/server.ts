@@ -42,9 +42,22 @@ export type CreateAuthOptions = {
 const PHONE_OTP_WINDOW_SECONDS = 30 * 60;
 const PHONE_OTP_MAX_PER_WINDOW = 5;
 
-const vercelUrl = process.env.VERCEL_URL
+// `VERCEL_URL` is the per-deployment URL with a hash
+// (loyalty-app-admin-abc123.vercel.app) — it changes every push.
+// `VERCEL_PROJECT_PRODUCTION_URL` is the stable production alias
+// (loyalty-app-admin.vercel.app) — that's what the browser actually
+// hits and what must match Better Auth's origin check + Google's
+// redirect_uri. Prefer the stable one; fall back to the deployment
+// URL for preview deploys (which have no stable alias).
+const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : null;
+
+const vercelDeploymentUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : null;
+
+const vercelUrl = vercelProductionUrl ?? vercelDeploymentUrl;
 
 const defaultBaseURL =
   process.env.BETTER_AUTH_URL ?? vercelUrl ?? "http://localhost:3003";
@@ -65,7 +78,22 @@ export function createAuth(
     database: drizzleAdapter(db, { provider: "pg" }),
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL,
-    trustedOrigins: [baseURL, webURL, "http://localhost:3002", "http://localhost:3003"],
+    // Better Auth rejects any request whose Origin isn't listed here
+    // ("Invalid origin"). We include: the resolved baseURL, the web
+    // URL, both localhost ports, the stable prod alias + deployment
+    // URL, and a `*.vercel.app` wildcard so every preview deploy
+    // (hashed subdomain) also passes. When a custom domain lands,
+    // add it via BETTER_AUTH_URL / NEXT_PUBLIC_APP_URL — those flow
+    // into baseURL/webURL above.
+    trustedOrigins: [
+      baseURL,
+      webURL,
+      "http://localhost:3002",
+      "http://localhost:3003",
+      ...(vercelProductionUrl ? [vercelProductionUrl] : []),
+      ...(vercelDeploymentUrl ? [vercelDeploymentUrl] : []),
+      "https://*.vercel.app",
+    ],
     rateLimit: {
       enabled: true,
       window: 60,
