@@ -3,21 +3,31 @@ import { config as loadEnv } from "dotenv";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Trigger CLI runs from packages/jobs so the monorepo .env sits two
-// levels up. Load it explicitly so TRIGGER_PROJECT_ID, DATABASE_URL,
-// etc. are available both when evaluating this config and when tasks
-// execute in dev.
-const here = dirname(fileURLToPath(import.meta.url));
-loadEnv({ path: resolve(here, "../../.env") });
+// `trigger dev` evaluates this file in place, so the monorepo .env
+// (two levels up) is loadable and gives tasks DATABASE_URL etc.
+//
+// `trigger deploy` bundles + evaluates the config inside an isolated
+// sandbox where `import.meta.url` is `file:///trigger.config.ts` and
+// the relative `../../.env` resolves to nothing — dotenv loads 0 vars.
+// That's expected: on deploy, env comes from the Trigger.dev project
+// dashboard, not the repo .env. So the load is best-effort and must
+// never throw, and the project ref must NOT depend on it.
+//
+// The project ref (`proj_…`) is a public identifier (it shows up in
+// build logs + the AI-help URLs), not a secret — safe to hardcode as
+// the fallback so config evaluation survives the deploy sandbox.
+const TRIGGER_PROJECT_REF = "proj_pwqxhdhrlurljnctiqdz";
 
-if (!process.env.TRIGGER_PROJECT_ID) {
-  throw new Error(
-    "TRIGGER_PROJECT_ID is not set. Add it to the monorepo root .env.",
-  );
+try {
+  const here = dirname(fileURLToPath(import.meta.url));
+  loadEnv({ path: resolve(here, "../../.env") });
+} catch {
+  // No-op: deploy sandbox has no repo .env. Env is injected by the
+  // Trigger.dev dashboard at runtime there.
 }
 
 export default defineConfig({
-  project: process.env.TRIGGER_PROJECT_ID,
+  project: process.env.TRIGGER_PROJECT_ID ?? TRIGGER_PROJECT_REF,
   runtime: "node",
   logLevel: "info",
   maxDuration: 300,
