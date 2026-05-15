@@ -64,6 +64,9 @@ export const env = createEnv({
 
     WHATSAPP_PROVIDER: whatsappProvider,
     WHATSAPP_PREVIEW_DIR: z.string().optional(),
+    WHATSAPP_OUTBOX_ENDPOINT_ENABLED: z
+      .enum(["true", "false"])
+      .optional(),
 
     SMS_PROVIDER: smsProvider,
     SMS_PREVIEW_DIR: z.string().optional(),
@@ -152,7 +155,14 @@ export const env = createEnv({
     R2_BUCKET: requireWhen("R2_BUCKET", isStorageR2, "STORAGE_PROVIDER=r2"),
     R2_PUBLIC_URL: z.string().url().optional(),
   },
-  client: {},
-  experimental__runtimeEnv: process.env,
+  client: {
+    NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+    NEXT_PUBLIC_PARTYKIT_HOST: z.string().optional(),
+  },
+  experimental__runtimeEnv: {
+    ...process.env,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_PARTYKIT_HOST: process.env.NEXT_PUBLIC_PARTYKIT_HOST,
+  },
   emptyStringAsUndefined: true,
 });

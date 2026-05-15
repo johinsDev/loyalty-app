@@ -70,9 +70,6 @@ export const env = createEnv({
 
     WHATSAPP_PROVIDER: whatsappProvider,
     WHATSAPP_PREVIEW_DIR: z.string().optional(),
-    WHATSAPP_OUTBOX_ENDPOINT_ENABLED: z
-      .enum(["true", "false"])
-      .optional(),
 
     SMS_PROVIDER: smsProvider,
     SMS_PREVIEW_DIR: z.string().optional(),
