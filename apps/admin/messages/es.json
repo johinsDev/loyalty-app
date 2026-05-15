@@ -9,7 +9,8 @@
   "Nav": {
     "dashboard": "Dashboard",
     "customers": "Clientes",
-    "rewards": "Premios"
+    "rewards": "Premios",
+    "devTools": "Herramientas dev"
   },
   "Auth": {
     "signInTitle": "Iniciar sesión",
