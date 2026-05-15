@@ -14,6 +14,7 @@ import type {
   StorageProvider,
 } from "../types";
 import { coerceBody } from "./_shared/body";
+import { dynamicImport } from "./_lazy";
 
 export interface R2ProviderConfig {
   accountId: string;
@@ -81,16 +82,13 @@ export class R2Provider implements StorageProvider {
       ) => Promise<string>;
     };
     try {
-      // Optional peer dep; the cast keeps this compiling even when the
-      // package isn't installed in the consumer.
-      const mod = await import("@aws-sdk/client-s3");
+      const mod = await dynamicImport("@aws-sdk/client-s3");
       s3Module = mod as unknown as typeof s3Module;
     } catch {
       throw new MissingDependencyError("r2", "@aws-sdk/client-s3");
     }
     try {
-      // Optional peer dep; cast same as above.
-      const mod = await import("@aws-sdk/s3-request-presigner");
+      const mod = await dynamicImport("@aws-sdk/s3-request-presigner");
       presignerModule = mod as unknown as typeof presignerModule;
     } catch {
       throw new MissingDependencyError("r2", "@aws-sdk/s3-request-presigner");

@@ -5,6 +5,7 @@ import type {
   WhatsAppResponse,
   WhatsAppTransport,
 } from "../types";
+import { dynamicImport } from "./_lazy";
 
 const VERIFY_DELAY_MS = 2_000;
 
@@ -44,9 +45,10 @@ export class TwilioTransport implements WhatsAppTransport {
 
   async #getClient(): Promise<TwilioClientLike> {
     if (!this.#client) {
-      // `twilio` is an optional peer dep; the cast keeps this compiling
-      // even when the package isn't installed in the consumer.
-      const twilio = (await import("twilio")) as unknown as {
+      // `twilio` is an optional peer dep. Function-constructor
+      // indirection in `_lazy.ts` keeps Turbopack / Webpack from
+      // tracing the specifier statically.
+      const twilio = (await dynamicImport("twilio")) as unknown as {
         default: (
           accountSid: string,
           authToken: string,

@@ -5,6 +5,7 @@ import {
   RateLimitError,
   SubscriptionExpiredError,
 } from "../errors";
+import { dynamicImport } from "./_lazy";
 import type {
   ExpoProviderConfig,
   PushMessageData,
@@ -54,8 +55,9 @@ export class ExpoTransport implements PushTransport {
     }
     let mod: { Expo: ExpoStaticLike };
     try {
-      // @ts-expect-error `expo-server-sdk` is an optional peer dep.
-      mod = (await import("expo-server-sdk")) as unknown as typeof mod;
+      // `dynamicImport` uses Function-constructor indirection so the
+      // bundler can't trace this optional peer dep at compile time.
+      mod = (await dynamicImport("expo-server-sdk")) as unknown as typeof mod;
     } catch {
       throw new MissingDependencyError("expo", "expo-server-sdk");
     }
