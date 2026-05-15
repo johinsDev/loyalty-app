@@ -119,6 +119,8 @@ apps/storybook/storybook-static/
 !.claude/skills/storage/**
 !.claude/skills/file-upload
 !.claude/skills/file-upload/**
+!.claude/skills/auth
+!.claude/skills/auth/**
 
 # Ad-hoc dev seed scripts (not for CI). Run locally with
 #   bun --env-file=../../.env scripts/seed-<name>.ts
