@@ -94,6 +94,16 @@ export class R2Provider implements StorageProvider {
     } catch {
       throw new MissingDependencyError("r2", "@aws-sdk/s3-request-presigner");
     }
+    // Webpack/Bun can return an empty namespace for an unresolvable
+    // optional peer dep instead of throwing. Catch that here so callers
+    // see a useful "install @aws-sdk/client-s3 or switch STORAGE_PROVIDER
+    // to local" message instead of `S3Client is not a constructor`.
+    if (typeof s3Module.S3Client !== "function") {
+      throw new MissingDependencyError("r2", "@aws-sdk/client-s3");
+    }
+    if (typeof presignerModule.getSignedUrl !== "function") {
+      throw new MissingDependencyError("r2", "@aws-sdk/s3-request-presigner");
+    }
     this.#client = new s3Module.S3Client({
       region: "auto",
       endpoint: `https://${this.#config.accountId}.r2.cloudflarestorage.com`,
