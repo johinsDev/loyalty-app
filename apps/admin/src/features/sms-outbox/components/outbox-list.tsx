@@ -1,108 +1,42 @@
+import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
+
 import {
-  Badge,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@loyalty/ui";
+  type RawSearchParams,
+  parseSmsSearchParams,
+} from "../lib/parse-search-params";
 
-import { Link } from "@/i18n/navigation";
-import { trpc } from "@/lib/trpc/server";
+import { FiltersForm } from "./filters-form";
+import { OutboxTable } from "./outbox-table";
+import { OutboxTableSkeleton } from "./outbox-table-skeleton";
 
-/**
- * SMS Outbox panel. Lists messages persisted by the `outbox` provider
- * in `@loyalty/sms`. Active in preview deploys (and locally when
- * `SMS_PROVIDER=outbox`). Empty in production since Twilio is the
- * provider there.
- */
-export async function OutboxList() {
-  const api = await trpc();
-  const { rows } = await api.smsOutbox.list({ page: 1, pageSize: 100 });
+type Props = { searchParams: RawSearchParams };
+
+export async function OutboxList({ searchParams }: Props) {
+  const t = await getTranslations("SmsOutbox");
+  const params = parseSmsSearchParams(searchParams);
 
   return (
     <main className="mx-auto max-w-6xl p-6">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold">SMS Outbox</h1>
-        <p className="text-sm text-muted-foreground">
-          Mensajes enviados a través del provider <code>outbox</code> de{" "}
-          <code>@loyalty/sms</code>. Vacío en producción.
-        </p>
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </header>
 
-      {rows.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No hay mensajes</CardTitle>
-            <CardDescription>
-              Cuando algún flow dispare un SMS con el provider outbox, vas a
-              verlo acá.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            <p>
-              ¿Esperás ver mensajes? Asegurate de que la app esté corriendo con{" "}
-              <code>SMS_PROVIDER=outbox</code>.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cuándo</TableHead>
-                  <TableHead>Destinatario</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Segmentos</TableHead>
-                  <TableHead>Vista previa</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                      {row.sentAt.toISOString().replace("T", " ").slice(0, 19)}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{row.to}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          row.status === "sent" ? "secondary" : "destructive"
-                        }
-                      >
-                        {row.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {row.encoding} · {row.segments}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        href={{
-                          pathname: "/sms-outbox/[id]",
-                          params: { id: row.id },
-                        }}
-                        className="text-sm text-primary hover:underline"
-                      >
-                        {row.content.slice(0, 60)}
-                        {row.content.length > 60 ? "…" : ""}
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+      <FiltersForm />
+
+      <Suspense
+        key={JSON.stringify(params)}
+        fallback={<OutboxTableSkeleton />}
+      >
+        <OutboxTable
+          to={params.to}
+          status={params.status}
+          search={params.search}
+          page={params.page}
+          pageSize={params.pageSize}
+        />
+      </Suspense>
     </main>
   );
 }
