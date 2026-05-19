@@ -1,5 +1,7 @@
-// Remove the branch-scoped `DATABASE_URL` from the Vercel web + admin
-// projects when a PR closes. Idempotent: nothing matching → no-op.
+// Remove EVERY branch-scoped env var from the Vercel web + admin
+// projects when a PR closes — the pinned DATABASE_URL and any per-branch
+// overrides (e.g. a branch that opted into real Resend). A closed PR
+// must not leave branch-scoped vars behind. Idempotent: no matches → no-op.
 //
 // Env in: VERCEL_TOKEN, VERCEL_PROJECT_ID_WEB, VERCEL_PROJECT_ID_ADMIN,
 //         VERCEL_TEAM_ID (optional), GIT_BRANCH
@@ -39,15 +41,13 @@ async function purge(projectId: string): Promise<void> {
     "GET",
     `/v9/projects/${projectId}/env`,
   )) as { envs: VercelEnv[] };
-  const matches = envs.filter(
-    (e) => e.key === "DATABASE_URL" && e.gitBranch === gitBranch,
-  );
+  const matches = envs.filter((e) => e.gitBranch === gitBranch);
   for (const e of matches) {
     await vercel("DELETE", `/v9/projects/${projectId}/env/${e.id}`);
-    console.info(`✓ removed DATABASE_URL (${e.id}) from ${projectId}`);
+    console.info(`✓ removed ${e.key} (${e.id}) from ${projectId}`);
   }
   if (!matches.length) {
-    console.info(`no branch-scoped DATABASE_URL on ${projectId} — skip`);
+    console.info(`no branch-scoped env on ${projectId} for ${gitBranch} — skip`);
   }
 }
 

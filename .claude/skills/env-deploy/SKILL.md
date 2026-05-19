@@ -329,20 +329,45 @@ needed**. To validate real R2 on one preview, use the per-branch override
 below with the `pr-<n>/` key convention; `preview-cleanup.yml` purges
 that prefix on close.
 
-### Per-branch override (debug a third party on ONE preview)
+### Per-branch override (test a real third party on ONE preview)
 
-To point a single preview at a real third party (e.g. Twilio is
-misbehaving and you want that one branch to send for real) without
-touching the global `preview` env: set a **branch-scoped** value.
+All channels are `outbox` in preview (recipients are anonymized →
+real sends would bounce). To make ONE preview branch use a real third
+party, pin **branch-scoped** Vercel env vars with
+`scripts/vercel/set-preview-env.ts` (`ENV_KEY`/`ENV_VALUE`, scoped to
+`GIT_BRANCH`). Concrete — test real Resend on branch `fix/email`:
 
-- Vercel env, scoped to the PR's head branch (same mechanism the
-  pipeline uses for `DATABASE_URL`):
-  `GIT_BRANCH=<head> PREVIEW_DATABASE_URL=… bun run scripts/vercel/set-preview-env.ts`
-  — adapt for `WHATSAPP_PROVIDER=twilio`, `TWILIO_*`, etc.
-- Or an Infisical secret override for that branch in the `preview` env.
+```bash
+for kv in EMAIL_PROVIDER=resend \
+          RESEND_API_KEY=re_xxx \
+          "EMAIL_FROM=T4 <noreply@yourdomain>"; do
+  GIT_BRANCH=fix/email \
+  ENV_KEY="${kv%%=*}" ENV_VALUE="${kv#*=}" \
+    bun run scripts/vercel/set-preview-env.ts
+done
+```
 
-Only that preview changes; every other PR stays on `outbox`. Revert by
-closing the PR (cleanup unpins it) or deleting the branch-scoped var.
+Same shape for `WHATSAPP_PROVIDER=twilio` + `TWILIO_*`, etc. Only that
+preview changes; every other PR stays on `outbox`. On PR close,
+`preview-cleanup.yml` removes **every** branch-scoped var (the pinned
+`DATABASE_URL` and any overrides), so nothing leaks.
+
+### Logging into a preview (anonymized data)
+
+Masking fakes every email/phone, so you can't log in as a real user. The
+pipeline RESTORES the owner's real email (`johinsdev@gmail.com`) on the
+preview branch (matched via `member.role=owner` → `user_id`; the PK isn't
+masked) so **Google login works for the owner**. To act as a cashier/staff
+in a preview, the owner uses Better Auth **impersonate** — staff accounts
+are not separately restored. (Built in Fase 4 alongside the Google
+preview-vs-prod client split.)
+
+### Observability in preview
+
+No Better Stack in preview (prod-only). Errors → **Sentry with
+`environment=preview`** (wired in Fase 4, enabled for preview AND prod,
+not prod-only). Plain logs → Vercel runtime logs. That's the agreed
+split: Sentry for exceptions, Vercel for logs.
 
 ### Future: Cloudflare Workers (Hono API)
 
@@ -358,7 +383,14 @@ documented so the shape is known.
 
 - **Fase 4**: `.github/workflows/deploy-prod.yml` — Neon snapshot +
   migrate, re-introduced lazy `@loyalty/db` + lazy jobs env +
-  `syncEnvVars`, Trigger/PartyKit deploy, Sentry net-new, Google
-  preview-vs-prod split, Slack deploy notify, `check-env.ts` gate.
+  `syncEnvVars`, Slack deploy notify, `check-env.ts` gate. Plus the
+  preview refinements decided in Fase 3 review:
+  - **dedicated per-preview** PartyKit worker + Trigger env per PR (not
+    shared prod workers) — both `preview.yml` and prod deploy.
+  - **Sentry** in web/admin/jobs, enabled for `preview` AND `prod`
+    (`environment` tag), net-new.
+  - **Google OAuth** preview-vs-prod client split + the
+    `preview-restore-owner` step (un-mask `johinsdev@gmail.com` so the
+    owner can Google-login a preview; cashiers via impersonate).
 - **Fase 5**: `check-env.ts` as a hard gate on preview + prod; secret
   rotation runbook across all surfaces.

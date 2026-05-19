@@ -1,17 +1,27 @@
-// Pin a branch-scoped `DATABASE_URL` on the Vercel web + admin projects
-// so THIS PR's preview deploy uses its own anonymized Neon branch
-// instead of the shared Infisical preview value.
+// Pin a branch-scoped env var on the Vercel web + admin projects so
+// THIS PR's preview deploy gets its own value, leaving every other
+// preview on the shared Infisical `preview` env.
 //
-// Uses Vercel's env upsert (`?upsert=true`) so re-runs on `synchronize`
-// just update the value. `gitBranch` scopes it to this PR's head branch
-// only — other previews are unaffected.
+// Two uses:
+//   1. The pipeline pins the per-PR Neon branch DATABASE_URL
+//      (preview.yml — defaults below).
+//   2. Per-branch override to test a real third party on ONE preview,
+//      e.g. real Resend on a branch:
+//        GIT_BRANCH=fix/email \
+//        ENV_KEY=EMAIL_PROVIDER ENV_VALUE=resend \
+//          bun run scripts/vercel/set-preview-env.ts
+//        (repeat for RESEND_API_KEY, EMAIL_FROM)
+//
+// Uses Vercel env upsert (`?upsert=true`) so re-runs just update.
+// `gitBranch` scopes it to this PR's head branch only.
 //
 // Env in:
-//   VERCEL_TOKEN                              (required)
+//   VERCEL_TOKEN                                   (required)
 //   VERCEL_PROJECT_ID_WEB, VERCEL_PROJECT_ID_ADMIN (required)
-//   VERCEL_TEAM_ID                            (optional, for team scope)
-//   PREVIEW_DATABASE_URL                      (required — the branch URI)
-//   GIT_BRANCH                                (required — PR head ref)
+//   VERCEL_TEAM_ID                                 (optional)
+//   GIT_BRANCH                                     (required — PR head ref)
+//   ENV_KEY    (default "DATABASE_URL")
+//   ENV_VALUE  (default $PREVIEW_DATABASE_URL — back-compat with the pipeline)
 
 const need = (k: string): string => {
   const v = process.env[k];
@@ -20,8 +30,14 @@ const need = (k: string): string => {
 };
 
 const token = need("VERCEL_TOKEN");
-const dbUrl = need("PREVIEW_DATABASE_URL");
 const gitBranch = need("GIT_BRANCH");
+const envKey = process.env.ENV_KEY ?? "DATABASE_URL";
+const envValue =
+  process.env.ENV_VALUE ??
+  process.env.PREVIEW_DATABASE_URL ??
+  (() => {
+    throw new Error("ENV_VALUE (or PREVIEW_DATABASE_URL) is not set");
+  })();
 const team = process.env.VERCEL_TEAM_ID;
 const teamQs = team ? `&teamId=${team}` : "";
 
@@ -35,8 +51,8 @@ async function upsertEnv(projectId: string): Promise<void> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        key: "DATABASE_URL",
-        value: dbUrl,
+        key: envKey,
+        value: envValue,
         type: "encrypted",
         target: ["preview"],
         gitBranch,
@@ -47,7 +63,7 @@ async function upsertEnv(projectId: string): Promise<void> {
   if (!res.ok) {
     throw new Error(`Vercel env upsert ${projectId} → ${res.status}: ${text.slice(0, 400)}`);
   }
-  console.info(`✓ DATABASE_URL pinned on ${projectId} for branch ${gitBranch}`);
+  console.info(`✓ ${envKey} pinned on ${projectId} for branch ${gitBranch}`);
 }
 
 await upsertEnv(need("VERCEL_PROJECT_ID_WEB"));
