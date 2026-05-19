@@ -150,10 +150,14 @@ gh pr create                           # 3. open PR (template auto-filled)
                                        #    (lint + knip + typecheck + test)
                                        # 5. Vercel auto-deploys the 3 apps
                                        #    to preview URLs (commented on the PR)
-                                       # 6. merge → Vercel promotes to production
+                                       # 6. preview.yml gives the PR its own
+                                       #    anonymized Neon branch (masked copy
+                                       #    of prod) wired to its preview deploy
+                                       # 7. merge → Vercel promotes to production
+                                       #    (PR close → preview resources torn down)
 ```
 
-Direct pushes to `main` are blocked by branch protection. The full rule is in `.claude/skills/ci-cd/SKILL.md`.
+Direct pushes to `main` are blocked by branch protection. The full rule is in `.claude/skills/ci-cd/SKILL.md`. The preview database pipeline (Neon anonymized branches) is documented in the `env-deploy` skill.
 
 ## Conventions
 
