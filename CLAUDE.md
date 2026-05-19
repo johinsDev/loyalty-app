@@ -85,6 +85,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | i18n: add a locale, translate a route, fix a `next/link` import | `next-intl` |
 | Add / tweak a UI component, brand colors, dark mode, Storybook | `ui` |
 | Build, install, or debug the PWA (sw, manifest, install prompt) | `pwa` |
+| Add / rotate a secret, wire env into web/admin/jobs, "missing env" on deploy, local setup | `env-deploy` |
 | Anything CI: failing run, branch protection, opening a PR | `ci-cd` |
 | Vercel deploy targets, env vars, Sensitive trap, rollback | `vercel` |
 | Logs, dashboards, uptime monitors, alerts (Better Stack) | `better-stack` |
@@ -102,7 +103,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `email`, `push`, `realtime`, `storage`, `file-upload`, `api-filters`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `email`, `push`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 

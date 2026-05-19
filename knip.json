@@ -90,5 +90,6 @@
     }
   },
   "ignoreDependencies": ["@commitlint/cli", "oxlint", "next"],
+  "ignoreBinaries": ["infisical"],
   "ignoreExportsUsedInFile": true
 }
