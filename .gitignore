@@ -135,3 +135,7 @@ scripts/*
 !scripts/sandbox.ts
 !scripts/db
 !scripts/db/**
+!scripts/r2
+!scripts/r2/**
+!scripts/vercel
+!scripts/vercel/**
