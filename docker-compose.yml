@@ -1,0 +1,159 @@
+# Reproducible local dev stack. Everything offline EXCEPT Trigger.dev
+# (its `dev` needs the cloud — stays a host process: `bun run jobs:dev`).
+#
+# Bring it up with `bun run dev:docker` (wraps this with Infisical so
+# real secrets are injected when available; otherwise the ${VAR:-default}
+# fallbacks below keep the golden path working with NO network at all).
+#
+# No custom image: the official `oven/bun` runs everything. A one-shot
+# `deps` service installs the workspace into the shared node_modules
+# volume ONCE (bun hoists the whole workspace there); the app services
+# wait for it via `service_completed_successfully`, so three containers
+# never race the same `bun install`.
+#
+# Two DATABASE_URL consumers, one Postgres:
+#   - drizzle-kit (db:push / db:studio) uses a DIRECT pg TCP connection.
+#   - the @neondatabase/serverless driver (client.ts / migrate.ts) speaks
+#     Neon's HTTP protocol — rerouted to the `neon-proxy` sidecar via
+#     NEON_HTTP_PROXY_URL (see packages/db/src/neon-local.ts). DATABASE_URL
+#     itself stays a plain Postgres URL so both consumers work.
+name: loyalty-dev
+
+x-app-env: &app-env
+  NODE_ENV: development
+  DATABASE_URL: ${DATABASE_URL:-postgres://loyalty:loyalty@postgres:5432/loyalty}
+  NEON_HTTP_PROXY_URL: http://neon-proxy:4444/sql
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-insecure-not-a-real-secret-change-me-please}
+  REALTIME_AUTH_SECRET: ${REALTIME_AUTH_SECRET:-dev-insecure-not-a-real-realtime-secret-change-me}
+  PARTYKIT_HOST: partykit:1999
+  NEXT_PUBLIC_PARTYKIT_HOST: ${NEXT_PUBLIC_PARTYKIT_HOST:-localhost:1999}
+  LOG_CHANNEL: ${LOG_CHANNEL:-pino}
+  WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-log}
+  SMS_PROVIDER: ${SMS_PROVIDER:-log}
+  EMAIL_PROVIDER: ${EMAIL_PROVIDER:-log}
+  PUSH_PROVIDER: ${PUSH_PROVIDER:-log}
+  CACHE_PROVIDER: ${CACHE_PROVIDER:-memory}
+  STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: loyalty
+      POSTGRES_PASSWORD: loyalty
+      POSTGRES_DB: loyalty
+    ports:
+      - "5433:5432" # host access for drizzle-kit (db:studio / db:push)
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loyalty -d loyalty"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Speaks Neon's serverless HTTP protocol, forwards SQL to `postgres`.
+  neon-proxy:
+    image: ghcr.io/timowilhelm/local-neon-http-proxy:main
+    environment:
+      PG_CONNECTION_STRING: postgres://loyalty:loyalty@postgres:5432/loyalty
+    ports:
+      - "4444:4444" # host access so `bun run db:migrate:docker` works
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Present for the CACHE_PROVIDER=redis path; local default is memory.
+  # NOT published to the host — only the app containers reach it (as
+  # `redis:6379` on the compose network), and not publishing avoids
+  # colliding with a Redis you may already run on the host's 6379.
+  redis:
+    image: redis:7-alpine
+
+  # One-shot: install the workspace into the shared node_modules volume,
+  # then exit. App services wait for this to finish.
+  # `--ignore-scripts`: the root `prepare` runs `lefthook install`, which
+  # needs `git` (absent in the bun image) and would only wire host git
+  # hooks anyway — pointless in a container where you never commit. No
+  # dependency in this stack needs a postinstall at runtime (bun fetches
+  # next-swc binaries itself).
+  deps:
+    image: oven/bun:1.2.10
+    working_dir: /app
+    command: ["bun", "install", "--frozen-lockfile", "--ignore-scripts"]
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+
+  # partykit's dev server is miniflare/workerd — it must run on Node,
+  # not bun (under bun its internal RPC fetch throws
+  # `Malformed_HTTP_Response …/core:user:` right after "Ready"). Deps are
+  # the bun-installed workspace node_modules (pure-JS, Node-compatible).
+  partykit:
+    image: node:20-bookworm-slim
+    working_dir: /app/partykit
+    command: ["npx", "--yes", "partykit", "dev", "--port", "1999"]
+    ports:
+      - "1999:1999"
+    environment:
+      REALTIME_AUTH_SECRET: ${REALTIME_AUTH_SECRET:-dev-insecure-not-a-real-realtime-secret-change-me}
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - partykit_state:/app/partykit/.partykit
+    depends_on:
+      deps:
+        condition: service_completed_successfully
+
+  web:
+    image: oven/bun:1.2.10
+    working_dir: /app/apps/web
+    command:
+      ["bunx", "next", "dev", "--webpack", "--port", "3002", "--hostname", "0.0.0.0"]
+    ports:
+      - "3002:3002"
+    environment: *app-env
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - web_next:/app/apps/web/.next
+      - turbo_cache:/app/.turbo
+    depends_on:
+      deps:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      neon-proxy:
+        condition: service_started
+
+  admin:
+    image: oven/bun:1.2.10
+    working_dir: /app/apps/admin
+    command:
+      ["bunx", "next", "dev", "--turbopack", "--port", "3003", "--hostname", "0.0.0.0"]
+    ports:
+      - "3003:3003"
+    environment:
+      <<: *app-env
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - admin_next:/app/apps/admin/.next
+      - turbo_cache:/app/.turbo
+    depends_on:
+      deps:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      neon-proxy:
+        condition: service_started
+
+volumes:
+  pgdata:
+  node_modules:
+  web_next:
+  admin_next:
+  partykit_state:
+  turbo_cache:

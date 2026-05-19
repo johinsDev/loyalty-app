@@ -85,6 +85,19 @@ bun run jobs:dev                   # Trigger.dev dev server
 bun --cwd apps/storybook run dev   # Storybook on :6006
 ```
 
+### Or run the whole stack in Docker
+
+```bash
+bun run dev:docker        # postgres + neon-proxy + redis + partykit + web + admin
+bun run db:migrate:docker # migrate the Docker DB (via the Neon HTTP proxy)
+bun run jobs:dev          # Trigger.dev stays a host process (its dev needs the cloud)
+```
+
+Works fully offline with dev-safe defaults (log providers, memory cache,
+local storage); real `dev` secrets are layered in automatically when you're
+logged into Infisical. `bun run sandbox -- --email=resend` validates a single
+real third party from your machine. Full runbook: `env-deploy` skill.
+
 ## i18n
 
 Both `apps/web` and `apps/admin` are internationalized with **next-intl** (Spanish default, English second locale). Full details in the `next-intl` skill (`.claude/skills/next-intl/SKILL.md`). Quick reference:
@@ -111,6 +124,9 @@ Both `apps/web` and `apps/admin` are internationalized with **next-intl** (Spani
 | `bun run test` | Vitest in every package (excludes `apps/e2e`) |
 | `bun run e2e` | Playwright (once specs land) |
 | `bun run knip` | Dead code / unused deps / unused exports |
+| `bun run dev:docker` | Whole dev stack in Docker (postgres + neon-proxy + redis + partykit + web + admin) |
+| `bun run db:migrate:docker` | Migrate the Dockerized Postgres via the Neon HTTP proxy |
+| `bun run sandbox -- --<channel>=<provider>` | Validate one real third party's credentials from your machine |
 | `bun run env:bootstrap` | Create the Infisical folder structure (`-- --import .env --env dev` to migrate an old `.env`) |
 | `bun run env:pull` | Export the current Infisical env as dotenv to stdout |
 | `bun run env:check` | List every secret in the current Infisical env |
