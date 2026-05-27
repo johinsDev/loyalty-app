@@ -54,6 +54,14 @@ export async function createPreviewDatabase(args: {
   return database;
 }
 
+/** Fetch an existing database (its Hostname etc.). Throws 404 if missing. */
+export async function getDatabase(name: string): Promise<TursoDatabase> {
+  const { database } = await api<{ database: TursoDatabase }>(
+    `/databases/${name}`,
+  );
+  return database;
+}
+
 /** Mint a full-access auth token for a database. */
 export async function mintDatabaseToken(name: string): Promise<string> {
   const { jwt } = await api<{ jwt: string }>(
