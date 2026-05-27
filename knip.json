@@ -8,6 +8,7 @@
         "scripts/db/mask-preview-db.ts",
         "scripts/vercel/set-preview-env.ts",
         "scripts/vercel/unset-preview-env.ts",
+        "scripts/vercel/trigger-preview-deploy.ts",
         "scripts/r2/cleanup-preview-prefix.ts"
       ]
     },

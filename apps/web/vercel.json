@@ -1,0 +1,4 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "ignoreCommand": "node -e \"process.exit(process.env.VERCEL_ENV==='preview' && !process.env.DATABASE_URL ? 0 : 1)\""
+}
