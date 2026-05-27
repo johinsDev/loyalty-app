@@ -36,10 +36,11 @@ for (const project of projects) {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
+      // No `target` → a preview deployment for the branch. (The API rejects
+      // `target: "preview"`; only production/staging/custom are valid there.)
       body: JSON.stringify({
         name: project.name,
         project: project.id,
-        target: "preview",
         gitSource: { type: "github", repoId, ref: branch },
       }),
     },
