@@ -14,7 +14,8 @@ This skill grows one section per delivery phase:
 | Phase | PR | Status |
 | --- | --- | --- |
 | 1 — Infisical source of truth | `chore(env): adopt Infisical` | merged (#44) |
-| 2 — Dockerized local stack | `feat(dev): docker + sandbox` | **this PR** |
+| 2 — Dockerized local stack | `feat(dev): docker + sandbox` | merged (#45) |
+| 3 — Preview pipeline | `ci(preview): anon Neon branch` | **this PR** |
 | 3 — Preview pipeline (Neon branch + sanitize + R2 folders) | `ci(preview): …` | planned |
 | 4 — Prod pipeline (migrations + Trigger/PartyKit + Sentry + Slack) | `ci(prod): …` | planned |
 | 5 — Hardening + check-env gate | `docs(env-deploy): …` | planned |
@@ -266,14 +267,130 @@ Never commit a real value to `.env.example` — it is the matrix, not a vault.
 
 ---
 
+## Preview pipeline (Fase 3)
+
+Every PR gets its own **anonymized copy of production** as a database.
+
+```
+PR opened/pushed ─▶ .github/workflows/preview.yml
+   1. POST Neon /branch_anonymized  (parent = prod default branch)
+        → masked copy, referential integrity intact, fresh each push
+   2. db:migrate on the branch      (applies THIS PR's new migrations)
+   3. pin DATABASE_URL on the Vercel web+admin preview for this branch
+   4. comment on the PR
+PR closed ────────▶ .github/workflows/preview-cleanup.yml
+   delete the Neon branch · purge R2 pr-<n>/ · unpin the Vercel env
+```
+
+We use **Neon's native PostgreSQL Anonymizer** (`POST /branch_anonymized`
+with `masking_rules`), not a hand-rolled UPDATE script: one call creates
+the branch *and* masks it, and Neon preserves FK integrity. Masking is
+*static* (permanent on the branch), so the branch is recreated from fresh
+prod data on every push — Neon's recommended workflow.
+
+### Masking rules
+
+`config/neon-masking-rules.json` is the source of truth (schema → table →
+column → `anon.*` function). Two intents:
+
+- **Realistic fakes** (`anon.dummy_free_email/name/phone_number`) for
+  emails / names / phones — preview data stays "very real".
+- **Hard scrub** (`anon.partial(col,0,'redacted',0)`) for
+  tokens/passwords/OAuth/private storage paths — destroyed, not faked.
+
+FK columns and PKs are never masked (Neon keeps referential integrity, so
+the loyalty graph stays realistic). `organization.name/slug` stay clear
+(the franchise name isn't PII). Add a column → add a rule here; verify the
+`anon.*` name against the Anonymizer version your Neon project ships.
+
+### One-time setup
+
+Repo **variable** `PREVIEW_PIPELINE_ENABLED=true` (the gate — both
+workflows are inert until set, so this PR is non-breaking). Repo
+**secrets**: `NEON_API_KEY`, `NEON_PROJECT_ID`, `NEON_DATABASE_NAME`,
+`NEON_ROLE_NAME`, `VERCEL_TOKEN`, `VERCEL_PROJECT_ID_WEB`,
+`VERCEL_PROJECT_ID_ADMIN`. Optional: `NEON_PARENT_BRANCH_ID` (else the
+project default branch), `VERCEL_TEAM_ID`, `R2_*` (only if you opt a
+branch into real R2). Neon's anonymized-branch feature requires a plan
+that includes it.
+
+### Expensive third parties = outbox
+
+Preview keeps Resend/Twilio on `outbox` (Infisical `preview` env +
+the `VERCEL_ENV=preview` provider cascade) — no real sends, rows land in
+the `*_outbox` tables, reachable from the `(dev)` views. No code here;
+it's the Fase 1 matrix + existing cascade.
+
+### Storage in preview
+
+Previews default to `STORAGE_PROVIDER=memory` (the existing cascade when
+`R2_BUCKET` is unset) — **zero R2 writes, zero saturation, no cleanup
+needed**. To validate real R2 on one preview, use the per-branch override
+below with the `pr-<n>/` key convention; `preview-cleanup.yml` purges
+that prefix on close.
+
+### Per-branch override (test a real third party on ONE preview)
+
+All channels are `outbox` in preview (recipients are anonymized →
+real sends would bounce). To make ONE preview branch use a real third
+party, pin **branch-scoped** Vercel env vars with
+`scripts/vercel/set-preview-env.ts` (`ENV_KEY`/`ENV_VALUE`, scoped to
+`GIT_BRANCH`). Concrete — test real Resend on branch `fix/email`:
+
+```bash
+for kv in EMAIL_PROVIDER=resend \
+          RESEND_API_KEY=re_xxx \
+          "EMAIL_FROM=T4 <noreply@yourdomain>"; do
+  GIT_BRANCH=fix/email \
+  ENV_KEY="${kv%%=*}" ENV_VALUE="${kv#*=}" \
+    bun run scripts/vercel/set-preview-env.ts
+done
+```
+
+Same shape for `WHATSAPP_PROVIDER=twilio` + `TWILIO_*`, etc. Only that
+preview changes; every other PR stays on `outbox`. On PR close,
+`preview-cleanup.yml` removes **every** branch-scoped var (the pinned
+`DATABASE_URL` and any overrides), so nothing leaks.
+
+### Logging into a preview (anonymized data)
+
+Masking fakes every email/phone, so you can't log in as a real user. The
+pipeline RESTORES the owner's real email (`johinsdev@gmail.com`) on the
+preview branch (matched via `member.role=owner` → `user_id`; the PK isn't
+masked) so **Google login works for the owner**. To act as a cashier/staff
+in a preview, the owner uses Better Auth **impersonate** — staff accounts
+are not separately restored. (Built in Fase 4 alongside the Google
+preview-vs-prod client split.)
+
+### Observability in preview
+
+No Better Stack in preview (prod-only). Errors → **Sentry with
+`environment=preview`** (wired in Fase 4, enabled for preview AND prod,
+not prod-only). Plain logs → Vercel runtime logs. That's the agreed
+split: Sentry for exceptions, Vercel for logs.
+
+### Future: Cloudflare Workers (Hono API)
+
+When the tRPC layer is extracted to a Hono app on Cloudflare Workers, it
+slots in here: a `wrangler deploy --env preview` step in `preview.yml`
+reading `/shared` + a new `/api` Infisical folder, its own
+`*.workers.dev` preview URL pinned alongside the Vercel ones. Not built —
+documented so the shape is known.
+
+---
+
 ## Future phases (placeholders — do not implement here)
 
-- **Fase 3**: `.github/workflows/preview.yml` — Neon branch from prod,
-  `sanitize-for-preview.ts`, Trigger preview, R2 `pr-<n>/` prefix,
-  per-branch override doc, Cloudflare/Hono API placeholder.
 - **Fase 4**: `.github/workflows/deploy-prod.yml` — Neon snapshot +
   migrate, re-introduced lazy `@loyalty/db` + lazy jobs env +
-  `syncEnvVars`, Trigger/PartyKit deploy, Sentry net-new, Google
-  preview-vs-prod split, Slack deploy notify, `check-env.ts` gate.
+  `syncEnvVars`, Slack deploy notify, `check-env.ts` gate. Plus the
+  preview refinements decided in Fase 3 review:
+  - **dedicated per-preview** PartyKit worker + Trigger env per PR (not
+    shared prod workers) — both `preview.yml` and prod deploy.
+  - **Sentry** in web/admin/jobs, enabled for `preview` AND `prod`
+    (`environment` tag), net-new.
+  - **Google OAuth** preview-vs-prod client split + the
+    `preview-restore-owner` step (un-mask `johinsdev@gmail.com` so the
+    owner can Google-login a preview; cashiers via impersonate).
 - **Fase 5**: `check-env.ts` as a hard gate on preview + prod; secret
   rotation runbook across all surfaces.

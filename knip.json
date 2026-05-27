@@ -89,7 +89,7 @@
       "entry": ["trigger/**/*.ts", "trigger.config.ts", "log.ts", "whatsapp.ts"]
     }
   },
-  "ignoreDependencies": ["@commitlint/cli", "oxlint", "next"],
+  "ignoreDependencies": ["@commitlint/cli", "oxlint", "next", "@aws-sdk/client-s3"],
   "ignoreBinaries": ["infisical"],
   "ignoreExportsUsedInFile": true
 }

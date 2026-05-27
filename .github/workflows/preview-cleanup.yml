@@ -1,0 +1,61 @@
+name: preview-cleanup
+
+# On PR close: delete the preview/pr-<n> Neon branch, purge the R2
+# pr-<n>/ prefix (only relevant if the branch was opted into real R2 —
+# previews default to in-memory storage), and remove the branch-scoped
+# DATABASE_URL from the Vercel projects. Every step is idempotent.
+#
+# Same gate + secrets as preview.yml.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    name: tear down PR preview resources
+    if: ${{ vars.PREVIEW_PIPELINE_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.10
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Delete the anonymized Neon branch
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: bun run scripts/db/delete-neon-branch.ts
+
+      - name: Purge the R2 pr-<n>/ prefix
+        # Most previews use in-memory storage (no R2 writes); only
+        # branches opted into real R2 leave objects. Never fail cleanup
+        # over this.
+        continue-on-error: true
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: bun run scripts/r2/cleanup-preview-prefix.ts
+
+      - name: Remove the branch-scoped Vercel DATABASE_URL
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID_WEB: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+          VERCEL_PROJECT_ID_ADMIN: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+          GIT_BRANCH: ${{ github.head_ref }}
+        run: bun run scripts/vercel/unset-preview-env.ts
