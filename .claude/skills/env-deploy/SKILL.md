@@ -120,7 +120,63 @@ Helper scripts:
 
 ---
 
-## Local dev in Docker (Fase 2)
+## Local dev — the standard flow (services in Docker, apps on host)
+
+This is the recommended loop. **Infisical's `dev` env is the source of truth**
+for all env; **Docker runs the backing services** (libSQL + redis); the **Next
+apps run natively on the host** for fast HMR. Trigger.dev always stays a host
+process (its `dev` needs the cloud).
+
+```
+backing services (Docker)        apps (host, via `bun run dev`)
+  libsql  :8080  (sqld)            web      :3002
+  redis   :6379                    admin    :3003
+  partykit :1999 (opt-in)          storybook :6006 + jobs (Trigger)
+```
+
+### Zero-to-running (new contributor)
+
+```bash
+# host tools: bun, Docker Desktop, infisical CLI (brew installs) + git
+bun install
+infisical login                 # must be invited to the Infisical `loyalty-app` project
+bun run dev:services            # Docker: libsql :8080 + redis
+bun run db:migrate              # Infisical → DATABASE_URL=http://localhost:8080 → migrate local libsql
+bun run dev                     # web + admin + storybook + jobs on the host
+# optional: bun run db:seed:owner --email=… · bun run jobs:dev · docker compose up partykit
+```
+
+`bun run dev:services:down` stops the services (the libSQL volume persists).
+
+### The Infisical `dev` env (what's the source of truth)
+
+Project `loyalty-app`, env `dev`, folder `/shared`. All values are **local /
+host-addressed** so the host apps wire to the Docker services:
+
+```
+DATABASE_URL=http://localhost:8080      # local libSQL (no TURSO_AUTH_TOKEN for local)
+CACHE_PROVIDER=memory                   # redis is up but unused unless you flip this
+WHATSAPP/SMS/EMAIL/PUSH_PROVIDER=log    # nothing leaves the machine
+STORAGE_PROVIDER=local · LOG_CHANNEL=pino · LOG_LEVEL=debug
+PARTYKIT_HOST / NEXT_PUBLIC_PARTYKIT_HOST=localhost:1999
+BETTER_AUTH_SECRET · REALTIME_AUTH_SECRET · TRIGGER_PROJECT_ID · GOOGLE_CLIENT_ID/SECRET
+```
+
+**`infisical run` overrides the shell env** — verified. Even though direnv's
+`dotenv` exports `.env` into the shell on `cd`, `bun run dev`
+(= `infisical run --env=dev --recursive -- turbo run dev`) injects the `dev`
+values *over* any stale shell value, so a leftover `DATABASE_URL` in `.env`
+can't shadow the local libSQL. `.env` only needs the MCP/tooling tokens that
+must exist before Infisical (Better Stack, Slack, the Infisical machine-identity
+creds).
+
+**`partykit` is excluded from `bun run dev`** (`--filter=!@loyalty/partykit-server`)
+because its dev server crashes under bun — it runs in Docker on Node instead.
+Bring it up with `docker compose up partykit` only when working on realtime.
+
+---
+
+## Alternative: the whole stack in Docker (Fase 2)
 
 `bun run dev:docker` brings up the whole stack offline **except Trigger.dev**
 (its `dev` needs the cloud — keep running `bun run jobs:dev` on the host).

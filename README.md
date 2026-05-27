@@ -54,49 +54,83 @@ packages/
 .github/         CI workflow + CODEOWNERS + PR template
 ```
 
-## Setup
+## Setup — new contributor, zero to running
+
+**The dev model:** Infisical's `dev` environment is the single source of truth
+for all env (DB → a **local** libSQL, message providers → `log`, cache →
+`memory`, real auth/Trigger/Google secrets). **Docker** runs the backing
+services (libSQL, redis). The **apps run natively on the host** — Infisical
+injects the env, Docker provides the services they talk to.
+
+### 1. Host tools (one-time)
 
 ```bash
-# 1. Install dependencies (Bun 1.2+ required)
+brew install oven-sh/bun/bun                 # Bun 1.2+
+brew install --cask docker                   # Docker Desktop (start it before step 4)
+brew install infisical/get-cli/infisical     # Infisical CLI
+```
+
+Then ask the owner to **invite you to the Infisical `loyalty-app` project**
+(Organization → Access Control → Members) so your login can read the `dev`
+secrets.
+
+### 2. Clone + install
+
+```bash
+git clone <repo> && cd loyalty-app
 bun install
-
-# 2. Env: Infisical is the source of truth (dev / preview / prod).
-brew install infisical/get-cli/infisical
-infisical login && infisical init          # writes .infisical.json (commit it)
-bun run env:bootstrap                       # create the folder structure
-#    Migrating an old .env once:
-#      bun run env:bootstrap -- --import .env --env dev
-#    Until .infisical.json exists, the scripts fall back to .env / direnv,
-#    so this migration is non-breaking. Full matrix: .env.example header.
-#    Full runbook: .claude/skills/env-deploy/SKILL.md
-
-# 3. Generate and apply the initial migration
-bun run db:generate
-bun run db:migrate
-
-# 4. Start the apps (secrets auto-injected via scripts/with-infisical.sh)
-bun run dev   # web on :3002, admin on :3003
 ```
 
-In another terminal (optional):
+### 3. Log into Infisical
 
 ```bash
-bun run jobs:dev                   # Trigger.dev dev server
-bun --cwd apps/storybook run dev   # Storybook on :6006
+infisical login        # browser auth — .infisical.json already points at the project
 ```
 
-### Or run the whole stack in Docker
+### 4. Bring up the backing services (Docker)
 
 ```bash
-bun run dev:docker        # libsql + redis + migrate + partykit + web + admin
-bun run db:migrate:docker # migrate the Docker DB (host-run; the stack also auto-migrates on up)
-bun run jobs:dev          # Trigger.dev stays a host process (its dev needs the cloud)
+bun run dev:services   # libSQL on :8080, redis on :6379  (Docker Desktop must be running)
 ```
 
-Works fully offline with dev-safe defaults (log providers, memory cache,
-local storage); real `dev` secrets are layered in automatically when you're
-logged into Infisical. `bun run sandbox -- --email=resend` validates a single
-real third party from your machine. Full runbook: `env-deploy` skill.
+### 5. Create the schema in your local DB
+
+```bash
+bun run db:migrate     # Infisical injects DATABASE_URL=http://localhost:8080 → migrates the local libSQL
+```
+
+### 6. Run the apps (host)
+
+```bash
+bun run dev            # web :3002 + admin :3003 (+ storybook, jobs) — secrets auto-injected
+```
+
+That's it. Daily, it's just steps 4 + 6 (`bun run dev:services` once Docker is
+up, then `bun run dev`).
+
+**Optional / when you need them** (separate terminals):
+
+```bash
+bun run db:seed:owner --email=you@example.com   # promote yourself to org owner
+bun run jobs:dev                                  # Trigger.dev (host process — its dev needs the cloud)
+docker compose up partykit                        # realtime server (only when working on realtime)
+bun --cwd apps/storybook run dev                  # Storybook on :6006 (already in `bun run dev`)
+```
+
+Stop the services with `bun run dev:services:down`. Validate a single real
+third party from your machine with `bun run sandbox -- --email=resend`.
+
+### Alternative: the whole stack in Docker
+
+If you'd rather not run the apps on the host:
+
+```bash
+bun run dev:docker        # libsql + redis + migrate + partykit + web + admin, all in containers
+```
+
+Works fully offline with dev-safe defaults even without Infisical (`${VAR:-default}`
+fallbacks: log providers, memory cache, local storage). Full runbook:
+`.claude/skills/env-deploy/SKILL.md`.
 
 ## i18n
 
@@ -115,7 +149,9 @@ Both `apps/web` and `apps/admin` are internationalized with **next-intl** (Spani
 
 | Script | What it does |
 |---|---|
-| `bun run dev` | Start web (3002) + admin (3003) in parallel |
+| `bun run dev` | Start web (3002) + admin (3003) + storybook + jobs on the host (partykit excluded — it runs in Docker) |
+| `bun run dev:services` | Bring up the backing services in Docker (libSQL :8080 + redis) for host dev |
+| `bun run dev:services:down` | Stop the Docker backing services |
 | `bun run build` | Build every app and package |
 | `bun run lint` | oxlint across the whole repo (read-only) |
 | `bun run lint:fix` | oxlint with autofix |
