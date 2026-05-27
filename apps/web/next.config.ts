@@ -21,10 +21,14 @@ const config: NextConfig = {
     "@loyalty/log",
     "@loyalty/ui",
   ],
-  // Optional provider deps loaded via `await import(...)` in
-  // @loyalty/{push,sms,whatsapp,cache,email,storage}. Mark external
-  // so the dev bundler doesn't try to resolve uninstalled ones.
+  // `@libsql/client` (the Turso driver) ships native bindings, so it must
+  // be required from node_modules at runtime, not bundled — otherwise the
+  // server chunk fails with "Cannot find module '@libsql/client-<hash>'".
+  // The rest are optional provider deps loaded via `await import(...)` in
+  // @loyalty/{push,sms,whatsapp,cache,email,storage}; mark external so the
+  // dev bundler doesn't try to resolve uninstalled ones.
   serverExternalPackages: [
+    "@libsql/client",
     "web-push",
     "expo-server-sdk",
     "twilio",
