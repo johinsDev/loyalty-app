@@ -15,8 +15,7 @@ This skill grows one section per delivery phase:
 | --- | --- | --- |
 | 1 — Infisical source of truth | `chore(env): adopt Infisical` | merged (#44) |
 | 2 — Dockerized local stack | `feat(dev): docker + sandbox` | merged (#45) |
-| 3 — Preview pipeline | `ci(preview): anon Neon branch` | **this PR** |
-| 3 — Preview pipeline (Neon branch + sanitize + R2 folders) | `ci(preview): …` | planned |
+| 3 — Preview pipeline (Turso clone + mask + Vercel wiring) | `feat(repo): preview pipeline on Turso` | merged (#51) |
 | 4 — Prod pipeline (migrations + Trigger/PartyKit + Sentry + Slack) | `ci(prod): …` | planned |
 | 5 — Hardening + check-env gate | `docs(env-deploy): …` | planned |
 
