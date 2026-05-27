@@ -1,7 +1,16 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "workspaces": {
-    ".": {},
+    ".": {
+      "entry": [
+        "scripts/db/create-preview-db.ts",
+        "scripts/db/delete-preview-db.ts",
+        "scripts/db/mask-preview-db.ts",
+        "scripts/vercel/set-preview-env.ts",
+        "scripts/vercel/unset-preview-env.ts",
+        "scripts/r2/cleanup-preview-prefix.ts"
+      ]
+    },
     "apps/admin": {
       "entry": [
         "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest}.{ts,tsx}",
@@ -89,7 +98,7 @@
       "entry": ["trigger/**/*.ts", "trigger.config.ts", "log.ts", "whatsapp.ts"]
     }
   },
-  "ignoreDependencies": ["@commitlint/cli", "oxlint", "next", "@aws-sdk/client-s3"],
+  "ignoreDependencies": ["@commitlint/cli", "oxlint", "next", "@aws-sdk/client-s3", "@libsql/client"],
   "ignoreBinaries": ["infisical"],
   "ignoreExportsUsedInFile": true
 }

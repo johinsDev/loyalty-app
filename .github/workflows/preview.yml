@@ -1,15 +1,15 @@
 name: preview
 
-# Per-PR preview database: create an ANONYMIZED Neon branch from
-# production (Neon's native PostgreSQL Anonymizer — masked copy with
-# referential integrity intact), apply the PR's migrations, and pin its
-# connection string on the Vercel web + admin preview deploys.
+# Per-PR preview database (Turso): clone production into preview-pr-<n>,
+# apply the PR's migrations, mask its PII, and pin the connection on the
+# Vercel web + admin preview deploys.
 #
 # Inert until configured: gated on the repo variable
-# PREVIEW_PIPELINE_ENABLED=true. Required secrets:
-#   NEON_API_KEY, NEON_PROJECT_ID, NEON_DATABASE_NAME, NEON_ROLE_NAME
-#   VERCEL_TOKEN, VERCEL_PROJECT_ID_WEB, VERCEL_PROJECT_ID_ADMIN
-# Optional: NEON_PARENT_BRANCH_ID, VERCEL_TEAM_ID.
+# PREVIEW_PIPELINE_ENABLED=true. Auth is a single Infisical machine identity
+# (the ONLY two GitHub secrets); everything else (TURSO_*, VERCEL_*) is
+# pulled from Infisical prod:/ci:
+#   INFISICAL_MACHINE_IDENTITY_CLIENT_ID
+#   INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET
 # See .claude/skills/env-deploy/SKILL.md → "Preview pipeline".
 
 on:
@@ -25,9 +25,12 @@ permissions:
   contents: read
   pull-requests: write
 
+env:
+  INFISICAL_PROJECT_ID: 90546a83-b585-4e36-bcf9-63898e633c53
+
 jobs:
-  neon-preview:
-    name: anonymized Neon branch + preview wiring
+  preview-db:
+    name: clone + mask preview DB, wire Vercel
     if: ${{ vars.PREVIEW_PIPELINE_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -38,50 +41,73 @@ jobs:
         with:
           bun-version: 1.2.10
 
-      - name: Install
+      - name: Install Infisical CLI
+        run: |
+          curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+          sudo apt-get update && sudo apt-get install -y infisical
+
+      - name: Install deps
         run: bun install --frozen-lockfile
 
-      - name: Create anonymized branch from production
-        id: neon
+      - name: Authenticate Infisical
         env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
-          NEON_DATABASE_NAME: ${{ secrets.NEON_DATABASE_NAME }}
-          NEON_ROLE_NAME: ${{ secrets.NEON_ROLE_NAME }}
-          NEON_PARENT_BRANCH_ID: ${{ secrets.NEON_PARENT_BRANCH_ID }}
-          PR_NUMBER: ${{ github.event.number }}
-        run: bun run scripts/db/create-neon-branch.ts
+          CID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          CSEC: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+        run: |
+          TOKEN=$(infisical login --method=universal-auth --client-id="$CID" --client-secret="$CSEC" --plain --silent)
+          echo "::add-mask::$TOKEN"
+          echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
 
-      # The branch is a copy of prod (schema already present); this only
-      # applies migrations NEW in this PR. drizzle-kit's journal makes it
-      # idempotent. No seed: the anonymized prod copy already has the org
-      # + members.
-      - name: Apply this PR's migrations to the branch
+      # Clones prod via the Turso Platform API + mints a token. Writes
+      # database_url / auth_token / db_name to $GITHUB_OUTPUT (token masked).
+      # TURSO_API_TOKEN / TURSO_ORG / PREVIEW_SOURCE_DB come from prod:/ci.
+      - name: Create preview DB (clone prod)
+        id: db
         env:
-          DATABASE_URL: ${{ steps.neon.outputs.database_url }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --path=/ci --token="$INFISICAL_TOKEN" --
+          bun run scripts/db/create-preview-db.ts
+
+      # The clone already has prod's schema; this applies only THIS PR's
+      # new migrations (drizzle's journal makes it idempotent).
+      - name: Apply this PR's migrations
+        env:
+          DATABASE_URL: ${{ steps.db.outputs.database_url }}
+          TURSO_AUTH_TOKEN: ${{ steps.db.outputs.auth_token }}
         run: bun run --cwd packages/db db:migrate
 
-      - name: Pin DATABASE_URL on Vercel preview (web + admin)
+      - name: Mask PII
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
-          VERCEL_PROJECT_ID_WEB: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
-          VERCEL_PROJECT_ID_ADMIN: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
-          PREVIEW_DATABASE_URL: ${{ steps.neon.outputs.database_url }}
-          GIT_BRANCH: ${{ github.head_ref }}
-        run: bun run scripts/vercel/set-preview-env.ts
+          DATABASE_URL: ${{ steps.db.outputs.database_url }}
+          TURSO_AUTH_TOKEN: ${{ steps.db.outputs.auth_token }}
+        run: bun run scripts/db/mask-preview-db.ts
 
-      # Trigger.dev preview deploy is deliberately NOT here: `trigger
-      # deploy` still crashes on the module-load env throw (the closed
-      # #42/#43 problem). Fase 4 re-introduces lazy-init + syncEnvVars
-      # and adds the Trigger preview deploy step at this point.
+      - name: Pin DATABASE_URL + TURSO_AUTH_TOKEN on Vercel preview (web + admin)
+        env:
+          PREVIEW_DATABASE_URL: ${{ steps.db.outputs.database_url }}
+          PREVIEW_AUTH_TOKEN: ${{ steps.db.outputs.auth_token }}
+          GIT_BRANCH: ${{ github.head_ref }}
+        run: |
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod \
+            --path=/ci --token="$INFISICAL_TOKEN" -- bash -c '
+              ENV_KEY=DATABASE_URL ENV_VALUE="$PREVIEW_DATABASE_URL" bun run scripts/vercel/set-preview-env.ts
+              ENV_KEY=TURSO_AUTH_TOKEN ENV_VALUE="$PREVIEW_AUTH_TOKEN" bun run scripts/vercel/set-preview-env.ts
+            '
+
+      # Trigger.dev preview deploy is deliberately NOT here yet (Fase 4 —
+      # re-introduced lazy-init + syncEnvVars). The FIXED preview base env
+      # (providers=outbox, BETTER_AUTH_SECRET, Google preview client, etc.)
+      # is set on Vercel's preview target separately; this job only wires
+      # the per-PR database.
 
       - name: Comment on the PR
         uses: actions/github-script@v7
         with:
           script: |
             const marker = '<!-- preview-db -->';
-            const body = `${marker}\n🔒 **Preview DB ready** — anonymized Neon branch \`preview/pr-${{ github.event.number }}\` (masked copy of production, referential integrity intact) is pinned to this PR's Vercel preview for **web** and **admin**. It is recreated from fresh prod data on every push and deleted when the PR closes.`;
+            const body = `${marker}\n🔒 **Preview DB ready** — \`preview-pr-${{ github.event.number }}\` is a **masked clone of production** (PII faked with referential integrity intact; owner login preserved), pinned to this PR's Vercel preview for **web** and **admin**. Recreated from fresh prod data on every push, destroyed when the PR closes.`;
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner, repo: context.repo.repo,
               issue_number: context.issue.number,

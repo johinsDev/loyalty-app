@@ -3,8 +3,8 @@
 // preview on the shared Infisical `preview` env.
 //
 // Two uses:
-//   1. The pipeline pins the per-PR Neon branch DATABASE_URL
-//      (preview.yml — defaults below).
+//   1. The pipeline pins the per-PR Turso preview DB connection
+//      (preview.yml — DATABASE_URL + TURSO_AUTH_TOKEN).
 //   2. Per-branch override to test a real third party on ONE preview,
 //      e.g. real Resend on a branch:
 //        GIT_BRANCH=fix/email \
