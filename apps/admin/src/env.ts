@@ -152,6 +152,10 @@ export const env = createEnv({
     ),
 
     STORAGE_PROVIDER: storageProvider,
+    // Preview: per-PR namespacing for object storage + cache.
+    STORAGE_KEY_PREFIX: z.string().optional(),
+    CACHE_KEY_PREFIX: z.string().optional(),
+    CACHE_DEFAULT_TTL: z.coerce.number().int().positive().optional(),
     R2_ACCOUNT_ID: requireWhen("R2_ACCOUNT_ID", isStorageR2, "STORAGE_PROVIDER=r2"),
     R2_ACCESS_KEY_ID: requireWhen("R2_ACCESS_KEY_ID", isStorageR2, "STORAGE_PROVIDER=r2"),
     R2_SECRET_ACCESS_KEY: requireWhen("R2_SECRET_ACCESS_KEY", isStorageR2, "STORAGE_PROVIDER=r2"),

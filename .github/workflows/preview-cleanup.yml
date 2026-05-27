@@ -62,3 +62,24 @@ jobs:
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
           --path=/ci --token="$INFISICAL_TOKEN" --
           bun run scripts/db/delete-preview-db.ts
+
+      # Storage + cache creds live in staging/shared (the preview base env).
+      # Both are best-effort: a PR that never wrote files / cached nothing
+      # leaves nothing to clean.
+      - name: Purge the R2 pr-<n>/ folder
+        continue-on-error: true
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
+          --path=/shared --token="$INFISICAL_TOKEN" --
+          bun run scripts/r2/cleanup-preview-prefix.ts
+
+      - name: Flush the per-PR cache namespace
+        continue-on-error: true
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
+          --path=/shared --token="$INFISICAL_TOKEN" --
+          bun run scripts/cache/flush-preview-namespace.ts

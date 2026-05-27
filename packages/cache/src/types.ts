@@ -62,6 +62,10 @@ export interface CacheManagerConfig<
 > {
   default: keyof T & string;
   stores: T;
+  /** Prepended to every key on every store (per-deploy namespacing). */
+  keyPrefix?: string;
+  /** Applied to writes without an explicit TTL, so entries always expire. */
+  defaultTtlSeconds?: number;
   /** Defaults to `info`. `silent` suppresses internal `[cache]` lines. */
   logLevel?: CacheLogLevel;
 }

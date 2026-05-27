@@ -140,6 +140,13 @@ export interface StorageManagerConfig<
 > {
   default: keyof T & string;
   disks: T;
+  /**
+   * Prepended to every key on every disk (callers keep using logical keys).
+   * Use it to namespace a deploy — e.g. `pr-123/` in preview so each PR's
+   * uploads live in their own folder and can be purged on PR close. Empty
+   * (default) = no-op.
+   */
+  keyPrefix?: string;
   /** Defaults to `info`. `silent` suppresses internal `[storage]` lines. */
   logLevel?: StorageLogLevel;
 }

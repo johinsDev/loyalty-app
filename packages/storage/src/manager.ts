@@ -68,6 +68,7 @@ export class StorageManager<
     this.#config = {
       default: config.default,
       disks: definedDisks,
+      keyPrefix: config.keyPrefix,
       logLevel: config.logLevel,
     };
     this.#logger = config.logger;
@@ -98,6 +99,7 @@ export class StorageManager<
       name,
       provider,
       isPublic: diskConfig.isPublic,
+      keyPrefix: this.#config.keyPrefix,
       logger: this.#logger,
       logLevel: this.#logLevel,
     });
