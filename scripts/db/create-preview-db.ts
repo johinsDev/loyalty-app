@@ -19,6 +19,7 @@ import { appendFileSync } from "node:fs";
 
 import {
   createPreviewDatabase,
+  deleteDatabase,
   libsqlUrl,
   mintDatabaseToken,
   previewDbName,
@@ -29,6 +30,15 @@ if (!pr) throw new Error("PR_NUMBER is required (env or argv[2])");
 
 const source = process.env.PREVIEW_SOURCE_DB ?? "loyalty-app";
 const name = previewDbName(pr);
+
+// On re-push (pull_request: synchronize) the DB from the previous run still
+// exists — recreate it so every push gets a fresh clone of prod (matches the
+// "recreated from fresh prod data on every push" contract). Idempotent on 404.
+try {
+  await deleteDatabase(name);
+} catch (err) {
+  if (!(err instanceof Error) || !err.message.includes("404")) throw err;
+}
 
 const db = await createPreviewDatabase({ name, source });
 const token = await mintDatabaseToken(name);
