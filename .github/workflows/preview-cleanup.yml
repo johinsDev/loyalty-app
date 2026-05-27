@@ -83,3 +83,13 @@ jobs:
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
           --path=/shared --token="$INFISICAL_TOKEN" --
           bun run scripts/cache/flush-preview-namespace.ts
+
+      - name: Archive the Trigger.dev preview branch
+        if: ${{ vars.TRIGGER_PREVIEW_ENABLED == 'true' }}
+        continue-on-error: true
+        env:
+          GIT_BRANCH: ${{ github.head_ref }}
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --path=/ci --token="$INFISICAL_TOKEN" --
+          bash -c 'cd packages/jobs && bunx trigger.dev@latest preview archive --branch "$GIT_BRANCH"'

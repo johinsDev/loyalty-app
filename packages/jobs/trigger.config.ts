@@ -1,3 +1,4 @@
+import { syncEnvVars } from "@trigger.dev/build/extensions/core";
 import { defineConfig } from "@trigger.dev/sdk/v3";
 import { config as loadEnv } from "dotenv";
 import { dirname, resolve } from "node:path";
@@ -60,6 +61,36 @@ export default defineConfig({
       "resend",
       "expo-server-sdk",
       "web-push",
+    ],
+    // On `trigger deploy`, push the deploy-time env (the GH Action injects the
+    // per-PR DATABASE_URL + the Infisical staging base) into the Trigger
+    // environment being deployed — so preview-branch tasks run against the
+    // PR's masked DB. Replaces hand-setting vars in the Trigger dashboard.
+    extensions: [
+      syncEnvVars(() => {
+        const keys = [
+          "DATABASE_URL",
+          "TURSO_AUTH_TOKEN",
+          "WHATSAPP_PROVIDER",
+          "PUSH_PROVIDER",
+          "TWILIO_ACCOUNT_SID",
+          "TWILIO_AUTH_TOKEN",
+          "TWILIO_WHATSAPP_FROM",
+          "VAPID_PUBLIC_KEY",
+          "VAPID_PRIVATE_KEY",
+          "VAPID_SUBJECT",
+          "EXPO_ACCESS_TOKEN",
+          "LOG_CHANNEL",
+          "LOG_LEVEL",
+          "BETTER_STACK_SOURCE_TOKEN_JOBS",
+          "BETTER_STACK_INGESTING_HOST_JOBS",
+          "LOYALTY_ORG_ID",
+          "OUTBOX_RETENTION_DAYS",
+        ];
+        return keys
+          .filter((k) => process.env[k])
+          .map((k) => ({ name: k, value: process.env[k] as string }));
+      }),
     ],
   },
 });

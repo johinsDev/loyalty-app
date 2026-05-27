@@ -110,11 +110,35 @@ jobs:
           --path=/ci --token="$INFISICAL_TOKEN" --
           bun run scripts/vercel/trigger-preview-deploy.ts
 
-      # Trigger.dev preview deploy is deliberately NOT here yet (Fase 4 —
-      # re-introduced lazy-init + syncEnvVars). The FIXED preview base env
-      # (providers=outbox, BETTER_AUTH_SECRET, Google preview client, etc.)
-      # is set on Vercel's preview target separately; this job only wires
-      # the per-PR database.
+      # Deploy a Trigger.dev preview branch for this PR. syncEnvVars (in
+      # trigger.config.ts) forwards the deploy-time env — the per-PR
+      # DATABASE_URL (step env) + the staging base (providers, VAPID, …) — into
+      # the Trigger preview-branch environment, so its tasks run against the
+      # PR's masked DB. Gated separately: needs preview branches enabled in the
+      # Trigger dashboard. TRIGGER_ACCESS_TOKEN comes from /ci.
+      - name: Deploy Trigger.dev preview branch
+        if: ${{ vars.TRIGGER_PREVIEW_ENABLED == 'true' }}
+        env:
+          DATABASE_URL: ${{ steps.db.outputs.database_url }}
+          TURSO_AUTH_TOKEN: ${{ steps.db.outputs.auth_token }}
+          GIT_BRANCH: ${{ github.head_ref }}
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
+          --path=/shared --token="$INFISICAL_TOKEN" --
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --path=/ci --token="$INFISICAL_TOKEN" --
+          bash -c 'cd packages/jobs && bunx trigger.dev@latest deploy --env preview --branch "$GIT_BRANCH"'
+
+      # Point web/admin at the PR's Trigger preview branch (branch-scoped, so
+      # other previews are unaffected). The Trigger SDK reads TRIGGER_PREVIEW_BRANCH.
+      - name: Pin TRIGGER_PREVIEW_BRANCH on Vercel preview
+        if: ${{ vars.TRIGGER_PREVIEW_ENABLED == 'true' }}
+        env:
+          GIT_BRANCH: ${{ github.head_ref }}
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --path=/ci --token="$INFISICAL_TOKEN" -- bash -c
+          'ENV_KEY=TRIGGER_PREVIEW_BRANCH ENV_VALUE="$GIT_BRANCH" bun run scripts/vercel/set-preview-env.ts'
 
       - name: Comment on the PR
         uses: actions/github-script@v7
