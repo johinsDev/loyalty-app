@@ -62,13 +62,28 @@ for all env (DB → a **local** libSQL, message providers → `log`, cache →
 services (libSQL, redis). The **apps run natively on the host** — Infisical
 injects the env, Docker provides the services they talk to.
 
-### 1. Host tools (one-time)
+### 1. Host tools (one-time — fresh Mac)
+
+Everything installs via [Homebrew](https://brew.sh). On a brand-new Mac:
 
 ```bash
-brew install oven-sh/bun/bun                 # Bun 1.2+
-brew install --cask docker                   # Docker Desktop (start it before step 4)
-brew install infisical/get-cli/infisical     # Infisical CLI
+# Homebrew (if you don't have it)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+xcode-select --install                        # git + compilers (skip if already there)
+brew install oven-sh/bun/bun                  # Bun 1.2+  — runtime + package manager (runs apps, scripts, tests)
+brew install node                             # Node ≥ 20 — the Trigger.dev CLI + partykit need it on $PATH
+brew install --cask docker                    # Docker Desktop — backing services (libSQL, redis)
+brew install infisical/get-cli/infisical      # Infisical CLI — pulls the dev env
 ```
+
+| Tool | Why it's needed |
+| --- | --- |
+| **Bun 1.2+** | Runs everything — the apps, all `bun run …` scripts, tests, the package manager. |
+| **Node ≥ 20** | Only the Trigger.dev CLI (`jobs:dev`) and partykit need Node; Bun runs the rest. Both must be on `$PATH`. |
+| **Docker Desktop** | Hosts the local libSQL + redis (start it before step 4). |
+| **Infisical CLI** | Pulls the `dev` env (the source of truth) when you run `bun run …`. |
+| **git** | Comes with the Xcode Command Line Tools. |
 
 Then ask the owner to **invite you to the Infisical `loyalty-app` project**
 (Organization → Access Control → Members) so your login can read the `dev`
@@ -131,6 +146,60 @@ bun run dev:docker        # libsql + redis + migrate + partykit + web + admin, a
 Works fully offline with dev-safe defaults even without Infisical (`${VAR:-default}`
 fallbacks: log providers, memory cache, local storage). Full runbook:
 `.claude/skills/env-deploy/SKILL.md`.
+
+## Database — Drizzle + Turso (libSQL)
+
+The **schema is the source of truth**: `packages/db/src/schema/*.ts`, written
+as Drizzle `sqliteTable`s. Dev runs against the local libSQL container
+(`bun run dev:services`); prod is Turso. Same code, same driver
+(`@libsql/client`) — only `DATABASE_URL` changes per environment, and Infisical
+injects it (`http://localhost:8080` in dev, the `libsql://…` URL + token in
+prod). You never write SQL by hand — you edit the schema and Drizzle generates
+the migration.
+
+### Changing the schema (the migration loop)
+
+> **Never hand-edit files in `packages/db/migrations/`** — they're generated and
+> tracked with snapshots. Hand edits desync the migration history.
+
+```bash
+# 1. Edit the table          packages/db/src/schema/<file>.ts
+# 2. Generate the migration
+bun run db:generate          # drizzle-kit diffs schema ↔ history → migrations/NNNN_<name>.sql (review it)
+# 3. Apply it to your local DB
+bun run db:migrate           # Infisical → DATABASE_URL=http://localhost:8080 → applies pending migrations
+# 4. Commit the schema change AND the generated migration together
+```
+
+`db:migrate` is also how prod migrations run (just with the prod `DATABASE_URL`).
+Applied migrations are tracked in the `__drizzle_migrations` table, so
+re-running is a no-op — safe and idempotent.
+
+### Browsing / editing data — Drizzle Studio
+
+```bash
+bun run db:studio            # opens https://local.drizzle.studio against your DATABASE_URL
+```
+
+A web UI to browse and edit rows. In dev it points at the local libSQL, so make
+sure `bun run dev:services` is up first.
+
+### Command reference
+
+| Command | What it does |
+| --- | --- |
+| `bun run db:generate` | Generate a migration from schema changes (no DB connection needed) |
+| `bun run db:migrate` | Apply pending migrations to `DATABASE_URL` (dev = local libSQL via Infisical) |
+| `bun run db:migrate:docker` | Apply to the local libSQL at `:8080` **without** Infisical (host-run; waits for the container) |
+| `bun run db:studio` | Open Drizzle Studio |
+| `bun run db:push` | Push the schema straight to the DB **without** a migration file — quick local experiments only, **never** on a shared/prod DB |
+| `bun run db:seed:owner --email=…` | Promote a signed-up user to `owner` of the singleton org |
+
+**libSQL/SQLite type patterns** (how the schema differs from Postgres): text PKs
+default via `.$defaultFn(() => crypto.randomUUID())`, timestamps are
+`integer({ mode: "timestamp" })`, booleans are `integer({ mode: "boolean" })`,
+JSON columns are `text({ mode: "json" })`. Deeper Drizzle patterns live in the
+`drizzle` skill.
 
 ## i18n
 
