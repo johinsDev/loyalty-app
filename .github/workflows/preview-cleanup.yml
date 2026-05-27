@@ -1,11 +1,10 @@
 name: preview-cleanup
 
-# On PR close: delete the preview/pr-<n> Neon branch, purge the R2
-# pr-<n>/ prefix (only relevant if the branch was opted into real R2 —
-# previews default to in-memory storage), and remove the branch-scoped
-# DATABASE_URL from the Vercel projects. Every step is idempotent.
+# On PR close: remove the branch-scoped Vercel env vars and destroy the
+# preview-pr-<n> Turso database. Every step is idempotent.
 #
-# Same gate + secrets as preview.yml.
+# Same gate (PREVIEW_PIPELINE_ENABLED) + Infisical machine-identity auth
+# as preview.yml.
 
 on:
   pull_request:
@@ -14,6 +13,9 @@ on:
 
 permissions:
   contents: read
+
+env:
+  INFISICAL_PROJECT_ID: 90546a83-b585-4e36-bcf9-63898e633c53
 
 jobs:
   cleanup:
@@ -28,34 +30,35 @@ jobs:
         with:
           bun-version: 1.2.10
 
-      - name: Install
+      - name: Install Infisical CLI
+        run: |
+          curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+          sudo apt-get update && sudo apt-get install -y infisical
+
+      - name: Install deps
         run: bun install --frozen-lockfile
 
-      - name: Delete the anonymized Neon branch
+      - name: Authenticate Infisical
         env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
-          PR_NUMBER: ${{ github.event.number }}
-        run: bun run scripts/db/delete-neon-branch.ts
+          CID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          CSEC: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+        run: |
+          TOKEN=$(infisical login --method=universal-auth --client-id="$CID" --client-secret="$CSEC" --plain --silent)
+          echo "::add-mask::$TOKEN"
+          echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
 
-      - name: Purge the R2 pr-<n>/ prefix
-        # Most previews use in-memory storage (no R2 writes); only
-        # branches opted into real R2 leave objects. Never fail cleanup
-        # over this.
-        continue-on-error: true
+      - name: Remove branch-scoped Vercel env (web + admin)
         env:
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          PR_NUMBER: ${{ github.event.number }}
-        run: bun run scripts/r2/cleanup-preview-prefix.ts
-
-      - name: Remove the branch-scoped Vercel DATABASE_URL
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
-          VERCEL_PROJECT_ID_WEB: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
-          VERCEL_PROJECT_ID_ADMIN: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
           GIT_BRANCH: ${{ github.head_ref }}
-        run: bun run scripts/vercel/unset-preview-env.ts
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --path=/ci --token="$INFISICAL_TOKEN" --
+          bun run scripts/vercel/unset-preview-env.ts
+
+      - name: Destroy the preview DB
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --path=/ci --token="$INFISICAL_TOKEN" --
+          bun run scripts/db/delete-preview-db.ts
