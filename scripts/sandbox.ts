@@ -7,7 +7,7 @@
 //   bun run sandbox -- --sms=twilio
 //   bun run sandbox -- --email=resend
 //   bun run sandbox -- --cache=upstash
-//   bun run sandbox -- --db=neon
+//   bun run sandbox -- --db=turso
 //
 // Credentials come from the process env. Provide them via Infisical
 // (recommended — keep sandbox creds in the `dev` env / a `/sandbox`
@@ -102,17 +102,19 @@ const checks: Record<string, Record<string, Check>> = {
     },
   },
   db: {
-    neon: {
+    turso: {
       env: ["DATABASE_URL"],
       run: async () => {
         const e = need("DATABASE_URL");
-        // Use the same driver the app uses (honors NEON_HTTP_PROXY_URL).
-        await import("../packages/db/src/neon-local");
-        const { neon } = await import("@neondatabase/serverless");
-        const sql = neon(e.DATABASE_URL);
-        const rows = await sql`select 1 as ok`;
-        if (rows?.[0]?.ok !== 1) throw new Error("unexpected result");
-        return "Neon: select 1 OK";
+        // Use the same driver the app uses.
+        const { createClient } = await import("@libsql/client");
+        const client = createClient({
+          url: e.DATABASE_URL,
+          authToken: process.env.TURSO_AUTH_TOKEN,
+        });
+        const rs = await client.execute("select 1 as ok");
+        if (rs.rows?.[0]?.ok !== 1) throw new Error("unexpected result");
+        return "Turso: select 1 OK";
       },
     },
   },

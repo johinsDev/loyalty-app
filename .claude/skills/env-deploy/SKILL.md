@@ -120,17 +120,73 @@ Helper scripts:
 
 ---
 
-## Local dev in Docker (Fase 2)
+## Local dev — the standard flow (services in Docker, apps on host)
+
+This is the recommended loop. **Infisical's `dev` env is the source of truth**
+for all env; **Docker runs the backing services** (libSQL + redis); the **Next
+apps run natively on the host** for fast HMR. Trigger.dev always stays a host
+process (its `dev` needs the cloud).
+
+```
+backing services (Docker)        apps (host, via `bun run dev`)
+  libsql  :8080  (sqld)            web      :3002
+  redis   :6379                    admin    :3003
+  partykit :1999 (opt-in)          storybook :6006 + jobs (Trigger)
+```
+
+### Zero-to-running (new contributor)
+
+```bash
+# host tools: bun, Docker Desktop, infisical CLI (brew installs) + git
+bun install
+infisical login                 # must be invited to the Infisical `loyalty-app` project
+bun run dev:services            # Docker: libsql :8080 + redis
+bun run db:migrate              # Infisical → DATABASE_URL=http://localhost:8080 → migrate local libsql
+bun run dev                     # web + admin + storybook + jobs on the host
+# optional: bun run db:seed:owner --email=… · bun run jobs:dev · docker compose up partykit
+```
+
+`bun run dev:services:down` stops the services (the libSQL volume persists).
+
+### The Infisical `dev` env (what's the source of truth)
+
+Project `loyalty-app`, env `dev`, folder `/shared`. All values are **local /
+host-addressed** so the host apps wire to the Docker services:
+
+```
+DATABASE_URL=http://localhost:8080      # local libSQL (no TURSO_AUTH_TOKEN for local)
+CACHE_PROVIDER=memory                   # redis is up but unused unless you flip this
+WHATSAPP/SMS/EMAIL/PUSH_PROVIDER=log    # nothing leaves the machine
+STORAGE_PROVIDER=local · LOG_CHANNEL=pino · LOG_LEVEL=debug
+PARTYKIT_HOST / NEXT_PUBLIC_PARTYKIT_HOST=localhost:1999
+BETTER_AUTH_SECRET · REALTIME_AUTH_SECRET · TRIGGER_PROJECT_ID · GOOGLE_CLIENT_ID/SECRET
+```
+
+**`infisical run` overrides the shell env** — verified. Even though direnv's
+`dotenv` exports `.env` into the shell on `cd`, `bun run dev`
+(= `infisical run --env=dev --recursive -- turbo run dev`) injects the `dev`
+values *over* any stale shell value, so a leftover `DATABASE_URL` in `.env`
+can't shadow the local libSQL. `.env` only needs the MCP/tooling tokens that
+must exist before Infisical (Better Stack, Slack, the Infisical machine-identity
+creds).
+
+**`partykit` is excluded from `bun run dev`** (`--filter=!@loyalty/partykit-server`)
+because its dev server crashes under bun — it runs in Docker on Node instead.
+Bring it up with `docker compose up partykit` only when working on realtime.
+
+---
+
+## Alternative: the whole stack in Docker (Fase 2)
 
 `bun run dev:docker` brings up the whole stack offline **except Trigger.dev**
 (its `dev` needs the cloud — keep running `bun run jobs:dev` on the host).
 
 ```
 docker-compose.yml services:
-  postgres     postgres:16, named volume, host port 5433
-  neon-proxy   ghcr.io/timowilhelm/local-neon-http-proxy, host port 4444
+  libsql       ghcr.io/tursodatabase/libsql-server (sqld), named volume, host port 8080
   redis        redis:7 (only for CACHE_PROVIDER=redis; default is memory)
-  partykit     bunx partykit dev :1999
+  migrate      one-shot: waits for libsql, applies Drizzle migrations, exits
+  partykit     npx partykit dev :1999
   web          bunx next dev --webpack :3002
   admin        bunx next dev --turbopack :3003
 ```
@@ -143,23 +199,22 @@ containers never race the same install. bun hoists the whole workspace to
 the repo-root `node_modules`, so one install serves every app; services
 differ only by `working_dir` + `command`. The repo is bind-mounted for HMR.
 
-### The two-DATABASE_URL-consumers detail
+### The DATABASE_URL detail
 
-`DATABASE_URL` stays a **plain Postgres URL**. Two consumers:
+Compose **hardcodes** `DATABASE_URL=http://libsql:8080` for every service
+(NOT `${DATABASE_URL:-…}`), so docker dev always hits the LOCAL `sqld` —
+never the remote Turso a host shell (direnv) or Infisical might export.
+The `@libsql/client` driver (`client.ts`, `migrate.ts`) and drizzle-kit
+(`db:push`, `db:studio`, dialect `turso`) all speak to it over HTTP; no
+auth token is needed locally. From the host, reach it at
+`http://localhost:8080` (published port).
 
-- **drizzle-kit** (`db:push`, `db:studio`) — direct `pg` TCP to Postgres
-  (host `localhost:5433`).
-- **`@neondatabase/serverless`** (`client.ts`, `migrate.ts`) — speaks
-  Neon's HTTP protocol. `packages/db/src/neon-local.ts` reroutes its fetch
-  to the `neon-proxy` sidecar **only when `NEON_HTTP_PROXY_URL` is set**
-  (compose sets `http://neon-proxy:4444/sql`). Unset in preview/prod →
-  zero behavior change, real Neon untouched. The driver is NOT swapped.
-
-Run migrations against the Docker DB from the host:
+The `migrate` one-shot applies the schema before web/admin boot, so the
+stack comes up ready. To re-migrate from the host (e.g. after `db:generate`):
 
 ```bash
-bun run dev:docker            # in one terminal
-bun run db:migrate:docker     # waits for :5433, migrates via the proxy
+bun run dev:docker            # in one terminal (auto-migrates on up)
+bun run db:migrate:docker     # waits for :8080, migrates the local libsql
 ```
 
 ### Offline / secrets
@@ -182,7 +237,7 @@ bun run sandbox -- --whatsapp=twilio   # GET Twilio account (SID+token)
 bun run sandbox -- --sms=twilio
 bun run sandbox -- --email=resend      # GET Resend domains
 bun run sandbox -- --cache=upstash     # Upstash REST /ping
-bun run sandbox -- --db=neon           # select 1 via the configured driver
+bun run sandbox -- --db=turso          # select 1 via the libSQL driver
 ```
 
 Keep sandbox creds in Infisical (e.g. a `/sandbox` folder) and run
@@ -262,8 +317,9 @@ Never commit a real value to `.env.example` — it is the matrix, not a vault.
 | `invalid_client` on Google in preview | Preview uses a *different* Google OAuth client than prod (Fase 4). Confirm `GOOGLE_CLIENT_ID/SECRET` in Infisical `preview:/admin` and the redirect URI in that client. |
 | Trigger deploy: "X is not set" | Fase 4 wires `syncEnvVars` from Infisical + lazy-init. Until then Trigger env is the dashboard. |
 | `dev:docker`: web/admin crash on boot | `env.ts` throws if `DATABASE_URL`/`BETTER_AUTH_SECRET` missing. The compose fallbacks cover this; if you overrode them with empty values, unset the override. |
-| `dev:docker`: db calls fail with a fetch/HTTP error | The neon-http driver isn't hitting the proxy. Confirm `NEON_HTTP_PROXY_URL` is set in the container and `neon-proxy` is healthy (`docker compose logs neon-proxy`). |
-| `db:migrate:docker` hangs | Postgres not up yet — `wait-for-postgres.ts` polls `:5433`. Check `docker compose ps`. |
+| `dev:docker`: db calls fail with a fetch/HTTP error | The libsql server isn't reachable. Confirm `DATABASE_URL=http://libsql:8080` in the container and `libsql` is up (`docker compose logs libsql`). |
+| `dev:docker`: `URL_PARAM_NOT_SUPPORTED: sslmode` | A stale Postgres `DATABASE_URL` (old Neon, with `sslmode`) leaked in. Compose hardcodes `http://libsql:8080`; if you see this, something overrode it — check `docker compose config` for the resolved value. |
+| `db:migrate:docker` hangs | libsql not up yet — `wait-for-libsql.ts` polls `:8080`. Check `docker compose ps`. |
 
 ---
 

@@ -33,6 +33,18 @@
         "-y",
         "@modelcontextprotocol/server-slack"
       ]
+    },
+    "infisical": {
+      "type": "stdio",
+      "command": "node_modules/.bin/dotenv",
+      "args": [
+        "-e",
+        ".env",
+        "--",
+        "npx",
+        "-y",
+        "@infisical/mcp"
+      ]
     }
   }
 }
