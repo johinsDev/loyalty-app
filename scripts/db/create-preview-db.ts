@@ -44,6 +44,22 @@ const db = await createPreviewDatabase({ name, source });
 const token = await mintDatabaseToken(name);
 const url = libsqlUrl(db.Hostname);
 
+// A freshly created (seeded) Turso DB takes a few seconds to start serving —
+// querying too soon returns HTTP 404. Poll `select 1` until it answers so the
+// downstream migrate/mask steps don't race the provisioning.
+const { createClient } = await import("@libsql/client");
+const probe = createClient({ url, authToken: token });
+const deadline = Date.now() + 60_000;
+for (;;) {
+  try {
+    await probe.execute("select 1");
+    break;
+  } catch (err) {
+    if (Date.now() > deadline) throw err;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+}
+
 const ghOutput = process.env.GITHUB_OUTPUT;
 if (ghOutput) {
   // Mask the token in logs, then expose machine-readable outputs.
