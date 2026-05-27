@@ -1,12 +1,10 @@
 import {
-  boolean,
   index,
-  pgTable,
+  integer,
+  sqliteTable,
   text,
-  timestamp,
   uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/sqlite-core";
 
 import { organization } from "./auth";
 import { customer } from "./loyalty";
@@ -27,11 +25,13 @@ import { customer } from "./loyalty";
  *
  * See `.claude/skills/push/SKILL.md` for the registration flow.
  */
-export const pushToken = pgTable(
+export const pushToken = sqliteTable(
   "push_token",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    customerId: uuid("customer_id")
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    customerId: text("customer_id")
       .notNull()
       .references(() => customer.id, { onDelete: "cascade" }),
     organizationId: text("organization_id")
@@ -40,14 +40,16 @@ export const pushToken = pgTable(
     platform: text("platform").notNull(),
     token: text("token").notNull(),
     deviceLabel: text("device_label"),
-    isActive: boolean("is_active").notNull().default(true),
-    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
+    isActive: integer("is_active", { mode: "boolean" })
       .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .default(true),
+    lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
-      .defaultNow(),
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (t) => ({
     customerOrgTokenUq: uniqueIndex("push_token_customer_org_token_uq").on(

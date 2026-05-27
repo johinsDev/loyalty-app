@@ -12,7 +12,7 @@ export async function GET() {
   let dbError: string | undefined;
 
   try {
-    await db.execute(sql`select 1`);
+    await db.run(sql`select 1`);
     dbReachable = true;
   } catch (err) {
     dbError = err instanceof Error ? err.message : "unknown error";

@@ -1,5 +1,5 @@
 import { pushOutbox } from "@loyalty/db/schema";
-import { eq, ilike, type SQL } from "drizzle-orm";
+import { eq, like, type SQL } from "drizzle-orm";
 
 import { Filters } from "../_shared/filters";
 import type {
@@ -32,7 +32,7 @@ export class PushOutboxFilters<TBuilder extends WhereChainable> extends Filters<
    */
   protected deviceToken(value: string): void {
     this.builder = this.builder.where(
-      ilike(pushOutbox.deviceToken, `%${value}%`),
+      like(pushOutbox.deviceToken, `%${value}%`),
     );
   }
 
@@ -49,6 +49,6 @@ export class PushOutboxFilters<TBuilder extends WhereChainable> extends Filters<
    * the hot path; titles are the high-signal field for filtering.
    */
   protected search(value: string): void {
-    this.builder = this.builder.where(ilike(pushOutbox.title, `%${value}%`));
+    this.builder = this.builder.where(like(pushOutbox.title, `%${value}%`));
   }
 }

@@ -1,6 +1,6 @@
 import type { db as Db } from "@loyalty/db";
 import { pushToken, type PushTokenRow } from "@loyalty/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import type { RegisterInput } from "./schemas";
 
@@ -72,7 +72,7 @@ export class PushTokenRepository {
           eq(pushToken.token, token),
         ),
       );
-    return result.rowCount ?? 0;
+    return result.rowsAffected;
   }
 
   /**
@@ -83,8 +83,8 @@ export class PushTokenRepository {
   async deactivateByToken(token: string): Promise<number> {
     const result = await this.db
       .update(pushToken)
-      .set({ isActive: false, updatedAt: sql`NOW()` })
+      .set({ isActive: false, updatedAt: new Date() })
       .where(eq(pushToken.token, token));
-    return result.rowCount ?? 0;
+    return result.rowsAffected;
   }
 }

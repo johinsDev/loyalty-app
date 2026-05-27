@@ -20,7 +20,12 @@ const TRIGGER_PROJECT_REF = "proj_pwqxhdhrlurljnctiqdz";
 
 try {
   const here = dirname(fileURLToPath(import.meta.url));
-  loadEnv({ path: resolve(here, "../../.env") });
+  // `override: true` so the monorepo .env wins over a stale value already
+  // exported into the shell (direnv's `dotenv` loads .env on cd, so a shell
+  // opened before an .env edit carries the old value — and plain dotenv
+  // won't replace it). In the deploy sandbox the path resolves to nothing,
+  // so this loads 0 vars and override is a no-op.
+  loadEnv({ path: resolve(here, "../../.env"), override: true });
 } catch {
   // No-op: deploy sandbox has no repo .env. Env is injected by the
   // Trigger.dev dashboard at runtime there.

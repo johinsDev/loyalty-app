@@ -75,7 +75,7 @@ export function createAuth(
   const baseURL = options.baseURL ?? defaultBaseURL;
 
   return betterAuth({
-    database: drizzleAdapter(db, { provider: "pg" }),
+    database: drizzleAdapter(db, { provider: "sqlite" }),
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL,
     // Better Auth rejects any request whose Origin isn't listed here
@@ -146,7 +146,7 @@ export function createAuth(
 async function enforcePhoneOtpCap(phoneNumber: string): Promise<void> {
   const since = new Date(Date.now() - PHONE_OTP_WINDOW_SECONDS * 1000);
   const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`count(*)` })
     .from(schema.verification)
     .where(
       and(
