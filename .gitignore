@@ -139,3 +139,5 @@ scripts/*
 !scripts/r2/**
 !scripts/vercel
 !scripts/vercel/**
+!scripts/cache
+!scripts/cache/**
