@@ -65,6 +65,8 @@ export class CacheManager<
     this.#config = {
       default: config.default,
       stores: definedStores,
+      keyPrefix: config.keyPrefix,
+      defaultTtlSeconds: config.defaultTtlSeconds,
       logLevel: config.logLevel,
     };
     this.#logger = config.logger;
@@ -94,6 +96,8 @@ export class CacheManager<
     const store = new CacheStore(name, provider, {
       logger: this.#logger,
       logLevel: this.#logLevel,
+      keyPrefix: this.#config.keyPrefix,
+      defaultTtlSeconds: this.#config.defaultTtlSeconds,
     });
     this.#storesCache.set(name, store);
     return store;

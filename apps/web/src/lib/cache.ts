@@ -44,5 +44,9 @@ export const cache = new CacheManager({
     upstash: upstashConfig,
     redis: redisConfig,
   },
+  // Preview: per-PR namespace (CACHE_KEY_PREFIX=pr-<n>:) + a default TTL so a
+  // shared Upstash never fills up. Both empty/undefined elsewhere → no-op.
+  keyPrefix: env.CACHE_KEY_PREFIX,
+  defaultTtlSeconds: env.CACHE_DEFAULT_TTL,
   logger: log,
 });

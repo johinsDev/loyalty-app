@@ -84,16 +84,19 @@ jobs:
           TURSO_AUTH_TOKEN: ${{ steps.db.outputs.auth_token }}
         run: bun run scripts/db/mask-preview-db.ts
 
-      - name: Pin DATABASE_URL + TURSO_AUTH_TOKEN on Vercel preview (web + admin)
+      - name: Pin per-PR env on Vercel preview (web + admin)
         env:
           PREVIEW_DATABASE_URL: ${{ steps.db.outputs.database_url }}
           PREVIEW_AUTH_TOKEN: ${{ steps.db.outputs.auth_token }}
           GIT_BRANCH: ${{ github.head_ref }}
+          PR_NUMBER: ${{ github.event.number }}
         run: |
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod \
             --path=/ci --token="$INFISICAL_TOKEN" -- bash -c '
               ENV_KEY=DATABASE_URL ENV_VALUE="$PREVIEW_DATABASE_URL" bun run scripts/vercel/set-preview-env.ts
               ENV_KEY=TURSO_AUTH_TOKEN ENV_VALUE="$PREVIEW_AUTH_TOKEN" bun run scripts/vercel/set-preview-env.ts
+              ENV_KEY=STORAGE_KEY_PREFIX ENV_VALUE="pr-${PR_NUMBER}/" bun run scripts/vercel/set-preview-env.ts
+              ENV_KEY=CACHE_KEY_PREFIX ENV_VALUE="pr-${PR_NUMBER}:" bun run scripts/vercel/set-preview-env.ts
             '
 
       # The push auto-deploy races this pin and is skipped by each app's

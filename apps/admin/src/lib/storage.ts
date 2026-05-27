@@ -74,5 +74,8 @@ export const storage = new StorageManager({
   disks: {
     default: buildDiskConfig(),
   },
+  // Preview sets STORAGE_KEY_PREFIX=pr-<n>/ so each PR's uploads live in their
+  // own R2 folder (purged on PR close). Empty elsewhere → no-op.
+  keyPrefix: env.STORAGE_KEY_PREFIX,
   logger: log,
 });
