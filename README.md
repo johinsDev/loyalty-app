@@ -15,7 +15,7 @@ For a Claude Code session: start with [`CLAUDE.md`](./CLAUDE.md). Operational co
 - **PWA:** `@serwist/next` (installable, offline-tolerant) in `apps/web`
 - **API:** tRPC v11 (in `packages/api`, ready to extract into a standalone service)
 - **Auth:** Better Auth + organization plugin (multi-tenant)
-- **DB:** Postgres (Neon) + Drizzle ORM
+- **DB:** Turso (libSQL) + Drizzle ORM
 - **Background jobs / cron:** Trigger.dev v3
 - **Observability:** Better Stack (logs + uptime + status + alerts) via `@loyalty/log`
 - **WhatsApp:** `@loyalty/whatsapp` — provider-agnostic (Twilio in prod, DB outbox in preview, log/folder in dev)
@@ -43,7 +43,7 @@ apps/
 packages/
 ├── api/         tRPC v11 routers
 ├── auth/        Better Auth (server + client, organization plugin)
-├── db/          Drizzle ORM + Neon client + schema
+├── db/          Drizzle ORM + libSQL/Turso client + schema
 ├── jobs/        Trigger.dev v4 tasks
 ├── log/         Provider-agnostic logger (Pino + Better Stack + console + silent)
 ├── ui/          shadcn (Base UI) + Tailwind v4 tokens
@@ -88,8 +88,8 @@ bun --cwd apps/storybook run dev   # Storybook on :6006
 ### Or run the whole stack in Docker
 
 ```bash
-bun run dev:docker        # postgres + neon-proxy + redis + partykit + web + admin
-bun run db:migrate:docker # migrate the Docker DB (via the Neon HTTP proxy)
+bun run dev:docker        # libsql + redis + migrate + partykit + web + admin
+bun run db:migrate:docker # migrate the Docker DB (host-run; the stack also auto-migrates on up)
 bun run jobs:dev          # Trigger.dev stays a host process (its dev needs the cloud)
 ```
 
@@ -124,14 +124,14 @@ Both `apps/web` and `apps/admin` are internationalized with **next-intl** (Spani
 | `bun run test` | Vitest in every package (excludes `apps/e2e`) |
 | `bun run e2e` | Playwright (once specs land) |
 | `bun run knip` | Dead code / unused deps / unused exports |
-| `bun run dev:docker` | Whole dev stack in Docker (postgres + neon-proxy + redis + partykit + web + admin) |
-| `bun run db:migrate:docker` | Migrate the Dockerized Postgres via the Neon HTTP proxy |
+| `bun run dev:docker` | Whole dev stack in Docker (libsql + redis + migrate + partykit + web + admin) |
+| `bun run db:migrate:docker` | Migrate the Dockerized libSQL from the host (the stack also auto-migrates on up) |
 | `bun run sandbox -- --<channel>=<provider>` | Validate one real third party's credentials from your machine |
 | `bun run env:bootstrap` | Create the Infisical folder structure (`-- --import .env --env dev` to migrate an old `.env`) |
 | `bun run env:pull` | Export the current Infisical env as dotenv to stdout |
 | `bun run env:check` | List every secret in the current Infisical env |
 | `bun run db:generate` | Generate a Drizzle migration from the schema |
-| `bun run db:migrate` | Apply migrations to Neon |
+| `bun run db:migrate` | Apply migrations to Turso |
 | `bun run db:studio` | Open Drizzle Studio |
 | `bun run jobs:dev` | Trigger.dev dev server |
 | `bun run jobs:deploy` | Deploy jobs to Trigger.dev cloud |
@@ -284,7 +284,7 @@ Tokens live in `.env`. HTTP MCP servers don't read `.env` directly — the repo 
 ## Common local-dev gotchas
 
 - **Trigger.dev v3 requires Node ≥ 20** (its CLI). Bun runs everything else. Both must be on `$PATH`.
-- **Neon HTTP driver** works in RSC and Edge runtimes. For long transactions, use `Pool` from `@neondatabase/serverless` (websocket).
+- **libSQL `@libsql/client`** works in RSC and Node runtimes. `DATABASE_URL` holds the `libsql://` URL (remote Turso) or `http://localhost:8080` (local `sqld`); `TURSO_AUTH_TOKEN` is required only for remote.
 - **Better Auth `trustedOrigins`** is derived dynamically from `VERCEL_URL` + explicit overrides (see `packages/auth/src/server.ts`). Cross-app auth on preview deploys needs `NEXT_PUBLIC_APP_URL` / `BETTER_AUTH_URL` set explicitly — admin and web preview deploys have different `VERCEL_URL`s.
 - **Service worker disabled in dev** — set in `apps/web/next.config.ts` so it doesn't fight HMR. Build + start to test PWA locally.
 - **Sensitive env vars in Vercel** — Vercel won't return them via `vercel pull`. Mark Plain Text for any var the build needs to read at compile time. Full explainer in `.claude/skills/vercel/SKILL.md`.

@@ -1,11 +1,11 @@
-// Waits until the Dockerized Postgres accepts TCP connections on the
-// published host port (5433 by default). Used before host-run
+// Waits until the local libSQL server (`sqld`) accepts TCP connections.
+// Used by the compose `migrate` one-shot and by host-run
 // `db:migrate:docker` so the migration doesn't race the container.
 //
-// Usage: bun run scripts/db/wait-for-postgres.ts [host] [port] [timeoutMs]
+// Usage: bun run scripts/db/wait-for-libsql.ts [host] [port] [timeoutMs]
 
 const host = process.argv[2] ?? "localhost";
-const port = Number(process.argv[3] ?? 5433);
+const port = Number(process.argv[3] ?? 8080);
 const timeoutMs = Number(process.argv[4] ?? 60_000);
 
 const deadline = Date.now() + timeoutMs;
@@ -26,11 +26,11 @@ async function tryConnect(): Promise<boolean> {
 
 while (Date.now() < deadline) {
   if (await tryConnect()) {
-    console.info(`✓ Postgres reachable at ${host}:${port}`);
+    console.info(`✓ libSQL reachable at ${host}:${port}`);
     process.exit(0);
   }
   await Bun.sleep(1000);
 }
 
-console.error(`✗ Postgres not reachable at ${host}:${port} within ${timeoutMs}ms`);
+console.error(`✗ libSQL not reachable at ${host}:${port} within ${timeoutMs}ms`);
 process.exit(1);

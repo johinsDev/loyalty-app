@@ -127,10 +127,10 @@ Helper scripts:
 
 ```
 docker-compose.yml services:
-  postgres     postgres:16, named volume, host port 5433
-  neon-proxy   ghcr.io/timowilhelm/local-neon-http-proxy, host port 4444
+  libsql       ghcr.io/tursodatabase/libsql-server (sqld), named volume, host port 8080
   redis        redis:7 (only for CACHE_PROVIDER=redis; default is memory)
-  partykit     bunx partykit dev :1999
+  migrate      one-shot: waits for libsql, applies Drizzle migrations, exits
+  partykit     npx partykit dev :1999
   web          bunx next dev --webpack :3002
   admin        bunx next dev --turbopack :3003
 ```
@@ -143,23 +143,22 @@ containers never race the same install. bun hoists the whole workspace to
 the repo-root `node_modules`, so one install serves every app; services
 differ only by `working_dir` + `command`. The repo is bind-mounted for HMR.
 
-### The two-DATABASE_URL-consumers detail
+### The DATABASE_URL detail
 
-`DATABASE_URL` stays a **plain Postgres URL**. Two consumers:
+Compose **hardcodes** `DATABASE_URL=http://libsql:8080` for every service
+(NOT `${DATABASE_URL:-…}`), so docker dev always hits the LOCAL `sqld` —
+never the remote Turso a host shell (direnv) or Infisical might export.
+The `@libsql/client` driver (`client.ts`, `migrate.ts`) and drizzle-kit
+(`db:push`, `db:studio`, dialect `turso`) all speak to it over HTTP; no
+auth token is needed locally. From the host, reach it at
+`http://localhost:8080` (published port).
 
-- **drizzle-kit** (`db:push`, `db:studio`) — direct `pg` TCP to Postgres
-  (host `localhost:5433`).
-- **`@neondatabase/serverless`** (`client.ts`, `migrate.ts`) — speaks
-  Neon's HTTP protocol. `packages/db/src/neon-local.ts` reroutes its fetch
-  to the `neon-proxy` sidecar **only when `NEON_HTTP_PROXY_URL` is set**
-  (compose sets `http://neon-proxy:4444/sql`). Unset in preview/prod →
-  zero behavior change, real Neon untouched. The driver is NOT swapped.
-
-Run migrations against the Docker DB from the host:
+The `migrate` one-shot applies the schema before web/admin boot, so the
+stack comes up ready. To re-migrate from the host (e.g. after `db:generate`):
 
 ```bash
-bun run dev:docker            # in one terminal
-bun run db:migrate:docker     # waits for :5433, migrates via the proxy
+bun run dev:docker            # in one terminal (auto-migrates on up)
+bun run db:migrate:docker     # waits for :8080, migrates the local libsql
 ```
 
 ### Offline / secrets
@@ -182,7 +181,7 @@ bun run sandbox -- --whatsapp=twilio   # GET Twilio account (SID+token)
 bun run sandbox -- --sms=twilio
 bun run sandbox -- --email=resend      # GET Resend domains
 bun run sandbox -- --cache=upstash     # Upstash REST /ping
-bun run sandbox -- --db=neon           # select 1 via the configured driver
+bun run sandbox -- --db=turso          # select 1 via the libSQL driver
 ```
 
 Keep sandbox creds in Infisical (e.g. a `/sandbox` folder) and run
@@ -262,8 +261,9 @@ Never commit a real value to `.env.example` — it is the matrix, not a vault.
 | `invalid_client` on Google in preview | Preview uses a *different* Google OAuth client than prod (Fase 4). Confirm `GOOGLE_CLIENT_ID/SECRET` in Infisical `preview:/admin` and the redirect URI in that client. |
 | Trigger deploy: "X is not set" | Fase 4 wires `syncEnvVars` from Infisical + lazy-init. Until then Trigger env is the dashboard. |
 | `dev:docker`: web/admin crash on boot | `env.ts` throws if `DATABASE_URL`/`BETTER_AUTH_SECRET` missing. The compose fallbacks cover this; if you overrode them with empty values, unset the override. |
-| `dev:docker`: db calls fail with a fetch/HTTP error | The neon-http driver isn't hitting the proxy. Confirm `NEON_HTTP_PROXY_URL` is set in the container and `neon-proxy` is healthy (`docker compose logs neon-proxy`). |
-| `db:migrate:docker` hangs | Postgres not up yet — `wait-for-postgres.ts` polls `:5433`. Check `docker compose ps`. |
+| `dev:docker`: db calls fail with a fetch/HTTP error | The libsql server isn't reachable. Confirm `DATABASE_URL=http://libsql:8080` in the container and `libsql` is up (`docker compose logs libsql`). |
+| `dev:docker`: `URL_PARAM_NOT_SUPPORTED: sslmode` | A stale Postgres `DATABASE_URL` (old Neon, with `sslmode`) leaked in. Compose hardcodes `http://libsql:8080`; if you see this, something overrode it — check `docker compose config` for the resolved value. |
+| `db:migrate:docker` hangs | libsql not up yet — `wait-for-libsql.ts` polls `:8080`. Check `docker compose ps`. |
 
 ---
 
