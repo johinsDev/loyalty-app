@@ -1,5 +1,5 @@
 import { smsOutbox } from "@loyalty/db/schema";
-import { eq, ilike, type SQL } from "drizzle-orm";
+import { eq, like, type SQL } from "drizzle-orm";
 
 import { Filters } from "../_shared/filters";
 import type { ListInput, SmsOutboxStatus } from "./schemas";
@@ -28,7 +28,7 @@ export class SmsOutboxFilters<TBuilder extends WhereChainable> extends Filters<
    * contains it).
    */
   protected to(value: string): void {
-    this.builder = this.builder.where(ilike(smsOutbox.to, `%${value}%`));
+    this.builder = this.builder.where(like(smsOutbox.to, `%${value}%`));
   }
 
   protected status(value: SmsOutboxStatus): void {
@@ -36,6 +36,6 @@ export class SmsOutboxFilters<TBuilder extends WhereChainable> extends Filters<
   }
 
   protected search(value: string): void {
-    this.builder = this.builder.where(ilike(smsOutbox.content, `%${value}%`));
+    this.builder = this.builder.where(like(smsOutbox.content, `%${value}%`));
   }
 }

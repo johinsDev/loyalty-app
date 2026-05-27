@@ -1,5 +1,5 @@
 import { whatsappOutbox } from "@loyalty/db/schema";
-import { eq, ilike, type SQL } from "drizzle-orm";
+import { eq, like, type SQL } from "drizzle-orm";
 
 import { Filters } from "../_shared/filters";
 import type { ListInput, WhatsAppOutboxStatus } from "./schemas";
@@ -30,10 +30,10 @@ export class WhatsAppOutboxFilters<TBuilder extends WhereChainable> extends Filt
   /**
    * Partial, case-insensitive phone match. Users typing the area code
    * (`+5491155`) should see every recipient that starts with it, not
-   * just exact-match rows. Drizzle's `ilike` maps to Postgres `ILIKE`.
+   * just exact-match rows. SQLite's `LIKE` is case-insensitive for ASCII.
    */
   protected to(value: string): void {
-    this.builder = this.builder.where(ilike(whatsappOutbox.to, `%${value}%`));
+    this.builder = this.builder.where(like(whatsappOutbox.to, `%${value}%`));
   }
 
   protected status(value: WhatsAppOutboxStatus): void {
@@ -41,6 +41,6 @@ export class WhatsAppOutboxFilters<TBuilder extends WhereChainable> extends Filt
   }
 
   protected search(value: string): void {
-    this.builder = this.builder.where(ilike(whatsappOutbox.content, `%${value}%`));
+    this.builder = this.builder.where(like(whatsappOutbox.content, `%${value}%`));
   }
 }

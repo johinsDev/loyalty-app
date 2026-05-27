@@ -1,40 +1,45 @@
 import { relations } from "drizzle-orm";
 import {
-  boolean,
   integer,
-  pgTable,
+  sqliteTable,
   text,
-  timestamp,
   uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/sqlite-core";
 
 import { organization, user } from "./auth";
 
 // End customer of the loyalty program (distinct from `user`, which is the
 // staff/owner. A customer is identified by phone primarily — they don't need
 // to create an account to participate).
-export const customer = pgTable(
+export const customer = sqliteTable(
   "customer",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     phone: text("phone").notNull(),
     email: text("email"),
     name: text("name"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (t) => ({
     phonePerOrg: uniqueIndex("customer_phone_per_org_uq").on(t.organizationId, t.phone),
   }),
 );
 
-export const loyaltyCard = pgTable("loyalty_card", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  customerId: uuid("customer_id")
+export const loyaltyCard = sqliteTable("loyalty_card", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  customerId: text("customer_id")
     .notNull()
     .references(() => customer.id, { onDelete: "cascade" }),
   organizationId: text("organization_id")
@@ -42,14 +47,20 @@ export const loyaltyCard = pgTable("loyalty_card", {
     .references(() => organization.id, { onDelete: "cascade" }),
   currentStamps: integer("current_stamps").notNull().default(0),
   status: text("status").notNull().default("active"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 // Append-only log of every stamp granted. Source of truth for currentStamps.
-export const stamp = pgTable("stamp", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  cardId: uuid("card_id")
+export const stamp = sqliteTable("stamp", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  cardId: text("card_id")
     .notNull()
     .references(() => loyaltyCard.id, { onDelete: "cascade" }),
   addedByUserId: text("added_by_user_id")
@@ -57,35 +68,47 @@ export const stamp = pgTable("stamp", {
     .references(() => user.id),
   amount: integer("amount").notNull().default(1),
   note: text("note"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
-export const reward = pgTable("reward", {
-  id: uuid("id").defaultRandom().primaryKey(),
+export const reward = sqliteTable("reward", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   organizationId: text("organization_id")
     .notNull()
     .references(() => organization.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
   stampsRequired: integer("stamps_required").notNull(),
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
-export const redemption = pgTable("redemption", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  cardId: uuid("card_id")
+export const redemption = sqliteTable("redemption", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  cardId: text("card_id")
     .notNull()
     .references(() => loyaltyCard.id, { onDelete: "cascade" }),
-  rewardId: uuid("reward_id")
+  rewardId: text("reward_id")
     .notNull()
     .references(() => reward.id),
   redeemedByUserId: text("redeemed_by_user_id")
     .notNull()
     .references(() => user.id),
   stampsSpent: integer("stamps_spent").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export const customerRelations = relations(customer, ({ one, many }) => ({

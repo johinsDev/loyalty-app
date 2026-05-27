@@ -1,4 +1,4 @@
-import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * `push_outbox` — persistence target for the `outbox` provider in
@@ -18,19 +18,23 @@ import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-cor
  *
  * See `.claude/skills/push/SKILL.md` for the full data flow.
  */
-export const pushOutbox = pgTable(
+export const pushOutbox = sqliteTable(
   "push_outbox",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     deviceToken: text("device_token").notNull(),
     platform: text("platform").notNull(),
     title: text("title").notNull(),
     body: text("body").notNull(),
-    data: jsonb("data"),
+    data: text("data", { mode: "json" }),
     status: text("status").notNull().default("sent"),
     providerMessageId: text("provider_message_id"),
-    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
-    metadata: jsonb("metadata"),
+    sentAt: integer("sent_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    metadata: text("metadata", { mode: "json" }),
   },
   (t) => ({
     deviceTokenSentAtIdx: index("push_outbox_device_token_sent_at_idx").on(

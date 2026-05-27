@@ -28,7 +28,7 @@ export class WhatsAppOutboxRepository {
       .offset(offset)) as WhatsappOutboxRow[];
 
     const baseCount = this.db
-      .select({ value: sql<number>`count(*)::int` })
+      .select({ value: sql<number>`count(*)` })
       .from(whatsappOutbox)
       .$dynamic();
     const filteredCount = new WhatsAppOutboxFilters(baseCount, input).apply();
@@ -64,10 +64,10 @@ export class WhatsAppOutboxRepository {
    * observability.
    */
   async deleteOlderThan(olderThanDays: number): Promise<number> {
-    const cutoff = sql<string>`NOW() - INTERVAL '1 day' * ${olderThanDays}`;
+    const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
     const result = await this.db
       .delete(whatsappOutbox)
       .where(lt(whatsappOutbox.sentAt, cutoff));
-    return result.rowCount ?? 0;
+    return result.rowsAffected;
   }
 }

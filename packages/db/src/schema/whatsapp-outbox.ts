@@ -1,4 +1,4 @@
-import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * `whatsapp_outbox` — persistence target for the `outbox` provider in
@@ -9,20 +9,24 @@ import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-cor
  *
  * See `.claude/skills/whatsapp/SKILL.md` for the full data flow.
  */
-export const whatsappOutbox = pgTable(
+export const whatsappOutbox = sqliteTable(
   "whatsapp_outbox",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     to: text("to").notNull(),
     from: text("from"),
     content: text("content").notNull(),
     contentSid: text("content_sid"),
-    contentVariables: jsonb("content_variables"),
+    contentVariables: text("content_variables", { mode: "json" }),
     mediaUrl: text("media_url"),
     status: text("status").notNull().default("sent"),
     providerMessageId: text("provider_message_id"),
-    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
-    metadata: jsonb("metadata"),
+    sentAt: integer("sent_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    metadata: text("metadata", { mode: "json" }),
   },
   (t) => ({
     toSentAtIdx: index("whatsapp_outbox_to_sent_at_idx").on(t.to, t.sentAt),

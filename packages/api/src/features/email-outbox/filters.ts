@@ -1,5 +1,5 @@
 import { emailOutbox } from "@loyalty/db/schema";
-import { eq, ilike, type SQL } from "drizzle-orm";
+import { eq, like, type SQL } from "drizzle-orm";
 
 import { Filters } from "../_shared/filters";
 import type { EmailOutboxStatus, ListInput } from "./schemas";
@@ -28,7 +28,7 @@ export class EmailOutboxFilters<TBuilder extends WhereChainable> extends Filters
    * name — same UX as the SMS / WhatsApp filters.
    */
   protected to(value: string): void {
-    this.builder = this.builder.where(ilike(emailOutbox.to, `%${value}%`));
+    this.builder = this.builder.where(like(emailOutbox.to, `%${value}%`));
   }
 
   protected status(value: EmailOutboxStatus): void {
@@ -40,6 +40,6 @@ export class EmailOutboxFilters<TBuilder extends WhereChainable> extends Filters
    * `sql` expression union; defer until we have real volume / need.
    */
   protected search(value: string): void {
-    this.builder = this.builder.where(ilike(emailOutbox.subject, `%${value}%`));
+    this.builder = this.builder.where(like(emailOutbox.subject, `%${value}%`));
   }
 }

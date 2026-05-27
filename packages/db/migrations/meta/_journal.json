@@ -1,40 +1,12 @@
 {
   "version": "7",
-  "dialect": "postgresql",
+  "dialect": "sqlite",
   "entries": [
     {
       "idx": 0,
-      "version": "7",
-      "when": 1778609414702,
-      "tag": "0000_ancient_winter_soldier",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1778626337604,
-      "tag": "0001_old_elektra",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1778701189688,
-      "tag": "0002_smiling_alex_wilder",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1778716071744,
-      "tag": "0003_chunky_proteus",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1778797013676,
-      "tag": "0004_faulty_magdalene",
+      "version": "6",
+      "when": 1779900438394,
+      "tag": "0000_glamorous_purifiers",
       "breakpoints": true
     }
   ]

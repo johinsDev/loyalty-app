@@ -28,7 +28,7 @@ export class SmsOutboxRepository {
       .offset(offset)) as SmsOutboxRow[];
 
     const baseCount = this.db
-      .select({ value: sql<number>`count(*)::int` })
+      .select({ value: sql<number>`count(*)` })
       .from(smsOutbox)
       .$dynamic();
     const filteredCount = new SmsOutboxFilters(baseCount, input).apply();
@@ -64,10 +64,10 @@ export class SmsOutboxRepository {
    * observability.
    */
   async deleteOlderThan(olderThanDays: number): Promise<number> {
-    const cutoff = sql<string>`NOW() - INTERVAL '1 day' * ${olderThanDays}`;
+    const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
     const result = await this.db
       .delete(smsOutbox)
       .where(lt(smsOutbox.sentAt, cutoff));
-    return result.rowCount ?? 0;
+    return result.rowsAffected;
   }
 }

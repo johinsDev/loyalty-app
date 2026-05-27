@@ -30,6 +30,7 @@ const isPushWebOrAuto = () =>
 export const env = createEnv({
   server: {
     DATABASE_URL: z.string().min(1),
+    TURSO_AUTH_TOKEN: z.string().optional(),
 
     TRIGGER_PROJECT_ID: z.string().min(1),
     TRIGGER_SECRET_KEY: z.string().optional(),

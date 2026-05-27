@@ -1,17 +1,15 @@
-import "./neon-local";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
+import { migrate } from "drizzle-orm/libsql/migrator";
 
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
-import { migrate } from "drizzle-orm/neon-http/migrator";
+const url = process.env.DATABASE_URL;
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
+if (!url) {
   throw new Error("DATABASE_URL is not set");
 }
 
-const sql = neon(databaseUrl);
-const db = drizzle(sql);
+const client = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN });
+const db = drizzle(client);
 
 await migrate(db, { migrationsFolder: "./migrations" });
 

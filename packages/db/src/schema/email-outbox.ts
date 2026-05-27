@@ -1,4 +1,4 @@
-import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * `email_outbox` — persistence target for the `outbox` provider in
@@ -15,10 +15,12 @@ import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-cor
  *
  * See `.claude/skills/email/SKILL.md` for the full data flow.
  */
-export const emailOutbox = pgTable(
+export const emailOutbox = sqliteTable(
   "email_outbox",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     to: text("to").notNull(),
     from: text("from"),
     replyTo: text("reply_to"),
@@ -29,8 +31,10 @@ export const emailOutbox = pgTable(
     text: text("text"),
     status: text("status").notNull().default("sent"),
     providerMessageId: text("provider_message_id"),
-    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
-    metadata: jsonb("metadata"),
+    sentAt: integer("sent_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    metadata: text("metadata", { mode: "json" }),
   },
   (t) => ({
     toSentAtIdx: index("email_outbox_to_sent_at_idx").on(t.to, t.sentAt),

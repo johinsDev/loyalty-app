@@ -1,4 +1,4 @@
-import { index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * `sms_outbox` — persistence target for the `outbox` provider in
@@ -12,10 +12,12 @@ import { index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-c
  *
  * See `.claude/skills/sms/SKILL.md` for the full data flow.
  */
-export const smsOutbox = pgTable(
+export const smsOutbox = sqliteTable(
   "sms_outbox",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     to: text("to").notNull(),
     from: text("from"),
     content: text("content").notNull(),
@@ -24,7 +26,9 @@ export const smsOutbox = pgTable(
     characters: integer("characters").notNull().default(0),
     status: text("status").notNull().default("sent"),
     providerMessageId: text("provider_message_id"),
-    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: integer("sent_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
     metadata: text("metadata"),
   },
   (t) => ({
