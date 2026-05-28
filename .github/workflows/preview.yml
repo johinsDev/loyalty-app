@@ -96,7 +96,8 @@ jobs:
           PR_DB_URL: ${{ steps.db.outputs.database_url }}
           PR_DB_TOKEN: ${{ steps.db.outputs.auth_token }}
         run: |
-          infisical run --env=staging --path=/shared --token="$INFISICAL_TOKEN" -- \
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging \
+            --path=/shared --token="$INFISICAL_TOKEN" -- \
             bash -c 'DATABASE_URL="$PR_DB_URL" TURSO_AUTH_TOKEN="$PR_DB_TOKEN" \
               bun run --cwd packages/auth src/seed-preview-admin.ts'
 
