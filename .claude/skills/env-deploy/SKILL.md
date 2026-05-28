@@ -292,6 +292,75 @@ that call `infisical run` with a service token.
 
 ---
 
+## Adding a new env var
+
+Five steps. Skipping the `turbo.json` one is the classic footgun — Turbo's
+strict env strips any var not declared there, so the app boots with it
+`undefined` and `env.ts` throws "Invalid environment variables".
+
+**1. Declare + validate it** (zod) where it's consumed:
+
+| Consumer | File | Notes |
+| --- | --- | --- |
+| `apps/web` | `apps/web/src/env.ts` | `server` block; client-exposed vars (`NEXT_PUBLIC_*`) go in `client` + `experimental__runtimeEnv`. |
+| `apps/admin` | `apps/admin/src/env.ts` | same shape. |
+| `packages/api` | the consuming app's `env.ts` | the API has no own env file — it runs inside web/admin and reads their validated `env`. Declare in whichever app(s) use it. |
+| `packages/jobs` (Trigger) | `packages/jobs/env.ts` | `server` block; both this and the db client are **lazy** — read `env.X` inside a task's `run()`, never at module top-level. |
+
+Use `requireWhen(...)` for conditionally-required creds (required only when a
+provider is selected), like the Twilio/VAPID/Upstash vars.
+
+**2. Let it reach builds** — add the key (or a `PREFIX_*` wildcard) to
+`turbo.json` `globalEnv`. `NEXT_PUBLIC_*` is already covered by the `build`
+task's `env`.
+
+**3. Store the value in Infisical** — env `dev`/`staging`/`prod`, folder
+`/shared` (or an app folder). Via the dashboard, `infisical secrets set
+KEY=VALUE --env=dev --path=/shared`, or the Infisical MCP.
+
+**4. It reaches each runtime automatically:**
+
+- **Local dev** — `bun run dev` = `infisical run --env=dev --recursive`, so a
+  var in `dev` is injected. (`infisical run` overrides a stale shell value.)
+- **Vercel preview** — Infisical `staging:/shared` → Vercel **Preview** target
+  via the Secret Sync (auto). Per-PR values are pinned branch-scoped by
+  `preview.yml`.
+- **Vercel prod** — Infisical `prod` → Vercel **Production** via the sync.
+- **Trigger.dev (jobs)** — add the key to the `syncEnvVars` list in
+  `trigger.config.ts`; `trigger deploy` then pushes it into the Trigger env.
+
+**5. Document it** in `.env.example` (the matrix: var · consumer · scope ·
+Infisical folder).
+
+### Pulling an env locally
+
+A teammate can hydrate a `.env` from any environment:
+
+```bash
+INFISICAL_ENV=staging bun run env:pull > .env        # or dev / prod
+# = infisical export --env=staging --recursive --format=dotenv
+```
+
+(Needs Infisical login + project membership. Note: `staging` is the preview
+base and has **no** `DATABASE_URL` — that's per-PR — so for a local DB still
+use the Docker `dev:services` flow.)
+
+### Overriding one preview (e.g. real Twilio instead of outbox)
+
+Branch-scoped Vercel env vars **override** the synced base, for that one PR
+only. On the fix branch:
+
+```bash
+GIT_BRANCH=fix/twilio ENV_KEY=WHATSAPP_PROVIDER ENV_VALUE=twilio  bun run scripts/vercel/set-preview-env.ts
+GIT_BRANCH=fix/twilio ENV_KEY=TWILIO_ACCOUNT_SID  ENV_VALUE=AC…   bun run scripts/vercel/set-preview-env.ts
+# repeat for TWILIO_AUTH_TOKEN / TWILIO_WHATSAPP_FROM, then redeploy
+```
+
+That preview sends real WhatsApp via Twilio; every other preview stays on
+`outbox`. `unset-preview-env` (PR close) removes the overrides.
+
+---
+
 ## Rotating a secret
 
 1. `infisical secrets set KEY=NEWVALUE --env=prod --path=/shared`
