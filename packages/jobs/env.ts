@@ -36,7 +36,12 @@ function build() {
       DATABASE_URL: z.string().min(1),
       TURSO_AUTH_TOKEN: z.string().optional(),
 
-      TRIGGER_PROJECT_ID: z.string().min(1),
+      // Deploy/config-time only: read directly via `process.env` in
+      // trigger.config.ts (which also hardcodes a fallback ref). It is NOT
+      // synced into the deployed task runtime (syncEnvVars), and no task reads
+      // it — so a running task in a preview-branch deployment won't have it.
+      // Keep it optional or the env validation throws inside `run()`.
+      TRIGGER_PROJECT_ID: z.string().optional(),
       TRIGGER_SECRET_KEY: z.string().optional(),
 
       LOG_LEVEL: z
