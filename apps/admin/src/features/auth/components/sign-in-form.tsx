@@ -10,30 +10,60 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Input,
+  Label,
+  Separator,
 } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-export function SignInForm() {
+type Props = {
+  /**
+   * When true, the email/password form is rendered below Google.
+   * Resolved on the server from VERCEL_ENV — see `auth-flags.ts`.
+   */
+  passwordEnabled: boolean;
+};
+
+export function SignInForm({ passwordEnabled }: Props) {
   const t = useTranslations("Auth");
   const searchParams = useSearchParams();
   const forbidden = searchParams.get("error") === "forbidden";
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<"google" | "email" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const onGoogle = async () => {
     setError(null);
-    setLoading(true);
+    setLoading("google");
     const { error } = await authClient.signIn.social({
       provider: "google",
       callbackURL: "/dashboard",
     });
     if (error) {
       setError(error.message ?? t("googleError"));
-      setLoading(false);
+      setLoading(null);
     }
   };
+
+  const onEmail = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    setLoading("email");
+    const { error } = await authClient.signIn.email({
+      email,
+      password,
+      callbackURL: "/dashboard",
+    });
+    if (error) {
+      setError(error.message ?? t("emailPasswordError"));
+      setLoading(null);
+    }
+  };
+
+  const busy = loading !== null;
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
@@ -53,11 +83,53 @@ export function SignInForm() {
             variant="outline"
             className="w-full"
             onClick={onGoogle}
-            disabled={loading}
+            disabled={busy}
           >
             <GoogleIcon className="size-4" />
-            {loading ? t("submitting") : t("googleButton")}
+            {loading === "google" ? t("submitting") : t("googleButton")}
           </Button>
+          {passwordEnabled ? (
+            <>
+              <div className="flex items-center gap-3">
+                <Separator className="flex-1" />
+                <span className="text-muted-foreground text-xs uppercase">
+                  {t("orDivider")}
+                </span>
+                <Separator className="flex-1" />
+              </div>
+              <form className="space-y-3" onSubmit={onEmail}>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">{t("emailLabel")}</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={busy}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">{t("passwordLabel")}</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={busy}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={busy}>
+                  {loading === "email"
+                    ? t("submitting")
+                    : t("emailSignInButton")}
+                </Button>
+              </form>
+            </>
+          ) : null}
           {error ? (
             <p className="text-destructive text-sm">{error}</p>
           ) : null}

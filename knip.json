@@ -60,7 +60,13 @@
     },
     "packages/api": {},
     "packages/auth": {
-      "entry": ["src/index.ts", "src/server.ts", "src/client.ts", "src/api-guard.ts"]
+      "entry": [
+        "src/index.ts",
+        "src/server.ts",
+        "src/client.ts",
+        "src/api-guard.ts",
+        "src/seed-preview-admin.ts"
+      ]
     },
     "packages/date": { "entry": ["src/index.ts", "src/react/index.ts"] },
     "packages/db": {
