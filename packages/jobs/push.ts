@@ -16,6 +16,9 @@ import { log } from "./log";
  * Expo per device.
  *
  * Defaults: log locally, outbox in preview, auto in prod.
+ *
+ * Lazy: the manager (which reads the validated `env`) is built on first use,
+ * not at import — so `trigger deploy` can index task files with no env present.
  */
 function pickDefaultProvider(): "log" | "outbox" | "webpush" | "expo" | "auto" {
   if (env.PUSH_PROVIDER) return env.PUSH_PROVIDER;
@@ -38,41 +41,53 @@ async function tokenLookup(
   }));
 }
 
-const webpushConfig: ProviderConfig | undefined =
-  env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT
-    ? {
-        provider: "webpush",
-        publicKey: env.VAPID_PUBLIC_KEY,
-        privateKey: env.VAPID_PRIVATE_KEY,
-        subject: env.VAPID_SUBJECT,
-      }
-    : undefined;
+function build() {
+  const webpushConfig: ProviderConfig | undefined =
+    env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT
+      ? {
+          provider: "webpush",
+          publicKey: env.VAPID_PUBLIC_KEY,
+          privateKey: env.VAPID_PRIVATE_KEY,
+          subject: env.VAPID_SUBJECT,
+        }
+      : undefined;
 
-const expoConfig: ProviderConfig = {
-  provider: "expo",
-  ...(env.EXPO_ACCESS_TOKEN && { accessToken: env.EXPO_ACCESS_TOKEN }),
-};
+  const expoConfig: ProviderConfig = {
+    provider: "expo",
+    ...(env.EXPO_ACCESS_TOKEN && { accessToken: env.EXPO_ACCESS_TOKEN }),
+  };
 
-const autoConfig: ProviderConfig | undefined =
-  webpushConfig?.provider === "webpush"
-    ? {
-        provider: "auto",
-        webpush: webpushConfig,
-        expo: expoConfig,
-        tokenLookup,
-      }
-    : undefined;
+  const autoConfig: ProviderConfig | undefined =
+    webpushConfig?.provider === "webpush"
+      ? {
+          provider: "auto",
+          webpush: webpushConfig,
+          expo: expoConfig,
+          tokenLookup,
+        }
+      : undefined;
 
-export const push = new PushManager({
-  default: pickDefaultProvider(),
-  senders: {
-    log: { provider: "log", logger: log },
-    outbox: { provider: "outbox", db },
-    webpush: webpushConfig,
-    expo: expoConfig,
-    auto: autoConfig,
+  return new PushManager({
+    default: pickDefaultProvider(),
+    senders: {
+      log: { provider: "log", logger: log },
+      outbox: { provider: "outbox", db },
+      webpush: webpushConfig,
+      expo: expoConfig,
+      auto: autoConfig,
+    },
+    logger: log,
+  });
+}
+
+let cached: ReturnType<typeof build> | undefined;
+
+export const push = new Proxy({} as ReturnType<typeof build>, {
+  get(_target, prop) {
+    cached ??= build();
+    const value = (cached as unknown as Record<string | symbol, unknown>)[prop];
+    return typeof value === "function" ? value.bind(cached) : value;
   },
-  logger: log,
 });
 
 export { tokenLookup };

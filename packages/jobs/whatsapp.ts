@@ -7,6 +7,9 @@ import { log } from "./log";
 /**
  * Bootstrap for `@loyalty/whatsapp` in Trigger.dev tasks. Same policy
  * as the apps: log locally, outbox in preview, twilio in prod.
+ *
+ * Lazy: the manager (which reads the validated `env`) is built on first use,
+ * not at import — so `trigger deploy` can index task files with no env present.
  */
 function pickDefaultProvider(): "log" | "outbox" | "twilio" {
   if (env.WHATSAPP_PROVIDER) return env.WHATSAPP_PROVIDER;
@@ -15,22 +18,34 @@ function pickDefaultProvider(): "log" | "outbox" | "twilio" {
   return "log";
 }
 
-const twilioConfig: ProviderConfig | undefined =
-  env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_WHATSAPP_FROM
-    ? {
-        provider: "twilio",
-        accountSid: env.TWILIO_ACCOUNT_SID,
-        authToken: env.TWILIO_AUTH_TOKEN,
-        from: `whatsapp:${env.TWILIO_WHATSAPP_FROM}`,
-      }
-    : undefined;
+function build() {
+  const twilioConfig: ProviderConfig | undefined =
+    env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_WHATSAPP_FROM
+      ? {
+          provider: "twilio",
+          accountSid: env.TWILIO_ACCOUNT_SID,
+          authToken: env.TWILIO_AUTH_TOKEN,
+          from: `whatsapp:${env.TWILIO_WHATSAPP_FROM}`,
+        }
+      : undefined;
 
-export const whatsapp = new WhatsAppManager({
-  default: pickDefaultProvider(),
-  mailers: {
-    log: { provider: "log", logger: log },
-    outbox: { provider: "outbox", db },
-    twilio: twilioConfig,
+  return new WhatsAppManager({
+    default: pickDefaultProvider(),
+    mailers: {
+      log: { provider: "log", logger: log },
+      outbox: { provider: "outbox", db },
+      twilio: twilioConfig,
+    },
+    logger: log,
+  });
+}
+
+let cached: ReturnType<typeof build> | undefined;
+
+export const whatsapp = new Proxy({} as ReturnType<typeof build>, {
+  get(_target, prop) {
+    cached ??= build();
+    const value = (cached as unknown as Record<string | symbol, unknown>)[prop];
+    return typeof value === "function" ? value.bind(cached) : value;
   },
-  logger: log,
 });
