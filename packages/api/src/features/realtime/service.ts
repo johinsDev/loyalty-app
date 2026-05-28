@@ -21,7 +21,17 @@ interface AuthorizedCaller {
 
 export class RealtimeService {
   constructor(
-    private readonly cfg: { secret: string; ttlSeconds?: number },
+    private readonly cfg: {
+      secret: string;
+      ttlSeconds?: number;
+      /**
+       * Prepended to the room body so a shared party isolates rooms
+       * per environment (previews set `pr-<n>-`; prod/local empty).
+       * Must match `RealtimeClient`'s `roomPrefix` so the JWT room
+       * claim equals the room the publisher targets.
+       */
+      roomPrefix?: string;
+    },
   ) {}
 
   /**
@@ -46,9 +56,14 @@ export class RealtimeService {
       // v1: trust the input. Future: ensure body === caller.customerId.
       // Logged here so we don't forget.
       void caller; // silence unused (will be used once linkage exists)
+      // Prefix the body (not the identity): the JWT `room` claim +
+      // `ticket.roomId` carry the prefix so the client connects to —
+      // and the publisher targets — the same isolated room. `sub`
+      // stays the real customer id.
+      const actualRoom = `${kind}:${this.cfg.roomPrefix ?? ""}${body}` as RoomName;
       return signTicket({
         customerId: body,
-        roomId: input.roomId as RoomName,
+        roomId: actualRoom,
         secret: this.cfg.secret,
         ttlSeconds: this.cfg.ttlSeconds,
       });

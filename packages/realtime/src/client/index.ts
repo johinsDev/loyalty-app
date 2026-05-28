@@ -77,7 +77,10 @@ export function usePartyRoom<E extends { event: string } = RealtimeEvent>(
       }
       if (cancelled) return;
 
-      const { kind, body } = parseRoom(roomId);
+      // Connect to the room the ticket actually grants — the server may
+      // have prefixed the body (per-PR preview isolation), so trust
+      // `ticket.roomId` over the logical `roomId` we asked for.
+      const { kind, body } = parseRoom(ticket.roomId as RoomName);
       socket = new PartySocket({
         host: options.host,
         party: kind,
