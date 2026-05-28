@@ -114,6 +114,7 @@ jobs:
               ENV_KEY=TURSO_AUTH_TOKEN ENV_VALUE="$PREVIEW_AUTH_TOKEN" bun run scripts/vercel/set-preview-env.ts
               ENV_KEY=STORAGE_KEY_PREFIX ENV_VALUE="pr-${PR_NUMBER}/" bun run scripts/vercel/set-preview-env.ts
               ENV_KEY=CACHE_KEY_PREFIX ENV_VALUE="pr-${PR_NUMBER}:" bun run scripts/vercel/set-preview-env.ts
+              ENV_KEY=REALTIME_ROOM_PREFIX ENV_VALUE="pr-${PR_NUMBER}-" bun run scripts/vercel/set-preview-env.ts
             '
 
       # The push auto-deploy races this pin and is skipped by each app's

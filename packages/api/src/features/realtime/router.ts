@@ -30,7 +30,10 @@ export const realtimeRouter = router({
           message: "REALTIME_AUTH_SECRET is not configured",
         });
       }
-      const service = new RealtimeService({ secret });
+      const service = new RealtimeService({
+        secret,
+        roomPrefix: process.env.REALTIME_ROOM_PREFIX,
+      });
       // v1: assume userId == customerId until the user↔customer table
       // mapping lands. Same TODO as pushTokens.register.
       return service.issueTicket(input, {

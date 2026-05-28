@@ -150,6 +150,10 @@ export const env = createEnv({
       isRealtimeEnabled,
       "PARTYKIT_HOST + PARTYKIT_PROJECT are set",
     ),
+    // Per-PR preview isolation: prefixes the room body so previews
+    // sharing one party don't collide. Pinned to `pr-<n>-` by the
+    // preview workflow; empty in prod/local.
+    REALTIME_ROOM_PREFIX: z.string().optional(),
 
     STORAGE_PROVIDER: storageProvider,
     // Preview: per-PR namespacing for object storage + cache.

@@ -20,6 +20,7 @@ export const realtime =
         project: env.PARTYKIT_PROJECT,
         secret: env.REALTIME_AUTH_SECRET,
         protocol: isLocalHost(env.PARTYKIT_HOST) ? "http" : "https",
+        roomPrefix: env.REALTIME_ROOM_PREFIX,
       })
     : (() => {
         log.warn(
