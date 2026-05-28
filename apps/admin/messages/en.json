@@ -22,7 +22,12 @@
     "signOut": "Sign out",
     "signingOut": "Signing out…",
     "errorForbidden": "You don't have access to that section. Sign in with an authorized account.",
-    "genericError": "Could not sign in"
+    "genericError": "Could not sign in",
+    "orDivider": "or",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "emailSignInButton": "Sign in with email",
+    "emailPasswordError": "Invalid email or password"
   },
   "Dashboard": {
     "title": "Dashboard",

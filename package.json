@@ -32,6 +32,7 @@
     "db:push": "bash scripts/with-infisical.sh bun run --cwd packages/db db:push",
     "db:studio": "bash scripts/with-infisical.sh bun run --cwd packages/db db:studio",
     "db:seed:owner": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-owner.ts",
+    "db:seed:preview-admin": "bash scripts/with-infisical.sh bun run --cwd packages/auth src/seed-preview-admin.ts",
     "jobs:dev": "bash scripts/with-infisical.sh bun run --cwd packages/jobs dev",
     "jobs:deploy": "bun run --cwd packages/jobs deploy",
     "partykit:dev": "bash scripts/with-infisical.sh bun run --cwd partykit dev",

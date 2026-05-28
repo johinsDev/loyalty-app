@@ -84,6 +84,22 @@ jobs:
           TURSO_AUTH_TOKEN: ${{ steps.db.outputs.auth_token }}
         run: bun run scripts/db/mask-preview-db.ts
 
+      # Idempotent: creates a deterministic admin user + promotes it to
+      # owner so anyone can log into this PR's preview without going
+      # through Google OAuth. Reads ADMIN_PREVIEW_EMAIL / _PASSWORD +
+      # BETTER_AUTH_SECRET from Infisical staging (/shared, the preview
+      # base env), but DATABASE_URL / TURSO_AUTH_TOKEN come from THIS
+      # PR's masked DB — override them after `infisical run` so the
+      # staging values don't win.
+      - name: Seed deterministic preview admin
+        env:
+          PR_DB_URL: ${{ steps.db.outputs.database_url }}
+          PR_DB_TOKEN: ${{ steps.db.outputs.auth_token }}
+        run: |
+          infisical run --env=staging --path=/shared --token="$INFISICAL_TOKEN" -- \
+            bash -c 'DATABASE_URL="$PR_DB_URL" TURSO_AUTH_TOKEN="$PR_DB_TOKEN" \
+              bun run --cwd packages/auth src/seed-preview-admin.ts'
+
       - name: Pin per-PR env on Vercel preview (web + admin)
         env:
           PREVIEW_DATABASE_URL: ${{ steps.db.outputs.database_url }}

@@ -22,7 +22,12 @@
     "signOut": "Cerrar sesión",
     "signingOut": "Cerrando…",
     "errorForbidden": "No tenés permisos para acceder a esa sección. Iniciá sesión con una cuenta autorizada.",
-    "genericError": "No se pudo iniciar sesión"
+    "genericError": "No se pudo iniciar sesión",
+    "orDivider": "o",
+    "emailLabel": "Email",
+    "passwordLabel": "Contraseña",
+    "emailSignInButton": "Iniciar sesión con email",
+    "emailPasswordError": "Email o contraseña incorrectos"
   },
   "Dashboard": {
     "title": "Dashboard",
