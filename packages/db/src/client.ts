@@ -1,5 +1,11 @@
-import { createClient } from "@libsql/client";
-import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
+// The /web client talks libSQL over HTTP/fetch — no native bindings. All our
+// connections are HTTP (remote `libsql://` Turso + local `http://` sqld), never
+// file/embedded, so this works everywhere AND bundles cleanly (Next server
+// chunks, the Trigger.dev deploy image) without a platform-specific .node.
+import { createClient } from "@libsql/client/web";
+import { drizzle } from "drizzle-orm/libsql/web";
+// type-only (erased at compile — no runtime/native import)
+import type { LibSQLDatabase } from "drizzle-orm/libsql";
 
 import * as schema from "./schema";
 
