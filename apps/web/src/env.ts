@@ -172,16 +172,24 @@ export const env = createEnv({
     R2_SECRET_ACCESS_KEY: requireWhen("R2_SECRET_ACCESS_KEY", isStorageR2, "STORAGE_PROVIDER=r2"),
     R2_BUCKET: requireWhen("R2_BUCKET", isStorageR2, "STORAGE_PROVIDER=r2"),
     R2_PUBLIC_URL: z.string().url().optional(),
+
+    // Product analytics (@loyalty/analytics). Server reads the same
+    // project key as the browser (PostHog project keys are public).
+    ANALYTICS_PROVIDER: z.enum(["null", "posthog"]).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url().optional(),
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
     NEXT_PUBLIC_PARTYKIT_HOST: z.string().optional(),
+    NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+    NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
   },
   experimental__runtimeEnv: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     NEXT_PUBLIC_PARTYKIT_HOST: process.env.NEXT_PUBLIC_PARTYKIT_HOST,
+    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   },
   emptyStringAsUndefined: true,
 });

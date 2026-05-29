@@ -23,6 +23,7 @@
     "clean": "rm -rf .turbo node_modules"
   },
   "dependencies": {
+    "@loyalty/analytics": "workspace:*",
     "@loyalty/auth": "workspace:*",
     "@loyalty/db": "workspace:*",
     "@loyalty/push": "workspace:*",

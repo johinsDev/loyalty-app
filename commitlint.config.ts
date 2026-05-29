@@ -8,6 +8,7 @@ const config: UserConfig = {
       "always",
       [
         "admin",
+        "analytics",
         "web",
         "api",
         "auth",

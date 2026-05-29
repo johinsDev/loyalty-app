@@ -80,6 +80,9 @@
     "packages/rate-limit": {
       "ignoreDependencies": ["@upstash/ratelimit", "@upstash/redis", "ioredis"]
     },
+    "packages/analytics": {
+      "ignoreDependencies": ["posthog-js", "posthog-node"]
+    },
     "packages/email": {
       "ignoreDependencies": ["resend"]
     },

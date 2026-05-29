@@ -22,6 +22,7 @@
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1047.0",
         "@aws-sdk/s3-request-presigner": "^3.1047.0",
+        "@loyalty/analytics": "workspace:*",
         "@loyalty/api": "workspace:*",
         "@loyalty/auth": "workspace:*",
         "@loyalty/cache": "workspace:*",
@@ -113,6 +114,7 @@
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1047.0",
         "@aws-sdk/s3-request-presigner": "^3.1047.0",
+        "@loyalty/analytics": "workspace:*",
         "@loyalty/api": "workspace:*",
         "@loyalty/auth": "workspace:*",
         "@loyalty/cache": "workspace:*",
@@ -160,10 +162,39 @@
         "typescript": "^5.7.0",
       },
     },
+    "packages/analytics": {
+      "name": "@loyalty/analytics",
+      "version": "0.0.0",
+      "dependencies": {
+        "@loyalty/auth": "workspace:*",
+      },
+      "devDependencies": {
+        "@loyalty/tsconfig": "workspace:*",
+        "@loyalty/vitest-config": "workspace:*",
+        "@types/node": "^22.0.0",
+        "@types/react": "^19.0.0",
+        "@vitest/coverage-v8": "^2.1.0",
+        "oxlint": "^0.15.0",
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
+      },
+      "peerDependencies": {
+        "next": "^16.0.0",
+        "posthog-js": "^1.180.0",
+        "posthog-node": "^4.7.0",
+        "react": "^19.0.0",
+      },
+      "optionalPeers": [
+        "next",
+        "posthog-js",
+        "posthog-node",
+      ],
+    },
     "packages/api": {
       "name": "@loyalty/api",
       "version": "0.0.0",
       "dependencies": {
+        "@loyalty/analytics": "workspace:*",
         "@loyalty/auth": "workspace:*",
         "@loyalty/db": "workspace:*",
         "@loyalty/push": "workspace:*",
@@ -984,6 +1015,8 @@
     "@lottiefiles/dotlottie-web": ["@lottiefiles/dotlottie-web@0.42.0", "", {}, "sha512-Zr2LCaOAoPCsdAQgeLyCSiQ1+xrAJtRCyuEYDj0qR5heUwpc+Pxbb88JyTVumcXFfKOBMOMmrlsTScLz2mrvQQ=="],
 
     "@loyalty/admin": ["@loyalty/admin@workspace:apps/admin"],
+
+    "@loyalty/analytics": ["@loyalty/analytics@workspace:packages/analytics"],
 
     "@loyalty/api": ["@loyalty/api@workspace:packages/api"],
 
