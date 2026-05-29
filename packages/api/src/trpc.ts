@@ -7,6 +7,7 @@ import {
   type Role,
   type Session,
 } from "@loyalty/auth/server";
+import type { AnalyticsBinding } from "@loyalty/analytics";
 import { db } from "@loyalty/db";
 import type { RateLimitResult, RateLimitRule } from "@loyalty/rate-limit";
 import type { FakeRealtime, RealtimeClient } from "@loyalty/realtime";
@@ -68,6 +69,14 @@ export type Context = {
    * the apps' bootstrap singleton.
    */
   storage?: StorageBinding;
+  /**
+   * Request-scoped analytics binding. Apps build it from the request
+   * (resolves distinctId + base properties) so routers just call
+   * `ctx.analytics?.capture("stamp.earned", { cardId })`. Optional
+   * because tests + CLI scripts don't need it.
+   * See `.claude/skills/analytics/SKILL.md`.
+   */
+  analytics?: AnalyticsBinding;
 };
 
 export const createContext = async (opts: { headers: Headers }): Promise<Context> => {

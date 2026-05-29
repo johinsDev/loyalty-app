@@ -1,6 +1,12 @@
-import { appRouter, createContext } from "@loyalty/api";
+import {
+  appRouter,
+  baseProperties,
+  createContext,
+  resolveDistinctId,
+} from "@loyalty/api";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
+import { analytics } from "@/lib/analytics";
 import { rateLimiter } from "@/lib/rate-limit";
 import { realtime } from "@/lib/realtime";
 import { storage } from "@/lib/storage";
@@ -12,7 +18,17 @@ const handler = (req: Request) =>
     router: appRouter,
     createContext: async () => {
       const ctx = await createContext({ headers: req.headers });
-      return { ...ctx, realtime, storage, rateLimiter };
+      const analyticsBinding = analytics.forRequest({
+        distinctId: resolveDistinctId(ctx),
+        baseProperties: baseProperties(ctx, "admin"),
+      });
+      return {
+        ...ctx,
+        realtime,
+        storage,
+        rateLimiter,
+        analytics: analyticsBinding,
+      };
     },
   });
 
