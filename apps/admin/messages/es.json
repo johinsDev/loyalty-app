@@ -7,6 +7,12 @@
     "switchLocale": "Cambiar idioma",
     "refresh": "Refrescar"
   },
+  "Theme": {
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema",
+    "toggleTheme": "Cambiar tema"
+  },
   "Nav": {
     "dashboard": "Dashboard",
     "customers": "Clientes",

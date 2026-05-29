@@ -7,6 +7,12 @@
     "install": "Instalar app",
     "switchLocale": "Cambiar idioma"
   },
+  "Theme": {
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema",
+    "toggleTheme": "Cambiar tema"
+  },
   "Home": {
     "cardTitle": "Tu tarjeta de fidelización",
     "cardDescription": "Acumula sellos en cada compra y reclama tus premios.",
