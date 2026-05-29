@@ -109,6 +109,8 @@ apps/storybook/storybook-static/
 !.claude/skills/sms/**
 !.claude/skills/cache
 !.claude/skills/cache/**
+!.claude/skills/analytics
+!.claude/skills/analytics/**
 !.claude/skills/email
 !.claude/skills/email/**
 !.claude/skills/push
