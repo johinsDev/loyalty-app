@@ -23,6 +23,7 @@
     "@loyalty/jobs": "workspace:*",
     "@loyalty/log": "workspace:*",
     "@loyalty/push": "workspace:*",
+    "@loyalty/rate-limit": "workspace:*",
     "@loyalty/realtime": "workspace:*",
     "@loyalty/sms": "workspace:*",
     "@loyalty/storage": "workspace:*",

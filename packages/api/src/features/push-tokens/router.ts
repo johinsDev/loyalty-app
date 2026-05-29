@@ -2,7 +2,12 @@ import { TRPCError } from "@trpc/server";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 
-import { ownerProcedure, protectedProcedure, router } from "../../trpc";
+import {
+  ownerProcedure,
+  protectedProcedure,
+  rateLimit,
+  router,
+} from "../../trpc";
 import { PushTokenRepository } from "./repository";
 import {
   listForCustomerInputSchema,
@@ -36,6 +41,14 @@ const sendTestInputSchema = z
  */
 export const pushTokensRouter = router({
   register: protectedProcedure
+    .use(
+      rateLimit({
+        name: "pushTokens.register",
+        limit: 10,
+        window: "1m",
+        by: "user",
+      }),
+    )
     .input(registerInputSchema)
     .mutation(({ ctx, input }) => {
       const service = new PushTokenService(new PushTokenRepository(ctx.db));

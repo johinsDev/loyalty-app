@@ -2,7 +2,7 @@ import { loyaltyCard } from "@loyalty/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { protectedProcedure, router } from "../trpc";
+import { protectedProcedure, rateLimit, router } from "../trpc";
 
 export const sellosRouter = router({
   /**
@@ -18,6 +18,7 @@ export const sellosRouter = router({
    * future database notifications channel — realtime is ephemeral.
    */
   add: protectedProcedure
+    .use(rateLimit({ name: "sellos.add", limit: 20, window: "1m", by: "user" }))
     .input(
       z.object({
         cardId: z.string().uuid(),

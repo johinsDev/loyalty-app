@@ -1,7 +1,7 @@
 import { parseRoom, type RoomName } from "@loyalty/realtime";
 import { TRPCError } from "@trpc/server";
 
-import { protectedProcedure, router } from "../../trpc";
+import { protectedProcedure, rateLimit, router } from "../../trpc";
 import {
   issueTicketInputSchema,
   publishHelloInputSchema,
@@ -21,6 +21,14 @@ export const realtimeRouter = router({
    * `.claude/skills/realtime/SKILL.md#auth-flow`.
    */
   issueTicket: protectedProcedure
+    .use(
+      rateLimit({
+        name: "realtime.issueTicket",
+        limit: 30,
+        window: "1m",
+        by: "user",
+      }),
+    )
     .input(issueTicketInputSchema)
     .mutation(async ({ ctx, input }) => {
       const secret = process.env.REALTIME_AUTH_SECRET;
@@ -49,6 +57,14 @@ export const realtimeRouter = router({
    * isn't bound to `ctx` there because the env vars aren't set).
    */
   publishHello: protectedProcedure
+    .use(
+      rateLimit({
+        name: "realtime.publishHello",
+        limit: 10,
+        window: "1m",
+        by: "user",
+      }),
+    )
     .input(publishHelloInputSchema)
     .mutation(async ({ ctx, input }) => {
       if (!isDevOrPreview()) {

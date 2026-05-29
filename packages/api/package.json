@@ -26,6 +26,7 @@
     "@loyalty/auth": "workspace:*",
     "@loyalty/db": "workspace:*",
     "@loyalty/push": "workspace:*",
+    "@loyalty/rate-limit": "workspace:*",
     "@loyalty/realtime": "workspace:*",
     "@loyalty/storage": "workspace:*",
     "@trigger.dev/sdk": "^4.4.0",

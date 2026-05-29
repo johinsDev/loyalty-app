@@ -25,6 +25,7 @@ packages/
 ├── jobs/        Trigger.dev v4 background tasks
 ├── log/         Provider-agnostic logger (Pino + Better Stack + console + silent)
 ├── push/        Provider-agnostic push notifications (Web Push + Expo + log + outbox)
+├── rate-limit/  Provider-agnostic rate limiter (memory + upstash + redis) + tRPC middleware
 ├── realtime/    Real-time channel (publisher + React hook) backed by partykit/
 ├── sms/         Provider-agnostic SMS sender (Twilio + log + folder + outbox)
 ├── storage/     Provider-agnostic file storage (memory + local + R2 + presigned URLs)
@@ -93,6 +94,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Send a WhatsApp message, add a strategy, debug outbox / Twilio | `whatsapp` |
 | Send an SMS, add a strategy, debug segments, view outbox | `sms` |
 | Cache a query, invalidate, add a provider (upstash/redis/memory) | `cache` |
+| Rate-limit a procedure, tune the baseline, key by ip/user/phone, debug a 429 | `rate-limit` |
 | Send an email, author a React Email template, debug Resend / outbox | `email` |
 | Send a push (web + Expo), register a device token, debug outbox | `push` |
 | Real-time events via PartyKit, add a party, debug WebSocket | `realtime` |
@@ -103,7 +105,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `email`, `push`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `email`, `push`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 

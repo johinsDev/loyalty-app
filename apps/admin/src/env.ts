@@ -94,6 +94,10 @@ export const env = createEnv({
     ),
 
     CACHE_PROVIDER: cacheProvider,
+    // Rate limiter (@loyalty/rate-limit). Shares UPSTASH_* / REDIS_URL with
+    // the cache; in preview/prod both default to upstash so the creds above
+    // are already required + present.
+    RATE_LIMIT_PROVIDER: cacheProvider,
     UPSTASH_REDIS_REST_URL: requireWhen(
       "UPSTASH_REDIS_REST_URL",
       isCacheUpstash,

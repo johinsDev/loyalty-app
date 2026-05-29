@@ -8,11 +8,18 @@ import {
   type Session,
 } from "@loyalty/auth/server";
 import { db } from "@loyalty/db";
+import type { RateLimitResult, RateLimitRule } from "@loyalty/rate-limit";
 import type { FakeRealtime, RealtimeClient } from "@loyalty/realtime";
 import type { StorageDisk } from "@loyalty/storage";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
+
+import {
+  getClientIp,
+  resolveKey,
+  type RateLimitOptions,
+} from "./rate-limit";
 
 /**
  * Structural slice of the realtime client. Apps bind either a real
@@ -33,10 +40,21 @@ export interface StorageBinding {
   disk(name?: string): StorageDisk;
 }
 
+/**
+ * Structural slice of `RateLimiter`. Apps bind their configured
+ * instance (memory in dev, upstash in preview/prod). Optional so CLI
+ * scripts + tests run unthrottled — the middleware fails open when it's
+ * absent. See `.claude/skills/rate-limit/SKILL.md`.
+ */
+export interface RateLimiterBinding {
+  limit(key: string, rule: RateLimitRule): Promise<RateLimitResult>;
+}
+
 export type Context = {
   db: typeof db;
   session: Session | null;
   headers: Headers;
+  rateLimiter?: RateLimiterBinding;
   /**
    * Bound by the app's `createContext` factory. Routers that publish
    * realtime events read from here so they don't import the
@@ -74,7 +92,64 @@ const t = initTRPC.context<Context>().create({
 
 export const router = t.router;
 export const middleware = t.middleware;
-export const publicProcedure = t.procedure;
+
+const TOO_MANY = "Too many requests. Slow down and try again shortly.";
+
+// Generous baseline so a single client can't hammer the API, applied to
+// every procedure. Keyed per user (or IP when anonymous); query vs
+// mutation get different ceilings. Abuse-sensitive procedures stack a
+// tighter `rateLimit({...})` on top (separate named counter → it trips
+// first). Fails open when no limiter is bound (CLI/tests).
+const BASELINE_QUERY: RateLimitRule = { limit: 120, window: "1m" };
+const BASELINE_MUTATION: RateLimitRule = { limit: 40, window: "1m" };
+
+const withBaseline = t.middleware(async ({ ctx, next, type }) => {
+  if (!ctx.rateLimiter || (type !== "query" && type !== "mutation")) {
+    return next();
+  }
+  const userId = ctx.session?.user?.id;
+  const key = userId ? `user:${userId}` : `ip:${getClientIp(ctx.headers)}`;
+  const rule = type === "mutation" ? BASELINE_MUTATION : BASELINE_QUERY;
+  const res = await ctx.rateLimiter.limit(`baseline:${type}:${key}`, rule);
+  if (!res.success) {
+    throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: TOO_MANY });
+  }
+  return next();
+});
+
+/**
+ * Per-procedure rate limit, stacked via `.use()`. The counter is named
+ * (so it never shares a bucket with the baseline) and keyed by `by`
+ * (default `ipOrUser`; pass a fn for phone-keyed OTP-style limits).
+ *
+ * @example
+ *   .use(rateLimit({ name: "sellos.add", limit: 20, window: "1m", by: "user" }))
+ *   .use(rateLimit({ name: "otp", limit: 5, window: "30m",
+ *                    by: (_, i) => `phone:${(i as { phoneNumber?: string }).phoneNumber}` }))
+ */
+export function rateLimit(opts: RateLimitOptions) {
+  const by = opts.by ?? "ipOrUser";
+  const name = opts.name ?? "default";
+  return t.middleware(async ({ ctx, next, getRawInput }) => {
+    if (!ctx.rateLimiter) return next();
+    const rawInput = typeof by === "function" ? await getRawInput() : undefined;
+    const key = await resolveKey(by, ctx, rawInput);
+    if (key === null) return next();
+    const res = await ctx.rateLimiter.limit(`${name}:${key}`, {
+      limit: opts.limit,
+      window: opts.window,
+    });
+    if (!res.success) {
+      throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: TOO_MANY });
+    }
+    return next();
+  });
+}
+
+/** Every exported procedure builds on this — baseline limit included. */
+const baseProcedure = t.procedure.use(withBaseline);
+
+export const publicProcedure = baseProcedure;
 
 const enforceAuth = t.middleware(({ ctx, next }) => {
   if (!ctx.session?.user) {
@@ -85,7 +160,7 @@ const enforceAuth = t.middleware(({ ctx, next }) => {
   });
 });
 
-export const protectedProcedure = t.procedure.use(enforceAuth);
+export const protectedProcedure = baseProcedure.use(enforceAuth);
 
 /**
  * Role-aware middleware factory. Builds on `enforceAuth` (so callers
@@ -109,6 +184,6 @@ const enforceRole = (allowed: readonly Role[]) =>
 
 /** Procedures gated by `member.role`. Replace `protectedProcedure` with one of these
  *  when a feature should be off-limits to plain customers. */
-export const staffProcedure = t.procedure.use(enforceRole(STAFF_OR_ABOVE));
-export const managerProcedure = t.procedure.use(enforceRole(MANAGER_OR_ABOVE));
-export const ownerProcedure = t.procedure.use(enforceRole(OWNER_ONLY));
+export const staffProcedure = baseProcedure.use(enforceRole(STAFF_OR_ABOVE));
+export const managerProcedure = baseProcedure.use(enforceRole(MANAGER_OR_ABOVE));
+export const ownerProcedure = baseProcedure.use(enforceRole(OWNER_ONLY));
