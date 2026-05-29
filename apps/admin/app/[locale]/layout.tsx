@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { routing } from "@/i18n/routing";
 
 import { Providers } from "./providers";
@@ -37,7 +38,8 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   return (
     <NextIntlClientProvider>
-      <div className="absolute right-4 top-4 z-50">
+      <div className="absolute right-4 top-4 z-50 flex items-center gap-2">
+        <ThemeToggle />
         <LocaleSwitcher />
       </div>
       <Providers>{children}</Providers>

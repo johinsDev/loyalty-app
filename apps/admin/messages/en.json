@@ -7,6 +7,12 @@
     "switchLocale": "Switch language",
     "refresh": "Refresh"
   },
+  "Theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "toggleTheme": "Toggle theme"
+  },
   "Nav": {
     "dashboard": "Dashboard",
     "customers": "Customers",
