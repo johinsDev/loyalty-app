@@ -7,6 +7,12 @@
     "install": "Install app",
     "switchLocale": "Switch language"
   },
+  "Theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "toggleTheme": "Toggle theme"
+  },
   "Home": {
     "cardTitle": "Your loyalty card",
     "cardDescription": "Earn stamps on every purchase and redeem your rewards.",

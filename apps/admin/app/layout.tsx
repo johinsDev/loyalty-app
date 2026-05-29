@@ -1,3 +1,4 @@
+import { ThemeProvider } from "@loyalty/ui";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
@@ -18,8 +19,17 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     : routing.defaultLocale;
 
   return (
-    <html lang={lang}>
-      <body>{children}</body>
+    <html lang={lang} suppressHydrationWarning>
+      <body>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
