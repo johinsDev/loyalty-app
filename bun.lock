@@ -29,6 +29,7 @@
         "@loyalty/date": "workspace:*",
         "@loyalty/db": "workspace:*",
         "@loyalty/email": "workspace:*",
+        "@loyalty/feature-flags": "workspace:*",
         "@loyalty/log": "workspace:*",
         "@loyalty/push": "workspace:*",
         "@loyalty/rate-limit": "workspace:*",
@@ -120,6 +121,7 @@
         "@loyalty/cache": "workspace:*",
         "@loyalty/db": "workspace:*",
         "@loyalty/email": "workspace:*",
+        "@loyalty/feature-flags": "workspace:*",
         "@loyalty/jobs": "workspace:*",
         "@loyalty/log": "workspace:*",
         "@loyalty/push": "workspace:*",
@@ -197,6 +199,7 @@
         "@loyalty/analytics": "workspace:*",
         "@loyalty/auth": "workspace:*",
         "@loyalty/db": "workspace:*",
+        "@loyalty/feature-flags": "workspace:*",
         "@loyalty/push": "workspace:*",
         "@loyalty/rate-limit": "workspace:*",
         "@loyalty/realtime": "workspace:*",
@@ -347,6 +350,31 @@
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
       },
+    },
+    "packages/feature-flags": {
+      "name": "@loyalty/feature-flags",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@loyalty/tsconfig": "workspace:*",
+        "@loyalty/vitest-config": "workspace:*",
+        "@types/node": "^22.0.0",
+        "@types/react": "^19.0.0",
+        "@vitest/coverage-v8": "^2.1.0",
+        "oxlint": "^0.15.0",
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
+      },
+      "peerDependencies": {
+        "next": "^16.0.0",
+        "posthog-js": "^1.180.0",
+        "posthog-node": "^4.7.0",
+        "react": "^19.0.0",
+      },
+      "optionalPeers": [
+        "next",
+        "posthog-js",
+        "posthog-node",
+      ],
     },
     "packages/jobs": {
       "name": "@loyalty/jobs",
@@ -1033,6 +1061,8 @@
     "@loyalty/email": ["@loyalty/email@workspace:packages/email"],
 
     "@loyalty/email-templates": ["@loyalty/email-templates@workspace:packages/email-templates"],
+
+    "@loyalty/feature-flags": ["@loyalty/feature-flags@workspace:packages/feature-flags"],
 
     "@loyalty/jobs": ["@loyalty/jobs@workspace:packages/jobs"],
 

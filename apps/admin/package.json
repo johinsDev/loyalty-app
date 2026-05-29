@@ -22,6 +22,7 @@
     "@loyalty/date": "workspace:*",
     "@loyalty/db": "workspace:*",
     "@loyalty/email": "workspace:*",
+    "@loyalty/feature-flags": "workspace:*",
     "@loyalty/log": "workspace:*",
     "@loyalty/push": "workspace:*",
     "@loyalty/rate-limit": "workspace:*",

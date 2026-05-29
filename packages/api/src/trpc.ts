@@ -9,6 +9,7 @@ import {
 } from "@loyalty/auth/server";
 import type { AnalyticsBinding } from "@loyalty/analytics";
 import { db } from "@loyalty/db";
+import type { FlagsBinding } from "@loyalty/feature-flags";
 import type { RateLimitResult, RateLimitRule } from "@loyalty/rate-limit";
 import type { FakeRealtime, RealtimeClient } from "@loyalty/realtime";
 import type { StorageDisk } from "@loyalty/storage";
@@ -77,6 +78,14 @@ export type Context = {
    * See `.claude/skills/analytics/SKILL.md`.
    */
   analytics?: AnalyticsBinding;
+  /**
+   * Request-scoped feature flags binding. Apps build it from the request
+   * (distinctId pre-resolved) so routers just call
+   * `if (await ctx.flags?.isEnabled("new-stamp-flow")) { ... }`.
+   * Optional because tests + CLI scripts don't need it.
+   * See `.claude/skills/feature-flags/SKILL.md`.
+   */
+  flags?: FlagsBinding;
 };
 
 export const createContext = async (opts: { headers: Headers }): Promise<Context> => {
