@@ -30,6 +30,7 @@
         "@loyalty/email": "workspace:*",
         "@loyalty/log": "workspace:*",
         "@loyalty/push": "workspace:*",
+        "@loyalty/rate-limit": "workspace:*",
         "@loyalty/realtime": "workspace:*",
         "@loyalty/sms": "workspace:*",
         "@loyalty/storage": "workspace:*",
@@ -120,6 +121,7 @@
         "@loyalty/jobs": "workspace:*",
         "@loyalty/log": "workspace:*",
         "@loyalty/push": "workspace:*",
+        "@loyalty/rate-limit": "workspace:*",
         "@loyalty/realtime": "workspace:*",
         "@loyalty/sms": "workspace:*",
         "@loyalty/storage": "workspace:*",
@@ -165,6 +167,7 @@
         "@loyalty/auth": "workspace:*",
         "@loyalty/db": "workspace:*",
         "@loyalty/push": "workspace:*",
+        "@loyalty/rate-limit": "workspace:*",
         "@loyalty/realtime": "workspace:*",
         "@loyalty/storage": "workspace:*",
         "@trigger.dev/sdk": "^4.4.0",
@@ -378,6 +381,29 @@
         "@loyalty/db",
         "expo-server-sdk",
         "web-push",
+      ],
+    },
+    "packages/rate-limit": {
+      "name": "@loyalty/rate-limit",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@loyalty/tsconfig": "workspace:*",
+        "@loyalty/vitest-config": "workspace:*",
+        "@types/node": "^22.0.0",
+        "@vitest/coverage-v8": "^2.1.0",
+        "oxlint": "^0.15.0",
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
+      },
+      "peerDependencies": {
+        "@upstash/ratelimit": "^2.0.0",
+        "@upstash/redis": "^1.34.0",
+        "ioredis": "^5.4.0",
+      },
+      "optionalPeers": [
+        "@upstash/ratelimit",
+        "@upstash/redis",
+        "ioredis",
       ],
     },
     "packages/realtime": {
@@ -986,6 +1012,8 @@
     "@loyalty/partykit-server": ["@loyalty/partykit-server@workspace:partykit"],
 
     "@loyalty/push": ["@loyalty/push@workspace:packages/push"],
+
+    "@loyalty/rate-limit": ["@loyalty/rate-limit@workspace:packages/rate-limit"],
 
     "@loyalty/realtime": ["@loyalty/realtime@workspace:packages/realtime"],
 

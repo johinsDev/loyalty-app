@@ -77,6 +77,9 @@
     "packages/cache": {
       "ignoreDependencies": ["@upstash/redis", "ioredis"]
     },
+    "packages/rate-limit": {
+      "ignoreDependencies": ["@upstash/ratelimit", "@upstash/redis", "ioredis"]
+    },
     "packages/email": {
       "ignoreDependencies": ["resend"]
     },
