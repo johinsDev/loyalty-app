@@ -1,6 +1,7 @@
 "use client";
 
 import { AnalyticsProvider } from "@loyalty/analytics/react";
+import { FlagsProvider } from "@loyalty/feature-flags/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NextIntlClientProvider } from "next-intl";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -53,7 +54,13 @@ export const Providers = ({ children, locale, messages }: Props) => {
               environment={ENVIRONMENT}
               locale={locale}
             >
-              {children}
+              <FlagsProvider
+                provider={POSTHOG_KEY ? "posthog" : "null"}
+                apiKey={POSTHOG_KEY}
+                host={POSTHOG_HOST}
+              >
+                {children}
+              </FlagsProvider>
             </AnalyticsProvider>
           </TRPCProvider>
         </QueryClientProvider>

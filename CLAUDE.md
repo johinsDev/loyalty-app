@@ -23,6 +23,7 @@ packages/
 ├── db/          Drizzle ORM + Neon Postgres client + schema
 ├── email/       Provider-agnostic email sender (Resend + log + folder + outbox)
 ├── email-templates/  React Email + Tailwind layouts + WelcomeEmail
+├── feature-flags/   Provider-agnostic feature flags + A-B (PostHog + null) — server + client + React
 ├── jobs/        Trigger.dev v4 background tasks
 ├── log/         Provider-agnostic logger (Pino + Better Stack + console + silent)
 ├── push/        Provider-agnostic push notifications (Web Push + Expo + log + outbox)
@@ -97,6 +98,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Cache a query, invalidate, add a provider (upstash/redis/memory) | `cache` |
 | Rate-limit a procedure, tune the baseline, key by ip/user/phone, debug a 429 | `rate-limit` |
 | Track an event, identify after login, add an analytics provider (PostHog) | `analytics` |
+| Gate UI by a flag, run an A-B experiment, debug "flag default in preview" | `feature-flags` |
 | Send an email, author a React Email template, debug Resend / outbox | `email` |
 | Send a push (web + Expo), register a device token, debug outbox | `push` |
 | Real-time events via PartyKit, add a party, debug WebSocket | `realtime` |
@@ -107,7 +109,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `push`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `push`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 

@@ -173,6 +173,9 @@ export const env = createEnv({
     // Product analytics (@loyalty/analytics). Server reads the same
     // project key as the browser (PostHog project keys are public).
     ANALYTICS_PROVIDER: z.enum(["null", "posthog"]).optional(),
+    // Feature flags (@loyalty/feature-flags). Same NEXT_PUBLIC_POSTHOG_*
+    // (one project covers both).
+    FEATURE_FLAGS_PROVIDER: z.enum(["null", "posthog"]).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url().optional(),

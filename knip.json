@@ -83,6 +83,9 @@
     "packages/analytics": {
       "ignoreDependencies": ["posthog-js", "posthog-node"]
     },
+    "packages/feature-flags": {
+      "ignoreDependencies": ["posthog-js", "posthog-node"]
+    },
     "packages/email": {
       "ignoreDependencies": ["resend"]
     },

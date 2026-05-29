@@ -26,6 +26,7 @@
     "@loyalty/analytics": "workspace:*",
     "@loyalty/auth": "workspace:*",
     "@loyalty/db": "workspace:*",
+    "@loyalty/feature-flags": "workspace:*",
     "@loyalty/push": "workspace:*",
     "@loyalty/rate-limit": "workspace:*",
     "@loyalty/realtime": "workspace:*",
