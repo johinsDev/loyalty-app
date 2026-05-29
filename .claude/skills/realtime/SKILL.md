@@ -266,27 +266,62 @@ When PartyKit isn't running locally, the app falls back to `FakeRealtime` — `r
 
 ---
 
-## Deploy
+## Deploy (cloud-prem on Cloudflare)
+
+We deploy the party to **our own Cloudflare account** (cloud-prem), not PartyKit
+cloud. Domain `t4diverclub.app` is on Cloudflare. Hosts:
+
+| Env | Party host |
+| --- | --- |
+| staging (all previews share it) | `partykit-staging.t4diverclub.app` |
+| prod (Fase 4) | `partykit.t4diverclub.app` |
+
+> **Requires Cloudflare Workers Paid (~$5/mo).** PartyKit creates KV-backed
+> Durable Objects (`new_classes`); the **free plan rejects** them
+> (`Error: ... Durable Objects with a free plan ... must create a namespace
+> using a new_sqlite_classes migration`). PartyKit (≤0.0.115) doesn't emit
+> SQLite DOs, so the paid plan is the unblock. Enable at
+> `dash.cloudflare.com/<account-id>/workers/plans`.
 
 ```bash
-# 1. Generate a production secret if you don't have one
-openssl rand -base64 48
+# Deploy creds (CF API token "Edit Workers" template — Account: Workers
+# Scripts Edit; Zone t4diverclub.app: Workers Routes Edit + DNS Edit + Zone Read).
+# Stored in Infisical prod /ci as CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID.
+#
+# The shared secret is injected at deploy with --var (cloud-prem). NOTE:
+# `partykit env push` targets PartyKit cloud, NOT a cloud-prem deploy — use --var.
+cd partykit
+CLOUDFLARE_ACCOUNT_ID=<id> CLOUDFLARE_API_TOKEN=<token> \
+  bunx partykit deploy --domain partykit-staging.t4diverclub.app \
+    --var REALTIME_AUTH_SECRET="<the-secret>"
 
-# 2. Push it to PartyKit
-bun --cwd partykit -- partykit env push REALTIME_AUTH_SECRET --value "<the-secret>"
-
-# 3. Ship the worker
-bun --cwd partykit run deploy
-
-# 4. Note the host the CLI reports (looks like loyalty-realtime.<your-user>.partykit.dev)
-#    and set on Vercel for both apps/web and apps/admin:
-#      PARTYKIT_HOST=loyalty-realtime.<user>.partykit.dev
-#      PARTYKIT_PROJECT=loyalty-realtime
-#      REALTIME_AUTH_SECRET=<same secret>
-#      NEXT_PUBLIC_PARTYKIT_HOST=loyalty-realtime.<user>.partykit.dev
-
-# 5. Trigger a deploy of apps/web + apps/admin so they pick up the env vars
+# Domain provisioning takes up to ~2 min. Verify (root is 404 — hit a party):
+curl -s https://partykit-staging.t4diverclub.app/party/main
+# → {"ok":true,"project":"loyalty-realtime","time":"..."}
 ```
+
+Then the Next side reads these from **Infisical staging `/shared`** (synced to
+the Vercel Preview env), which is what flips previews off `FakeRealtime`:
+
+```
+PARTYKIT_HOST=partykit-staging.t4diverclub.app
+NEXT_PUBLIC_PARTYKIT_HOST=partykit-staging.t4diverclub.app
+PARTYKIT_PROJECT=loyalty-realtime
+REALTIME_AUTH_SECRET=<same secret passed to --var>
+```
+
+(For local dev, the same four live in Infisical `dev`; prod gets its own party +
+secret in Fase 4.)
+
+### Preview isolation (per-PR room prefix)
+
+All previews share the one staging party, so rooms are namespaced per PR via
+**`REALTIME_ROOM_PREFIX`** (pinned to `pr-<n>-` by `.github/workflows/preview.yml`,
+empty in prod/local). It's applied **server-side only** — the ticket service +
+`RealtimeClient` prefix the room *body* (`customer:<id>` → `customer:pr-7-<id>`),
+and the React hook connects to whatever `ticket.roomId` grants. The party is
+unchanged. Cleanup removes the branch-scoped var when the PR closes; the party
+is shared so there's nothing to tear down.
 
 ---
 
