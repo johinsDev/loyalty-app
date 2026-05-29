@@ -113,6 +113,8 @@ apps/storybook/storybook-static/
 !.claude/skills/email/**
 !.claude/skills/push
 !.claude/skills/push/**
+!.claude/skills/rate-limit
+!.claude/skills/rate-limit/**
 !.claude/skills/realtime
 !.claude/skills/realtime/**
 !.claude/skills/storage
