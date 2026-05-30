@@ -113,6 +113,8 @@ apps/storybook/storybook-static/
 !.claude/skills/analytics/**
 !.claude/skills/feature-flags
 !.claude/skills/feature-flags/**
+!.claude/skills/image-loader
+!.claude/skills/image-loader/**
 !.claude/skills/email
 !.claude/skills/email/**
 !.claude/skills/push

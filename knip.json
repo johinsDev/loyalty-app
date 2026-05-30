@@ -29,7 +29,8 @@
         "src/features/realtime/hooks/use-customer-room.ts",
         "src/features/storage/hooks/use-file-upload.ts",
         "src/features/storage/components/file-upload.tsx",
-        "src/features/storage/components/rhf-file-upload.tsx"
+        "src/features/storage/components/rhf-file-upload.tsx",
+        "src/lib/image-loader.ts"
       ],
       "project": ["**/*.{ts,tsx}"]
     },
@@ -41,6 +42,7 @@
         "src/lib/auth-guard.ts",
         "src/lib/cache.ts",
         "src/lib/email.ts",
+        "src/lib/image-loader.ts",
         "src/lib/push.ts",
         "src/lib/push-subscription.ts",
         "src/lib/realtime.ts",

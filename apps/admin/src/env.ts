@@ -182,6 +182,10 @@ export const env = createEnv({
     NEXT_PUBLIC_PARTYKIT_HOST: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+    // Host (no protocol) for the Cloudflare zone with Image Transformations
+    // enabled. Loader no-ops when unset. See
+    // `.claude/skills/image-loader/SKILL.md`.
+    NEXT_PUBLIC_IMAGE_CDN_HOST: z.string().optional(),
   },
   experimental__runtimeEnv: {
     ...process.env,
@@ -189,6 +193,7 @@ export const env = createEnv({
     NEXT_PUBLIC_PARTYKIT_HOST: process.env.NEXT_PUBLIC_PARTYKIT_HOST,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    NEXT_PUBLIC_IMAGE_CDN_HOST: process.env.NEXT_PUBLIC_IMAGE_CDN_HOST,
   },
   emptyStringAsUndefined: true,
 });
