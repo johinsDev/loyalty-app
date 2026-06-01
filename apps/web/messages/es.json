@@ -17,7 +17,20 @@
     "cardTitle": "Tu tarjeta de fidelización",
     "cardDescription": "Acumula sellos en cada compra y reclama tus premios.",
     "viewCard": "Ver mi tarjeta",
-    "myProfile": "Mi perfil"
+    "myProfile": "Mi perfil",
+    "myNotifications": "Mis notificaciones"
+  },
+  "Notifications": {
+    "title": "Notificaciones",
+    "empty": "No tenés notificaciones.",
+    "unreadCount": "{count} sin leer",
+    "allRead": "Todo al día",
+    "markRead": "Marcar como leída",
+    "markAllRead": "Marcar todas",
+    "delete": "Eliminar",
+    "deleteAll": "Borrar todas",
+    "deletedAll": "Se eliminaron {count} notificaciones.",
+    "actionFailed": "No se pudo completar la acción."
   },
   "Profile": {
     "title": "Mi perfil",

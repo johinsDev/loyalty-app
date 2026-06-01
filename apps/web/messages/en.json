@@ -17,7 +17,20 @@
     "cardTitle": "Your loyalty card",
     "cardDescription": "Earn stamps on every purchase and redeem your rewards.",
     "viewCard": "View my card",
-    "myProfile": "My profile"
+    "myProfile": "My profile",
+    "myNotifications": "My notifications"
+  },
+  "Notifications": {
+    "title": "Notifications",
+    "empty": "You have no notifications.",
+    "unreadCount": "{count} unread",
+    "allRead": "All caught up",
+    "markRead": "Mark as read",
+    "markAllRead": "Mark all read",
+    "delete": "Delete",
+    "deleteAll": "Delete all",
+    "deletedAll": "Deleted {count} notifications.",
+    "actionFailed": "Could not complete the action."
   },
   "Profile": {
     "title": "My profile",

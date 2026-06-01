@@ -43,6 +43,11 @@ export async function Home() {
               {t("myProfile")}
             </Button>
           </Link>
+          <Link href="/notifications">
+            <Button variant="outline" className="w-full">
+              {t("myNotifications")}
+            </Button>
+          </Link>
         </CardContent>
       </Card>
     </main>
