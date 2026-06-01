@@ -1,4 +1,7 @@
-import { syncEnvVars } from "@trigger.dev/build/extensions/core";
+import {
+  additionalPackages,
+  syncEnvVars,
+} from "@trigger.dev/build/extensions/core";
 import { defineConfig } from "@trigger.dev/sdk/v3";
 import { config as loadEnv } from "dotenv";
 import { dirname, resolve } from "node:path";
@@ -73,6 +76,13 @@ export default defineConfig({
     // environment being deployed — so preview-branch tasks run against the
     // PR's masked DB. Replaces hand-setting vars in the Trigger dashboard.
     extensions: [
+      // Provider SDKs are loaded via obfuscated dynamic import (so the
+      // bundler doesn't trace them) + listed in `external`, so Trigger's
+      // dependency detection prunes them and they're NOT installed in the
+      // deploy. Force-install the ones a deployed task actually uses:
+      // `web-push` for the push `webpush` provider (preview/prod). Add
+      // twilio/resend/expo-server-sdk here when prod selects those providers.
+      additionalPackages({ packages: ["web-push@^3.6.7"] }),
       syncEnvVars(() => {
         const keys = [
           "DATABASE_URL",
