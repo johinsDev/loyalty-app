@@ -110,10 +110,13 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Dropzone primitive + useFileUpload + react-hook-form bridge | `file-upload` |
 | Slack bot setup, scopes, posting from MCP | `slack` |
 | Define / check roles, gate a route, procedure, or /api handler, seed owner | `auth` |
+| Validate any shape (API input, form, env, payload), share a schema client↔server, parse vs safeParse | `zod` |
+| Shared client state across components (Zustand + Immer, selectors, perf), refactor prop-drilling/context | `zustand` |
+| Build/refactor a form (RHF + zodResolver, Controller for Base UI, field arrays, server errors) | `react-hook-form` |
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`, `zod`, `zustand`, `react-hook-form`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 
