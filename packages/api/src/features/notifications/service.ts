@@ -76,6 +76,25 @@ export class NotificationService {
     return { updated };
   }
 
+  async remove(id: string, customerId: string): Promise<{ ok: true }> {
+    const affected = await this.repo.delete(id, customerId);
+    if (affected === 0) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: `notification "${id}" not found`,
+      });
+    }
+    return { ok: true };
+  }
+
+  async removeAll(
+    customerId: string,
+    organizationId: string,
+  ): Promise<{ deleted: number }> {
+    const deleted = await this.repo.deleteAll(customerId, organizationId);
+    return { deleted };
+  }
+
   /** Every manageable channel with its current marketing flag (default on). */
   async getMyPreferences(
     customerId: string,

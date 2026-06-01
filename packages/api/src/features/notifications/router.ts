@@ -10,6 +10,7 @@ import {
 import { DrizzleNotificationPreferences } from "./preferences-repository";
 import { NotificationRepository } from "./repository";
 import {
+  deleteInputSchema,
   listCustomersInputSchema,
   listMineInputSchema,
   markReadInputSchema,
@@ -47,6 +48,16 @@ export const notificationsRouter = router({
 
   markAllRead: protectedProcedure.mutation(({ ctx }) =>
     buildService(ctx.db).markAllRead(ctx.session.user.id, org()),
+  ),
+
+  delete: protectedProcedure
+    .input(deleteInputSchema)
+    .mutation(({ ctx, input }) =>
+      buildService(ctx.db).remove(input.id, ctx.session.user.id),
+    ),
+
+  deleteAll: protectedProcedure.mutation(({ ctx }) =>
+    buildService(ctx.db).removeAll(ctx.session.user.id, org()),
   ),
 
   // ---- Customer-facing preferences ------------------------------------

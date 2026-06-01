@@ -29,16 +29,33 @@ export const sendNotificationTask = task({
       recipients: customerIds.length,
     });
 
-    let ok = 0;
-    let failed = 0;
+    // Per-channel tallies so the run output reflects what actually happened
+    // (a recipient counts as "with failures" if ANY channel failed, but the
+    // per-channel breakdown shows mail/sms/database succeeded even when
+    // push/realtime didn't).
+    const channels: Record<
+      string,
+      { sent: number; skipped: number; failed: number }
+    > = {};
+    let recipientsAllOk = 0;
+    let recipientsWithFailures = 0;
+
     for (const customerId of customerIds) {
       try {
         const result = await notifier.send(
           { customerId, organizationId },
           createNotification(notificationKey, payload),
         );
-        if (result.ok) ok += 1;
-        else failed += 1;
+        for (const r of result.results) {
+          const tally = (channels[r.channel] ??= {
+            sent: 0,
+            skipped: 0,
+            failed: 0,
+          });
+          tally[r.status] += 1;
+        }
+        if (result.ok) recipientsAllOk += 1;
+        else recipientsWithFailures += 1;
         logger.info("send-notification recipient", {
           customerId,
           ok: result.ok,
@@ -46,18 +63,27 @@ export const sendNotificationTask = task({
             channel: r.channel,
             status: r.status,
             reason: r.reason,
+            // Surface WHY a channel failed (e.g. realtime can't reach the
+            // local PartyKit) — otherwise the cause is invisible.
+            error: r.error?.message,
           })),
         });
       } catch (error) {
-        failed += 1;
+        recipientsWithFailures += 1;
         logger.error("send-notification recipient failed", {
           customerId,
-          error: String(error),
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
 
-    logger.info("send-notification done", { ok, failed });
-    return { ok, failed, total: customerIds.length };
+    const output = {
+      recipients: customerIds.length,
+      recipientsAllOk,
+      recipientsWithFailures,
+      channels,
+    };
+    logger.info("send-notification done", output);
+    return output;
   },
 });

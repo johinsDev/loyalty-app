@@ -135,6 +135,31 @@ export class NotificationRepository implements DatabaseNotificationRepository {
     return result.rowsAffected;
   }
 
+  /** Delete one notification (scoped to its owner). Returns rows affected. */
+  async delete(id: string, customerId: string): Promise<number> {
+    const result = await this.db
+      .delete(notification)
+      .where(
+        and(eq(notification.id, id), eq(notification.customerId, customerId)),
+      );
+    return result.rowsAffected;
+  }
+
+  async deleteAll(
+    customerId: string,
+    organizationId: string,
+  ): Promise<number> {
+    const result = await this.db
+      .delete(notification)
+      .where(
+        and(
+          eq(notification.customerId, customerId),
+          eq(notification.organizationId, organizationId),
+        ),
+      );
+    return result.rowsAffected;
+  }
+
   /** Customers in the org, for the admin send picker. */
   async listCustomers(
     organizationId: string,

@@ -24,6 +24,10 @@ export const markReadInputSchema = z.object({
   id: z.string().uuid(),
 });
 
+export const deleteInputSchema = z.object({
+  id: z.string().uuid(),
+});
+
 /** Toggle one channel's marketing opt-in. */
 export const setPreferenceInputSchema = z.object({
   channel: preferenceChannelSchema,
