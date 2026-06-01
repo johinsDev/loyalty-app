@@ -1,5 +1,5 @@
 import { PushTokenRepository } from "@loyalty/api/features/push-tokens";
-import { db } from "@loyalty/db";
+import { db, getPrimaryOrganizationId } from "@loyalty/db";
 import {
   PushManager,
   type ProviderConfig,
@@ -33,7 +33,7 @@ async function tokenLookup(
 ): Promise<Array<{ token: string; platform: PushPlatform }>> {
   const rows = await tokenRepo.listActiveForCustomer(
     userId,
-    env.LOYALTY_ORG_ID ?? "",
+    (await getPrimaryOrganizationId()) ?? "",
   );
   return rows.map((r) => ({
     token: r.token,
@@ -76,6 +76,9 @@ function build() {
       expo: expoConfig,
       auto: autoConfig,
     },
+    // Applied to every sender so `toUser(...)` resolves device tokens even
+    // under the log/outbox providers (not just `auto`).
+    tokenLookup,
     logger: log,
   });
 }

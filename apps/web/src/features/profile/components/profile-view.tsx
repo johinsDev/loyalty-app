@@ -1,8 +1,10 @@
+import { getPrimaryOrganizationId } from "@loyalty/db";
 import { getTranslations } from "next-intl/server";
 
 import { env } from "@/env";
 import { requireSession } from "@/lib/auth-guard";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { NotificationPreferences } from "@/features/profile/components/notification-preferences";
 import { PushEnableButton } from "@/features/push/components/push-enable-button";
 
 /**
@@ -13,7 +15,7 @@ import { PushEnableButton } from "@/features/push/components/push-enable-button"
 export async function ProfileView() {
   const t = await getTranslations("Profile");
   const session = await requireSession();
-  const organizationId = process.env.LOYALTY_ORG_ID ?? "";
+  const organizationId = (await getPrimaryOrganizationId()) ?? "";
 
   return (
     <main className="mx-auto max-w-md space-y-6 p-6">
@@ -28,6 +30,7 @@ export async function ProfileView() {
           vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}
         />
       ) : null}
+      <NotificationPreferences />
       <SignOutButton />
     </main>
   );

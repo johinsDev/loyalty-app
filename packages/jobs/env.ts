@@ -18,6 +18,9 @@ const pushProvider = z
   .enum(["log", "outbox", "webpush", "expo", "auto"])
   .optional();
 
+const emailProvider = z.enum(["log", "outbox", "resend", "folder"]).optional();
+const smsProvider = z.enum(["log", "outbox", "twilio", "folder"]).optional();
+
 const requireWhen = (field: string, predicate: () => boolean, reason: string) =>
   z
     .string()
@@ -91,7 +94,17 @@ function build() {
       ),
       EXPO_ACCESS_TOKEN: z.string().optional(),
 
-      LOYALTY_ORG_ID: z.string().optional(),
+      EMAIL_PROVIDER: emailProvider,
+      RESEND_API_KEY: z.string().optional(),
+      EMAIL_FROM: z.string().optional(),
+
+      SMS_PROVIDER: smsProvider,
+      TWILIO_SMS_FROM: z.string().optional(),
+
+      PARTYKIT_HOST: z.string().optional(),
+      PARTYKIT_PROJECT: z.string().optional(),
+      REALTIME_AUTH_SECRET: z.string().optional(),
+      REALTIME_ROOM_PREFIX: z.string().optional(),
 
       OUTBOX_RETENTION_DAYS: z.coerce.number().int().min(1).optional(),
     },

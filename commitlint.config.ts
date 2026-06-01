@@ -20,6 +20,7 @@ const config: UserConfig = {
         "image-loader",
         "jobs",
         "log",
+        "notifications",
         "push",
         "rate-limit",
         "realtime",

@@ -17,11 +17,37 @@
     "cardTitle": "Tu tarjeta de fidelización",
     "cardDescription": "Acumula sellos en cada compra y reclama tus premios.",
     "viewCard": "Ver mi tarjeta",
-    "myProfile": "Mi perfil"
+    "myProfile": "Mi perfil",
+    "myNotifications": "Mis notificaciones"
+  },
+  "Notifications": {
+    "title": "Notificaciones",
+    "newNotification": "Tenés una notificación nueva",
+    "empty": "No tenés notificaciones.",
+    "unreadCount": "{count} sin leer",
+    "allRead": "Todo al día",
+    "markRead": "Marcar como leída",
+    "markAllRead": "Marcar todas",
+    "delete": "Eliminar",
+    "deleteAll": "Borrar todas",
+    "deletedAll": "Se eliminaron {count} notificaciones.",
+    "actionFailed": "No se pudo completar la acción."
   },
   "Profile": {
     "title": "Mi perfil",
-    "placeholder": "Edita tus datos (placeholder)."
+    "placeholder": "Edita tus datos (placeholder).",
+    "notifications": {
+      "title": "Preferencias de notificaciones",
+      "description": "Elegí en qué canales querés recibir promociones. Los mensajes importantes (códigos, confirmaciones) siempre llegan.",
+      "channel": {
+        "mail": "Email",
+        "sms": "SMS",
+        "push": "Notificaciones push",
+        "whatsapp": "WhatsApp"
+      },
+      "transactionalNote": "Las notificaciones transaccionales y los códigos OTP se envían siempre.",
+      "saveFailed": "No se pudo guardar la preferencia."
+    }
   },
   "Card": {
     "title": "Mi tarjeta",

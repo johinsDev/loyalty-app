@@ -1,3 +1,4 @@
+import { Toaster } from "@loyalty/ui";
 import { hasLocale } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import type { Metadata } from "next";
@@ -7,6 +8,8 @@ import type { ReactNode } from "react";
 import { InstallPrompt } from "@/components/install-prompt";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { env } from "@/env";
+import { RealtimeNotifications } from "@/features/realtime/components/realtime-notifications";
 import { routing } from "@/i18n/routing";
 
 import { Providers } from "./providers";
@@ -44,7 +47,9 @@ export default async function LocaleLayout({ children, params }: Props) {
         <LocaleSwitcher />
       </div>
       {children}
+      <RealtimeNotifications host={env.NEXT_PUBLIC_PARTYKIT_HOST} />
       <InstallPrompt />
+      <Toaster position="top-center" />
     </Providers>
   );
 }

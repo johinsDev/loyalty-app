@@ -1,4 +1,9 @@
-import { db, schema } from "@loyalty/db";
+import {
+  db,
+  getPrimaryOrganizationId,
+  provisionCustomerForUser,
+  schema,
+} from "@loyalty/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
@@ -76,6 +81,39 @@ export function createAuth(
 
   return betterAuth({
     database: drizzleAdapter(db, { provider: "sqlite" }),
+    databaseHooks: {
+      user: {
+        create: {
+          // Mirror every phone-verified web sign-up into a `customer` row
+          // (id = user.id) so push tokens + notifications can address the
+          // person by their `session.user.id`. Phone-less accounts (admin
+          // Google sign-in) are intentionally not customers.
+          after: async (user) => {
+            const phone = (user as { phoneNumber?: string | null })
+              .phoneNumber;
+            if (!phone) return;
+            const organizationId = await getPrimaryOrganizationId();
+            if (!organizationId) return;
+            try {
+              await provisionCustomerForUser({
+                userId: user.id,
+                organizationId,
+                phone,
+                email: user.email ?? null,
+                name: user.name ?? null,
+              });
+            } catch (error) {
+              // Best-effort — never block sign-up on customer provisioning.
+              console.error("[auth] failed to provision customer", {
+                userId: user.id,
+                organizationId,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          },
+        },
+      },
+    },
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL,
     // Better Auth rejects any request whose Origin isn't listed here

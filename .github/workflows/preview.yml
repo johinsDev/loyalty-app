@@ -140,6 +140,10 @@ jobs:
           DATABASE_URL: ${{ steps.db.outputs.database_url }}
           TURSO_AUTH_TOKEN: ${{ steps.db.outputs.auth_token }}
           GIT_BRANCH: ${{ github.head_ref }}
+          # Must match the per-PR prefix pinned on the Vercel preview (above),
+          # so jobs publishes realtime events to the SAME room the web/admin
+          # clients subscribe to. syncEnvVars forwards it into the Trigger env.
+          REALTIME_ROOM_PREFIX: pr-${{ github.event.number }}-
         run: >
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
           --path=/shared --token="$INFISICAL_TOKEN" --

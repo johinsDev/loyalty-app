@@ -17,7 +17,28 @@
     "dashboard": "Dashboard",
     "customers": "Clientes",
     "rewards": "Premios",
+    "notifications": "Notificaciones",
     "devTools": "Herramientas dev"
+  },
+  "Notifications": {
+    "title": "Notificaciones",
+    "subtitle": "Elegí un tipo y los clientes a quienes enviárselo.",
+    "sendTitle": "Enviar notificación",
+    "sendDescription": "El envío corre en segundo plano y respeta las preferencias de marketing de cada cliente.",
+    "typeLabel": "Tipo de notificación",
+    "typeNewUser": "Bienvenida (transaccional)",
+    "typePromo": "Promoción (marketing)",
+    "recipientsLabel": "Destinatarios",
+    "searchPlaceholder": "Buscar por nombre, teléfono o email…",
+    "loading": "Cargando clientes…",
+    "noCustomers": "No hay clientes para mostrar.",
+    "unnamedCustomer": "Sin nombre",
+    "selectedCount": "{count} seleccionados",
+    "noneSelected": "Seleccioná al menos un cliente.",
+    "sendButton": "Enviar",
+    "sending": "Enviando…",
+    "enqueued": "Encolado para {count} clientes.",
+    "sendFailed": "No se pudo enviar la notificación."
   },
   "Auth": {
     "signInTitle": "Iniciar sesión",

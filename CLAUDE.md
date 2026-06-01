@@ -26,6 +26,7 @@ packages/
 ├── feature-flags/   Provider-agnostic feature flags + A-B (PostHog + null) — server + client + React
 ├── jobs/        Trigger.dev v4 background tasks
 ├── log/         Provider-agnostic logger (Pino + Better Stack + console + silent)
+├── notifications/  Class-based multi-channel notifications engine (fan-out + per-customer opt-out)
 ├── push/        Provider-agnostic push notifications (Web Push + Expo + log + outbox)
 ├── rate-limit/  Provider-agnostic rate limiter (memory + upstash + redis) + tRPC middleware
 ├── realtime/    Real-time channel (publisher + React hook) backed by partykit/
@@ -103,6 +104,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Add an icon (lucide first), convert a custom/brand SVG with SVGR, tint/size a glyph | `icons` |
 | Send an email, author a React Email template, debug Resend / outbox | `email` |
 | Send a push (web + Expo), register a device token, debug outbox | `push` |
+| Send one event across many channels (mail/sms/push/whatsapp/realtime/database), author a `Notification`, manage marketing opt-outs | `notifications` |
 | Real-time events via PartyKit, add a party, debug WebSocket | `realtime` |
 | Upload + serve files (presigned URLs, R2 setup), add a provider | `storage` |
 | Dropzone primitive + useFileUpload + react-hook-form bridge | `file-upload` |
@@ -111,7 +113,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 

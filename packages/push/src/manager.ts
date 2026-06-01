@@ -12,6 +12,7 @@ import type {
   PushLogger,
   PushManagerConfig,
   PushResponse,
+  PushTokenLookup,
 } from "./types";
 
 /**
@@ -40,6 +41,7 @@ export class PushManager<
   readonly #config: PushManagerConfig<TSenders>;
   readonly #logger?: PushLogger;
   readonly #logLevel: PushLogLevel;
+  readonly #tokenLookup?: PushTokenLookup;
   readonly #sendersCache = new Map<string, PushSender>();
   #fakeSender?: FakeSender;
 
@@ -56,6 +58,7 @@ export class PushManager<
     };
     this.#logger = config.logger;
     this.#logLevel = config.logLevel ?? "info";
+    this.#tokenLookup = config.tokenLookup;
   }
 
   send(
@@ -89,9 +92,12 @@ export class PushManager<
   }
 
   #buildSender(name: string, config: ProviderConfig): PushSender {
+    // Manager-level tokenLookup reaches every sender so `toUser(...)`
+    // resolves regardless of the active provider (log/outbox included).
     const senderOpts = {
       logger: this.#logger,
       logLevel: this.#logLevel,
+      tokenLookup: this.#tokenLookup,
     };
     switch (config.provider) {
       case "auto":
@@ -101,7 +107,7 @@ export class PushManager<
             webpush: new WebPushTransport(config.webpush),
             expo: new ExpoTransport(config.expo),
           },
-          { ...senderOpts, tokenLookup: config.tokenLookup },
+          { ...senderOpts, tokenLookup: config.tokenLookup ?? this.#tokenLookup },
         );
       case "webpush":
         return new PushSender(name, new WebPushTransport(config), senderOpts);

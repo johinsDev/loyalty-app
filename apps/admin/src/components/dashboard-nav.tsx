@@ -7,14 +7,15 @@ import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
 type NavItem = {
-  href: "/dashboard" | "/customers" | "/rewards";
-  key: "dashboard" | "customers" | "rewards";
+  href: "/dashboard" | "/customers" | "/rewards" | "/notifications";
+  key: "dashboard" | "customers" | "rewards" | "notifications";
 };
 
 const ITEMS: readonly NavItem[] = [
   { href: "/dashboard", key: "dashboard" },
   { href: "/customers", key: "customers" },
   { href: "/rewards", key: "rewards" },
+  { href: "/notifications", key: "notifications" },
 ];
 
 // Dev tooling lives under (dev). Visible only to owners; staff and

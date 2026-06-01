@@ -17,11 +17,37 @@
     "cardTitle": "Your loyalty card",
     "cardDescription": "Earn stamps on every purchase and redeem your rewards.",
     "viewCard": "View my card",
-    "myProfile": "My profile"
+    "myProfile": "My profile",
+    "myNotifications": "My notifications"
+  },
+  "Notifications": {
+    "title": "Notifications",
+    "newNotification": "You have a new notification",
+    "empty": "You have no notifications.",
+    "unreadCount": "{count} unread",
+    "allRead": "All caught up",
+    "markRead": "Mark as read",
+    "markAllRead": "Mark all read",
+    "delete": "Delete",
+    "deleteAll": "Delete all",
+    "deletedAll": "Deleted {count} notifications.",
+    "actionFailed": "Could not complete the action."
   },
   "Profile": {
     "title": "My profile",
-    "placeholder": "Edit your details (placeholder)."
+    "placeholder": "Edit your details (placeholder).",
+    "notifications": {
+      "title": "Notification preferences",
+      "description": "Choose which channels you want promotions on. Important messages (codes, confirmations) always come through.",
+      "channel": {
+        "mail": "Email",
+        "sms": "SMS",
+        "push": "Push notifications",
+        "whatsapp": "WhatsApp"
+      },
+      "transactionalNote": "Transactional notifications and OTP codes are always sent.",
+      "saveFailed": "Could not save the preference."
+    }
   },
   "Card": {
     "title": "My card",

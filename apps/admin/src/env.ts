@@ -145,8 +145,6 @@ export const env = createEnv({
     ),
     EXPO_ACCESS_TOKEN: z.string().optional(),
 
-    LOYALTY_ORG_ID: z.string().optional(),
-
     PARTYKIT_HOST: z.string().optional(),
     PARTYKIT_PROJECT: z.string().optional(),
     REALTIME_AUTH_SECRET: requireWhen(
