@@ -79,7 +79,14 @@ export class NewUserNotification
   }
 
   toRealtime() {
-    return { event: "notification", data: { type: "welcome" } };
+    return {
+      event: "notification",
+      data: {
+        type: "welcome",
+        title: "¡Bienvenido a T4 Diver Club!",
+        body: "Sumá sellos en cada compra y canjeá tu bubble tea de regalo.",
+      },
+    };
   }
 }
 

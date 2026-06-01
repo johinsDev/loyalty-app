@@ -22,6 +22,7 @@
   },
   "Notifications": {
     "title": "Notifications",
+    "newNotification": "You have a new notification",
     "empty": "You have no notifications.",
     "unreadCount": "{count} unread",
     "allRead": "All caught up",
