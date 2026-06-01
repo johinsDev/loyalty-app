@@ -22,29 +22,17 @@ const TRIGGER_PROJECT_REF = "proj_pwqxhdhrlurljnctiqdz";
 try {
   const here = dirname(fileURLToPath(import.meta.url));
 
-  // The DB-routing vars decide which database the Trigger worker talks to,
-  // and that MUST match whatever injected the rest of the env (e.g.
-  // `with-infisical` sets DATABASE_URL=http://localhost:8080 for the local
-  // libSQL). If a stale value lingers in the repo `.env`, letting it win
-  // here silently points jobs at a *different* DB than the apps — so the
-  // Notifier "can't find" customers the web app just created. Snapshot the
-  // already-injected DB routing and restore it after the .env load.
-  const injectedDb = {
-    DATABASE_URL: process.env.DATABASE_URL,
-    TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN,
-  };
-
-  // `override: true` so the monorepo .env wins over a stale value already
-  // exported into the shell (direnv's `dotenv` loads .env on cd, so a shell
-  // opened before an .env edit carries the old value — and plain dotenv
-  // won't replace it). In the deploy sandbox the path resolves to nothing,
-  // so this loads 0 vars and override is a no-op.
-  loadEnv({ path: resolve(here, "../../.env"), override: true });
-
-  // Restore injected DB routing so .env can't redirect jobs to another DB.
-  for (const [key, value] of Object.entries(injectedDb)) {
-    if (value) process.env[key] = value;
-  }
+  // `override: false`: only fill vars NOT already in the environment. Jobs
+  // runs under `with-infisical` (Infisical is the source of truth), which
+  // injects the full env before this config evaluates — so the injected
+  // values must win. A stale value in the repo `.env` (e.g. an empty
+  // `SMS_PROVIDER`, or a leftover remote `DATABASE_URL`) must NOT clobber
+  // them, or jobs silently diverges from the apps: wrong DB, wrong provider
+  // (sms/push falling back to `log` instead of `outbox`), etc. `.env` still
+  // fills anything Infisical didn't provide, so a bare `trigger dev` (no
+  // Infisical) keeps working. In the deploy sandbox the path resolves to
+  // nothing, so this loads 0 vars regardless.
+  loadEnv({ path: resolve(here, "../../.env"), override: false });
 } catch {
   // No-op: deploy sandbox has no repo .env. Env is injected by the
   // Trigger.dev dashboard at runtime there.
