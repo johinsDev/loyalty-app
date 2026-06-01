@@ -12,6 +12,8 @@ import { getTranslations } from "next-intl/server";
 
 import { trpc } from "@/lib/trpc/server";
 
+import { BodyIframe } from "./body-iframe";
+
 type Props = { id: string };
 
 /**
@@ -106,35 +108,5 @@ export async function OutboxDetail({ id }: Props) {
         </Card>
       ) : null}
     </main>
-  );
-}
-
-/**
- * Sandboxed iframe with auto-resize. We can't use the `Tailwind` /
- * `srcdoc` props directly because the email body brings its own
- * styles; isolating it in an iframe prevents leakage in both
- * directions. The inline script measures and sets the iframe height
- * after load.
- */
-function BodyIframe({ html }: { html: string }) {
-  return (
-    <iframe
-      title="email-body"
-      srcDoc={html}
-      sandbox="allow-same-origin"
-      className="w-full min-h-[500px] rounded-md border border-border bg-white"
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted resize script
-      onLoad={(e) => {
-        const frame = e.currentTarget;
-        try {
-          const doc = frame.contentDocument;
-          if (doc) {
-            frame.style.height = `${doc.body.scrollHeight + 32}px`;
-          }
-        } catch {
-          // cross-origin safety — ignore.
-        }
-      }}
-    />
   );
 }
