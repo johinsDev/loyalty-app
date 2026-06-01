@@ -280,6 +280,26 @@ Mirror the `cache` skill's runbook:
   You probably left `RATE_LIMIT_PROVIDER=memory` in a serverless env. Switch to
   upstash — memory counts per lambda instance, so the effective limit is way
   lower than declared.
+- **`[upstash] @upstash/ratelimit is not installed` (500 on every limited
+  request in preview/prod, fine locally).** A deploy gotcha, fixed in PR #73 —
+  but if it ever regresses, here's the full chain. The upstash SDK is loaded via
+  the `new Function("specifier","return import(specifier)")` wrapper in
+  `_lazy.ts`, which is **opaque to `@vercel/nft`**. So two things must both be
+  true for the lambda to have it, and neither is automatic:
+  1. **Installed at build time.** `@upstash/ratelimit` + `@upstash/redis` are
+     declared as real deps of `apps/web` + `apps/admin` (not optional peers —
+     bun doesn't install those). They're listed in each app's knip
+     `ignoreDependencies` since no app code imports them directly.
+  2. **Force-copied into the serverless function.** `serverExternalPackages`
+     only stops bundling; it does **not** include an untraced package. Both apps'
+     `next.config.ts` use `outputFileTracingIncludes` (+ `outputFileTracingRoot`
+     at the monorepo root) to copy `@upstash/**` + `uncrypto` into every route's
+     lambda. Verify locally after a build: the route's
+     `.next/server/**/page.js.nft.json` should list `@upstash/ratelimit`.
+
+  This bites rate-limit first because the baseline runs on **every** procedure,
+  so it's the first upstash-backed provider to actually execute in preview.
+  `@loyalty/cache` (also upstash-by-default) rides the same glob — see its skill.
 - **429 returned but you expected a different error.**
   Order matters. Middleware chain is `withBaseline` → `enforceAuth` (for
   protected) → your `.use(rateLimit({...}))` overrides. If you want the auth
