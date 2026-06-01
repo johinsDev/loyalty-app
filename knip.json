@@ -74,7 +74,12 @@
     },
     "packages/date": { "entry": ["src/index.ts", "src/react/index.ts"] },
     "packages/db": {
-      "entry": ["src/index.ts", "src/migrate.ts", "src/seed-owner.ts"]
+      "entry": [
+        "src/index.ts",
+        "src/migrate.ts",
+        "src/seed-owner.ts",
+        "src/backfill-customers.ts"
+      ]
     },
     "packages/log": {},
     "packages/ui": {},
