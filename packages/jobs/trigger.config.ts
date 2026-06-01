@@ -99,7 +99,6 @@ export default defineConfig({
           "LOG_LEVEL",
           "BETTER_STACK_SOURCE_TOKEN_JOBS",
           "BETTER_STACK_INGESTING_HOST_JOBS",
-          "LOYALTY_ORG_ID",
           "OUTBOX_RETENTION_DAYS",
         ];
         return keys

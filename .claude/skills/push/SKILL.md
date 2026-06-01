@@ -121,7 +121,8 @@ Override with `PUSH_PROVIDER=log|outbox|webpush|expo|auto` in `.env`. The `auto`
 | `webpush` / `auto` | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (mailto:) | `bunx web-push generate-vapid-keys` |
 | `webpush` (client) | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Mirror of `VAPID_PUBLIC_KEY` — exposed so the browser can subscribe |
 | `expo` / `auto` | `EXPO_ACCESS_TOKEN` (optional) | Expo dashboard → Access tokens |
-| `auto` | `LOYALTY_ORG_ID` | The active org id — the `tokenLookup` scopes by `(customerId, orgId)` |
+
+The `tokenLookup` scopes tokens by `(customerId, orgId)`; the org id is resolved from the DB via `getPrimaryOrganizationId()` (`@loyalty/db`) — the first/principal organization — so no `LOYALTY_ORG_ID` env is needed.
 
 Validated by `apps/{web,admin}/src/env.ts` via `@t3-oss/env-nextjs`. Boot fails if VAPID is missing when `webpush` or `auto` is selected.
 

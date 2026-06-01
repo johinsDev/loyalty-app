@@ -4,4 +4,5 @@ export {
   provisionCustomerForUser,
   type ProvisionCustomerInput,
 } from "./customer-provision";
+export { getPrimaryOrganizationId } from "./primary-org";
 export { promoteOwnerByEmail } from "./seed-helpers";

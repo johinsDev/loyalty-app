@@ -1,3 +1,4 @@
+import { getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
@@ -100,7 +101,7 @@ export const pushTokensRouter = router({
       const service = new PushTokenService(new PushTokenRepository(ctx.db));
       const tokens = await service.list({
         customerId: ctx.session.user.id,
-        organizationId: process.env.LOYALTY_ORG_ID ?? "",
+        organizationId: (await getPrimaryOrganizationId()) ?? "",
       });
       if (tokens.length === 0) {
         throw new TRPCError({

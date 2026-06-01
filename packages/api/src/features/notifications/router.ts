@@ -1,4 +1,4 @@
-import type { db as Db } from "@loyalty/db";
+import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 
 import {
   managerProcedure,
@@ -26,18 +26,20 @@ function buildService(db: typeof Db): NotificationService {
   );
 }
 
-const org = (): string => process.env.LOYALTY_ORG_ID ?? "";
+/** The single principal org (single-tenant pilot). No env var needed. */
+const orgId = async (): Promise<string> =>
+  (await getPrimaryOrganizationId()) ?? "";
 
 export const notificationsRouter = router({
   // ---- Customer-facing feed -------------------------------------------
   listMine: protectedProcedure
     .input(listMineInputSchema)
-    .query(({ ctx, input }) =>
-      buildService(ctx.db).listMine(ctx.session.user.id, org(), input),
+    .query(async ({ ctx, input }) =>
+      buildService(ctx.db).listMine(ctx.session.user.id, await orgId(), input),
     ),
 
-  unreadCount: protectedProcedure.query(({ ctx }) =>
-    buildService(ctx.db).unreadCount(ctx.session.user.id, org()),
+  unreadCount: protectedProcedure.query(async ({ ctx }) =>
+    buildService(ctx.db).unreadCount(ctx.session.user.id, await orgId()),
   ),
 
   markRead: protectedProcedure
@@ -46,8 +48,8 @@ export const notificationsRouter = router({
       buildService(ctx.db).markRead(input.id, ctx.session.user.id),
     ),
 
-  markAllRead: protectedProcedure.mutation(({ ctx }) =>
-    buildService(ctx.db).markAllRead(ctx.session.user.id, org()),
+  markAllRead: protectedProcedure.mutation(async ({ ctx }) =>
+    buildService(ctx.db).markAllRead(ctx.session.user.id, await orgId()),
   ),
 
   delete: protectedProcedure
@@ -56,21 +58,21 @@ export const notificationsRouter = router({
       buildService(ctx.db).remove(input.id, ctx.session.user.id),
     ),
 
-  deleteAll: protectedProcedure.mutation(({ ctx }) =>
-    buildService(ctx.db).removeAll(ctx.session.user.id, org()),
+  deleteAll: protectedProcedure.mutation(async ({ ctx }) =>
+    buildService(ctx.db).removeAll(ctx.session.user.id, await orgId()),
   ),
 
   // ---- Customer-facing preferences ------------------------------------
-  getMyPreferences: protectedProcedure.query(({ ctx }) =>
-    buildService(ctx.db).getMyPreferences(ctx.session.user.id, org()),
+  getMyPreferences: protectedProcedure.query(async ({ ctx }) =>
+    buildService(ctx.db).getMyPreferences(ctx.session.user.id, await orgId()),
   ),
 
   setPreference: protectedProcedure
     .input(setPreferenceInputSchema)
-    .mutation(({ ctx, input }) =>
+    .mutation(async ({ ctx, input }) =>
       buildService(ctx.db).setPreference(
         ctx.session.user.id,
-        org(),
+        await orgId(),
         input.channel,
         input.marketingEnabled,
       ),
@@ -79,12 +81,16 @@ export const notificationsRouter = router({
   // ---- Admin ----------------------------------------------------------
   listCustomers: staffProcedure
     .input(listCustomersInputSchema)
-    .query(({ ctx, input }) => buildService(ctx.db).listCustomers(org(), input)),
+    .query(async ({ ctx, input }) =>
+      buildService(ctx.db).listCustomers(await orgId(), input),
+    ),
 
   send: managerProcedure
     .use(
       rateLimit({ name: "notifications.send", limit: 30, window: "1m", by: "user" }),
     )
     .input(sendInputSchema)
-    .mutation(({ ctx, input }) => buildService(ctx.db).send(org(), input)),
+    .mutation(async ({ ctx, input }) =>
+      buildService(ctx.db).send(await orgId(), input),
+    ),
 });

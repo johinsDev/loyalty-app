@@ -2,6 +2,7 @@ import { isNotNull } from "drizzle-orm";
 
 import { db } from "./client";
 import { provisionCustomerForUser } from "./customer-provision";
+import { getPrimaryOrganizationId } from "./primary-org";
 import * as schema from "./schema";
 
 /**
@@ -12,13 +13,13 @@ import * as schema from "./schema";
  * Usage:
  *   bun run db:backfill-customers
  *
- * Reads `LOYALTY_ORG_ID` (the singleton operator org). Going forward the
- * Better Auth sign-up hook provisions customers automatically.
+ * Resolves the principal org from the DB (first organization). Going forward
+ * the Better Auth sign-up hook provisions customers automatically.
  */
 async function main() {
-  const organizationId = process.env.LOYALTY_ORG_ID;
+  const organizationId = await getPrimaryOrganizationId();
   if (!organizationId) {
-    console.error("LOYALTY_ORG_ID is not set — cannot resolve the org.");
+    console.error("No organization found — seed the operator org first.");
     process.exit(1);
   }
 

@@ -1,5 +1,5 @@
 import { PushTokenRepository } from "@loyalty/api/features/push-tokens";
-import { db } from "@loyalty/db";
+import { db, getPrimaryOrganizationId } from "@loyalty/db";
 import {
   PushManager,
   type ProviderConfig,
@@ -28,7 +28,7 @@ async function tokenLookup(
 ): Promise<Array<{ token: string; platform: PushPlatform }>> {
   const rows = await tokenRepo.listActiveForCustomer(
     userId,
-    process.env.LOYALTY_ORG_ID ?? "",
+    (await getPrimaryOrganizationId()) ?? "",
   );
   return rows.map((r) => ({
     token: r.token,

@@ -106,8 +106,6 @@ function build() {
       REALTIME_AUTH_SECRET: z.string().optional(),
       REALTIME_ROOM_PREFIX: z.string().optional(),
 
-      LOYALTY_ORG_ID: z.string().optional(),
-
       OUTBOX_RETENTION_DAYS: z.coerce.number().int().min(1).optional(),
     },
     runtimeEnv: process.env,

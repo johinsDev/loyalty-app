@@ -1,4 +1,9 @@
-import { db, provisionCustomerForUser, schema } from "@loyalty/db";
+import {
+  db,
+  getPrimaryOrganizationId,
+  provisionCustomerForUser,
+  schema,
+} from "@loyalty/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
@@ -84,10 +89,11 @@ export function createAuth(
           // person by their `session.user.id`. Phone-less accounts (admin
           // Google sign-in) are intentionally not customers.
           after: async (user) => {
-            const organizationId = process.env.LOYALTY_ORG_ID;
             const phone = (user as { phoneNumber?: string | null })
               .phoneNumber;
-            if (!organizationId || !phone) return;
+            if (!phone) return;
+            const organizationId = await getPrimaryOrganizationId();
+            if (!organizationId) return;
             try {
               await provisionCustomerForUser({
                 userId: user.id,

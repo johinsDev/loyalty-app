@@ -1,3 +1,4 @@
+import { getPrimaryOrganizationId } from "@loyalty/db";
 import { getTranslations } from "next-intl/server";
 
 import { env } from "@/env";
@@ -14,7 +15,7 @@ import { PushEnableButton } from "@/features/push/components/push-enable-button"
 export async function ProfileView() {
   const t = await getTranslations("Profile");
   const session = await requireSession();
-  const organizationId = process.env.LOYALTY_ORG_ID ?? "";
+  const organizationId = (await getPrimaryOrganizationId()) ?? "";
 
   return (
     <main className="mx-auto max-w-md space-y-6 p-6">
