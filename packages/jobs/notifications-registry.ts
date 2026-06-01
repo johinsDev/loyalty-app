@@ -39,7 +39,7 @@ export class NewUserNotification
   readonly category = "transactional" as const;
 
   via(): ChannelName[] {
-    return ["mail", "database", "push", "sms", "realtime"];
+    return ["mail", "database", "push", "sms", "whatsapp", "realtime"];
   }
 
   toMail(n: NotifiableLike) {
@@ -52,6 +52,13 @@ export class NewUserNotification
 
   toSms(n: NotifiableLike) {
     return new NewUserSms(n.name ?? null);
+  }
+
+  toWhatsApp(n: NotifiableLike) {
+    const who = n.name ?? "";
+    return {
+      body: `¡Bienvenido a T4 Diver Club${who ? `, ${who}` : ""}! 🧋 Sumá sellos en cada compra y canjeá tu bubble tea de regalo.`,
+    };
   }
 
   toPush(n: NotifiableLike) {
