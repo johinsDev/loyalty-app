@@ -115,6 +115,8 @@ apps/storybook/storybook-static/
 !.claude/skills/feature-flags/**
 !.claude/skills/image-loader
 !.claude/skills/image-loader/**
+!.claude/skills/icons
+!.claude/skills/icons/**
 !.claude/skills/email
 !.claude/skills/email/**
 !.claude/skills/push
