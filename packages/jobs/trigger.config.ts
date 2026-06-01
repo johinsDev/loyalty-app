@@ -77,6 +77,10 @@ export default defineConfig({
         const keys = [
           "DATABASE_URL",
           "TURSO_AUTH_TOKEN",
+          // Jobs transitively load @loyalty/auth (via the @loyalty/api
+          // feature barrels), which instantiates Better Auth at import and
+          // requires this — otherwise the run throws "default secret".
+          "BETTER_AUTH_SECRET",
           "WHATSAPP_PROVIDER",
           "PUSH_PROVIDER",
           "TWILIO_ACCOUNT_SID",
