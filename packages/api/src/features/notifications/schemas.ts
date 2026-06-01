@@ -32,7 +32,9 @@ export const setPreferenceInputSchema = z.object({
 
 /** Admin: dispatch a notification to one or more customers. */
 export const sendInputSchema = z.object({
-  customerIds: z.array(z.string().uuid()).min(1).max(500),
+  // Customer ids mirror Better Auth `user.id` (not necessarily a UUID), so
+  // validate as a non-empty string rather than `.uuid()`.
+  customerIds: z.array(z.string().min(1)).min(1).max(500),
   notificationKey: notificationKeySchema,
   /** Optional per-notification overrides (e.g. promo title/body). */
   payload: z.record(z.string(), z.unknown()).optional(),
