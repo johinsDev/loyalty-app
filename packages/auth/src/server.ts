@@ -65,6 +65,16 @@ const defaultBaseURL =
 const webURL =
   process.env.NEXT_PUBLIC_APP_URL ?? vercelUrl ?? "http://localhost:3002";
 
+/**
+ * Verbose trace for the sign-up → `customer` provisioning hook. Noisy by
+ * design in dev/preview so you can watch the sync in the app's dev-server
+ * terminal; silent in production (failures still log via `console.error`).
+ */
+function logProvision(msg: string, data: Record<string, unknown>): void {
+  if (process.env.VERCEL_ENV === "production") return;
+  console.info(`[auth] provision-customer: ${msg}`, data);
+}
+
 export function createAuth(
   deps: AuthDeps = {},
   options: CreateAuthOptions = {},
@@ -87,18 +97,43 @@ export function createAuth(
             const organizationId = process.env.LOYALTY_ORG_ID;
             const phone = (user as { phoneNumber?: string | null })
               .phoneNumber;
-            if (!organizationId || !phone) return;
+
+            logProvision("fired", {
+              userId: user.id,
+              hasPhone: !!phone,
+              hasOrgId: !!organizationId,
+            });
+
+            if (!organizationId) {
+              logProvision("skip: LOYALTY_ORG_ID not set", { userId: user.id });
+              return;
+            }
+            if (!phone) {
+              logProvision("skip: user has no phone (not a customer)", {
+                userId: user.id,
+              });
+              return;
+            }
             try {
-              await provisionCustomerForUser({
+              const created = await provisionCustomerForUser({
                 userId: user.id,
                 organizationId,
                 phone,
                 email: user.email ?? null,
                 name: user.name ?? null,
               });
+              logProvision(created ? "created customer" : "customer already existed", {
+                customerId: user.id,
+                organizationId,
+                phone,
+              });
             } catch (error) {
               // Best-effort — never block sign-up on customer provisioning.
-              console.error("[auth] failed to provision customer", error);
+              console.error("[auth] failed to provision customer", {
+                userId: user.id,
+                organizationId,
+                error: error instanceof Error ? error.message : String(error),
+              });
             }
           },
         },
