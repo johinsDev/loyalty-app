@@ -99,6 +99,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Rate-limit a procedure, tune the baseline, key by ip/user/phone, debug a 429 | `rate-limit` |
 | Track an event, identify after login, add an analytics provider (PostHog) | `analytics` |
 | Gate UI by a flag, run an A-B experiment, debug "flag default in preview" | `feature-flags` |
+| Add a `<Image>`, pick `sizes` / blur placeholder, debug Cloudflare image optimization | `image-loader` |
 | Send an email, author a React Email template, debug Resend / outbox | `email` |
 | Send a push (web + Expo), register a device token, debug outbox | `push` |
 | Real-time events via PartyKit, add a party, debug WebSocket | `realtime` |
@@ -109,7 +110,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `push`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `push`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 

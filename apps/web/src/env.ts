@@ -187,6 +187,12 @@ export const env = createEnv({
     NEXT_PUBLIC_PARTYKIT_HOST: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+    // Host (no protocol) for the Cloudflare zone with Image Transformations
+    // enabled. When set, the custom image loader rewrites `<Image>` src
+    // through `/cdn-cgi/image/...`. Set only in prod Infisical — dev/preview
+    // leave it unset for a no-op loader. See
+    // `.claude/skills/image-loader/SKILL.md`.
+    NEXT_PUBLIC_IMAGE_CDN_HOST: z.string().optional(),
   },
   experimental__runtimeEnv: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
@@ -194,6 +200,7 @@ export const env = createEnv({
     NEXT_PUBLIC_PARTYKIT_HOST: process.env.NEXT_PUBLIC_PARTYKIT_HOST,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    NEXT_PUBLIC_IMAGE_CDN_HOST: process.env.NEXT_PUBLIC_IMAGE_CDN_HOST,
   },
   emptyStringAsUndefined: true,
 });

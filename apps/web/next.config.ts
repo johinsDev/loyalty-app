@@ -37,6 +37,20 @@ const config: NextConfig = {
     "resend",
   ],
   typedRoutes: true,
+  // Custom loader gates Cloudflare Image Transformations on
+  // `NEXT_PUBLIC_IMAGE_CDN_HOST`. When unset (dev + previews) the loader is
+  // a no-op and Next renders the raw src. See
+  // `.claude/skills/image-loader/SKILL.md`.
+  images: {
+    loader: "custom",
+    loaderFile: "./src/lib/image-loader.ts",
+    remotePatterns: [
+      { protocol: "https", hostname: "**.r2.dev" },
+      { protocol: "https", hostname: "**.t4diverclub.app" },
+      // Demo placeholder host — swap out when real R2-backed brand assets land.
+      { protocol: "https", hostname: "placehold.co" },
+    ],
+  },
 };
 
 export default withSerwist(withNextIntl(config));

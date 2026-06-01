@@ -17,6 +17,7 @@ const config: UserConfig = {
         "e2e",
         "email",
         "feature-flags",
+        "image-loader",
         "jobs",
         "log",
         "push",

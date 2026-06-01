@@ -15,8 +15,14 @@ import {
   Separator,
 } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+
+// 4×4 grey LQIP. Swap to a real per-asset blurDataURL when the brand asset
+// lands in R2 — see `.claude/skills/image-loader/SKILL.md`.
+const BRAND_BLUR =
+  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0IDQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNlNWU3ZWIiLz48L3N2Zz4=";
 
 type Props = {
   /**
@@ -66,7 +72,17 @@ export function SignInForm({ passwordEnabled }: Props) {
   const busy = loading !== null;
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+      <Image
+        src="https://placehold.co/480x160/0ea5e9/ffffff/png?text=T4+Admin"
+        alt="T4 Admin"
+        width={240}
+        height={80}
+        priority
+        sizes="(max-width: 640px) 50vw, 240px"
+        placeholder="blur"
+        blurDataURL={BRAND_BLUR}
+      />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>{t("signInTitle")}</CardTitle>
