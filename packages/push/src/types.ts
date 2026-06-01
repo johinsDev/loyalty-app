@@ -152,6 +152,15 @@ export interface PushManagerConfig<
   senders: T;
   /** Defaults to `info`. `silent` suppresses internal `[push]` lines. */
   logLevel?: PushLogLevel;
+  /**
+   * Resolve a `userId` → device tokens, applied to EVERY sender (log,
+   * outbox, webpush, expo). Without it, those senders throw on a
+   * `toUser(...)` recipient — only the `auto` provider (which carries its
+   * own `tokenLookup`) could resolve users. Set this once at the manager
+   * level so `toUser(...)` works regardless of the active provider. The
+   * `auto` provider's own `tokenLookup` takes precedence when present.
+   */
+  tokenLookup?: PushTokenLookup;
 }
 
 /** Inline-compose helper signature for `manager.send((m) => ...)`. */

@@ -76,6 +76,9 @@ function build() {
       expo: expoConfig,
       auto: autoConfig,
     },
+    // Applied to every sender so `toUser(...)` resolves device tokens even
+    // under the log/outbox providers (not just `auto`).
+    tokenLookup,
     logger: log,
   });
 }
