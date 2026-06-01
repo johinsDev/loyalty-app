@@ -17,7 +17,28 @@
     "dashboard": "Dashboard",
     "customers": "Customers",
     "rewards": "Rewards",
+    "notifications": "Notifications",
     "devTools": "Dev tools"
+  },
+  "Notifications": {
+    "title": "Notifications",
+    "subtitle": "Pick a type and the customers to send it to.",
+    "sendTitle": "Send notification",
+    "sendDescription": "Sending runs in the background and respects each customer's marketing preferences.",
+    "typeLabel": "Notification type",
+    "typeNewUser": "Welcome (transactional)",
+    "typePromo": "Promo (marketing)",
+    "recipientsLabel": "Recipients",
+    "searchPlaceholder": "Search by name, phone or email…",
+    "loading": "Loading customers…",
+    "noCustomers": "No customers to show.",
+    "unnamedCustomer": "Unnamed",
+    "selectedCount": "{count} selected",
+    "noneSelected": "Select at least one customer.",
+    "sendButton": "Send",
+    "sending": "Sending…",
+    "enqueued": "Enqueued for {count} customers.",
+    "sendFailed": "Could not send the notification."
   },
   "Auth": {
     "signInTitle": "Sign in",

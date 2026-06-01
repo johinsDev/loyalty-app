@@ -1,4 +1,5 @@
 import { emailOutboxRouter } from "../features/email-outbox";
+import { notificationsRouter } from "../features/notifications";
 import { pushOutboxRouter } from "../features/push-outbox";
 import { pushTokensRouter } from "../features/push-tokens";
 import { realtimeRouter } from "../features/realtime";
@@ -16,6 +17,7 @@ export const appRouter = router({
   clientes: clientesRouter,
   sellos: sellosRouter,
   premios: premiosRouter,
+  notifications: notificationsRouter,
   emailOutbox: emailOutboxRouter,
   pushOutbox: pushOutboxRouter,
   pushTokens: pushTokensRouter,

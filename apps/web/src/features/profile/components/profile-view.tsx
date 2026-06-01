@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { env } from "@/env";
 import { requireSession } from "@/lib/auth-guard";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { NotificationPreferences } from "@/features/profile/components/notification-preferences";
 import { PushEnableButton } from "@/features/push/components/push-enable-button";
 
 /**
@@ -28,6 +29,7 @@ export async function ProfileView() {
           vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}
         />
       ) : null}
+      <NotificationPreferences />
       <SignOutButton />
     </main>
   );

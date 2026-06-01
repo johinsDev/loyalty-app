@@ -21,7 +21,19 @@
   },
   "Profile": {
     "title": "My profile",
-    "placeholder": "Edit your details (placeholder)."
+    "placeholder": "Edit your details (placeholder).",
+    "notifications": {
+      "title": "Notification preferences",
+      "description": "Choose which channels you want promotions on. Important messages (codes, confirmations) always come through.",
+      "channel": {
+        "mail": "Email",
+        "sms": "SMS",
+        "push": "Push notifications",
+        "whatsapp": "WhatsApp"
+      },
+      "transactionalNote": "Transactional notifications and OTP codes are always sent.",
+      "saveFailed": "Could not save the preference."
+    }
   },
   "Card": {
     "title": "My card",
