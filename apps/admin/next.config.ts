@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
@@ -5,6 +7,21 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // @loyalty/{rate-limit,cache} default to the upstash provider in preview +
+  // prod and load @upstash/* through the `new Function` import in their
+  // `_lazy.ts` — opaque to @vercel/nft, so the SDK (though installed) never
+  // lands in the serverless function and throws MissingDependencyError at
+  // runtime. Force-include it. The other serverExternalPackages providers
+  // default to log/memory in preview and are never loaded, so they don't need
+  // this. outputFileTracingRoot points at the monorepo root so the hoisted
+  // packages (above this app dir) are includable.
+  outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
+  outputFileTracingIncludes: {
+    "/**": [
+      "../../node_modules/@upstash/**/*",
+      "../../node_modules/uncrypto/**/*",
+    ],
+  },
   transpilePackages: [
     "@loyalty/api",
     "@loyalty/auth",
