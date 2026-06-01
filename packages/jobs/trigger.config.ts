@@ -21,12 +21,30 @@ const TRIGGER_PROJECT_REF = "proj_pwqxhdhrlurljnctiqdz";
 
 try {
   const here = dirname(fileURLToPath(import.meta.url));
+
+  // The DB-routing vars decide which database the Trigger worker talks to,
+  // and that MUST match whatever injected the rest of the env (e.g.
+  // `with-infisical` sets DATABASE_URL=http://localhost:8080 for the local
+  // libSQL). If a stale value lingers in the repo `.env`, letting it win
+  // here silently points jobs at a *different* DB than the apps — so the
+  // Notifier "can't find" customers the web app just created. Snapshot the
+  // already-injected DB routing and restore it after the .env load.
+  const injectedDb = {
+    DATABASE_URL: process.env.DATABASE_URL,
+    TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN,
+  };
+
   // `override: true` so the monorepo .env wins over a stale value already
   // exported into the shell (direnv's `dotenv` loads .env on cd, so a shell
   // opened before an .env edit carries the old value — and plain dotenv
   // won't replace it). In the deploy sandbox the path resolves to nothing,
   // so this loads 0 vars and override is a no-op.
   loadEnv({ path: resolve(here, "../../.env"), override: true });
+
+  // Restore injected DB routing so .env can't redirect jobs to another DB.
+  for (const [key, value] of Object.entries(injectedDb)) {
+    if (value) process.env[key] = value;
+  }
 } catch {
   // No-op: deploy sandbox has no repo .env. Env is injected by the
   // Trigger.dev dashboard at runtime there.
