@@ -39,6 +39,10 @@ export const sendNotificationTask = task({
     > = {};
     let recipientsAllOk = 0;
     let recipientsWithFailures = 0;
+    // Surfaced in the run Output so the cause of a failed channel is visible
+    // without digging into the per-recipient logs.
+    const errors: Array<{ customerId: string; channel: string; error: string }> =
+      [];
 
     for (const customerId of customerIds) {
       try {
@@ -53,6 +57,13 @@ export const sendNotificationTask = task({
             failed: 0,
           });
           tally[r.status] += 1;
+          if (r.status === "failed" && r.error) {
+            errors.push({
+              customerId,
+              channel: r.channel,
+              error: r.error.message,
+            });
+          }
         }
         if (result.ok) recipientsAllOk += 1;
         else recipientsWithFailures += 1;
@@ -82,6 +93,7 @@ export const sendNotificationTask = task({
       recipientsAllOk,
       recipientsWithFailures,
       channels,
+      errors,
     };
     logger.info("send-notification done", output);
     return output;
