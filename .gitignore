@@ -133,6 +133,14 @@ apps/storybook/storybook-static/
 !.claude/skills/auth/**
 !.claude/skills/env-deploy
 !.claude/skills/env-deploy/**
+!.claude/skills/notifications
+!.claude/skills/notifications/**
+!.claude/skills/zod
+!.claude/skills/zod/**
+!.claude/skills/zustand
+!.claude/skills/zustand/**
+!.claude/skills/react-hook-form
+!.claude/skills/react-hook-form/**
 
 # scripts/ holds two kinds of files:
 #   1. ad-hoc dev seeds (NOT tracked) — run locally with

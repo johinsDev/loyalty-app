@@ -33,7 +33,13 @@
         "src/lib/image-loader.ts"
       ],
       "project": ["**/*.{ts,tsx}"],
-      "ignoreDependencies": ["@upstash/ratelimit", "@upstash/redis"]
+      "ignoreDependencies": [
+        "@upstash/ratelimit",
+        "@upstash/redis",
+        "zustand",
+        "immer",
+        "@hookform/resolvers"
+      ]
     },
     "apps/web": {
       "entry": [
@@ -55,7 +61,14 @@
         "src/features/realtime/hooks/use-customer-room.ts"
       ],
       "project": ["**/*.{ts,tsx}"],
-      "ignoreDependencies": ["@upstash/ratelimit", "@upstash/redis"]
+      "ignoreDependencies": [
+        "@upstash/ratelimit",
+        "@upstash/redis",
+        "zustand",
+        "immer",
+        "react-hook-form",
+        "@hookform/resolvers"
+      ]
     },
     "apps/e2e": {},
     "apps/storybook": {
@@ -126,5 +139,6 @@
   },
   "ignoreDependencies": ["@commitlint/cli", "oxlint", "next", "@aws-sdk/client-s3", "@libsql/client"],
   "ignoreBinaries": ["infisical"],
-  "ignoreExportsUsedInFile": true
+  "ignoreExportsUsedInFile": true,
+  "ignore": [".claude/**", ".agents/**"]
 }
