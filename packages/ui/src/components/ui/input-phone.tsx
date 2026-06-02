@@ -1,5 +1,7 @@
 "use client";
 
+import { Combobox as ComboboxPrimitive } from "@base-ui/react";
+import { CheckIcon } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "../../cn";
@@ -8,7 +10,6 @@ import {
   ComboboxContent,
   ComboboxEmpty,
   ComboboxInput,
-  ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
 } from "./combobox";
@@ -153,11 +154,21 @@ export function InputPhone({
         <ComboboxContent className="w-[260px]">
           <ComboboxInput placeholder="Buscar país…" showTrigger={false} />
           <ComboboxList>
-            {[...countries].map((code) => {
+            {(code: CountryCode) => {
               const c = COUNTRIES[code];
               const ItemFlag = c.Flag;
               return (
-                <ComboboxItem key={code} value={code}>
+                <ComboboxPrimitive.Item
+                  key={code}
+                  value={code}
+                  data-slot="combobox-item"
+                  className="relative flex w-full cursor-default items-center gap-2 rounded-md py-1 pr-2 pl-1.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50"
+                >
+                  <span className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
+                    <ComboboxPrimitive.ItemIndicator>
+                      <CheckIcon className="size-3.5" />
+                    </ComboboxPrimitive.ItemIndicator>
+                  </span>
                   <ItemFlag className="size-4 rounded-[2px]" />
                   <span className="flex-1 truncate">
                     {countryLabel(code, locale)}
@@ -165,11 +176,11 @@ export function InputPhone({
                   <span className="tabular-nums text-muted-foreground text-xs">
                     +{c.dialCode}
                   </span>
-                </ComboboxItem>
+                </ComboboxPrimitive.Item>
               );
-            })}
-            <ComboboxEmpty>Sin resultados.</ComboboxEmpty>
+            }}
           </ComboboxList>
+          <ComboboxEmpty>Sin resultados.</ComboboxEmpty>
         </ComboboxContent>
       </Combobox>
       <input
