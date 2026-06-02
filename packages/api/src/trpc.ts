@@ -52,6 +52,22 @@ export interface RateLimiterBinding {
   limit(key: string, rule: RateLimitRule): Promise<RateLimitResult>;
 }
 
+/** Fields attached to a structured log record. */
+type LogFields = Record<string, unknown>;
+
+/**
+ * Structural slice of `@loyalty/log`'s `Logger` — just the levels the
+ * timing middleware uses. Apps bind their configured logger so perf
+ * records ship through whatever channel they default to (Better Stack in
+ * preview/prod). Optional so CLI scripts + tests run untimed (fail open).
+ * See `.claude/skills/trpc-perf/SKILL.md`.
+ */
+export interface LoggerBinding {
+  info(fields: LogFields, msg?: string): void;
+  warn(fields: LogFields, msg?: string): void;
+  error(fields: LogFields, msg?: string): void;
+}
+
 export type Context = {
   db: typeof db;
   session: Session | null;
@@ -86,6 +102,13 @@ export type Context = {
    * See `.claude/skills/feature-flags/SKILL.md`.
    */
   flags?: FlagsBinding;
+  /**
+   * Request-scoped logger. Apps bind their configured `@loyalty/log`
+   * logger so the timing middleware can emit per-procedure perf records
+   * (and routers can `ctx.log?.info(...)` ad hoc). Optional — fails open
+   * when absent. See `.claude/skills/trpc-perf/SKILL.md`.
+   */
+  log?: LoggerBinding;
 };
 
 export const createContext = async (opts: { headers: Headers }): Promise<Context> => {
@@ -112,6 +135,38 @@ export const router = t.router;
 export const middleware = t.middleware;
 
 const TOO_MANY = "Too many requests. Slow down and try again shortly.";
+
+// Procedures slower than this are logged at `warn` (everything else at
+// `info`, failures at `error`) so a Better Stack alert can key off level.
+const SLOW_MS = 500;
+
+/**
+ * Times every procedure and emits one structured perf record per call
+ * through `ctx.log` (→ Better Stack in preview/prod). Outermost in the
+ * chain so the duration covers the baseline limit, auth/role lookups and
+ * the resolver, and so throttled (429) calls are still recorded. Fails
+ * open when no logger is bound (CLI/tests). See the `trpc-perf` skill.
+ */
+const withTiming = t.middleware(async ({ ctx, next, path, type }) => {
+  const start = performance.now();
+  const res = await next();
+  if (!ctx.log) return res;
+  const durationMs = Math.round(performance.now() - start);
+  const fields: Record<string, unknown> = {
+    event: "trpc.request",
+    path,
+    type,
+    durationMs,
+    ok: res.ok,
+    ...(res.ok ? {} : { code: res.error.code }),
+    ...(ctx.session?.user?.id ? { userId: ctx.session.user.id } : {}),
+  };
+  const msg = `trpc ${type} ${path} ${durationMs}ms`;
+  if (!res.ok) ctx.log.error(fields, msg);
+  else if (durationMs >= SLOW_MS) ctx.log.warn(fields, msg);
+  else ctx.log.info(fields, msg);
+  return res;
+});
 
 // Generous baseline so a single client can't hammer the API, applied to
 // every procedure. Keyed per user (or IP when anonymous); query vs
@@ -164,8 +219,9 @@ export function rateLimit(opts: RateLimitOptions) {
   });
 }
 
-/** Every exported procedure builds on this — baseline limit included. */
-const baseProcedure = t.procedure.use(withBaseline);
+/** Every exported procedure builds on this — perf timing (outermost) +
+ *  baseline limit included. */
+const baseProcedure = t.procedure.use(withTiming).use(withBaseline);
 
 export const publicProcedure = baseProcedure;
 
