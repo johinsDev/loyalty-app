@@ -111,7 +111,16 @@ export function InputPhone({
   };
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const next = digitsOnly(e.target.value).slice(0, maxNationalLength(country));
+    const max = maxNationalLength(country);
+    let raw = digitsOnly(e.target.value);
+    // If a full international number was pasted/autofilled (digits include the
+    // dial code and overflow the national length), drop the leading dial —
+    // the field only ever holds the NATIONAL number (the chip shows the dial).
+    const dial = COUNTRIES[country].dialCode;
+    if (raw.length > max && raw.startsWith(dial)) {
+      raw = raw.slice(dial.length);
+    }
+    const next = raw.slice(0, max);
     setDigits(next);
     emit(next, country);
   };

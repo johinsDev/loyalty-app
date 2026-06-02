@@ -59,8 +59,19 @@ const NATIONAL_DIGITS: Record<CountryCode, number> = {
   PE: 9,
 };
 
-/** Per-country mask overrides. Empty by default → AsYouType formatting. */
-const MASKS: Partial<Record<CountryCode, string>> = {};
+/**
+ * Per-country display mask (`#` = a digit, other chars literal). Edit freely —
+ * this is the single place to tune how each country's number is formatted.
+ * Remove an entry to fall back to libphonenumber's `AsYouType` formatting.
+ */
+const MASKS: Partial<Record<CountryCode, string>> = {
+  CO: "(###) ### ####", // (312) 218 6181
+  US: "(###) ###-####", // (201) 555-0123
+  CA: "(###) ###-####",
+  MX: "(##) #### ####", //  (55) 1234 5678
+  CR: "#### ####", //       8312 1234
+  PE: "### ### ###", //     987 654 321
+};
 
 export const COUNTRIES: Record<CountryCode, CountryDef> = Object.fromEntries(
   SUPPORTED_COUNTRIES.map((code) => [

@@ -34,6 +34,10 @@ describe("applyMask", () => {
 });
 
 describe("formatNational", () => {
+  it("applies the per-country mask (CO → parentheses + spaces)", () => {
+    expect(formatNational("3122186181", "CO")).toBe("(312) 218 6181");
+  });
+
   it("preserves the digits (only adds formatting)", () => {
     const out = formatNational("3122186181", "CO");
     expect(digitsOnly(out)).toBe("3122186181");
