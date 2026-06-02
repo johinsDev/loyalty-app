@@ -162,18 +162,14 @@ export function InputPhone({
                   key={code}
                   value={code}
                   data-slot="combobox-item"
-                  className="relative flex w-full cursor-default items-center gap-2 rounded-md py-1 pr-2 pl-1.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50"
+                  className="relative flex w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50"
                 >
-                  <span className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
-                    <ComboboxPrimitive.ItemIndicator>
-                      <CheckIcon className="size-3.5" />
-                    </ComboboxPrimitive.ItemIndicator>
-                  </span>
-                  <ItemFlag className="size-4 rounded-[2px]" />
-                  <span className="flex-1 truncate">
-                    {countryLabel(code, locale)}
-                  </span>
-                  <span className="tabular-nums text-muted-foreground text-xs">
+                  <ItemFlag className="size-4 shrink-0 rounded-[2px]" />
+                  <span className="truncate">{countryLabel(code, locale)}</span>
+                  <ComboboxPrimitive.ItemIndicator className="text-muted-foreground">
+                    <CheckIcon className="size-3.5" />
+                  </ComboboxPrimitive.ItemIndicator>
+                  <span className="ml-auto tabular-nums text-muted-foreground text-xs">
                     +{c.dialCode}
                   </span>
                 </ComboboxPrimitive.Item>
