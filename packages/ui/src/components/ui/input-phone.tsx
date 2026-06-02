@@ -94,20 +94,33 @@ export function InputPhone({
 
   const country = countryProp ?? countryState;
 
-  // Keep internal state in sync when used as a controlled component.
+  // Remember the last E.164 we emitted so the controlled-value effect can tell
+  // our own echo apart from a genuine external change.
+  const lastEmitted = React.useRef<string | undefined>(value);
+
+  // Keep internal state in sync when used as a controlled component — but skip
+  // our own echo, otherwise re-deriving digits from a short/unparseable E.164
+  // (e.g. "+573" mid-typing) would leak the dial code back into the input.
   React.useEffect(() => {
-    if (value === undefined) return;
+    if (value === undefined || value === lastEmitted.current) return;
     const parsed = parseE164(value);
     if (parsed) {
       setCountryState(parsed.country);
       setDigits(parsed.nationalNumber);
-    } else {
-      setDigits(digitsOnly(value).slice(0, maxNationalLength(country)));
+      return;
     }
+    // Unparseable (too short / not yet valid): keep only the national part by
+    // dropping a leading dial code if present.
+    const dial = COUNTRIES[country].dialCode;
+    let d = digitsOnly(value);
+    if (d.startsWith(dial)) d = d.slice(dial.length);
+    setDigits(d.slice(0, maxNationalLength(country)));
   }, [value, country]);
 
   const emit = (nextDigits: string, nextCountry: CountryCode) => {
-    onChange?.(toPhoneValue(nextDigits, nextCountry));
+    const v = toPhoneValue(nextDigits, nextCountry);
+    lastEmitted.current = v.e164;
+    onChange?.(v);
   };
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
