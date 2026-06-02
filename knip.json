@@ -65,9 +65,7 @@
         "@upstash/ratelimit",
         "@upstash/redis",
         "zustand",
-        "immer",
-        "react-hook-form",
-        "@hookform/resolvers"
+        "immer"
       ]
     },
     "apps/e2e": {},

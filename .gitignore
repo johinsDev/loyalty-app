@@ -141,6 +141,8 @@ apps/storybook/storybook-static/
 !.claude/skills/zustand/**
 !.claude/skills/react-hook-form
 !.claude/skills/react-hook-form/**
+!.claude/skills/input-phone
+!.claude/skills/input-phone/**
 
 # scripts/ holds two kinds of files:
 #   1. ad-hoc dev seeds (NOT tracked) — run locally with

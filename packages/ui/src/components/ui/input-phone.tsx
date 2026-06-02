@@ -1,171 +1,188 @@
 "use client";
 
 import * as React from "react";
-import PhoneInput, { type Props } from "react-phone-number-input/input";
-import {
-  type Country,
-  type DefaultInputComponentProps,
-  getCountries,
-  getCountryCallingCode,
-} from "react-phone-number-input";
-import { ChevronDownIcon } from "lucide-react";
 
 import { cn } from "../../cn";
 import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "./command";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxTrigger,
+} from "./combobox";
+import {
+  COUNTRIES,
+  type CountryCode,
+  SUPPORTED_COUNTRIES,
+} from "./input-phone.countries";
+import {
+  digitsOnly,
+  formatNational,
+  maxNationalLength,
+  parseE164,
+  type PhoneValue,
+  toPhoneValue,
+} from "./input-phone.lib";
 
 const INPUT_CLASSNAME =
   "h-8 w-full min-w-0 rounded-r-lg border border-l-0 border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80";
 
-const PhoneInputAdapter = React.forwardRef<HTMLInputElement, DefaultInputComponentProps>(
-  ({ className, ...props }, ref) => (
-    <input
-      ref={ref}
-      type="tel"
-      data-slot="input-phone-number"
-      className={cn(INPUT_CLASSNAME, className)}
-      {...props}
-    />
-  ),
-);
-PhoneInputAdapter.displayName = "PhoneInputAdapter";
-
-function flagEmoji(country: string): string {
-  return country
-    .toUpperCase()
-    .split("")
-    .map((c) => String.fromCodePoint(0x1f1e6 - 65 + c.charCodeAt(0)))
-    .join("");
+function countryLabel(code: CountryCode, locale?: string): string {
+  try {
+    const dn = new Intl.DisplayNames([locale ?? "es"], { type: "region" });
+    return dn.of(code) ?? code;
+  } catch {
+    return code;
+  }
 }
 
-const regionNamesEn = new Intl.DisplayNames(["en"], { type: "region" });
-const regionNamesEs = new Intl.DisplayNames(["es"], { type: "region" });
-
-function countryName(country: Country): string {
-  return regionNamesEs.of(country) ?? regionNamesEn.of(country) ?? country;
+export interface InputPhoneProps
+  extends Omit<
+    React.ComponentProps<"input">,
+    "value" | "defaultValue" | "onChange" | "type"
+  > {
+  /** Controlled value as E.164 (`+573122186181`). */
+  value?: string;
+  /** Uncontrolled initial value as E.164. */
+  defaultValue?: string;
+  /** Controlled selected country. */
+  country?: CountryCode;
+  /** Initial country when uncontrolled (default `"CO"`). */
+  defaultCountry?: CountryCode;
+  /** Receives the rich value on every change — pick `.e164` for auth. */
+  onChange?: (value: PhoneValue) => void;
+  onCountryChange?: (country: CountryCode) => void;
+  /** Limit/order the country list. Defaults to all supported. */
+  countries?: readonly CountryCode[];
+  /** BCP-47 locale for country names (`Intl.DisplayNames`). Defaults to `es`. */
+  locale?: string;
 }
 
-type CountryEntry = {
-  country: Country;
-  dialCode: string;
-  name: string;
-  flag: string;
-};
-
-const COUNTRIES: ReadonlyArray<CountryEntry> = getCountries()
-  .map((country) => ({
-    country,
-    dialCode: getCountryCallingCode(country),
-    name: countryName(country),
-    flag: flagEmoji(country),
-  }))
-  .sort((a, b) => a.name.localeCompare(b.name));
-
-function CountrySelect({
-  country,
-  onChange,
-  disabled,
-}: {
-  country: Country;
-  onChange: (next: Country) => void;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = React.useState(false);
-  const dialCode = getCountryCallingCode(country);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        type="button"
-        disabled={disabled}
-        data-slot="input-phone-country"
-        className={cn(
-          "inline-flex h-8 shrink-0 items-center gap-1 rounded-l-lg border border-input bg-transparent px-2 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30",
-        )}
-      >
-        <span className="text-base leading-none" aria-hidden>
-          {flagEmoji(country)}
-        </span>
-        <span className="text-muted-foreground tabular-nums">
-          +{dialCode}
-        </span>
-        <ChevronDownIcon className="size-3.5 text-muted-foreground" />
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[260px] p-0"
-        align="start"
-        sideOffset={4}
-      >
-        <Command>
-          <CommandInput placeholder="Buscar país…" />
-          <CommandList>
-            <CommandEmpty>Sin resultados.</CommandEmpty>
-            {COUNTRIES.map((entry) => (
-              <CommandItem
-                key={entry.country}
-                value={`${entry.name} ${entry.country} +${entry.dialCode}`}
-                onSelect={() => {
-                  onChange(entry.country);
-                  setOpen(false);
-                }}
-              >
-                <span className="text-base leading-none" aria-hidden>
-                  {entry.flag}
-                </span>
-                <span className="flex-1 truncate">{entry.name}</span>
-                <span className="text-muted-foreground tabular-nums text-xs">
-                  +{entry.dialCode}
-                </span>
-              </CommandItem>
-            ))}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-export type InputPhoneProps = Omit<
-  Props<DefaultInputComponentProps>,
-  "inputComponent" | "country" | "defaultCountry"
-> & {
-  defaultCountry?: Country;
-  className?: string;
-};
-
-// Phone input with a country picker on the left (flag + dial code) and a
-// formatter input on the right. `onChange` receives the E.164 string ready
-// for Better Auth's phoneNumber plugin.
+/**
+ * Phone input: a Base-UI Combobox country picker (flag + dial code, searchable)
+ * on the left and a country-aware masked `tel` input on the right. Emits the
+ * rich {@link PhoneValue} via `onChange` (E.164 in `.e164` for Better Auth).
+ * Controlled by an E.164 `value`, or uncontrolled with `defaultValue`.
+ */
 export function InputPhone({
-  defaultCountry = "CO",
   value,
+  defaultValue,
+  country: countryProp,
+  defaultCountry = "CO",
   onChange,
-  disabled,
+  onCountryChange,
+  countries = SUPPORTED_COUNTRIES,
+  locale,
   className,
-  ...props
+  disabled,
+  ...inputProps
 }: InputPhoneProps) {
-  const [country, setCountry] = React.useState<Country>(defaultCountry);
+  // Seed once from the initial prop (E.164 → country + national digits).
+  const seed = React.useMemo(
+    () => parseE164(value ?? defaultValue ?? ""),
+    // biome-ignore lint/correctness/useExhaustiveDependencies: seed only on mount
+    [],
+  );
+  const [countryState, setCountryState] = React.useState<CountryCode>(
+    seed?.country ?? defaultCountry,
+  );
+  const [digits, setDigits] = React.useState<string>(seed?.nationalNumber ?? "");
+  const [open, setOpen] = React.useState(false);
+
+  const country = countryProp ?? countryState;
+
+  // Keep internal state in sync when used as a controlled component.
+  React.useEffect(() => {
+    if (value === undefined) return;
+    const parsed = parseE164(value);
+    if (parsed) {
+      setCountryState(parsed.country);
+      setDigits(parsed.nationalNumber);
+    } else {
+      setDigits(digitsOnly(value).slice(0, maxNationalLength(country)));
+    }
+  }, [value, country]);
+
+  const emit = (nextDigits: string, nextCountry: CountryCode) => {
+    onChange?.(toPhoneValue(nextDigits, nextCountry));
+  };
+
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const next = digitsOnly(e.target.value).slice(0, maxNationalLength(country));
+    setDigits(next);
+    emit(next, country);
+  };
+
+  const handleCountry = (next: CountryCode | null) => {
+    if (!next) return;
+    if (!countryProp) setCountryState(next);
+    onCountryChange?.(next);
+    emit(digits, next);
+    setOpen(false);
+  };
+
+  const def = COUNTRIES[country];
+  const Flag = def.Flag;
+  const display = formatNational(digits, country);
 
   return (
     <div className={cn("flex w-full", className)}>
-      <CountrySelect
-        country={country}
-        onChange={setCountry}
+      <Combobox
+        items={[...countries]}
+        value={country}
+        onValueChange={(next) => handleCountry(next as CountryCode | null)}
+        open={open}
+        onOpenChange={setOpen}
+        itemToStringLabel={(code: CountryCode) =>
+          `${countryLabel(code, locale)} ${code} +${COUNTRIES[code].dialCode}`
+        }
+      >
+        <ComboboxTrigger
+          type="button"
+          disabled={disabled}
+          data-slot="input-phone-country"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-l-lg border border-input bg-transparent px-2 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30"
+        >
+          <Flag className="size-4 rounded-[2px]" />
+          <span className="tabular-nums text-muted-foreground">
+            +{def.dialCode}
+          </span>
+        </ComboboxTrigger>
+        <ComboboxContent className="w-[260px]">
+          <ComboboxInput placeholder="Buscar país…" showTrigger={false} />
+          <ComboboxList>
+            {[...countries].map((code) => {
+              const c = COUNTRIES[code];
+              const ItemFlag = c.Flag;
+              return (
+                <ComboboxItem key={code} value={code}>
+                  <ItemFlag className="size-4 rounded-[2px]" />
+                  <span className="flex-1 truncate">
+                    {countryLabel(code, locale)}
+                  </span>
+                  <span className="tabular-nums text-muted-foreground text-xs">
+                    +{c.dialCode}
+                  </span>
+                </ComboboxItem>
+              );
+            })}
+            <ComboboxEmpty>Sin resultados.</ComboboxEmpty>
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+      <input
+        {...inputProps}
+        type="tel"
+        inputMode="numeric"
+        autoComplete={inputProps.autoComplete ?? "tel"}
+        maxLength={maxNationalLength(country) + 6}
+        data-slot="input-phone-number"
         disabled={disabled}
-      />
-      <PhoneInput
-        country={country}
-        inputComponent={PhoneInputAdapter}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        {...props}
+        value={display}
+        onChange={handleInput}
+        className={INPUT_CLASSNAME}
       />
     </div>
   );
