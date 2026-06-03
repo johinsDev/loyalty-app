@@ -511,8 +511,11 @@ documented so the shape is known.
   preview refinements decided in Fase 3 review:
   - **dedicated per-preview** PartyKit worker + Trigger env per PR (not
     shared prod workers) — both `preview.yml` and prod deploy.
-  - **Sentry** in web/admin/jobs, enabled for `preview` AND `prod`
-    (`environment` tag), net-new.
+  - **Sentry**: web + admin are **done** (`@sentry/nextjs`, gated on
+    `NEXT_PUBLIC_SENTRY_DSN`, enabled for `preview` AND `prod` via the
+    `environment` tag — see the `sentry` skill). `SENTRY_AUTH_TOKEN` is
+    build-time → Plain Text in Vercel, not Sensitive. **jobs** (Trigger)
+    Sentry is still net-new and lands here.
   - **Google OAuth** preview-vs-prod client split + the
     `preview-restore-owner` step (un-mask `johinsdev@gmail.com` so the
     owner can Google-login a preview; cashiers via impersonate).

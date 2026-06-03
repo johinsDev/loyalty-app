@@ -93,6 +93,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Anything CI: failing run, branch protection, opening a PR | `ci-cd` |
 | Vercel deploy targets, env vars, Sensitive trap, rollback | `vercel` |
 | Logs, dashboards, uptime monitors, alerts (Better Stack) | `better-stack` |
+| Error tracking: client/server crashes, source maps, the tRPC capture hook, creating a Sentry project | `sentry` |
 | `@loyalty/log` API, adding a new transport | `log` |
 | Send a WhatsApp message, add a strategy, debug outbox / Twilio | `whatsapp` |
 | Send an SMS, add a strategy, debug segments, view outbox | `sms` |
@@ -117,7 +118,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`, `zod`, `zustand`, `react-hook-form`, `input-phone`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `sentry`, `log`, `slack`, `auth`, `tooling`, `zod`, `zustand`, `react-hook-form`, `input-phone`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 

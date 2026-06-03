@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import withSerwistInit from "@serwist/next";
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
@@ -72,4 +73,18 @@ const config: NextConfig = {
   },
 };
 
-export default withSerwist(withNextIntl(config));
+// Sentry wraps outermost (over Serwist + next-intl). Source maps upload during
+// `next build` only when ORG/PROJECT/AUTH_TOKEN are present (preview + prod via
+// Infisical); unset (local dev) → upload is skipped, the SDK still no-ops on a
+// missing DSN. `tunnelRoute` proxies browser events through a same-origin path
+// to dodge ad blockers — excluded from the proxy matcher in `proxy.ts`. See
+// `.claude/skills/sentry/SKILL.md`.
+export default withSentryConfig(withSerwist(withNextIntl(config)), {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  tunnelRoute: "/monitoring",
+  disableLogger: true,
+  widenClientFileUpload: true,
+});
