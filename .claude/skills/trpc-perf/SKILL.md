@@ -124,22 +124,29 @@ exposes the `level` label (`name`, `tags`, `series_id` too). Since
   5 min → current-team escalation (Slack/email). Slow-spike alert: clone it on
   the "Slow requests" chart.
 
-### Per-path latency (p95 by `path`, errors by `code`) — needs 4 extraction rules
+### Per-path latency (p95 by `path`, errors by `code`) — LIVE
 `path` / `durationMs` / `code` live only in the raw log JSON, **not** on the
-metrics collection, so a dashboard chart can't group by them until they're
-extracted. The Telemetry MCP's `create_metric_expression` tool is currently
-broken (422 `better_stack_team_id`) and there's no public REST endpoint — so
-add these **once in the BS UI** (Source `loyalty-web` → Metrics → add):
+metrics collection, so dashboard charts can't group by them until they're
+extracted into metrics/labels. These 4 extraction rules now exist on source
+`loyalty-web` (2423294) and apply to **new logs only** (no backfill):
 
-| Name | SQL expression | Type | Aggregations |
+| Name | SQL expression | Type | Kind |
 | --- | --- | --- | --- |
-| `trpc_duration_ms` | `JSONExtract(raw, 'durationMs', 'Nullable(Float64)')` | float64 | count, avg, max, histogram |
-| `trpc_path` | `JSONExtract(raw, 'path', 'Nullable(String)')` | string (low-card) | — (label) |
-| `trpc_type` | `JSONExtract(raw, 'type', 'Nullable(String)')` | string (low-card) | — (label) |
-| `trpc_code` | `JSONExtract(raw, 'code', 'Nullable(String)')` | string (low-card) | — (label) |
+| `trpc_duration_ms` | `JSONExtract(raw, 'durationMs', 'Nullable(Float64)')` | float64 | metric (avg, count, max, histogram) |
+| `trpc_path` | `JSONExtract(raw, 'path', 'Nullable(String)')` | string (low-card) | label |
+| `trpc_type` | `JSONExtract(raw, 'type', 'Nullable(String)')` | string (low-card) | label |
+| `trpc_code` | `JSONExtract(raw, 'code', 'Nullable(String)')` | string (low-card) | label |
 
-Once they exist (applies to new logs), these chart queries light up — p95 by
-endpoint:
+Charts on `loyalty: api perf` driven by them — sections **Latency** + **Endpoints**:
+- **Latency percentiles (p50 · p95 · p99)** (line) — `histogramQuantile(p)`.
+- **p95 latency by endpoint** (line) — same, grouped by `label('trpc_path')`.
+- **Slowest endpoints (p95 desc)** (table) — p50/p95/`maxMerge(value_max)`/`sumMerge(bucket_count)` per path.
+- **Errors by code** (table) — `sumMerge(bucket_count)` grouped by `label('trpc_code')`, filtered `code != ''` (ok requests carry no code).
+- **Chart alert** `api: tRPC p95 latency high (>1s for 5m)` — threshold `p95 > 1000ms`,
+  5 min aggregation/confirm/recovery, current-team escalation. The real slow-call
+  alert that replaces the warn-count proxy.
+
+p95-by-endpoint query:
 ```sql
 SELECT {{time}} AS time, label('trpc_path') AS series,
   histogramQuantile(0.95) AS value
@@ -147,7 +154,41 @@ FROM {{source}}
 WHERE dt BETWEEN {{start_time}} AND {{end_time}} AND name = 'trpc_duration_ms'
 GROUP BY time, series ORDER BY time
 ```
-and a real slow-call alert can key off p95 instead of the warn-count proxy.
+
+**Gotchas when querying these metrics:**
+- `histogramQuantile(0.95)` only works when `WHERE` filters to exactly one
+  `name = 'trpc_duration_ms'`. Across several metrics use
+  `quantilePrometheusHistogramArrayMergeIf(0.95)(bucket_quantiles, name = '…')`.
+- Request **counts** come from `sumMerge(bucket_count)` — `bucket_count` is an
+  `AggregateFunction(sum, Float64)` state, so plain `sum(bucket_count)` fails with
+  `ILLEGAL_TYPE_OF_ARGUMENT`. Max is `maxMerge(value_max)`.
+- Labels are read via `label('trpc_path')`, never as bare columns.
+
+**How they were created (the MCP is half-broken):** the Telemetry MCP's
+`create_metric_expression` still 422s on `better_stack_team_id` (both the
+`-telemetry` namespace and the unrelated `mcp__better-stack__` one — the latter
+can't even see this source). So the 4 rules were added **in the BS UI**
+(Source → Metrics → add). **UI trap:** the form's SQL field double-wrapped each
+expression into `JSONExtractCaseInsensitive(raw, 'JSONExtract(raw, …)', …)`,
+which silently extracts nulls. `telemetry_update_metric_expression` (MCP) *does*
+work — it was used to rewrite each rule's `sql_expression` back to the plain
+`JSONExtract(raw, 'field', 'Nullable(Type)')`. After creating any rule in the UI,
+`telemetry_list_metric_expressions` and confirm the stored SQL isn't wrapped.
+
+### Admin (`loyalty-admin`) — dashboard wired, extraction rules pending
+`withTiming` lives in `packages/api`, consumed by **both** web and admin, so the
+admin app emits the same `trpc.request` records — to its own source
+`loyalty-admin` (2423304), when `BETTER_STACK_SOURCE_TOKEN_ADMIN` is set in prod.
+A parallel dashboard **`loyalty: admin api perf`** (1036242, source
+`loyalty-admin`) already holds the same 4 charts (Latency + Endpoints) and the
+alert `admin: tRPC p95 latency high (>1s for 5m)`.
+
+**Remaining manual step:** the 4 extraction rules don't exist on `loyalty-admin`
+yet — and the MCP `create_metric_expression` 422s — so add them **in the BS UI**
+(Source `loyalty-admin` → Metrics → add), identical to the web table above
+(`trpc_duration_ms` metric + `trpc_path`/`trpc_type`/`trpc_code` labels). Then
+`telemetry_list_metric_expressions` (source 2423304) and fix any UI double-wrap
+via `telemetry_update_metric_expression`. The admin charts light up from then on.
 
 ### Verifying queries against real data (no deploy needed)
 Preview ships logs to Better Stack only when `BETTER_STACK_SOURCE_TOKEN_WEB` is
