@@ -7,8 +7,8 @@ import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
 type NavItem = {
-  href: "/dashboard" | "/customers" | "/rewards" | "/notifications";
-  key: "dashboard" | "customers" | "rewards" | "notifications";
+  href: "/dashboard" | "/customers" | "/rewards" | "/notifications" | "/promotions";
+  key: "dashboard" | "customers" | "rewards" | "notifications" | "promotions";
 };
 
 const ITEMS: readonly NavItem[] = [
@@ -16,6 +16,8 @@ const ITEMS: readonly NavItem[] = [
   { href: "/customers", key: "customers" },
   { href: "/rewards", key: "rewards" },
   { href: "/notifications", key: "notifications" },
+  // Promotions wizard — gated to manager+ (the router is `managerProcedure`).
+  { href: "/promotions", key: "promotions" },
 ];
 
 // Dev tooling lives under (dev). Visible only to owners; staff and
@@ -43,10 +45,14 @@ export function DashboardNav({ role }: Props) {
   const t = useTranslations("Nav");
   const pathname = usePathname();
   const showDevTools = role === "owner";
+  const canManage = role === "manager" || role === "owner";
+  const items = ITEMS.filter(
+    (item) => item.key !== "promotions" || canManage,
+  );
 
   return (
     <nav className="flex flex-col gap-1 p-4 text-sm">
-      {ITEMS.map((item) => {
+      {items.map((item) => {
         const isActive =
           pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (

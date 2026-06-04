@@ -18,7 +18,8 @@
     "customers": "Customers",
     "rewards": "Rewards",
     "notifications": "Notifications",
-    "devTools": "Dev tools"
+    "devTools": "Dev tools",
+    "promotions": "Promotions"
   },
   "Notifications": {
     "title": "Notifications",
@@ -182,6 +183,14 @@
   },
   "Promotions": {
     "title": "Promotions",
-    "draft": "Draft"
+    "new": "New promo",
+    "empty": "No promotions yet. Create your first one.",
+    "untitled": "Untitled draft",
+    "colName": "Name",
+    "colStatus": "Status",
+    "colUpdated": "Updated",
+    "statusDraft": "Draft",
+    "statusPublished": "Published",
+    "forbidden": "You need the manager role to manage promotions."
   }
 }

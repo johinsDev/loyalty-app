@@ -18,7 +18,8 @@
     "customers": "Clientes",
     "rewards": "Premios",
     "notifications": "Notificaciones",
-    "devTools": "Herramientas dev"
+    "devTools": "Herramientas dev",
+    "promotions": "Promociones"
   },
   "Notifications": {
     "title": "Notificaciones",
@@ -182,6 +183,14 @@
   },
   "Promotions": {
     "title": "Promociones",
-    "draft": "Borrador"
+    "new": "Nueva promo",
+    "empty": "Aún no hay promociones. Crea la primera.",
+    "untitled": "Borrador sin título",
+    "colName": "Nombre",
+    "colStatus": "Estado",
+    "colUpdated": "Actualizado",
+    "statusDraft": "Borrador",
+    "statusPublished": "Publicada",
+    "forbidden": "Necesitas el rol de manager para gestionar promociones."
   }
 }

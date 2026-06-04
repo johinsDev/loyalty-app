@@ -13,6 +13,7 @@ export const routing = defineRouting({
     "/rewards": { es: "/premios", en: "/rewards" },
     "/notifications": { es: "/notificaciones", en: "/notifications" },
     "/promotions": { es: "/promociones", en: "/promotions" },
+    "/promotions/[id]": { es: "/promociones/[id]", en: "/promotions/[id]" },
     "/sign-in": { es: "/iniciar-sesion", en: "/sign-in" },
     "/whatsapp-outbox": "/whatsapp-outbox",
     "/whatsapp-outbox/[id]": "/whatsapp-outbox/[id]",
