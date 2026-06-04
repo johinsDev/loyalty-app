@@ -19,13 +19,16 @@ const BASE = `https://api.turso.tech/v1/organizations/${ORG}`;
 // the usual transient 429 / 5xx. Retry those (and network errors); throw
 // immediately on deterministic codes (401 bad token, 404 not found — callers
 // rely on the 404 throw). See `project-preview-pipeline` memory.
-const MAX_ATTEMPTS = 4;
+// 7 attempts (6 retries) so a sticky CloudFront 403/WAF block on shared GitHub
+// Actions IPs is ridden out (~30s total) rather than failing the preview job —
+// important now that the preview pipeline is a required merge check.
+const MAX_ATTEMPTS = 7;
 const RETRYABLE_STATUS = new Set([403, 408, 425, 429, 500, 502, 503, 504]);
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-// Exponential backoff + jitter: ~0.5s, 1s, 2s.
+// Exponential backoff + jitter: ~0.5s, 1s, 2s, 4s, 8s, 16s (capped).
 const backoffMs = (attempt: number) =>
-  Math.min(8000, 500 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
+  Math.min(16000, 500 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const method = init?.method ?? "GET";
