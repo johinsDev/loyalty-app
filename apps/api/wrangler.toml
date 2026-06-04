@@ -14,10 +14,12 @@ workers_dev = true
 [observability]
 enabled = true
 
+# Production custom domain — wrangler creates the DNS record + edge cert on the
+# t4diverclub.app zone (already in this Cloudflare account).
+[[routes]]
+pattern = "api.t4diverclub.app"
+custom_domain = true
+
 # Per-PR previews deploy with `--env preview` (name suffixed in CI).
 [env.preview]
 name = "loyalty-api-preview"
-
-[env.production]
-name = "loyalty-api"
-# routes / custom domain (api.t4diverclub.app) wired in the deploy slice.
