@@ -9,6 +9,10 @@
         "scripts/vercel/set-preview-env.ts",
         "scripts/vercel/unset-preview-env.ts",
         "scripts/vercel/trigger-preview-deploy.ts",
+        "scripts/vercel/alias-preview-domains.ts",
+        "scripts/vercel/unalias-preview-domains.ts",
+        "scripts/cloudflare/deploy-preview-worker.ts",
+        "scripts/cloudflare/delete-preview-worker.ts",
         "scripts/r2/cleanup-preview-prefix.ts",
         "scripts/cache/flush-preview-namespace.ts"
       ]
