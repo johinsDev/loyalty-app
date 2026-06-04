@@ -11,6 +11,12 @@ out
 .env.local
 .env.*.local
 
+# API Worker local dev (apps/api): wrangler state + the .dev.vars secrets
+# materialised from Infisical by scripts/api/dev.sh. Never committed.
+.wrangler/
+apps/api/.dev.vars
+apps/api/.dev.vars.*
+
 # logs
 *.log
 npm-debug.log*
@@ -167,3 +173,5 @@ scripts/*
 !scripts/vercel/**
 !scripts/cache
 !scripts/cache/**
+!scripts/api
+!scripts/api/**

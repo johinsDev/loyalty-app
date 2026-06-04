@@ -21,6 +21,7 @@
     "e2e": "bun run --cwd apps/e2e test",
     "knip": "knip",
     "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "api:dev": "bash scripts/api/dev.sh",
     "dev:services": "docker compose up -d libsql redis",
     "dev:services:down": "docker compose down",
     "dev:docker": "bash scripts/with-infisical.sh docker compose up --build",

@@ -130,7 +130,17 @@ bun run db:seed:owner --email=you@example.com   # promote yourself to org owner
 bun run jobs:dev                                  # Trigger.dev (host process — its dev needs the cloud)
 docker compose up partykit                        # realtime server (only when working on realtime)
 bun --cwd apps/storybook run dev                  # Storybook on :6006 (already in `bun run dev`)
+bun run api:dev                                   # standalone API Worker (Hono on workerd) on :8787
 ```
+
+The `api:dev` Worker is the in-progress backend extraction (tRPC + Better Auth as
+one Cloudflare Worker). It boots `wrangler dev` with Infisical-injected secrets —
+workerd surfaces them as `process.env`, same as the deployed Worker — and reads
+the same local libSQL as the apps, so `bun run dev:services` must be up. To point
+the apps at it, set `NEXT_PUBLIC_API_URL=http://localhost:8787` (per-app
+`.env.local` or Infisical dev); unset, the apps keep using their in-process
+`/api/trpc` + `/api/auth` routes. Cookies on `localhost` are shared across ports,
+so auth works `:3002`/`:3003` ↔ `:8787` without custom domains.
 
 Stop the services with `bun run dev:services:down`. Validate a single real
 third party from your machine with `bun run sandbox -- --email=resend`.
@@ -221,6 +231,7 @@ Both `apps/web` and `apps/admin` are internationalized with **next-intl** (Spani
 | `bun run dev` | Start web (3002) + admin (3003) + storybook + jobs on the host (partykit excluded — it runs in Docker) |
 | `bun run dev:services` | Bring up the backing services in Docker (libSQL :8080 + redis) for host dev |
 | `bun run dev:services:down` | Stop the Docker backing services |
+| `bun run api:dev` | Standalone API Worker (`wrangler dev` on :8787, Infisical-injected) — the in-progress backend extraction |
 | `bun run build` | Build every app and package |
 | `bun run lint` | oxlint across the whole repo (read-only) |
 | `bun run lint:fix` | oxlint with autofix |
