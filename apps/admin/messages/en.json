@@ -179,5 +179,9 @@
     "eventsTitle": "Received events",
     "eventsDescription": "Last 25 live events in your room.",
     "emptyLog": "No events yet. Wait for the handshake (should be instant) and fire a hello."
+  },
+  "Promotions": {
+    "title": "Promotions",
+    "draft": "Draft"
   }
 }

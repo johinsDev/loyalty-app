@@ -179,5 +179,9 @@
     "eventsTitle": "Eventos recibidos",
     "eventsDescription": "Últimos 25 eventos vivos en tu room.",
     "emptyLog": "Sin eventos todavía. Aceptá el handshake (debería ser instantáneo) y dispará un hello."
+  },
+  "Promotions": {
+    "title": "Promociones",
+    "draft": "Borrador"
   }
 }
