@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun run typecheck)",
+      "Bash(bun run typecheck *)",
+      "Bash(bun run lint)",
+      "Bash(bun run lint *)",
+      "Bash(bun run knip)",
+      "Bash(bun run knip *)",
+      "Bash(bun run test)",
+      "Bash(bun run test *)",
+      "mcp__infisical__get-secret",
+      "mcp__infisical__list-secrets",
+      "mcp__infisical__list-projects",
+      "mcp__better-stack-telemetry__telemetry_query",
+      "mcp__better-stack-telemetry__telemetry_chart",
+      "mcp__better-stack-telemetry__telemetry_list_sources_tool",
+      "mcp__better-stack-telemetry__telemetry_list_metric_expressions_tool",
+      "mcp__better-stack-telemetry__telemetry_list_teams_tool",
+      "mcp__better-stack-telemetry__telemetry_get_dashboard_details_tool",
+      "mcp__better-stack-telemetry__telemetry_get_chart_building_instructions_tool",
+      "mcp__better-stack-telemetry__telemetry_get_metric_query_instructions_tool",
+      "mcp__better-stack__telemetry_list_teams_tool",
+      "mcp__better-stack__telemetry_list_sources_tool",
+      "mcp__better-stack__uptime_list_monitors_tool",
+      "mcp__better-stack__uptime_list_heartbeats_tool",
+      "mcp__vercel__list_projects",
+      "mcp__vercel__get_project",
+      "mcp__vercel__list_teams",
+      "mcp__vercel__list_deployments",
+      "mcp__vercel__get_deployment",
+      "mcp__vercel__get_runtime_logs",
+      "mcp__vercel__check_domain_availability_and_price"
+    ]
+  }
+}
