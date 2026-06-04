@@ -1,0 +1,33 @@
+{
+  "name": "@loyalty/api-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "smoke": "bun run src/smoke.ts",
+    "lint": "oxlint src",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .turbo node_modules .wrangler"
+  },
+  "dependencies": {
+    "@loyalty/analytics": "workspace:*",
+    "@loyalty/api": "workspace:*",
+    "@loyalty/auth": "workspace:*",
+    "@loyalty/feature-flags": "workspace:*",
+    "@loyalty/log": "workspace:*",
+    "@loyalty/rate-limit": "workspace:*",
+    "@loyalty/realtime": "workspace:*",
+    "@loyalty/storage": "workspace:*",
+    "@trpc/server": "^11.0.0",
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250620.0",
+    "@loyalty/tsconfig": "workspace:*",
+    "oxlint": "^0.15.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^4.20.0"
+  }
+}
