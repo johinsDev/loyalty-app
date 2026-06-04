@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "BETTER_AUTH_URL=http://localhost:8787 wrangler dev",
     "deploy": "wrangler deploy",
     "smoke": "bun run src/smoke.ts",
     "lint": "oxlint src",

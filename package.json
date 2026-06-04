@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "dev": "bash scripts/with-infisical.sh turbo run dev --filter=!@loyalty/partykit-server",
+    "dev": "bash scripts/with-infisical.sh turbo run dev --filter=!@loyalty/partykit-server --filter=!@loyalty/storybook --filter=!@loyalty/email-templates",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint -- --fix",
     "format": "turbo run format",
