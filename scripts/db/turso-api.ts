@@ -14,21 +14,53 @@ if (!API_TOKEN) throw new Error("TURSO_API_TOKEN is not set");
 
 const BASE = `https://api.turso.tech/v1/organizations/${ORG}`;
 
+// Turso's Platform API sits behind CloudFront, which intermittently returns a
+// 403 "Request blocked" (WAF / rate-limit on shared GitHub Actions IPs) — plus
+// the usual transient 429 / 5xx. Retry those (and network errors); throw
+// immediately on deterministic codes (401 bad token, 404 not found — callers
+// rely on the 404 throw). See `project-preview-pipeline` memory.
+const MAX_ATTEMPTS = 4;
+const RETRYABLE_STATUS = new Set([403, 408, 425, 429, 500, 502, 503, 504]);
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// Exponential backoff + jitter: ~0.5s, 1s, 2s.
+const backoffMs = (attempt: number) =>
+  Math.min(8000, 500 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${API_TOKEN}`,
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
-  if (!res.ok) {
-    throw new Error(
-      `Turso API ${init?.method ?? "GET"} ${path} → ${res.status} ${await res.text()}`,
-    );
+  const method = init?.method ?? "GET";
+  for (let attempt = 1; ; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}${path}`, {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${API_TOKEN}`,
+          "Content-Type": "application/json",
+          ...init?.headers,
+        },
+      });
+    } catch (err) {
+      if (attempt >= MAX_ATTEMPTS) throw err;
+      console.warn(
+        `Turso API ${method} ${path} → network error, retrying (${attempt}/${MAX_ATTEMPTS - 1})`,
+      );
+      await sleep(backoffMs(attempt));
+      continue;
+    }
+
+    if (res.ok) return res.json() as Promise<T>;
+
+    const body = await res.text();
+    if (RETRYABLE_STATUS.has(res.status) && attempt < MAX_ATTEMPTS) {
+      console.warn(
+        `Turso API ${method} ${path} → ${res.status}, retrying (${attempt}/${MAX_ATTEMPTS - 1})`,
+      );
+      await sleep(backoffMs(attempt));
+      continue;
+    }
+    throw new Error(`Turso API ${method} ${path} → ${res.status} ${body}`);
   }
-  return res.json() as Promise<T>;
 }
 
 export interface TursoDatabase {
