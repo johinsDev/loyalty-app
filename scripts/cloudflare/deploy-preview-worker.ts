@@ -34,6 +34,46 @@ const adminHost = `admin.pr-${pr}.${zone}`;
 const webHost = `app.pr-${pr}.${zone}`;
 const cookieDomain = `.pr-${pr}.${zone}`;
 
+// Trigger.dev wiring (optional). When the preview env provides a TRIGGER secret,
+// route the Worker's phone-OTP enqueue (auth `sendOtp`) to THIS PR's Trigger
+// preview branch: the secret key picks the preview env, TRIGGER_PREVIEW_BRANCH
+// the branch. Omitted → phone-OTP just isn't wired (admin email/password still
+// works). TRIGGER_PROJECT_ID + branch are non-secret → `[vars]`.
+const gitBranch = process.env.GIT_BRANCH;
+const triggerSecret = process.env.TRIGGER_SECRET_KEY;
+const triggerProjectId = process.env.TRIGGER_PROJECT_ID;
+const triggerVars = [
+  triggerProjectId ? `TRIGGER_PROJECT_ID = "${triggerProjectId}"` : "",
+  triggerSecret && gitBranch ? `TRIGGER_PREVIEW_BRANCH = "${gitBranch}"` : "",
+]
+  .filter(Boolean)
+  .join("\n");
+
+// Lean-Worker provider config forwarded from the preview base env
+// (staging/shared, injected by the deploy step). ONLY the Workers-safe
+// providers: realtime (signed fetch to PartyKit — needs REALTIME_AUTH_SECRET,
+// or realtime.issueTicket 500s) + Better Stack log (HTTP). Upstash / PostHog /
+// R2 use dynamicImport that doesn't bundle on workerd, so they stay on defaults
+// (memory rate-limit / null analytics / console log) — forwarding their creds
+// would crash the isolate at runtime rather than help.
+const realtimeSecret = process.env.REALTIME_AUTH_SECRET;
+const betterStackToken =
+  process.env.BETTER_STACK_SOURCE_TOKEN_API ?? process.env.BETTER_STACK_SOURCE_TOKEN;
+const betterStackHost =
+  process.env.BETTER_STACK_INGESTING_HOST_API ??
+  process.env.BETTER_STACK_INGESTING_HOST;
+const providerVars = [
+  process.env.PARTYKIT_HOST ? `PARTYKIT_HOST = "${process.env.PARTYKIT_HOST}"` : "",
+  process.env.PARTYKIT_PROJECT
+    ? `PARTYKIT_PROJECT = "${process.env.PARTYKIT_PROJECT}"`
+    : "",
+  // Match the FE/jobs per-PR room prefix so clients subscribe to the same room.
+  `REALTIME_ROOM_PREFIX = "pr-${pr}-"`,
+  betterStackHost ? `BETTER_STACK_INGESTING_HOST_API = "${betterStackHost}"` : "",
+]
+  .filter(Boolean)
+  .join("\n");
+
 const repoRoot = process.cwd();
 const apiDir = join(repoRoot, "apps", "api");
 const configPath = join(apiDir, "wrangler.preview.toml");
@@ -62,6 +102,8 @@ BETTER_AUTH_URL = "https://${apiHost}"
 BETTER_AUTH_TRUSTED_ORIGINS = "https://${adminHost},https://${webHost}"
 AUTH_COOKIE_DOMAIN = "${cookieDomain}"
 AUTH_PASSWORD_ENABLED = "true"
+${triggerVars}
+${providerVars}
 `;
 writeFileSync(configPath, config);
 
@@ -84,6 +126,12 @@ const secrets: Record<string, string> = {
   DATABASE_URL: need("PREVIEW_DATABASE_URL"),
   TURSO_AUTH_TOKEN: need("PREVIEW_AUTH_TOKEN"),
   BETTER_AUTH_SECRET: need("BETTER_AUTH_SECRET"),
+  // Lets the Worker's auth `sendOtp` enqueue to Trigger.dev (web phone-OTP).
+  ...(triggerSecret && { TRIGGER_SECRET_KEY: triggerSecret }),
+  // Realtime (signed PartyKit tickets) + Better Stack log — the Workers-safe
+  // providers. Without REALTIME_AUTH_SECRET, realtime.issueTicket 500s.
+  ...(realtimeSecret && { REALTIME_AUTH_SECRET: realtimeSecret }),
+  ...(betterStackToken && { BETTER_STACK_SOURCE_TOKEN_API: betterStackToken }),
 };
 for (const [key, value] of Object.entries(secrets)) {
   console.info(`→ secret put ${key}`);
