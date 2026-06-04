@@ -34,6 +34,21 @@ const adminHost = `admin.pr-${pr}.${zone}`;
 const webHost = `app.pr-${pr}.${zone}`;
 const cookieDomain = `.pr-${pr}.${zone}`;
 
+// Trigger.dev wiring (optional). When the preview env provides a TRIGGER secret,
+// route the Worker's phone-OTP enqueue (auth `sendOtp`) to THIS PR's Trigger
+// preview branch: the secret key picks the preview env, TRIGGER_PREVIEW_BRANCH
+// the branch. Omitted → phone-OTP just isn't wired (admin email/password still
+// works). TRIGGER_PROJECT_ID + branch are non-secret → `[vars]`.
+const gitBranch = process.env.GIT_BRANCH;
+const triggerSecret = process.env.TRIGGER_SECRET_KEY;
+const triggerProjectId = process.env.TRIGGER_PROJECT_ID;
+const triggerVars = [
+  triggerProjectId ? `TRIGGER_PROJECT_ID = "${triggerProjectId}"` : "",
+  triggerSecret && gitBranch ? `TRIGGER_PREVIEW_BRANCH = "${gitBranch}"` : "",
+]
+  .filter(Boolean)
+  .join("\n");
+
 const repoRoot = process.cwd();
 const apiDir = join(repoRoot, "apps", "api");
 const configPath = join(apiDir, "wrangler.preview.toml");
@@ -62,6 +77,7 @@ BETTER_AUTH_URL = "https://${apiHost}"
 BETTER_AUTH_TRUSTED_ORIGINS = "https://${adminHost},https://${webHost}"
 AUTH_COOKIE_DOMAIN = "${cookieDomain}"
 AUTH_PASSWORD_ENABLED = "true"
+${triggerVars}
 `;
 writeFileSync(configPath, config);
 
@@ -84,6 +100,8 @@ const secrets: Record<string, string> = {
   DATABASE_URL: need("PREVIEW_DATABASE_URL"),
   TURSO_AUTH_TOKEN: need("PREVIEW_AUTH_TOKEN"),
   BETTER_AUTH_SECRET: need("BETTER_AUTH_SECRET"),
+  // Lets the Worker's auth `sendOtp` enqueue to Trigger.dev (web phone-OTP).
+  ...(triggerSecret && { TRIGGER_SECRET_KEY: triggerSecret }),
 };
 for (const [key, value] of Object.entries(secrets)) {
   console.info(`→ secret put ${key}`);

@@ -45,6 +45,11 @@ echo "→ Writing apps/api/.dev.vars from Infisical (env=${env_name})"
 {
   infisical export --env="$env_name" --path=/ --format=dotenv --silent
   infisical export --env="$env_name" --path=/shared --format=dotenv --silent
+  # TRIGGER_SECRET_KEY resolves in dev only via `infisical run --recursive`
+  # (imported/folder-scoped), which path-scoped `export` misses — append it so
+  # the local Worker can enqueue phone-OTP, matching the preview Worker.
+  infisical run --env="$env_name" --recursive --silent -- \
+    bash -c 'printf "TRIGGER_SECRET_KEY=%s\n" "${TRIGGER_SECRET_KEY:-}"'
   echo "BETTER_AUTH_URL=http://localhost:8787"
   echo "AUTH_PASSWORD_ENABLED=true"
 } >"$dev_vars"
