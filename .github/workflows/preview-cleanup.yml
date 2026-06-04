@@ -93,3 +93,19 @@ jobs:
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
           --path=/ci --token="$INFISICAL_TOKEN" --
           bash -c 'cd packages/jobs && bunx trigger.dev@latest preview archive --branch "$GIT_BRANCH"'
+
+      # Delete this PR's API Worker (script + api.pr-<n> custom domain) and the
+      # admin./app. FE subdomains (CF DNS + Vercel project domains). The
+      # branch-scoped NEXT_PUBLIC_API_URL is already removed by the
+      # unset-preview-env step above (it purges every branch-scoped var).
+      - name: Delete the preview API Worker + FE domains
+        if: ${{ vars.PREVIEW_API_WORKER_ENABLED == 'true' }}
+        continue-on-error: true
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --path=/ci --token="$INFISICAL_TOKEN" -- bash -c '
+            bun run scripts/cloudflare/delete-preview-worker.ts
+            bun run scripts/vercel/unalias-preview-domains.ts
+          '

@@ -90,4 +90,52 @@ for (const [key, value] of Object.entries(secrets)) {
   wrangler(["secret", "put", key], value);
 }
 
+// FE DNS: the worker custom domain already created api.pr-<N>; the admin./app.
+// FE subdomains need their own DNS-only CNAMEs → Vercel (which terminates TLS +
+// issues the cert once the matching project domain is added by the Vercel alias
+// script). Resolve the zone id from PREVIEW_ZONE so it isn't a separate prereq.
+const cfBase = "https://api.cloudflare.com/client/v4";
+const cfHeaders = {
+  Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+  "Content-Type": "application/json",
+};
+
+const zoneRes = await fetch(
+  `${cfBase}/zones?name=${encodeURIComponent(zone)}`,
+  { headers: cfHeaders },
+);
+const zoneBody = (await zoneRes.json()) as { result?: { id: string }[] };
+const zoneId = zoneBody.result?.[0]?.id;
+if (!zoneId) throw new Error(`could not resolve zone id for ${zone}`);
+
+// Idempotent CNAME upsert (create, or skip if Cloudflare reports it exists).
+async function upsertCname(host: string): Promise<void> {
+  const res = await fetch(`${cfBase}/zones/${zoneId}/dns_records`, {
+    method: "POST",
+    headers: cfHeaders,
+    body: JSON.stringify({
+      type: "CNAME",
+      name: host,
+      content: "cname.vercel-dns.com",
+      proxied: false,
+      ttl: 60,
+    }),
+  });
+  if (res.ok) {
+    console.info(`→ DNS ${host} → cname.vercel-dns.com`);
+    return;
+  }
+  const body = (await res.json()) as { errors?: { code: number }[] };
+  // 81053/81057 = record already exists → idempotent no-op.
+  if (body.errors?.some((e) => e.code === 81053 || e.code === 81057)) {
+    console.info(`→ DNS ${host} already present`);
+    return;
+  }
+  throw new Error(`DNS ${host} → ${res.status}: ${JSON.stringify(body).slice(0, 300)}`);
+}
+
+await upsertCname(adminHost);
+await upsertCname(webHost);
+
 console.info(`✓ Preview API Worker live at https://${apiHost}`);
+console.info(`  FE DNS ready for https://${adminHost} + https://${webHost}`);
