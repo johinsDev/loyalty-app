@@ -68,6 +68,23 @@ These have come up enough that they're load-bearing — break them and something
 
 ---
 
+## Default workflow — superpowers + grill-me
+
+For non-trivial work we follow the **superpowers** skill flow (`obra/superpowers`) by default, complemented by **`grill-me`**:
+
+1. **`brainstorming`** — before any feature/creative work, explore intent + requirements (don't jump to code).
+2. **`grill-me`** — stress-test the resulting plan/design (our complement; pairs with plan mode).
+3. **`writing-plans`** → **`executing-plans`** / **`subagent-driven-development`** — write the plan, then execute against checkpoints.
+4. **`test-driven-development`** + **`systematic-debugging`** — red-green-refactor; debug methodically before patching.
+5. **`verification-before-completion`** — run the checks and confirm the output **before** claiming anything is done.
+6. **`requesting-code-review`** → **`finishing-a-development-branch`** — review, then integrate via the PR-only flow above.
+
+`using-superpowers` is the dispatcher (invoke the right skill before responding). Skills are managed by the `skills` CLI and pinned in **`skills-lock.json`** — a teammate restores them with `npx skills experimental_install`; `.agents/skills/` + the `.claude/skills/` symlinks are gitignored.
+
+The superpowers `test-driven-development`/`systematic-debugging`/`writing-skills` replace the older mattpocock `tdd`/`diagnose`/`write-a-skill` (removed to avoid duplicate triggers). Remaining mattpocock skills (`grill-me`, `handoff`, `prototype`, `to-prd`, `to-issues`, `triage`, `improve-codebase-architecture`) are unique and stay.
+
+---
+
 ## i18n rules
 
 Most error-prone area for agents. Read the `next-intl` skill before touching anything under `apps/*/app/[locale]/`. TL;DR:
