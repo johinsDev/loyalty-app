@@ -53,6 +53,7 @@ Configured in `app/sw.ts`:
 | `_next/static/*` (chunks, images) | `defaultCache` → cache-first, long TTL | Hashed URLs; safe to cache aggressively. |
 | HTML page navigations | network-first, fall back to `/offline` | Always show fresh content when online; never block the user when offline. |
 | `/api/*`, `/trpc/*` | **NOT cached** (network-only) | Auth + user-scoped data; stale would be wrong. |
+| `/monitoring` (Sentry tunnel) | passes through untouched | It's a POST; `defaultCache` only caches GET navigations/assets, so the SW never intercepts it. No `app/sw.ts` change needed. See the `sentry` skill. |
 | Images | cache-first, 30-day TTL | Mostly static loyalty assets. |
 | Web fonts | cache-first | Same. |
 

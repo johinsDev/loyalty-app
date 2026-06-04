@@ -69,6 +69,15 @@ export const env = createEnv({
     BETTER_STACK_SOURCE_TOKEN: z.string().optional(),
     BETTER_STACK_INGESTING_HOST: z.string().optional(),
 
+    // Sentry error tracking. The browser DSN lives in the client block
+    // (NEXT_PUBLIC_SENTRY_DSN) — these three are build-time only, read by
+    // `withSentryConfig` to upload source maps during `next build`. All
+    // optional: unset → Sentry is inert (local dev). AUTH_TOKEN is build-time,
+    // so keep it Plain Text (not Sensitive) in Vercel.
+    SENTRY_ORG: z.string().optional(),
+    SENTRY_PROJECT: z.string().optional(),
+    SENTRY_AUTH_TOKEN: z.string().optional(),
+
     WHATSAPP_PROVIDER: whatsappProvider,
     WHATSAPP_PREVIEW_DIR: z.string().optional(),
 
@@ -185,6 +194,10 @@ export const env = createEnv({
     NEXT_PUBLIC_PARTYKIT_HOST: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+    // Sentry browser DSN (public, safe to ship to the client). Both the
+    // browser and server SDKs read it. Unset → Sentry is inert. See
+    // `.claude/skills/sentry/SKILL.md`.
+    NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
     // Host (no protocol) for the Cloudflare zone with Image Transformations
     // enabled. When set, the custom image loader rewrites `<Image>` src
     // through `/cdn-cgi/image/...`. Set only in prod Infisical — dev/preview
@@ -198,6 +211,7 @@ export const env = createEnv({
     NEXT_PUBLIC_PARTYKIT_HOST: process.env.NEXT_PUBLIC_PARTYKIT_HOST,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     NEXT_PUBLIC_IMAGE_CDN_HOST: process.env.NEXT_PUBLIC_IMAGE_CDN_HOST,
   },
   emptyStringAsUndefined: true,

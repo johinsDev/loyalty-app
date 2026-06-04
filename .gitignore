@@ -143,6 +143,8 @@ apps/storybook/storybook-static/
 !.claude/skills/react-hook-form/**
 !.claude/skills/input-phone
 !.claude/skills/input-phone/**
+!.claude/skills/trpc-perf
+!.claude/skills/trpc-perf/**
 
 # scripts/ holds two kinds of files:
 #   1. ad-hoc dev seeds (NOT tracked) — run locally with

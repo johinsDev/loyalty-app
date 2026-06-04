@@ -58,6 +58,7 @@ partykit/       Cloudflare Workers + Durable Objects deploy (real-time party ser
 
 These have come up enough that they're load-bearing — break them and something breaks:
 
+- **Grill the plan before building a feature.** For any net-new feature (not a trivial fix/refactor/docs change), run the `grill-me` skill to stress-test the plan/design — edge cases, trade-offs, scope — *before* writing code. Pairs with plan mode.
 - **PR-only on `main`.** Branch protection blocks direct pushes. Every change opens `gh pr create`, even tiny ones. The `validate` CI check is required.
 - **CI validates, Vercel deploys.** GitHub Actions runs lint + knip + typecheck + test. Vercel's Git integration handles all deploys for `loyalty-app-web`, `loyalty-app-admin`, and `loyalty-app-storybook`.
 - **English in repo, Spanish only in Linear and in `messages/es.json`.** Code, comments, errors, commits, PR descriptions, READMEs, skills → English. Visible Linear surfaces (issues, projects, milestones, labels) → Spanish. User-facing copy is split per locale in `apps/<app>/messages/{es,en}.json`.
@@ -110,11 +111,13 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Anything CI: failing run, branch protection, opening a PR | `ci-cd` |
 | Vercel deploy targets, env vars, Sensitive trap, rollback | `vercel` |
 | Logs, dashboards, uptime monitors, alerts (Better Stack) | `better-stack` |
+| Error tracking: client/server crashes, source maps, the tRPC capture hook, creating a Sentry project | `sentry` |
 | `@loyalty/log` API, adding a new transport | `log` |
 | Send a WhatsApp message, add a strategy, debug outbox / Twilio | `whatsapp` |
 | Send an SMS, add a strategy, debug segments, view outbox | `sms` |
 | Cache a query, invalidate, add a provider (upstash/redis/memory) | `cache` |
 | Rate-limit a procedure, tune the baseline, key by ip/user/phone, debug a 429 | `rate-limit` |
+| Track endpoint latency, read/alert on tRPC perf in Better Stack, tune the slow threshold | `trpc-perf` |
 | Track an event, identify after login, add an analytics provider (PostHog) | `analytics` |
 | Gate UI by a flag, run an A-B experiment, debug "flag default in preview" | `feature-flags` |
 | Add a `<Image>`, pick `sizes` / blur placeholder, debug Cloudflare image optimization | `image-loader` |
@@ -134,7 +137,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `log`, `slack`, `auth`, `tooling`, `zod`, `zustand`, `react-hook-form`, `input-phone`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `sentry`, `log`, `slack`, `auth`, `tooling`, `zod`, `zustand`, `react-hook-form`, `input-phone`, `trpc-perf`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 

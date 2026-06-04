@@ -10,6 +10,7 @@ import { headers } from "next/headers";
 
 import { analytics } from "../analytics";
 import { flags } from "../feature-flags";
+import { log } from "../log";
 import { rateLimiter } from "../rate-limit";
 import { realtime } from "../realtime";
 import { storage } from "../storage";
@@ -29,5 +30,6 @@ export const trpc = async () => {
     rateLimiter,
     analytics: analyticsBinding,
     flags: flagsBinding,
+    log,
   });
 };
