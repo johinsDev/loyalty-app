@@ -58,6 +58,7 @@ partykit/       Cloudflare Workers + Durable Objects deploy (real-time party ser
 
 These have come up enough that they're load-bearing — break them and something breaks:
 
+- **Grill the plan before building a feature.** For any net-new feature (not a trivial fix/refactor/docs change), run the `grill-me` skill to stress-test the plan/design — edge cases, trade-offs, scope — *before* writing code. Pairs with plan mode.
 - **PR-only on `main`.** Branch protection blocks direct pushes. Every change opens `gh pr create`, even tiny ones. The `validate` CI check is required.
 - **CI validates, Vercel deploys.** GitHub Actions runs lint + knip + typecheck + test. Vercel's Git integration handles all deploys for `loyalty-app-web`, `loyalty-app-admin`, and `loyalty-app-storybook`.
 - **English in repo, Spanish only in Linear and in `messages/es.json`.** Code, comments, errors, commits, PR descriptions, READMEs, skills → English. Visible Linear surfaces (issues, projects, milestones, labels) → Spanish. User-facing copy is split per locale in `apps/<app>/messages/{es,en}.json`.
