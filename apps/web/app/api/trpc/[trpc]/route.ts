@@ -8,6 +8,7 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
 import { analytics } from "@/lib/analytics";
 import { flags } from "@/lib/feature-flags";
+import { log } from "@/lib/log";
 import { rateLimiter } from "@/lib/rate-limit";
 import { realtime } from "@/lib/realtime";
 import { storage } from "@/lib/storage";
@@ -32,6 +33,7 @@ const handler = (req: Request) =>
         rateLimiter,
         analytics: analyticsBinding,
         flags: flagsBinding,
+        log,
       };
     },
   });
