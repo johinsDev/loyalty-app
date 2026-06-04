@@ -186,6 +186,10 @@ export const env = createEnv({
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+    // Standalone API Worker URL (e.g. https://api.t4diverclub.app). When set,
+    // the tRPC + auth clients target it cross-origin; unset → same-origin Next
+    // routes (current behaviour). See the `api-worker` plan.
+    NEXT_PUBLIC_API_URL: z.string().url().optional(),
     NEXT_PUBLIC_PARTYKIT_HOST: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
@@ -200,6 +204,7 @@ export const env = createEnv({
   experimental__runtimeEnv: {
     ...process.env,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_PARTYKIT_HOST: process.env.NEXT_PUBLIC_PARTYKIT_HOST,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
