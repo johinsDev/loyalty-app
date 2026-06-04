@@ -100,6 +100,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Send an SMS, add a strategy, debug segments, view outbox | `sms` |
 | Cache a query, invalidate, add a provider (upstash/redis/memory) | `cache` |
 | Rate-limit a procedure, tune the baseline, key by ip/user/phone, debug a 429 | `rate-limit` |
+| Track endpoint latency, read/alert on tRPC perf in Better Stack, tune the slow threshold | `trpc-perf` |
 | Track an event, identify after login, add an analytics provider (PostHog) | `analytics` |
 | Gate UI by a flag, run an A-B experiment, debug "flag default in preview" | `feature-flags` |
 | Add a `<Image>`, pick `sizes` / blur placeholder, debug Cloudflare image optimization | `image-loader` |
@@ -119,7 +120,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `sentry`, `log`, `slack`, `auth`, `tooling`, `zod`, `zustand`, `react-hook-form`, `input-phone`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `sentry`, `log`, `slack`, `auth`, `tooling`, `zod`, `zustand`, `react-hook-form`, `input-phone`, `trpc-perf`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 
