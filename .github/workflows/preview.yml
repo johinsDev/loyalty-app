@@ -11,6 +11,10 @@ name: preview
 #   INFISICAL_MACHINE_IDENTITY_CLIENT_ID
 #   INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET
 # See .claude/skills/env-deploy/SKILL.md → "Preview pipeline".
+#
+# The `clone + mask preview DB, wire Vercel` job is a REQUIRED status check on
+# `main` (with the Vercel admin/web deploys), so a PR can't merge unless its
+# preview DB + API Worker + FE deploy succeed.
 
 on:
   pull_request:
