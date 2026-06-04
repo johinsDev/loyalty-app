@@ -5,6 +5,7 @@
 # aws-sdk) — those sends go through Trigger.dev jobs. See the plan + wizard/api
 # skill.
 name = "loyalty-api"
+account_id = "9fe45bafe8be5dd315f8164b97ff9399"
 main = "src/index.ts"
 compatibility_date = "2025-05-01"
 compatibility_flags = ["nodejs_compat"]
