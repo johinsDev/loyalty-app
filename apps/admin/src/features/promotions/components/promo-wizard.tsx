@@ -1,6 +1,6 @@
 "use client";
 
-import type { PromoStepKey } from "@loyalty/api";
+import type { PromoStepKey } from "@loyalty/api/features/promotions/schemas";
 import { Button, Stepper } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";

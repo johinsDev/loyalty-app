@@ -1,7 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { brandingStepSchema, type BrandingStepInput } from "@loyalty/api";
+import {
+  brandingStepSchema,
+  type BrandingStepInput,
+} from "@loyalty/api/features/promotions/schemas";
 import { Button, Input, Label } from "@loyalty/ui";
 import { useForm } from "react-hook-form";
 
