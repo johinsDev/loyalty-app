@@ -47,7 +47,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "storybook-static/**"],
       "env": ["NEXT_PUBLIC_*"]
     },
     "dev": {
