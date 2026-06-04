@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "BETTER_AUTH_URL=http://localhost:8787 AUTH_PASSWORD_ENABLED=true wrangler dev",
+    "dev": "bash ../../scripts/api/gen-dev-vars.sh && wrangler dev",
     "deploy": "wrangler deploy",
     "smoke": "bun run src/smoke.ts",
     "lint": "oxlint src",

@@ -136,13 +136,15 @@ bun run api:dev                                   # API Worker alone on :8787 (a
 
 The API Worker is the in-progress backend extraction (tRPC + Better Auth as one
 Cloudflare Worker), now part of `bun run dev`; `bun run api:dev` is the focused
-Worker-only variant. It boots `wrangler dev` with Infisical-injected secrets —
-workerd surfaces them as `process.env`, same as the deployed Worker — and reads
-the same local libSQL as the apps. To point the apps at it, set
-`NEXT_PUBLIC_API_URL=http://localhost:8787` (per-app `.env.local` or Infisical
-dev); unset, the apps keep using their in-process `/api/trpc` + `/api/auth`
-routes. Cookies on `localhost` are shared across ports, so auth works
-`:3002`/`:3003` ↔ `:8787` without custom domains.
+Worker-only variant. `wrangler dev` runs the Worker in workerd, which does NOT
+inherit the shell env — so its secrets come from `apps/api/.dev.vars`, generated
+from Infisical by `scripts/api/gen-dev-vars.sh` on every boot (gitignored). It
+reads the same local libSQL as the apps, so `bun run dev:services` must be up.
+`NEXT_PUBLIC_API_URL=http://localhost:8787` is set in Infisical dev `/shared`, so
+the apps already point at the Worker; unset it (or `NO_INFISICAL=1`) to fall back
+to their in-process `/api/trpc` + `/api/auth` routes. Cookies on `localhost` are
+shared across ports, so auth works `:3002`/`:3003` ↔ `:8787` without custom
+domains.
 
 Stop the services with `bun run dev:services:down`. Validate a single real
 third party from your machine with `bun run sandbox -- --email=resend`.
