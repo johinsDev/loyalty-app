@@ -18,7 +18,8 @@
     "customers": "Clientes",
     "rewards": "Premios",
     "notifications": "Notificaciones",
-    "devTools": "Herramientas dev"
+    "devTools": "Herramientas dev",
+    "promotions": "Promociones"
   },
   "Notifications": {
     "title": "Notificaciones",
@@ -179,5 +180,17 @@
     "eventsTitle": "Eventos recibidos",
     "eventsDescription": "Últimos 25 eventos vivos en tu room.",
     "emptyLog": "Sin eventos todavía. Aceptá el handshake (debería ser instantáneo) y dispará un hello."
+  },
+  "Promotions": {
+    "title": "Promociones",
+    "new": "Nueva promo",
+    "empty": "Aún no hay promociones. Crea la primera.",
+    "untitled": "Borrador sin título",
+    "colName": "Nombre",
+    "colStatus": "Estado",
+    "colUpdated": "Actualizado",
+    "statusDraft": "Borrador",
+    "statusPublished": "Publicada",
+    "forbidden": "Necesitas el rol de manager para gestionar promociones."
   }
 }

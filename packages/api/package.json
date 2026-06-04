@@ -16,11 +16,15 @@
     "./features/push-outbox": "./src/features/push-outbox/index.ts",
     "./features/push-tokens": "./src/features/push-tokens/index.ts",
     "./features/realtime": "./src/features/realtime/index.ts",
-    "./features/storage": "./src/features/storage/index.ts"
+    "./features/storage": "./src/features/storage/index.ts",
+    "./features/promotions": "./src/features/promotions/index.ts",
+    "./features/promotions/schemas": "./src/features/promotions/schemas.ts"
   },
   "scripts": {
     "lint": "oxlint src",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "clean": "rm -rf .turbo node_modules"
   },
   "dependencies": {
@@ -42,8 +46,11 @@
   },
   "devDependencies": {
     "@loyalty/tsconfig": "workspace:*",
+    "@loyalty/vitest-config": "workspace:*",
     "@types/mime-types": "^2.1.4",
+    "@vitest/coverage-v8": "^2.1.0",
     "oxlint": "^0.15.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
   }
 }

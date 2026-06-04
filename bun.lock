@@ -228,9 +228,12 @@
       },
       "devDependencies": {
         "@loyalty/tsconfig": "workspace:*",
+        "@loyalty/vitest-config": "workspace:*",
         "@types/mime-types": "^2.1.4",
+        "@vitest/coverage-v8": "^2.1.0",
         "oxlint": "^0.15.0",
         "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
       },
     },
     "packages/auth": {

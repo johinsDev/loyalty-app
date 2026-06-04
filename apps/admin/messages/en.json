@@ -18,7 +18,8 @@
     "customers": "Customers",
     "rewards": "Rewards",
     "notifications": "Notifications",
-    "devTools": "Dev tools"
+    "devTools": "Dev tools",
+    "promotions": "Promotions"
   },
   "Notifications": {
     "title": "Notifications",
@@ -179,5 +180,17 @@
     "eventsTitle": "Received events",
     "eventsDescription": "Last 25 live events in your room.",
     "emptyLog": "No events yet. Wait for the handshake (should be instant) and fire a hello."
+  },
+  "Promotions": {
+    "title": "Promotions",
+    "new": "New promo",
+    "empty": "No promotions yet. Create your first one.",
+    "untitled": "Untitled draft",
+    "colName": "Name",
+    "colStatus": "Status",
+    "colUpdated": "Updated",
+    "statusDraft": "Draft",
+    "statusPublished": "Published",
+    "forbidden": "You need the manager role to manage promotions."
   }
 }
