@@ -20,6 +20,8 @@ enabled = true
 pattern = "api.t4diverclub.app"
 custom_domain = true
 
-# Per-PR previews deploy with `--env preview` (name suffixed in CI).
+# Per-PR previews are deployed by scripts/cloudflare/deploy-preview-worker.ts as
+# `loyalty-api-pr-<n>` on `api.pr-<n>.t4diverclub.app` (a generated config); this
+# `[env.preview]` stanza is the static fallback.
 [env.preview]
 name = "loyalty-api-preview"
