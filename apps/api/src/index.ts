@@ -4,12 +4,12 @@ import {
   createContext,
   resolveDistinctId,
 } from "@loyalty/api";
-import { auth } from "@loyalty/auth/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
 import { analytics } from "./lib/analytics";
+import { auth } from "./lib/auth";
 import { flags } from "./lib/feature-flags";
 import { log } from "./lib/log";
 import { rateLimiter } from "./lib/rate-limit";
@@ -27,13 +27,24 @@ import { storage } from "./lib/storage";
  */
 const app = new Hono();
 
-// CORS: Phase-1 reflects the request origin with credentials so a browser can
-// be pointed here for testing. The cutover tightens this to the Better Auth
-// trustedOrigins (the FE subdomains).
+// Allowed browser origins for credentialed CORS: the FE subdomains from
+// BETTER_AUTH_TRUSTED_ORIGINS (admin./app.t4diverclub.app, per-PR preview hosts)
+// plus localhost for `bun run dev`. Server-to-server callers (RSC → Worker) send
+// no Origin and don't need CORS. Mirrors Better Auth's trustedOrigins.
+const allowedOrigins = new Set(
+  [
+    ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "").split(","),
+    "http://localhost:3002",
+    "http://localhost:3003",
+  ]
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
+
 app.use(
   "*",
   cors({
-    origin: (origin) => origin ?? "*",
+    origin: (origin) => (allowedOrigins.has(origin) ? origin : null),
     credentials: true,
   }),
 );

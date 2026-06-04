@@ -70,6 +70,20 @@ const defaultBaseURL =
 const webURL =
   process.env.NEXT_PUBLIC_APP_URL ?? vercelUrl ?? "http://localhost:3002";
 
+// Extra trusted origins (CSV) for the standalone Worker issuer: the FE
+// subdomains it serves (admin./app.t4diverclub.app, per-PR preview hosts). Empty
+// in the current Next per-app setup → no change. See the api-worker plan.
+const extraTrustedOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+// When the Worker is the single issuer on a shared parent domain, set the
+// session cookie Domain (e.g. `.t4diverclub.app`) so sibling FE subdomains send
+// it. Unset → host-only cookie (current Next per-app behaviour + localhost dev,
+// where cookies are already shared across ports).
+const cookieDomain = process.env.AUTH_COOKIE_DOMAIN;
+
 export function createAuth(
   deps: AuthDeps = {},
   options: CreateAuthOptions = {},
@@ -131,7 +145,15 @@ export function createAuth(
       ...(vercelProductionUrl ? [vercelProductionUrl] : []),
       ...(vercelDeploymentUrl ? [vercelDeploymentUrl] : []),
       "https://*.vercel.app",
+      ...extraTrustedOrigins,
     ],
+    // Cross-subdomain session cookie for the standalone-Worker issuer. Omitted
+    // (host-only cookie) unless AUTH_COOKIE_DOMAIN is set.
+    ...(cookieDomain && {
+      advanced: {
+        crossSubDomainCookies: { enabled: true, domain: cookieDomain },
+      },
+    }),
     rateLimit: {
       enabled: true,
       window: 60,

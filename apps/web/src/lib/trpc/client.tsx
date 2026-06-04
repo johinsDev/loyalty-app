@@ -7,7 +7,7 @@ import { createTRPCContext } from "@trpc/tanstack-react-query";
 import { type ReactNode, useState } from "react";
 import superjson from "superjson";
 
-import { getBaseUrl } from "./shared";
+import { getTrpcUrl } from "./shared";
 
 export const { TRPCProvider: TRPCContextProvider, useTRPC } =
   createTRPCContext<AppRouter>();
@@ -21,8 +21,10 @@ const makeClient = () =>
           (op.direction === "down" && op.result instanceof Error),
       }),
       httpBatchLink({
-        url: `${getBaseUrl()}/api/trpc`,
+        url: getTrpcUrl(),
         transformer: superjson,
+        // Send cookies to the (possibly cross-origin) Worker API.
+        fetch: (url, opts) => fetch(url, { ...opts, credentials: "include" }),
       }),
     ],
   });
