@@ -5,7 +5,7 @@
  */
 export interface BaseProperties {
   /** Which app emitted the event. */
-  app: "web" | "admin";
+  app: "web" | "admin" | "api";
   /** Vercel runtime: `production` / `preview` / `development`. */
   environment: string;
   /** Active locale (`es` / `en`). */

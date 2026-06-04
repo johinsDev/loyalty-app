@@ -12,9 +12,14 @@
     "clean": "rm -rf .turbo node_modules .wrangler"
   },
   "dependencies": {
+    "@loyalty/analytics": "workspace:*",
     "@loyalty/api": "workspace:*",
     "@loyalty/auth": "workspace:*",
+    "@loyalty/feature-flags": "workspace:*",
     "@loyalty/log": "workspace:*",
+    "@loyalty/rate-limit": "workspace:*",
+    "@loyalty/realtime": "workspace:*",
+    "@loyalty/storage": "workspace:*",
     "@trpc/server": "^11.0.0",
     "hono": "^4.6.0"
   },
