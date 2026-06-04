@@ -1,0 +1,22 @@
+# Standalone tRPC + Better Auth API on Cloudflare Workers (Hono).
+# Phase 1: runs alongside the Next.js /api/trpc routes — nothing cuts over yet.
+# `nodejs_compat` is required (Better Auth + process.env + crypto); the bundle
+# stays "lean" by NOT importing the Node-heavy provider SDKs (Twilio/web-push/
+# aws-sdk) — those sends go through Trigger.dev jobs. See the plan + wizard/api
+# skill.
+name = "loyalty-api"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[observability]
+enabled = true
+
+# Per-PR previews deploy with `--env preview` (name suffixed in CI).
+[env.preview]
+name = "loyalty-api-preview"
+
+[env.production]
+name = "loyalty-api"
+# routes / custom domain (api.t4diverclub.app) wired in the deploy slice.
