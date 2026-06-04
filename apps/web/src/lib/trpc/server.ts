@@ -7,7 +7,7 @@ import {
   createContext,
   resolveDistinctId,
 } from "@loyalty/api";
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+import { createTRPCUntypedClient, httpBatchLink } from "@trpc/client";
 import { headers } from "next/headers";
 import superjson from "superjson";
 
@@ -21,13 +21,8 @@ import { getTrpcUrl } from "./shared";
 
 type ServerCaller = ReturnType<typeof appRouter.createCaller>;
 
-type ClientLeaf = {
-  query: (input: unknown) => Promise<unknown>;
-  mutate: (input: unknown) => Promise<unknown>;
-};
-
 // Procedure path ("clientes.list") → "query" | "mutation", read once from the
-// router so the HTTP proxy below can dispatch to .query / .mutate.
+// router so the HTTP proxy below can dispatch to .query / .mutation.
 const procedureTypes = new Map(
   Object.entries(
     (
@@ -40,13 +35,15 @@ const procedureTypes = new Map(
 
 /**
  * Caller-shaped proxy (`api.foo.bar(input)`) backed by an HTTP tRPC client, so
- * the call-sites are byte-for-byte the same as the in-process caller. Each leaf
- * call dispatches to the client's `.query` / `.mutate` based on the procedure
- * type. The incoming session cookie is forwarded so the Worker authenticates the
- * request the same way Better Auth would in-process.
+ * the call-sites are byte-for-byte the same as the in-process caller. The
+ * **untyped** client takes the dotted procedure path directly — no traversal of
+ * the typed proxy (which returns nested proxies, not callable leaves). Each call
+ * dispatches to `.query` / `.mutation` by the procedure type. The incoming
+ * session cookie is forwarded so the Worker authenticates the request the same
+ * way Better Auth would in-process.
  */
 const httpCaller = (cookie: string): ServerCaller => {
-  const client = createTRPCClient<AppRouter>({
+  const client = createTRPCUntypedClient<AppRouter>({
     links: [
       httpBatchLink({
         url: getTrpcUrl(),
@@ -61,14 +58,10 @@ const httpCaller = (cookie: string): ServerCaller => {
       get: (_target, key) =>
         typeof key === "string" ? build([...path, key]) : undefined,
       apply: (_target, _thisArg, args) => {
-        let node: Record<string, unknown> = client as Record<string, unknown>;
-        for (const segment of path) {
-          node = node[segment] as Record<string, unknown>;
-        }
-        const leaf = node as unknown as ClientLeaf;
-        return procedureTypes.get(path.join(".")) === "mutation"
-          ? leaf.mutate(args[0])
-          : leaf.query(args[0]);
+        const procedure = path.join(".");
+        return procedureTypes.get(procedure) === "mutation"
+          ? client.mutation(procedure, args[0])
+          : client.query(procedure, args[0]);
       },
     });
 
