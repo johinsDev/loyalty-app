@@ -80,7 +80,7 @@ For non-trivial work we follow the **superpowers** skill flow (`obra/superpowers
 
 `using-superpowers` is the dispatcher (invoke the right skill before responding). Skills are managed by the `skills` CLI and pinned in **`skills-lock.json`** — a teammate restores them with `npx skills experimental_install`; `.agents/skills/` + the `.claude/skills/` symlinks are gitignored.
 
-Overlaps to know: the superpowers `test-driven-development`/`systematic-debugging`/`writing-skills` supersede the older mattpocock `tdd`/`diagnose`/`write-a-skill` for the default flow (the mattpocock ones stay installed and available).
+The superpowers `test-driven-development`/`systematic-debugging`/`writing-skills` replace the older mattpocock `tdd`/`diagnose`/`write-a-skill` (removed to avoid duplicate triggers). Remaining mattpocock skills (`grill-me`, `handoff`, `prototype`, `to-prd`, `to-issues`, `triage`, `improve-codebase-architecture`) are unique and stay.
 
 ---
 
