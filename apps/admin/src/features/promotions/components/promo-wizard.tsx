@@ -61,6 +61,7 @@ export function PromoWizard({ id }: { id: string }) {
     try {
       await publishMut.mutateAsync({ id });
       await qc.invalidateQueries(trpc.promociones.getState.queryFilter({ id }));
+      await qc.invalidateQueries(trpc.promociones.list.queryFilter());
       toast.success("Promo published");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not publish");
