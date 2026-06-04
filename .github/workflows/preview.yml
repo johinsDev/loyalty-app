@@ -146,6 +146,16 @@ jobs:
             bun run scripts/vercel/alias-preview-domains.ts
           '
 
+      # Assert the deployed Worker actually serves on its custom domain (/,
+      # tRPC health.ping, Better Auth, CORS) — not just that `wrangler deploy`
+      # exited 0. A dead/misconfigured Worker fails the job (a required check).
+      # No secrets needed (public endpoints); waits out the first-deploy cert.
+      - name: Smoke-test the preview API Worker
+        if: ${{ vars.PREVIEW_API_WORKER_ENABLED == 'true' }}
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+        run: bun run scripts/cloudflare/smoke-preview-worker.ts
+
       # The push auto-deploy races this pin and is skipped by each app's
       # vercel.json ignoreCommand (preview build skipped while DATABASE_URL is
       # absent). Now that the env IS pinned, trigger the real build.
