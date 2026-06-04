@@ -89,11 +89,13 @@
         "@loyalty/rate-limit": "workspace:*",
         "@loyalty/realtime": "workspace:*",
         "@loyalty/storage": "workspace:*",
+        "@trigger.dev/sdk": "^4.4.0",
         "@trpc/server": "^11.0.0",
         "hono": "^4.6.0",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20250620.0",
+        "@loyalty/jobs": "workspace:*",
         "@loyalty/tsconfig": "workspace:*",
         "oxlint": "^0.15.0",
         "typescript": "^5.7.0",
