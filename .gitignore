@@ -16,6 +16,8 @@ out
 .wrangler/
 apps/api/.dev.vars
 apps/api/.dev.vars.*
+# per-PR preview Worker config, generated in CI by scripts/cloudflare/deploy-preview-worker.ts
+apps/api/wrangler.preview.toml
 
 # logs
 *.log
@@ -175,3 +177,5 @@ scripts/*
 !scripts/cache/**
 !scripts/api
 !scripts/api/**
+!scripts/cloudflare
+!scripts/cloudflare/**
