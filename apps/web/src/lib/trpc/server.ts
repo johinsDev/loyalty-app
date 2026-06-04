@@ -55,8 +55,17 @@ const httpCaller = (cookie: string): ServerCaller => {
 
   const build = (path: string[]): unknown =>
     new Proxy(() => undefined, {
+      // `await trpc()` returns this proxy from an async fn, so the runtime
+      // probes `.then` to test for a thenable. It must NOT answer then/catch/
+      // finally with a procedure, or awaiting it calls tRPC at path "then" →
+      // 404 ("No procedure found on path then"). No real procedure is named that.
       get: (_target, key) =>
-        typeof key === "string" ? build([...path, key]) : undefined,
+        typeof key === "string" &&
+        key !== "then" &&
+        key !== "catch" &&
+        key !== "finally"
+          ? build([...path, key])
+          : undefined,
       apply: (_target, _thisArg, args) => {
         const procedure = path.join(".");
         return procedureTypes.get(procedure) === "mutation"
