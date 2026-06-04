@@ -11,6 +11,7 @@ import { flags } from "@/lib/feature-flags";
 import { log } from "@/lib/log";
 import { rateLimiter } from "@/lib/rate-limit";
 import { realtime } from "@/lib/realtime";
+import { captureError } from "@/lib/sentry";
 import { storage } from "@/lib/storage";
 
 const handler = (req: Request) =>
@@ -34,6 +35,7 @@ const handler = (req: Request) =>
         analytics: analyticsBinding,
         flags: flagsBinding,
         log,
+        captureError,
       };
     },
   });

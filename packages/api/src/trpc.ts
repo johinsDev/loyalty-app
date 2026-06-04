@@ -109,7 +109,23 @@ export type Context = {
    * when absent. See `.claude/skills/trpc-perf/SKILL.md`.
    */
   log?: LoggerBinding;
+  /**
+   * Optional error-capture hook. Apps bind it to Sentry
+   * (`captureException` + per-event user context); the package stays
+   * SDK-agnostic, mirroring `realtime`/`analytics`/`flags`. The
+   * `withErrorCapture` middleware calls it only for *unexpected* errors
+   * (5xx-equivalent) — expected 4xx (auth, validation, rate-limit) are
+   * skipped. Optional → tests + CLI run without it.
+   * See `.claude/skills/sentry/SKILL.md`.
+   */
+  captureError?: CaptureError;
 };
+
+/** Shape of the app-provided Sentry capture hook (see `captureError`). */
+export type CaptureError = (
+  error: unknown,
+  context?: { userId?: string; path?: string; type?: string },
+) => void;
 
 export const createContext = async (opts: { headers: Headers }): Promise<Context> => {
   const session = await auth.api.getSession({ headers: opts.headers });
@@ -219,9 +235,45 @@ export function rateLimit(opts: RateLimitOptions) {
   });
 }
 
-/** Every exported procedure builds on this — perf timing (outermost) +
- *  baseline limit included. */
-const baseProcedure = t.procedure.use(withTiming).use(withBaseline);
+// tRPC error codes that are part of normal operation — client mistakes,
+// auth, validation, rate-limit. We don't want these in Sentry (they'd drown
+// the real bugs). Everything else (chiefly INTERNAL_SERVER_ERROR from an
+// uncaught throw) is captured.
+const EXPECTED_ERROR_CODES: ReadonlySet<string> = new Set([
+  "BAD_REQUEST",
+  "UNAUTHORIZED",
+  "FORBIDDEN",
+  "NOT_FOUND",
+  "TOO_MANY_REQUESTS",
+  "CONFLICT",
+  "PRECONDITION_FAILED",
+  "UNPROCESSABLE_CONTENT",
+  "METHOD_NOT_SUPPORTED",
+  "PARSE_ERROR",
+]);
+
+// Forwards *unexpected* errors to the app-bound Sentry hook. tRPC catches
+// thrown errors and formats them (they never bubble to Next's
+// `onRequestError`), so this is where server-side exceptions get captured.
+// No-op when no `captureError` is bound (tests/CLI).
+const withErrorCapture = t.middleware(async ({ ctx, next, path, type }) => {
+  const result = await next();
+  if (!result.ok && ctx.captureError && !EXPECTED_ERROR_CODES.has(result.error.code)) {
+    ctx.captureError(result.error, {
+      userId: ctx.session?.user?.id,
+      path,
+      type,
+    });
+  }
+  return result;
+});
+
+/** Every exported procedure builds on this — perf timing (outermost) + error
+ *  capture (→ Sentry) + baseline limit. */
+const baseProcedure = t.procedure
+  .use(withTiming)
+  .use(withErrorCapture)
+  .use(withBaseline);
 
 export const publicProcedure = baseProcedure;
 
