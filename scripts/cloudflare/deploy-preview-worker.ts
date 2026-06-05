@@ -52,10 +52,11 @@ const triggerVars = [
 // Lean-Worker provider config forwarded from the preview base env
 // (staging/shared, injected by the deploy step). The Workers-safe providers:
 // realtime (signed fetch to PartyKit — needs REALTIME_AUTH_SECRET, or
-// realtime.issueTicket 500s), Better Stack log (HTTP), and R2 storage via the
-// aws4fetch `fetch` driver (the Worker's lib/storage uses it). Upstash / PostHog
-// still use dynamicImport that doesn't bundle on workerd, so they stay on
-// defaults (memory rate-limit / null analytics) — their creds are NOT forwarded.
+// realtime.issueTicket 500s), Better Stack log (HTTP), R2 storage (aws4fetch
+// driver). Rate-limit deliberately stays on the in-memory provider in previews
+// to save Upstash quota (previews are ephemeral) — prod gets Upstash (now
+// Workers-safe via the static provider). PostHog still uses dynamicImport → null
+// provider until its Workers-safe slice. Those creds are NOT forwarded.
 const realtimeSecret = process.env.REALTIME_AUTH_SECRET;
 const betterStackToken =
   process.env.BETTER_STACK_SOURCE_TOKEN_API ?? process.env.BETTER_STACK_SOURCE_TOKEN;
