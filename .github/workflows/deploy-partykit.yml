@@ -1,0 +1,77 @@
+name: deploy-partykit
+
+# Deploy the prod realtime party (partykit.t4diverclub.app) when its code changes
+# — rarely, only on `partykit/**`. Kept separate from deploy-prod.yml because the
+# party is an independent Cloudflare (cloud-prem) deploy target with its own
+# lifecycle; bundling it would redeploy it on every unrelated merge.
+#
+# Auth: the same single Infisical machine identity as everywhere (the only GitHub
+# secrets). The partykit CLI needs BOTH (a) Cloudflare creds (CLOUDFLARE_API_TOKEN
+# / _ACCOUNT_ID — it deploys to your own CF account) AND (b) a partykit.dev session
+# (PARTYKIT_LOGIN + PARTYKIT_TOKEN). All come from Infisical prod /ci, except
+# REALTIME_AUTH_SECRET (/api) which the party validates tickets with — passed via
+# `--var` since the local `.env` isn't present in CI.
+#
+# Gated on the repo variable PROD_DEPLOY_ENABLED=true.
+#
+# NOTE: PARTYKIT_TOKEN must be added to Infisical prod /ci for this to authenticate
+# (PARTYKIT_LOGIN=johinsdev is already there). The local `~/.partykit/config.json`
+# token is a rotating Clerk session, so CI needs a stable token — see the partykit
+# CI docs. Until that's set, deploy the party manually with `bun run partykit:deploy`.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "partykit/**"
+      - ".github/workflows/deploy-partykit.yml"
+
+concurrency:
+  group: deploy-partykit
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  INFISICAL_PROJECT_ID: 90546a83-b585-4e36-bcf9-63898e633c53
+
+jobs:
+  deploy:
+    name: deploy prod realtime party
+    if: ${{ vars.PROD_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.10
+
+      - name: Install Infisical CLI
+        run: |
+          curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+          sudo apt-get update && sudo apt-get install -y infisical
+
+      - name: Install deps
+        run: bun install --frozen-lockfile
+
+      - name: Authenticate Infisical
+        env:
+          CID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          CSEC: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+        run: |
+          TOKEN=$(infisical login --method=universal-auth --client-id="$CID" --client-secret="$CSEC" --plain --silent)
+          echo "::add-mask::$TOKEN"
+          echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      # Cloud-prem deploy to partykit.t4diverclub.app. The shared secret is injected
+      # at deploy with --var (NOT `partykit env push`, which targets PartyKit cloud).
+      # CLOUDFLARE_* + PARTYKIT_LOGIN/TOKEN + REALTIME_AUTH_SECRET all arrive via the
+      # Infisical-injected env.
+      - name: Deploy prod party (partykit.t4diverclub.app)
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --recursive --token="$INFISICAL_TOKEN" --
+          bash -c 'cd partykit && bunx partykit deploy --domain partykit.t4diverclub.app --var REALTIME_AUTH_SECRET="$REALTIME_AUTH_SECRET"'
