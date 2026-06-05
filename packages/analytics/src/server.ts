@@ -2,6 +2,7 @@
 
 import { FakeAnalytics } from "./fake-analytics";
 import { NullStrategy } from "./providers/null-server";
+import { PostHogFetchStrategy } from "./providers/posthog-fetch";
 import { PostHogStrategy } from "./providers/posthog-server";
 import type {
   AnalyticsBinding,
@@ -21,7 +22,9 @@ function createStrategy(
     case "null":
       return new NullStrategy({ logger });
     case "posthog":
-      return new PostHogStrategy(config);
+      return config.driver === "fetch"
+        ? new PostHogFetchStrategy(config)
+        : new PostHogStrategy(config);
   }
 }
 
