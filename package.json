@@ -39,6 +39,7 @@
     "jobs:deploy": "bun run --cwd packages/jobs deploy",
     "partykit:dev": "bash scripts/with-infisical.sh bun run --cwd partykit dev",
     "partykit:deploy": "bun run --cwd partykit deploy",
+    "worker:deploy:prod": "infisical run --env=prod --recursive -- bun scripts/cloudflare/deploy-prod-worker.ts",
     "env:bootstrap": "bash scripts/infisical-bootstrap.sh",
     "env:pull": "infisical export --env=${INFISICAL_ENV:-dev} --recursive --format=dotenv",
     "env:check": "infisical secrets --env=${INFISICAL_ENV:-dev} --recursive",
