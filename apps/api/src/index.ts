@@ -4,12 +4,14 @@ import {
   createContext,
   resolveDistinctId,
 } from "@loyalty/api";
+import * as Sentry from "@sentry/cloudflare";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
 import { analytics } from "./lib/analytics";
 import { auth } from "./lib/auth";
+import { env } from "./lib/env";
 import { flags } from "./lib/feature-flags";
 import { log } from "./lib/log";
 import { rateLimiter } from "./lib/rate-limit";
@@ -80,4 +82,15 @@ app.all("/trpc/*", (c) =>
 
 app.get("/", (c) => c.text("loyalty-api ok"));
 
-export default app;
+// Wrap the handler with Sentry (@sentry/cloudflare) — initialises per request
+// (Workers have no global init) + auto-captures unhandled errors, and makes
+// `Sentry.captureException` (the tRPC error hook in lib/sentry) report within the
+// request scope. Inert when SENTRY_DSN is unset (errors then only log).
+export default Sentry.withSentry(
+  () => ({
+    dsn: env.SENTRY_DSN,
+    tracesSampleRate: 0,
+    ...(env.SENTRY_ENVIRONMENT && { environment: env.SENTRY_ENVIRONMENT }),
+  }),
+  app,
+);

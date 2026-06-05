@@ -22,7 +22,8 @@
     "@loyalty/storage": "workspace:*",
     "@trigger.dev/sdk": "^4.4.0",
     "@trpc/server": "^11.0.0",
-    "hono": "^4.6.0"
+    "hono": "^4.6.0",
+    "@sentry/cloudflare": "^10.56.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250620.0",
