@@ -33,4 +33,8 @@ export const env = {
   R2_PUBLIC_URL: e.R2_PUBLIC_URL,
   STORAGE_KEY_PREFIX: e.STORAGE_KEY_PREFIX,
   STORAGE_BASE_URL: e.STORAGE_BASE_URL,
+  // Sentry (@sentry/cloudflare). A dedicated SENTRY_DSN for the api project, or
+  // the browser DSN as a fallback. Unset → Sentry is inert (errors only log).
+  SENTRY_DSN: e.SENTRY_DSN ?? e.NEXT_PUBLIC_SENTRY_DSN,
+  SENTRY_ENVIRONMENT: e.SENTRY_ENVIRONMENT,
 } as const;
