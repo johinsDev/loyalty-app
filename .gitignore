@@ -181,3 +181,5 @@ scripts/*
 !scripts/api/**
 !scripts/cloudflare
 !scripts/cloudflare/**
+!scripts/slack
+!scripts/slack/**

@@ -94,3 +94,20 @@ jobs:
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
           --recursive --token="$INFISICAL_TOKEN" --
           bash -c 'cd packages/jobs && bunx trigger.dev@latest deploy'
+
+      # Post a release summary to the deploys Slack channel. always() so it also
+      # reports a failed deploy. Inert (no-op) until SLACK_DEPLOY_WEBHOOK_URL is in
+      # Infisical prod /ci — see scripts/slack/notify-deploy.sh.
+      - name: Notify Slack (deploys)
+        if: ${{ always() }}
+        env:
+          DEPLOY_STATUS: ${{ job.status }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          ACTOR: ${{ github.actor }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --path=/ci --token="$INFISICAL_TOKEN" --
+          bash scripts/slack/notify-deploy.sh
