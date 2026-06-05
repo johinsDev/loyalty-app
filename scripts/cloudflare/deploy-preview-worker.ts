@@ -53,12 +53,11 @@ const triggerVars = [
 // (staging/shared, injected by the deploy step). The Workers-safe providers:
 // realtime (signed fetch to PartyKit — needs REALTIME_AUTH_SECRET, or
 // realtime.issueTicket 500s), Better Stack log (HTTP), R2 storage (aws4fetch
-// driver), and Upstash rate-limit (the REST SDK is fetch-based + now statically
-// imported). PostHog (analytics/flags) still uses dynamicImport → stays on the
-// null provider until its Workers-safe slice; its creds are NOT forwarded.
+// driver). Rate-limit deliberately stays on the in-memory provider in previews
+// to save Upstash quota (previews are ephemeral) — prod gets Upstash (now
+// Workers-safe via the static provider). PostHog still uses dynamicImport → null
+// provider until its Workers-safe slice. Those creds are NOT forwarded.
 const realtimeSecret = process.env.REALTIME_AUTH_SECRET;
-const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
-const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 const betterStackToken =
   process.env.BETTER_STACK_SOURCE_TOKEN_API ?? process.env.BETTER_STACK_SOURCE_TOKEN;
 const betterStackHost =
@@ -83,10 +82,6 @@ const providerVars = [
     ? `R2_PUBLIC_URL = "${process.env.R2_PUBLIC_URL}"`
     : "",
   `STORAGE_KEY_PREFIX = "pr-${pr}/"`,
-  // Upstash rate-limit (URL is non-secret; the token is a secret below). The
-  // limiter namespaces by CACHE_KEY_PREFIX so previews don't share counters.
-  upstashUrl ? `UPSTASH_REDIS_REST_URL = "${upstashUrl}"` : "",
-  `CACHE_KEY_PREFIX = "pr-${pr}:"`,
 ]
   .filter(Boolean)
   .join("\n");
@@ -158,8 +153,6 @@ const secrets: Record<string, string> = {
   ...(process.env.R2_SECRET_ACCESS_KEY && {
     R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
   }),
-  // Upstash rate-limit REST token (the URL is a [var] above).
-  ...(upstashToken && { UPSTASH_REDIS_REST_TOKEN: upstashToken }),
 };
 for (const [key, value] of Object.entries(secrets)) {
   console.info(`→ secret put ${key}`);
