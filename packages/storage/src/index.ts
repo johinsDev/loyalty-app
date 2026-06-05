@@ -7,6 +7,7 @@ export { StorageManager } from "./manager";
 export { LocalProvider } from "./providers/local";
 export { MemoryProvider } from "./providers/memory";
 export { R2Provider } from "./providers/r2";
+export { R2FetchProvider } from "./providers/r2-fetch";
 export {
   FileNotFoundError,
   FileTooLargeError,

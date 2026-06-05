@@ -8,9 +8,10 @@ import {
 import { env } from "./env";
 import { log } from "./log";
 
-// R2 over the S3 API when creds are present (aws-sdk is lazy-loaded on first
-// use; validate it on workerd in the deploy slice — a native R2-binding path is
-// a follow-up). No filesystem on Workers, so the fallback is the memory disk.
+// R2 via the `fetch` driver (aws4fetch — pure Web Crypto + fetch, Workers-safe)
+// when creds are present. The aws-sdk driver can't run on workerd (its dynamic
+// import is code-generation-from-string, which workerd forbids), so the Worker
+// MUST use `fetch`. No filesystem on Workers, so the fallback is the memory disk.
 function buildDisk(): DiskConfig {
   if (
     env.R2_ACCOUNT_ID &&
@@ -20,11 +21,18 @@ function buildDisk(): DiskConfig {
   ) {
     const cfg: R2DiskConfig = {
       provider: "r2",
+      driver: "fetch",
       accountId: env.R2_ACCOUNT_ID,
       accessKeyId: env.R2_ACCESS_KEY_ID,
       secretAccessKey: env.R2_SECRET_ACCESS_KEY,
       bucket: env.R2_BUCKET,
-      ...(env.R2_PUBLIC_URL && { publicUrl: env.R2_PUBLIC_URL }),
+      // A public bucket URL (pub-<hash>.r2.dev / CNAME) means downloads should
+      // use it directly — cacheable, no signing. isPublic flips getDownloadUrl
+      // from a presigned URL to the public one.
+      ...(env.R2_PUBLIC_URL && {
+        publicUrl: env.R2_PUBLIC_URL,
+        isPublic: true,
+      }),
     };
     return cfg;
   }

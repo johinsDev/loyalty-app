@@ -19,7 +19,8 @@
   },
   "dependencies": {
     "jose": "^5.9.0",
-    "zod": "^3.23.0"
+    "zod": "^3.23.0",
+    "aws4fetch": "^1.0.20"
   },
   "devDependencies": {
     "@loyalty/tsconfig": "workspace:*",
@@ -35,7 +36,11 @@
     "@aws-sdk/s3-request-presigner": "^3.700.0"
   },
   "peerDependenciesMeta": {
-    "@aws-sdk/client-s3": { "optional": true },
-    "@aws-sdk/s3-request-presigner": { "optional": true }
+    "@aws-sdk/client-s3": {
+      "optional": true
+    },
+    "@aws-sdk/s3-request-presigner": {
+      "optional": true
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { FakeDisk } from "./fake-disk";
 import { LocalProvider } from "./providers/local";
 import { MemoryProvider } from "./providers/memory";
+import { R2FetchProvider } from "./providers/r2-fetch";
 import { R2Provider } from "./providers/r2";
 import { StorageDisk } from "./disk";
 import type {
@@ -21,14 +22,18 @@ function createProvider(config: DiskConfig): StorageProvider {
         baseUrl: config.baseUrl,
         secret: config.secret,
       });
-    case "r2":
-      return new R2Provider({
+    case "r2": {
+      const r2Config = {
         accountId: config.accountId,
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
         bucket: config.bucket,
         publicUrl: config.publicUrl,
-      });
+      };
+      return config.driver === "fetch"
+        ? new R2FetchProvider(r2Config)
+        : new R2Provider(r2Config);
+    }
   }
 }
 
