@@ -1,0 +1,74 @@
+name: deploy-prod
+
+# Deploy the production API Worker (loyalty-api → api.t4diverclub.app) on every
+# push to main that touches the Worker or one of its workspace deps. Vercel's Git
+# integration already auto-deploys the FE (web/admin/storybook); this workflow
+# covers the standalone Worker so a merge ships the whole prod stack.
+#
+# Auth is the SAME single Infisical machine identity as the preview pipeline (the
+# only two GitHub secrets); CLOUDFLARE_* + the Worker's [vars] all come from
+# Infisical prod (/ci + /api + /shared via --recursive). Routine deploys are
+# code-only (WORKER_DEPLOY_SKIP_SECRETS=true) — secrets persist across deploys;
+# run `bun run worker:deploy:prod` locally to re-sync them after a rotation.
+#
+# Gated on the repo variable PROD_DEPLOY_ENABLED=true.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "packages/**"
+      - "scripts/cloudflare/deploy-prod-worker.ts"
+      - ".github/workflows/deploy-prod.yml"
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  INFISICAL_PROJECT_ID: 90546a83-b585-4e36-bcf9-63898e633c53
+
+jobs:
+  deploy-worker:
+    name: deploy prod API Worker
+    if: ${{ vars.PROD_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.10
+
+      - name: Install Infisical CLI
+        run: |
+          curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+          sudo apt-get update && sudo apt-get install -y infisical
+
+      - name: Install deps
+        run: bun install --frozen-lockfile
+
+      - name: Authenticate Infisical
+        env:
+          CID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          CSEC: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+        run: |
+          TOKEN=$(infisical login --method=universal-auth --client-id="$CID" --client-secret="$CSEC" --plain --silent)
+          echo "::add-mask::$TOKEN"
+          echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      # Generates wrangler.prod.toml ([vars] from Infisical) + `wrangler deploy`.
+      # Secrets are skipped (already set; persist across deploys). CLOUDFLARE_* +
+      # the [vars] provider values come from prod /ci + /api + /shared.
+      - name: Deploy prod Worker (code only)
+        env:
+          WORKER_DEPLOY_SKIP_SECRETS: "true"
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --recursive --token="$INFISICAL_TOKEN" --
+          bun scripts/cloudflare/deploy-prod-worker.ts
