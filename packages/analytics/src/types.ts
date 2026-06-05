@@ -66,6 +66,11 @@ export interface PostHogProviderConfig {
    * events buffered when the lambda freezes).
    */
   flushAt?: number;
+  /**
+   * `fetch` = REST via fetch, Cloudflare-Workers-safe; default `node`
+   * (posthog-node) for Node runtimes.
+   */
+  driver?: "node" | "fetch";
 }
 
 export type ProviderConfig = NullProviderConfig | PostHogProviderConfig;

@@ -41,6 +41,11 @@ export interface PostHogProviderConfig {
   apiKey: string;
   /** `https://us.i.posthog.com` (default) or your self-hosted host. */
   host?: string;
+  /**
+   * `fetch` = REST via fetch, Cloudflare-Workers-safe; default `node`
+   * (posthog-node) for Node runtimes.
+   */
+  driver?: "node" | "fetch";
 }
 
 export type ProviderConfig = NullProviderConfig | PostHogProviderConfig;
