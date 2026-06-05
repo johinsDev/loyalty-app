@@ -1,16 +1,18 @@
 name: deploy-prod
 
-# Deploy the production API Worker (loyalty-api → api.t4diverclub.app) on every
-# push to main that touches the Worker or one of its workspace deps. Vercel's Git
-# integration already auto-deploys the FE (web/admin/storybook); this workflow
-# covers the standalone Worker so a merge ships the whole prod stack.
+# Ship the whole prod backend on every push to main that touches it: apply DB
+# migrations, deploy the API Worker (loyalty-api → api.t4diverclub.app), and
+# deploy the Trigger.dev jobs + sync their env. Vercel's Git integration already
+# auto-deploys the FE (web/admin/storybook); this workflow covers everything else.
 #
 # Auth is the SAME single Infisical machine identity as the preview pipeline (the
-# only two GitHub secrets); CLOUDFLARE_* + the Worker's [vars] all come from
-# Infisical prod (/ci + /api + /shared via --recursive). Routine deploys are
-# code-only (WORKER_DEPLOY_SKIP_SECRETS=true) — secrets persist across deploys;
-# run `bun run worker:deploy:prod` locally to re-sync them after a rotation.
+# only two GitHub secrets); everything else (CLOUDFLARE_*, the Worker [vars],
+# DATABASE_URL/TURSO_AUTH_TOKEN, TRIGGER_ACCESS_TOKEN, the jobs' synced env) comes
+# from Infisical prod (/ci + /api + /shared via --recursive). Worker deploys are
+# code-only (WORKER_DEPLOY_SKIP_SECRETS=true) — its secrets persist; run
+# `bun run worker:deploy:prod` locally to re-sync them after a rotation.
 #
+# Order: migrate → Worker → Trigger (code never deploys against an un-migrated DB).
 # Gated on the repo variable PROD_DEPLOY_ENABLED=true.
 
 on:
@@ -33,11 +35,11 @@ env:
   INFISICAL_PROJECT_ID: 90546a83-b585-4e36-bcf9-63898e633c53
 
 jobs:
-  deploy-worker:
-    name: deploy prod API Worker
+  deploy:
+    name: deploy prod (migrate + Worker + Trigger)
     if: ${{ vars.PROD_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -62,6 +64,15 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
 
+      # Apply Drizzle migrations to the prod Turso DB before any code deploys.
+      # Idempotent via drizzle's journal — a no-op when there are no new ones.
+      # DATABASE_URL + TURSO_AUTH_TOKEN come from prod /api.
+      - name: Run DB migrations (prod)
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --recursive --token="$INFISICAL_TOKEN" --
+          bun run --cwd packages/db db:migrate
+
       # Generates wrangler.prod.toml ([vars] from Infisical) + `wrangler deploy`.
       # Secrets are skipped (already set; persist across deploys). CLOUDFLARE_* +
       # the [vars] provider values come from prod /ci + /api + /shared.
@@ -72,3 +83,14 @@ jobs:
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
           --recursive --token="$INFISICAL_TOKEN" --
           bun scripts/cloudflare/deploy-prod-worker.ts
+
+      # Deploy the Trigger.dev jobs to prod + sync their env. syncEnvVars
+      # (trigger.config.ts) UPSERTS — it pushes the Infisical-injected vars
+      # (DATABASE_URL/auth, realtime, VAPID, PUSH_PROVIDER) without deleting the
+      # dashboard-managed ones (Twilio/Resend). No --env flag → the project's prod
+      # environment. TRIGGER_ACCESS_TOKEN comes from prod /ci.
+      - name: Deploy Trigger.dev jobs (prod) + sync env
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --recursive --token="$INFISICAL_TOKEN" --
+          bash -c 'cd packages/jobs && bunx trigger.dev@latest deploy'
