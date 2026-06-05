@@ -26,7 +26,13 @@ function buildDisk(): DiskConfig {
       accessKeyId: env.R2_ACCESS_KEY_ID,
       secretAccessKey: env.R2_SECRET_ACCESS_KEY,
       bucket: env.R2_BUCKET,
-      ...(env.R2_PUBLIC_URL && { publicUrl: env.R2_PUBLIC_URL }),
+      // A public bucket URL (pub-<hash>.r2.dev / CNAME) means downloads should
+      // use it directly — cacheable, no signing. isPublic flips getDownloadUrl
+      // from a presigned URL to the public one.
+      ...(env.R2_PUBLIC_URL && {
+        publicUrl: env.R2_PUBLIC_URL,
+        isPublic: true,
+      }),
     };
     return cfg;
   }
