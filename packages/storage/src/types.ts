@@ -129,6 +129,11 @@ export interface R2DiskConfig {
   /** Cloudflare's `pub-<hash>.r2.dev` or a custom CNAME. Only needed when `isPublic: true`. */
   publicUrl?: string;
   isPublic?: boolean;
+  /**
+   * Which R2 implementation to use. `fetch` = aws4fetch, Workers-safe
+   * (Cloudflare Workers / `workerd`). Default `aws-sdk` for Node.
+   */
+  driver?: "aws-sdk" | "fetch";
 }
 
 export type DiskConfig = MemoryDiskConfig | LocalDiskConfig | R2DiskConfig;

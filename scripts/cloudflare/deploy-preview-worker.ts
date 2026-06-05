@@ -50,12 +50,12 @@ const triggerVars = [
   .join("\n");
 
 // Lean-Worker provider config forwarded from the preview base env
-// (staging/shared, injected by the deploy step). ONLY the Workers-safe
-// providers: realtime (signed fetch to PartyKit — needs REALTIME_AUTH_SECRET,
-// or realtime.issueTicket 500s) + Better Stack log (HTTP). Upstash / PostHog /
-// R2 use dynamicImport that doesn't bundle on workerd, so they stay on defaults
-// (memory rate-limit / null analytics / console log) — forwarding their creds
-// would crash the isolate at runtime rather than help.
+// (staging/shared, injected by the deploy step). The Workers-safe providers:
+// realtime (signed fetch to PartyKit — needs REALTIME_AUTH_SECRET, or
+// realtime.issueTicket 500s), Better Stack log (HTTP), and R2 storage via the
+// aws4fetch `fetch` driver (the Worker's lib/storage uses it). Upstash / PostHog
+// still use dynamicImport that doesn't bundle on workerd, so they stay on
+// defaults (memory rate-limit / null analytics) — their creds are NOT forwarded.
 const realtimeSecret = process.env.REALTIME_AUTH_SECRET;
 const betterStackToken =
   process.env.BETTER_STACK_SOURCE_TOKEN_API ?? process.env.BETTER_STACK_SOURCE_TOKEN;
@@ -70,6 +70,17 @@ const providerVars = [
   // Match the FE/jobs per-PR room prefix so clients subscribe to the same room.
   `REALTIME_ROOM_PREFIX = "pr-${pr}-"`,
   betterStackHost ? `BETTER_STACK_INGESTING_HOST_API = "${betterStackHost}"` : "",
+  // R2 storage (aws4fetch driver) — account/bucket/public-url are non-secret;
+  // the access key + secret go through `secret put` below. Per-PR key prefix so
+  // uploads land in their own folder (purged on PR close, like the FE).
+  process.env.R2_ACCOUNT_ID
+    ? `R2_ACCOUNT_ID = "${process.env.R2_ACCOUNT_ID}"`
+    : "",
+  process.env.R2_BUCKET ? `R2_BUCKET = "${process.env.R2_BUCKET}"` : "",
+  process.env.R2_PUBLIC_URL
+    ? `R2_PUBLIC_URL = "${process.env.R2_PUBLIC_URL}"`
+    : "",
+  `STORAGE_KEY_PREFIX = "pr-${pr}/"`,
 ]
   .filter(Boolean)
   .join("\n");
@@ -132,6 +143,15 @@ const secrets: Record<string, string> = {
   // providers. Without REALTIME_AUTH_SECRET, realtime.issueTicket 500s.
   ...(realtimeSecret && { REALTIME_AUTH_SECRET: realtimeSecret }),
   ...(betterStackToken && { BETTER_STACK_SOURCE_TOKEN_API: betterStackToken }),
+  // R2 storage (aws4fetch driver) — the S3 access key + secret. The Worker
+  // builds the R2 disk only when all of ACCOUNT_ID/ACCESS_KEY_ID/SECRET/BUCKET
+  // are present (account/bucket are [vars] above).
+  ...(process.env.R2_ACCESS_KEY_ID && {
+    R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+  }),
+  ...(process.env.R2_SECRET_ACCESS_KEY && {
+    R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+  }),
 };
 for (const [key, value] of Object.entries(secrets)) {
   console.info(`→ secret put ${key}`);
