@@ -130,10 +130,18 @@ const REQUIRED = [
   "R2_SECRET_ACCESS_KEY",
 ];
 
-for (const key of REQUIRED) {
-  const value = need(key);
-  console.info(`→ secret put ${key}`);
-  wrangler(["secret", "put", key], value);
+// CI (deploy-prod.yml) sets WORKER_DEPLOY_SKIP_SECRETS=true so routine
+// code-deploys on merge don't re-upload (unchanged) secrets every time — they
+// persist across deploys. Run `bun run worker:deploy:prod` (no flag) to sync
+// secrets after rotating one in Infisical.
+if (process.env.WORKER_DEPLOY_SKIP_SECRETS === "true") {
+  console.info("→ skipping secrets (WORKER_DEPLOY_SKIP_SECRETS=true) — existing Worker secrets kept");
+} else {
+  for (const key of REQUIRED) {
+    const value = need(key);
+    console.info(`→ secret put ${key}`);
+    wrangler(["secret", "put", key], value);
+  }
 }
 
 console.info(`✓ loyalty-api deployed → https://${apiHost}`);
