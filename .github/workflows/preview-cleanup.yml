@@ -47,7 +47,11 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
 
+      # Every teardown step is continue-on-error so one failure (e.g. a Turso
+      # blip) can't SKIP the remaining steps and orphan the Worker / DNS /
+      # domains. Each script is idempotent, so a missing resource is a no-op.
       - name: Remove branch-scoped Vercel env (web + admin)
+        continue-on-error: true
         env:
           GIT_BRANCH: ${{ github.head_ref }}
         run: >
@@ -56,6 +60,7 @@ jobs:
           bun run scripts/vercel/unset-preview-env.ts
 
       - name: Destroy the preview DB
+        continue-on-error: true
         env:
           PR_NUMBER: ${{ github.event.number }}
         run: >
