@@ -6,7 +6,11 @@
 //   PR_NUMBER=83 bun run scripts/cloudflare/smoke-preview-worker.ts
 //
 // Env: PR_NUMBER (required), PREVIEW_ZONE (default t4diverclub.app),
-//      SMOKE_TIMEOUT_MS (default 240000 — first-deploy cert propagation).
+//      SMOKE_TIMEOUT_MS (default 600000 — first-deploy custom-domain cert
+//      propagation; the Worker has workers_dev=false so the cert is on the
+//      critical path, and a fresh hostname's edge cert can take several
+//      minutes — 4 min was too tight and flaked. The preview-db job's
+//      timeout-minutes=20 accommodates this).
 import process from "node:process";
 
 const need = (key: string): string => {
@@ -19,23 +23,33 @@ const pr = need("PR_NUMBER");
 const zone = process.env.PREVIEW_ZONE ?? "t4diverclub.app";
 const base = `https://api.pr-${pr}.${zone}`;
 const adminOrigin = `https://admin.pr-${pr}.${zone}`;
-const deadline = Date.now() + Number(process.env.SMOKE_TIMEOUT_MS ?? 240000);
+const timeoutMs = Number(process.env.SMOKE_TIMEOUT_MS ?? 600000);
+const startedAt = Date.now();
+const deadline = startedAt + timeoutMs;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const elapsedS = () => Math.round((Date.now() - startedAt) / 1000);
 
 // Wait for the custom-domain cert + edge route to come up (fresh deploys take a
-// couple of minutes; re-deploys are instant since the domain already exists).
+// few minutes while the edge cert provisions; re-deploys are instant since the
+// domain already exists). Logs elapsed time so a slow cert is visible in the run.
 async function waitReady(): Promise<void> {
   for (;;) {
     try {
       const res = await fetch(`${base}/`, { signal: AbortSignal.timeout(8000) });
-      if (res.ok) return;
+      if (res.ok) {
+        console.info(`✓ ${base} serving after ${elapsedS()}s`);
+        return;
+      }
     } catch {
       // not resolving / cert not ready yet — keep waiting
     }
     if (Date.now() > deadline) {
-      throw new Error(`${base} did not start serving within the timeout`);
+      throw new Error(
+        `${base} did not start serving within ${Math.round(timeoutMs / 1000)}s ` +
+          `(custom-domain cert likely still provisioning) — re-run the job`,
+      );
     }
-    console.info(`… waiting for ${base} to serve`);
+    console.info(`… waiting for ${base} to serve (${elapsedS()}s elapsed)`);
     await sleep(8000);
   }
 }

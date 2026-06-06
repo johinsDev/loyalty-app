@@ -23,15 +23,19 @@ const BASE = `https://api.turso.tech/v1/organizations/${ORG}`;
 const USER_AGENT =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) " +
   "Chrome/124.0.0.0 Safari/537.36 loyalty-app-ci";
-// 8 attempts (~60s total) — throw immediately on deterministic codes (401 bad
-// token, 404 not found — callers rely on the 404 throw).
-const MAX_ATTEMPTS = 8;
+// 12 attempts (~4.7 min total) — throw immediately on deterministic codes (401
+// bad token, 404 not found — callers rely on the 404 throw). The UA spoof above
+// kills the COMMON 403, but a burst of CI runs can still earn the runner's IP a
+// sustained AWS-WAF reputation block lasting minutes; the wide window rides it
+// out instead of failing a required check. Well within the job's 20-min timeout.
+const MAX_ATTEMPTS = 12;
 const RETRYABLE_STATUS = new Set([403, 408, 425, 429, 500, 502, 503, 504]);
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-// Exponential backoff + jitter: ~0.5s, 1s, 2s, 4s, 8s, 16s, 30s (capped).
+// Exponential backoff + jitter: ~0.5s, 1s, 2s, 4s, 8s, 16s, 32s, 45s (capped),
+// then 45s for the remaining attempts.
 const backoffMs = (attempt: number) =>
-  Math.min(30000, 500 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
+  Math.min(45000, 500 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const method = init?.method ?? "GET";
