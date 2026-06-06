@@ -7,17 +7,16 @@ import { z } from "zod";
  */
 export const pushPlatformSchema = z.enum(["webpush", "expo"]);
 
+// `customerId` + `organizationId` are resolved server-side from the session +
+// the primary org (see the router) — never trusted from the client. The browser
+// only sends the token payload.
 export const registerInputSchema = z.object({
-  customerId: z.string().min(1),
-  organizationId: z.string().min(1),
   platform: pushPlatformSchema,
   token: z.string().min(1),
   deviceLabel: z.string().max(255).optional(),
 });
 
 export const revokeInputSchema = z.object({
-  customerId: z.string().min(1),
-  organizationId: z.string().min(1),
   token: z.string().min(1),
 });
 
@@ -25,6 +24,12 @@ export const listForCustomerInputSchema = z.object({
   customerId: z.string().min(1),
   organizationId: z.string().min(1),
 });
+
+/** Server-resolved identity attached to a register/revoke before it hits the repo. */
+export interface PushTokenIdentity {
+  customerId: string;
+  organizationId: string;
+}
 
 export type RegisterInput = z.infer<typeof registerInputSchema>;
 export type RevokeInput = z.infer<typeof revokeInputSchema>;

@@ -9,8 +9,8 @@ import {
 import type { PushTokenRepository } from "./repository";
 import type {
   ListForCustomerInput,
+  PushTokenIdentity,
   RegisterInput,
-  RevokeInput,
 } from "./schemas";
 
 /**
@@ -21,7 +21,10 @@ import type {
 export class PushTokenService {
   constructor(private readonly repo: PushTokenRepository) {}
 
-  register(input: RegisterInput): Promise<PushTokenRow> {
+  register(
+    input: RegisterInput,
+    identity: PushTokenIdentity,
+  ): Promise<PushTokenRow> {
     if (input.platform === "expo") {
       const parsed = expoTokenSchema.safeParse(input.token);
       if (!parsed.success) {
@@ -48,7 +51,7 @@ export class PushTokenService {
         });
       }
     }
-    return this.repo.upsert(input);
+    return this.repo.upsert({ ...input, ...identity });
   }
 
   list(input: ListForCustomerInput): Promise<PushTokenRow[]> {
@@ -58,11 +61,7 @@ export class PushTokenService {
     );
   }
 
-  revoke(input: RevokeInput): Promise<number> {
-    return this.repo.revoke(
-      input.customerId,
-      input.organizationId,
-      input.token,
-    );
+  revoke(token: string, identity: PushTokenIdentity): Promise<number> {
+    return this.repo.revoke(identity.customerId, identity.organizationId, token);
   }
 }

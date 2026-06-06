@@ -2,7 +2,7 @@ import type { db as Db } from "@loyalty/db";
 import { pushToken, type PushTokenRow } from "@loyalty/db/schema";
 import { and, eq } from "drizzle-orm";
 
-import type { RegisterInput } from "./schemas";
+import type { PushTokenIdentity, RegisterInput } from "./schemas";
 
 export class PushTokenRepository {
   constructor(private readonly db: typeof Db) {}
@@ -12,7 +12,7 @@ export class PushTokenRepository {
    * UPDATE — re-activating an existing token + bumping `last_used_at`
    * is the common path (browser re-subscribes on each tab open).
    */
-  async upsert(input: RegisterInput): Promise<PushTokenRow> {
+  async upsert(input: RegisterInput & PushTokenIdentity): Promise<PushTokenRow> {
     const now = new Date();
     const rows = (await this.db
       .insert(pushToken)

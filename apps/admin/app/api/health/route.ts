@@ -1,35 +1,49 @@
-import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { db } from "@loyalty/db/client";
+import { env } from "@/env";
 import { log } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
+/**
+ * Liveness + upstream check. The admin CRM is a thin client of the API
+ * Worker (`api.t4diverclub.app`) — it owns no DB — so health pings the
+ * Worker (the dependency it actually has) rather than the database.
+ */
 export async function GET() {
   const time = new Date().toISOString();
-  let dbReachable = false;
-  let dbError: string | undefined;
+  const apiUrl = env.NEXT_PUBLIC_API_URL;
+  let apiReachable = false;
+  let apiError: string | undefined;
 
-  try {
-    await db.run(sql`select 1`);
-    dbReachable = true;
-  } catch (err) {
-    dbError = err instanceof Error ? err.message : "unknown error";
+  if (!apiUrl) {
+    apiError = "NEXT_PUBLIC_API_URL not set";
+  } else {
+    try {
+      const res = await fetch(new URL("/", apiUrl), {
+        signal: AbortSignal.timeout(5000),
+      });
+      apiReachable = res.ok;
+      if (!res.ok) apiError = `api responded ${res.status}`;
+    } catch (err) {
+      apiError = err instanceof Error ? err.message : "unknown error";
+    }
+  }
+
+  if (!apiReachable) {
     log.error(
-      { route: "/api/health", service: "admin", err },
-      "db unreachable",
+      { route: "/api/health", service: "admin", apiUrl, err: apiError },
+      "api worker unreachable",
     );
   }
 
   const body = {
-    status: dbReachable ? "ok" : "degraded",
+    status: apiReachable ? "ok" : "degraded",
     service: "admin",
     time,
     deps: {
-      db: { reachable: dbReachable, ...(dbError && { error: dbError }) },
+      api: { reachable: apiReachable, ...(apiError && { error: apiError }) },
     },
   };
 
-  return NextResponse.json(body, { status: dbReachable ? 200 : 503 });
+  return NextResponse.json(body, { status: apiReachable ? 200 : 503 });
 }

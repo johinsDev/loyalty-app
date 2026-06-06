@@ -18,7 +18,6 @@
     "@loyalty/api": "workspace:*",
     "@loyalty/auth": "workspace:*",
     "@loyalty/date": "workspace:*",
-    "@loyalty/db": "workspace:*",
     "@loyalty/feature-flags": "workspace:*",
     "@loyalty/log": "workspace:*",
     "@loyalty/realtime": "workspace:*",

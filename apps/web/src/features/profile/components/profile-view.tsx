@@ -1,4 +1,3 @@
-import { getPrimaryOrganizationId } from "@loyalty/db";
 import { getTranslations } from "next-intl/server";
 
 import { env } from "@/env";
@@ -14,8 +13,7 @@ import { PushEnableButton } from "@/features/push/components/push-enable-button"
  */
 export async function ProfileView() {
   const t = await getTranslations("Profile");
-  const session = await requireSession();
-  const organizationId = (await getPrimaryOrganizationId()) ?? "";
+  await requireSession();
 
   return (
     <main className="mx-auto max-w-md space-y-6 p-6">
@@ -23,13 +21,7 @@ export async function ProfileView() {
         <h1 className="mb-2 text-2xl font-semibold">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("placeholder")}</p>
       </div>
-      {organizationId ? (
-        <PushEnableButton
-          customerId={session.user.id}
-          organizationId={organizationId}
-          vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}
-        />
-      ) : null}
+      <PushEnableButton vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
       <NotificationPreferences />
       <SignOutButton />
     </main>
