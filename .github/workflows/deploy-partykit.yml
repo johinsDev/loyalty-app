@@ -70,8 +70,8 @@ jobs:
       # at deploy with --var (NOT `partykit env push`, which targets PartyKit cloud).
       # CLOUDFLARE_* + PARTYKIT_LOGIN/TOKEN + REALTIME_AUTH_SECRET all arrive via the
       # Infisical-injected env.
-      - name: Deploy prod party (partykit.t4diverclub.app)
+      - name: Deploy prod party (realtime.t4diverclub.app)
         run: >
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
           --recursive --token="$INFISICAL_TOKEN" --
-          bash -c 'cd partykit && bunx partykit deploy --domain partykit.t4diverclub.app --var REALTIME_AUTH_SECRET="$REALTIME_AUTH_SECRET"'
+          bash -c 'cd partykit && bunx partykit deploy --domain realtime.t4diverclub.app --var REALTIME_AUTH_SECRET="$REALTIME_AUTH_SECRET"'
