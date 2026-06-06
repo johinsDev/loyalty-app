@@ -105,21 +105,12 @@ jobs:
             bash -c 'DATABASE_URL="$PR_DB_URL" TURSO_AUTH_TOKEN="$PR_DB_TOKEN" \
               bun run --cwd packages/auth src/seed-preview-admin.ts'
 
-      - name: Pin per-PR env on Vercel preview (web + admin)
-        env:
-          PREVIEW_DATABASE_URL: ${{ steps.db.outputs.database_url }}
-          PREVIEW_AUTH_TOKEN: ${{ steps.db.outputs.auth_token }}
-          GIT_BRANCH: ${{ github.head_ref }}
-          PR_NUMBER: ${{ github.event.number }}
-        run: |
-          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod \
-            --path=/ci --token="$INFISICAL_TOKEN" -- bash -c '
-              ENV_KEY=DATABASE_URL ENV_VALUE="$PREVIEW_DATABASE_URL" bun run scripts/vercel/set-preview-env.ts
-              ENV_KEY=TURSO_AUTH_TOKEN ENV_VALUE="$PREVIEW_AUTH_TOKEN" bun run scripts/vercel/set-preview-env.ts
-              ENV_KEY=STORAGE_KEY_PREFIX ENV_VALUE="pr-${PR_NUMBER}/" bun run scripts/vercel/set-preview-env.ts
-              ENV_KEY=CACHE_KEY_PREFIX ENV_VALUE="pr-${PR_NUMBER}:" bun run scripts/vercel/set-preview-env.ts
-              ENV_KEY=REALTIME_ROOM_PREFIX ENV_VALUE="pr-${PR_NUMBER}-" bun run scripts/vercel/set-preview-env.ts
-            '
+      # NOTE: the FE preview is a thin client of the Worker, so it no longer gets
+      # DATABASE_URL / TURSO_AUTH_TOKEN / STORAGE_KEY_PREFIX / CACHE_KEY_PREFIX /
+      # REALTIME_ROOM_PREFIX pinned on Vercel — the Worker owns the backend (those
+      # reach it via wrangler in the deploy step below). The only per-PR Vercel pin
+      # the FE needs is NEXT_PUBLIC_API_URL (pinned in the Worker step), which also
+      # doubles as the build-ready sentinel for each app's vercel.json ignoreCommand.
 
       # Deploy this PR's standalone API Worker (api.pr-<n>.t4diverclub.app)
       # against the masked clone, point the FE preview at it
@@ -157,8 +148,8 @@ jobs:
         run: bun run scripts/cloudflare/smoke-preview-worker.ts
 
       # The push auto-deploy races this pin and is skipped by each app's
-      # vercel.json ignoreCommand (preview build skipped while DATABASE_URL is
-      # absent). Now that the env IS pinned, trigger the real build.
+      # vercel.json ignoreCommand (preview build skipped while NEXT_PUBLIC_API_URL
+      # is absent). Now that the env IS pinned, trigger the real build.
       - name: Trigger Vercel preview build (env now pinned)
         env:
           GIT_BRANCH: ${{ github.head_ref }}
@@ -179,9 +170,10 @@ jobs:
           DATABASE_URL: ${{ steps.db.outputs.database_url }}
           TURSO_AUTH_TOKEN: ${{ steps.db.outputs.auth_token }}
           GIT_BRANCH: ${{ github.head_ref }}
-          # Must match the per-PR prefix pinned on the Vercel preview (above),
-          # so jobs publishes realtime events to the SAME room the web/admin
-          # clients subscribe to. syncEnvVars forwards it into the Trigger env.
+          # Must match the per-PR prefix the Worker uses (deploy-preview-worker
+          # sets the same pr-<n>- on the Worker), so jobs publishes realtime
+          # events to the SAME room the web/admin clients subscribe to via the
+          # Worker-issued ticket. syncEnvVars forwards it into the Trigger env.
           REALTIME_ROOM_PREFIX: pr-${{ github.event.number }}-
         run: >
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
