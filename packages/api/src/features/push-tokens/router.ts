@@ -35,10 +35,26 @@ const sendTestInputSchema = z
   .default({});
 
 /**
+ * Resolve the token's owner server-side: `customerId` from the
+ * authenticated session, `organizationId` from the primary org. The
+ * client never supplies either (it can't be trusted to), so a token
+ * is always scoped to the caller. Throws until an org is provisioned.
+ */
+async function resolvePushIdentity(customerId: string) {
+  const organizationId = await getPrimaryOrganizationId();
+  if (!organizationId) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "No organization provisioned yet.",
+    });
+  }
+  return { customerId, organizationId };
+}
+
+/**
  * `protectedProcedure` — registering / revoking a push token is a
- * per-user action. Future hardening: scope `customerId` to the
- * caller's active organization instead of trusting the input
- * (matches the stub `clientes` router which has the same TODO).
+ * per-user action; `customerId` + `organizationId` are resolved from
+ * the session via `resolvePushIdentity`, never trusted from input.
  */
 export const pushTokensRouter = router({
   register: protectedProcedure
@@ -51,9 +67,10 @@ export const pushTokensRouter = router({
       }),
     )
     .input(registerInputSchema)
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const identity = await resolvePushIdentity(ctx.session.user.id);
       const service = new PushTokenService(new PushTokenRepository(ctx.db));
-      return service.register(input);
+      return service.register(input, identity);
     }),
 
   list: protectedProcedure
@@ -65,9 +82,10 @@ export const pushTokensRouter = router({
 
   revoke: protectedProcedure
     .input(revokeInputSchema)
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const identity = await resolvePushIdentity(ctx.session.user.id);
       const service = new PushTokenService(new PushTokenRepository(ctx.db));
-      return service.revoke(input);
+      return service.revoke(input.token, identity);
     }),
 
   /**

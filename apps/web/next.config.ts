@@ -35,19 +35,14 @@ const config: NextConfig = {
   transpilePackages: [
     "@loyalty/api",
     "@loyalty/auth",
-    "@loyalty/db",
     "@loyalty/log",
     "@loyalty/ui",
   ],
-  // `@libsql/client` (the Turso driver) ships native bindings, so it must
-  // be required from node_modules at runtime, not bundled — otherwise the
-  // server chunk fails with "Cannot find module '@libsql/client-<hash>'".
-  // The rest are provider deps loaded via `await import(...)` in
+  // Provider deps loaded via `await import(...)` in
   // @loyalty/{push,sms,whatsapp,cache,rate-limit,email,storage}; mark external
   // so the bundler doesn't try to resolve them and they're required from
   // node_modules at runtime (the lazy `new Function` import hides them from nft).
   serverExternalPackages: [
-    "@libsql/client",
     "web-push",
     "expo-server-sdk",
     "twilio",

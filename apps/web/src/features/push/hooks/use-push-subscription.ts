@@ -17,8 +17,6 @@ export type PushSubscriptionStatus =
   | "error";
 
 interface Args {
-  customerId: string;
-  organizationId: string;
   vapidPublicKey: string | undefined;
   deviceLabel?: string;
 }
@@ -31,12 +29,7 @@ interface Args {
  * MUST be called from a user gesture (e.g. button click) — see
  * `subscribeBrowserToPush` for the browser-policy reasoning.
  */
-export function usePushSubscription({
-  customerId,
-  organizationId,
-  vapidPublicKey,
-  deviceLabel,
-}: Args) {
+export function usePushSubscription({ vapidPublicKey, deviceLabel }: Args) {
   const [status, setStatus] = useState<PushSubscriptionStatus>("idle");
   const trpc = useTRPC();
   const register = useMutation(trpc.pushTokens.register.mutationOptions());
@@ -58,8 +51,6 @@ export function usePushSubscription({
         return;
       }
       await register.mutateAsync({
-        customerId,
-        organizationId,
         platform: "webpush",
         token: JSON.stringify(sub),
         ...(deviceLabel && { deviceLabel }),
@@ -68,13 +59,7 @@ export function usePushSubscription({
     } catch {
       setStatus("error");
     }
-  }, [
-    vapidPublicKey,
-    register,
-    customerId,
-    organizationId,
-    deviceLabel,
-  ]);
+  }, [vapidPublicKey, register, deviceLabel]);
 
   const unsubscribe = useCallback(async () => {
     try {
@@ -87,13 +72,13 @@ export function usePushSubscription({
       const token = sub ? JSON.stringify(sub.toJSON()) : null;
       await unsubscribeBrowserFromPush();
       if (token) {
-        await revoke.mutateAsync({ customerId, organizationId, token });
+        await revoke.mutateAsync({ token });
       }
       setStatus("idle");
     } catch {
       setStatus("error");
     }
-  }, [revoke, customerId, organizationId]);
+  }, [revoke]);
 
   return {
     status,
