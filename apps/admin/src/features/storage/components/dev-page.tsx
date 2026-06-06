@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Badge,
   Button,
   Card,
   CardContent,
@@ -26,18 +25,16 @@ interface AvatarForm {
  *   2. Multi-file — up to 5 docs with progress bars.
  *   3. Pure Dropzone — disabled, just the UI states.
  *
- * Gated by the `(dev)` layout (returns 404 in production).
+ * Gated by the `(dev)` layout (returns 404 in production). Uploads go through
+ * the standalone API Worker, which owns the storage provider.
  */
-export function StorageDevPage({ storageProvider }: { storageProvider: string }) {
+export function StorageDevPage() {
   const form = useForm<AvatarForm>({ defaultValues: { avatar: [] } });
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Storage smoke</h1>
-        <Badge variant="secondary">
-          STORAGE_PROVIDER = {storageProvider}
-        </Badge>
       </header>
 
       <Card>

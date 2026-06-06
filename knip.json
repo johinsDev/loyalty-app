@@ -24,14 +24,7 @@
         "app/**/{page,layout,loading,error,not-found,template,default,route,sitemap,robots,manifest}.{ts,tsx}",
         "src/env.ts",
         "src/lib/auth-guard.ts",
-        "src/lib/cache.ts",
         "src/lib/dev-only.ts",
-        "src/lib/email.ts",
-        "src/lib/push.ts",
-        "src/lib/realtime.ts",
-        "src/lib/sms.ts",
-        "src/lib/storage.ts",
-        "src/lib/whatsapp.ts",
         "src/features/realtime/hooks/use-customer-room.ts",
         "src/features/storage/hooks/use-file-upload.ts",
         "src/features/storage/components/file-upload.tsx",
@@ -40,8 +33,6 @@
       ],
       "project": ["**/*.{ts,tsx}"],
       "ignoreDependencies": [
-        "@upstash/ratelimit",
-        "@upstash/redis",
         "zustand",
         "immer",
         "@hookform/resolvers"
@@ -53,23 +44,14 @@
         "app/sw.ts",
         "src/env.ts",
         "src/lib/auth-guard.ts",
-        "src/lib/cache.ts",
-        "src/lib/email.ts",
         "src/lib/image-loader.ts",
-        "src/lib/push.ts",
         "src/lib/push-subscription.ts",
-        "src/lib/realtime.ts",
-        "src/lib/sms.ts",
-        "src/lib/storage.ts",
-        "src/lib/whatsapp.ts",
         "src/features/push/hooks/use-push-subscription.ts",
         "src/features/push/components/push-enable-button.tsx",
         "src/features/realtime/hooks/use-customer-room.ts"
       ],
       "project": ["**/*.{ts,tsx}"],
       "ignoreDependencies": [
-        "@upstash/ratelimit",
-        "@upstash/redis",
         "zustand",
         "immer"
       ]
