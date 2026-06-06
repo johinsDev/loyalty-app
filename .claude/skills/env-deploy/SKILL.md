@@ -16,8 +16,14 @@ This skill grows one section per delivery phase:
 | 1 — Infisical source of truth | `chore(env): adopt Infisical` | merged (#44) |
 | 2 — Dockerized local stack | `feat(dev): docker + sandbox` | merged (#45) |
 | 3 — Preview pipeline (Turso clone + mask + Vercel wiring) | `feat(repo): preview pipeline on Turso` | merged (#51) |
-| 4 — Prod pipeline (migrations + Trigger/PartyKit + Sentry + Slack) | `ci(prod): …` | planned |
+| 4 — Prod pipeline (migrations + Worker + Trigger + Sentry + Slack) | `ci(prod): …` | merged (#96 #97) |
 | 5 — Hardening + check-env gate | `docs(env-deploy): …` | planned |
+
+> **Production architecture is live.** The backend is a standalone Hono API
+> on Cloudflare Workers (`api.t4diverclub.app`); the Next apps are pure clients.
+> The env × provider matrix, the prod deploy pipeline and the Infisical folder
+> structure below reflect that end state. The README has the architecture
+> diagram; this skill is the secrets + deploy operational runbook.
 
 ---
 
@@ -31,12 +37,10 @@ This skill grows one section per delivery phase:
                 │  env: dev      env: preview   env: prod   │
                 │  ──────────    ────────────   ─────────   │
                 │  folders (exist in every environment):    │
-                │    /shared   db, providers, Twilio, R2…   │
-                │    /web      NEXT_PUBLIC_*, web ingest     │
-                │    /admin    Better Auth, Google OAuth     │
-                │    /jobs     Trigger.dev                   │
-                │    /partykit realtime worker               │
-                │    /mcp      Claude MCP + CI tokens        │
+                │    /shared   db, providers, R2, NEXT_PUBLIC_* │
+                │    /api      Worker-only secrets (not FE)  │
+                │    /ci       deploy creds (CF/Vercel/Turso…)│
+                │    /mcp      Claude MCP tokens             │
                 └───────┬───────────┬───────────┬───────────┘
                         │           │           │
         local dev ──────┘           │           └────── CI (GHA)
@@ -55,6 +59,117 @@ tooling + CI only (Better Stack MCP, Slack MCP, later Sentry CLI).
 The full variable → folder → env matrix lives in **`.env.example`** (read
 the header block). `.env.example` is the human-readable matrix; Infisical
 holds the values.
+
+### Infisical folder structure (post-Worker)
+
+| Folder | Consumed by | Examples (key names only) |
+| --- | --- | --- |
+| `/shared` | FE apps (web/admin) + jobs — app config, FE-facing | `DATABASE_URL`, `*_PROVIDER`, `R2_*`, `NEXT_PUBLIC_*` |
+| `/api` | the API Worker **only** (NOT synced to the FE Vercel projects) | `BETTER_AUTH_SECRET`, `TURSO_AUTH_TOKEN`, `UPSTASH_*`, `GOOGLE_CLIENT_*`, `TRIGGER_SECRET_KEY`, `REALTIME_AUTH_SECRET`, Sentry DSN, Better Stack source |
+| `/ci` | deploy creds — GHA workflows + manual deploy scripts | `CLOUDFLARE_*`, `VERCEL_*`, `TURSO_*`, `TRIGGER_ACCESS_TOKEN`, `PARTYKIT_LOGIN`/`PARTYKIT_TOKEN`, `SLACK_DEPLOY_WEBHOOK_URL` |
+| `/mcp` | Claude Code MCP + local tooling **only** | `BETTER_STACK_API_TOKEN`, `SLACK_BOT_TOKEN` |
+
+`/api` is the Worker's vault — it holds the secrets that used to live in the
+Next apps' env (Better Auth secret, Google OAuth, Trigger key…). Because the
+Worker is now the single auth issuer + tRPC server, those secrets **must not**
+be synced to the FE Vercel projects; `/shared` is the only folder that reaches
+the FE. `/ci` holds every deploy credential — the GitHub Actions workflows pull
+it via `infisical run --env=prod` (the only GitHub secrets are the Infisical
+machine identity).
+
+### Environment × provider matrix (the target per environment)
+
+Each `*_PROVIDER` / channel resolves to a real provider or a no-op per
+environment. This is the **target**; the "Current state vs target" note below
+flags the rows that aren't fully wired yet.
+
+| Concern | Dev | Preview | Prod |
+| --- | --- | --- | --- |
+| Logs | console | console | Better Stack |
+| A/B testing | PostHog | PostHog | PostHog |
+| Events / analytics | PostHog | PostHog | PostHog |
+| Auth — web | Google + Phone OTP | Phone OTP | Google + Phone OTP |
+| Auth — admin | Password + Magic Link | Password + Magic Link | Magic Link |
+| Email | console | outbox | Resend |
+| SMS | console | outbox | Twilio |
+| WhatsApp | console | outbox | Twilio |
+| Push (web) | console | VAPID web-push | VAPID web-push |
+| Storage | local | R2 + per-PR folder | R2 |
+| Images | next (default) | next (default) | Cloudflare Images |
+| Realtime | PartyKit (local :1999) | PartyKit + per-PR room prefix | PartyKit |
+| Cron | Trigger.dev | Trigger.dev | Trigger.dev |
+| Background tasks | Trigger.dev | Trigger.dev | Trigger.dev |
+| Error tracking | null | null | Sentry |
+| Cache | redis (Docker) | memory | Upstash |
+| Rate limit | redis (Docker) | memory | Upstash |
+| DB | SQLite (local) | Turso per-PR branch/clone | Turso |
+
+**Current state vs target** — the matrix is the target; not every row is wired:
+
+- **Auth — admin**: matrix targets Magic Link in prod; admin **currently uses
+  Google** in prod. Current = web phone-OTP + admin Google. A deferred auth
+  refactor moves web → Google-only and admin → password + passwordless
+  (Magic Link).
+- **SMS / WhatsApp / Email prod creds** (Twilio/Resend) currently live in the
+  **Trigger.dev dashboard** (the jobs send them), not all in Infisical yet.
+
+---
+
+## Prod deploy pipeline (a merge to `main` ships the backend)
+
+Front-ends auto-deploy via Vercel's Git integration on every push to `main`.
+Everything else ships from two path-filtered GitHub Actions workflows, both
+gated on the repo variable `PROD_DEPLOY_ENABLED=true`:
+
+```
+push to main
+   ├─ apps/api/** or packages/** ─▶ .github/workflows/deploy-prod.yml
+   │     1. DB migrate (prod Turso)        (idempotent; runs first)
+   │     2. API Worker deploy (code only)  WORKER_DEPLOY_SKIP_SECRETS=true
+   │     3. Trigger.dev jobs deploy + env sync  (syncEnvVars UPSERTS)
+   │     4. Slack summary (inert until SLACK_DEPLOY_WEBHOOK_URL set)
+   │
+   └─ partykit/** ────────────────▶ .github/workflows/deploy-partykit.yml
+         redeploy the PROD party (partykit.t4diverclub.app) only
+```
+
+- **`deploy-prod.yml`** runs **migrate → Worker → Trigger** in order (code never
+  deploys against an un-migrated DB). The Worker deploy is **code-only**
+  (`WORKER_DEPLOY_SKIP_SECRETS=true`) — its secrets persist across deploys; run
+  `bun run worker:deploy:prod` locally to re-sync after rotating one. The
+  Trigger step's `syncEnvVars` (in `trigger.config.ts`) **upserts** — it pushes
+  the Infisical-injected vars (DB/auth/realtime/VAPID) without deleting the
+  dashboard-managed ones (Twilio/Resend).
+- **`deploy-partykit.yml`** redeploys the **prod party only**. Two known gaps:
+  it does **not** redeploy the staging party (redeploy it separately on
+  `partykit/**` changes), and it needs `PARTYKIT_TOKEN` in Infisical prod `/ci`
+  to authenticate (the local token is a rotating Clerk session; CI needs a
+  stable one). Until that's set, `bun run partykit:deploy` is the manual path.
+- **Manual deploys**: `bun run worker:deploy:prod` (full Worker + secrets re-push)
+  and `bun run partykit:deploy` (the party).
+- **Auth**: both workflows use the **same single Infisical machine identity**
+  (`INFISICAL_MACHINE_IDENTITY_CLIENT_ID` / `_SECRET`) — the only GitHub
+  secrets. Cloudflare/Vercel/Turso/Trigger/PartyKit creds all come from
+  Infisical prod `/ci` + `/api` + `/shared` via `infisical run --env=prod
+  --recursive`.
+
+### Per-PR preview Worker
+
+`preview.yml` deploys a per-PR Worker `loyalty-api-pr-N` at
+`api.pr-N.t4diverclub.app` (generated `wrangler.preview.toml`), wires the FE
+subdomains `admin.pr-N` / `app.pr-N`, and pins `NEXT_PUBLIC_API_URL` to the PR
+Worker before the build so the FE points at it. The cookie domain is scoped to
+`.pr-N.t4diverclub.app` (no leak across PRs/prod). `preview-cleanup.yml` tears
+it all down on PR close.
+
+### Pending one-time configs (TODO)
+
+- Rotate the Upstash token (deferred — cache unused so far).
+- Add `SLACK_DEPLOY_WEBHOOK_URL` to Infisical prod `/ci` to arm the Slack notify.
+- Add `PARTYKIT_TOKEN` to Infisical prod `/ci` to arm `deploy-partykit.yml`.
+- Add a staging-party redeploy step to `deploy-partykit.yml`.
+- Step-6 FE env trim: drop the now-unused Next `/api/trpc` + `/api/auth` routes,
+  make the FE env optional for DB/auth when going via the Worker.
 
 ---
 
@@ -269,12 +384,17 @@ only for tokens that genuinely differ in prod, e.g. a prod Sentry token).
 Configured **once in the Infisical dashboard** (Integrations → Vercel),
 not in code:
 
-- Infisical `preview` → each Vercel project's *Preview* env.
+- Infisical `staging`/`preview` → each Vercel project's *Preview* env.
 - Infisical `prod` → each Vercel project's *Production* env.
-- Scope per project by folder:
-  - `loyalty-app-web`   ← `/shared` + `/web`
-  - `loyalty-app-admin` ← `/shared` + `/admin`
+- Scope per project — the FE projects sync from **`/shared` only** (the Worker's
+  `/api` folder is NOT synced to Vercel; the FE is a thin client of the Worker):
+  - `loyalty-app-web`   ← `/shared`
+  - `loyalty-app-admin` ← `/shared`
   - `loyalty-app-storybook` ← `/shared` (minimal)
+
+The API Worker does **not** deploy through Vercel — it ships via
+`deploy-prod.yml` (see the prod deploy pipeline above), reading `/shared` +
+`/api` from Infisical at deploy time.
 
 After wiring, **stop hand-editing env in the Vercel dashboard** — it is
 overwritten on the next sync. Change the value in Infisical instead.
@@ -302,10 +422,10 @@ strict env strips any var not declared there, so the app boots with it
 
 | Consumer | File | Notes |
 | --- | --- | --- |
-| `apps/web` | `apps/web/src/env.ts` | `server` block; client-exposed vars (`NEXT_PUBLIC_*`) go in `client` + `experimental__runtimeEnv`. |
+| `apps/web` | `apps/web/src/env.ts` | `server` block; client-exposed vars (`NEXT_PUBLIC_*`) go in `client` + `experimental__runtimeEnv`. The FE is a thin client of the Worker — most server secrets belong on the Worker, not here. |
 | `apps/admin` | `apps/admin/src/env.ts` | same shape. |
-| `packages/api` | the consuming app's `env.ts` | the API has no own env file — it runs inside web/admin and reads their validated `env`. Declare in whichever app(s) use it. |
-| `packages/jobs` (Trigger) | `packages/jobs/env.ts` | `server` block; both this and the db client are **lazy** — read `env.X` inside a task's `run()`, never at module top-level. |
+| `apps/api` (Worker) | `apps/api/src/lib/env.ts` | the Worker reads `process.env` (from `[vars]` + secrets); declare Worker-only secrets here. Store the value in Infisical `/api` (NOT synced to Vercel) and re-push with `bun run worker:deploy:prod`. |
+| `packages/jobs` (Trigger) | `packages/jobs/env.ts` | `server` block; both this and the db client are **lazy** — read `env.X` inside a task's `run()`, never at module top-level. Add the key to `syncEnvVars` in `trigger.config.ts` to push it. |
 
 Use `requireWhen(...)` for conditionally-required creds (required only when a
 provider is selected), like the Twilio/VAPID/Upstash vars.
@@ -364,11 +484,15 @@ That preview sends real WhatsApp via Twilio; every other preview stays on
 ## Rotating a secret
 
 1. `infisical secrets set KEY=NEWVALUE --env=prod --path=/shared`
-   (or the dashboard).
-2. Vercel: redeploy (or wait for the next deploy) — the sync re-pushes.
-3. Trigger.dev / PartyKit: re-run their deploy (Fase 4 automates this via
-   `syncEnvVars` + `partykit env push`).
-4. If it is an `/mcp` token: restart your Claude Code session.
+   (or `/api` for a Worker-only secret; or the dashboard).
+2. **FE (Vercel)**: redeploy (or wait for the next deploy) — the sync re-pushes
+   `/shared`.
+3. **API Worker**: re-run `bun run worker:deploy:prod` (a code-only auto-deploy
+   skips secrets, so a rotated Worker secret needs this manual re-push).
+4. **Trigger.dev**: the next `deploy-prod.yml` run re-syncs via `syncEnvVars`
+   (upsert). **PartyKit**: re-run `bun run partykit:deploy` (the secret rides in
+   via `--var`, not `partykit env push` — that targets PartyKit cloud).
+5. If it is an `/mcp` token: restart your Claude Code session.
 
 Never commit a real value to `.env.example` — it is the matrix, not a vault.
 
@@ -382,8 +506,10 @@ Never commit a real value to `.env.example` — it is the matrix, not a vault.
 | Local dev still uses `.env`, not Infisical | No `.infisical.json` yet. Run `infisical init`. |
 | CI fails calling infisical | The wrapper should skip on `CI=true`. Check the workflow isn't calling `infisical run` directly without a service token. |
 | A var is missing only on Vercel preview | It is not in `/shared` or the app's folder, or the Infisical→Vercel integration scope excludes that folder. |
-| `invalid_client` on Google in preview | Preview uses a *different* Google OAuth client than prod (Fase 4). Confirm `GOOGLE_CLIENT_ID/SECRET` in Infisical `preview:/admin` and the redirect URI in that client. |
-| Trigger deploy: "X is not set" | Fase 4 wires `syncEnvVars` from Infisical + lazy-init. Until then Trigger env is the dashboard. |
+| `invalid_client` on Google | Worker is the auth issuer — `GOOGLE_CLIENT_*` live in Infisical `/api` and the redirect URI is `https://api.t4diverclub.app/api/auth/callback/google`. Preview uses a different client than prod (no per-PR wildcards), so Google is not used in preview. |
+| Trigger deploy: "X is not set" | `deploy-prod.yml` syncs Trigger env via `syncEnvVars` (upsert) from Infisical prod. Add the key to the `syncEnvVars` list in `trigger.config.ts`; dashboard-managed creds (Twilio/Resend) stay. |
+| Worker missing a secret after rotation | Auto-deploys are code-only (`WORKER_DEPLOY_SKIP_SECRETS=true`). Re-push with `bun run worker:deploy:prod`. |
+| `deploy-partykit.yml` does nothing / auth fails | Needs `PARTYKIT_TOKEN` in Infisical prod `/ci`; until then use `bun run partykit:deploy`. It also only redeploys the **prod** party — redeploy staging separately. |
 | `dev:docker`: web/admin crash on boot | `env.ts` throws if `DATABASE_URL`/`BETTER_AUTH_SECRET` missing. The compose fallbacks cover this; if you overrode them with empty values, unset the override. |
 | `dev:docker`: db calls fail with a fetch/HTTP error | The libsql server isn't reachable. Confirm `DATABASE_URL=http://libsql:8080` in the container and `libsql` is up (`docker compose logs libsql`). |
 | `dev:docker`: `URL_PARAM_NOT_SUPPORTED: sslmode` | A stale Postgres `DATABASE_URL` (old Neon, with `sslmode`) leaked in. Compose hardcodes `http://libsql:8080`; if you see this, something overrode it — check `docker compose config` for the resolved value. |
@@ -493,31 +619,19 @@ No Better Stack in preview (prod-only). Errors → **Sentry with
 not prod-only). Plain logs → Vercel runtime logs. That's the agreed
 split: Sentry for exceptions, Vercel for logs.
 
-### Future: Cloudflare Workers (Hono API)
+### Cloudflare Workers (Hono API) in preview — DONE
 
-When the tRPC layer is extracted to a Hono app on Cloudflare Workers, it
-slots in here: a `wrangler deploy --env preview` step in `preview.yml`
-reading `/shared` + a new `/api` Infisical folder, its own
-`*.workers.dev` preview URL pinned alongside the Vercel ones. Not built —
-documented so the shape is known.
+The tRPC + Better Auth layer ships as a per-PR Worker. `preview.yml` deploys
+`loyalty-api-pr-N` at `api.pr-N.t4diverclub.app` (a generated
+`wrangler.preview.toml`), reading `/shared` + `/api` from Infisical, and pins
+`NEXT_PUBLIC_API_URL` to it before the build so the FE points at the PR Worker.
+FE subdomains `admin.pr-N` / `app.pr-N` are aliased alongside; the cookie domain
+is `.pr-N.t4diverclub.app`. `preview-cleanup.yml` tears it all down on PR close.
 
 ---
 
 ## Future phases (placeholders — do not implement here)
 
-- **Fase 4**: `.github/workflows/deploy-prod.yml` — Neon snapshot +
-  migrate, re-introduced lazy `@loyalty/db` + lazy jobs env +
-  `syncEnvVars`, Slack deploy notify, `check-env.ts` gate. Plus the
-  preview refinements decided in Fase 3 review:
-  - **dedicated per-preview** PartyKit worker + Trigger env per PR (not
-    shared prod workers) — both `preview.yml` and prod deploy.
-  - **Sentry**: web + admin are **done** (`@sentry/nextjs`, gated on
-    `NEXT_PUBLIC_SENTRY_DSN`, enabled for `preview` AND `prod` via the
-    `environment` tag — see the `sentry` skill). `SENTRY_AUTH_TOKEN` is
-    build-time → Plain Text in Vercel, not Sensitive. **jobs** (Trigger)
-    Sentry is still net-new and lands here.
-  - **Google OAuth** preview-vs-prod client split + the
-    `preview-restore-owner` step (un-mask `johinsdev@gmail.com` so the
-    owner can Google-login a preview; cashiers via impersonate).
 - **Fase 5**: `check-env.ts` as a hard gate on preview + prod; secret
-  rotation runbook across all surfaces.
+  rotation runbook across all surfaces; the step-6 FE env trim (make the FE
+  env optional for DB/auth now that the Worker is the issuer + tRPC server).
