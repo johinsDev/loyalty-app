@@ -1,22 +1,10 @@
 import "server-only";
 
-import {
-  type AppRouter,
-  appRouter,
-  baseProperties,
-  createContext,
-  resolveDistinctId,
-} from "@loyalty/api";
+import { type AppRouter, appRouter } from "@loyalty/api";
 import { createTRPCUntypedClient, httpBatchLink } from "@trpc/client";
 import { headers } from "next/headers";
 import superjson from "superjson";
 
-import { analytics } from "../analytics";
-import { flags } from "../feature-flags";
-import { log } from "../log";
-import { rateLimiter } from "../rate-limit";
-import { realtime } from "../realtime";
-import { storage } from "../storage";
 import { getTrpcUrl } from "./shared";
 
 type ServerCaller = ReturnType<typeof appRouter.createCaller>;
@@ -80,30 +68,12 @@ const httpCaller = (cookie: string): ServerCaller => {
 /**
  * Server-side tRPC caller for RSC + route handlers.
  *
- * Cutover switch: when `NEXT_PUBLIC_API_URL` is set, server calls go over HTTP
- * to the standalone Worker, forwarding the request's session cookie. Unset →
- * the in-process caller (current behaviour, no extra hop) so the live pilot is
- * unchanged. See the api-worker plan (Phase 2).
+ * Always goes over HTTP to the standalone Worker (`api.t4diverclub.app`),
+ * forwarding the request's session cookie so the Worker authenticates the
+ * request the same way Better Auth would. The FE is a thin client — there is
+ * no in-process backend path.
  */
 export const trpc = async (): Promise<ServerCaller> => {
   const requestHeaders = await headers();
-
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return httpCaller(requestHeaders.get("cookie") ?? "");
-  }
-
-  const ctx = await createContext({ headers: requestHeaders });
-  const distinctId = resolveDistinctId(ctx);
-  return appRouter.createCaller({
-    ...ctx,
-    realtime,
-    storage,
-    rateLimiter,
-    analytics: analytics.forRequest({
-      distinctId,
-      baseProperties: baseProperties(ctx, "admin"),
-    }),
-    flags: flags.forRequest({ distinctId }),
-    log,
-  });
+  return httpCaller(requestHeaders.get("cookie") ?? "");
 };
