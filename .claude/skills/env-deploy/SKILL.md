@@ -130,7 +130,7 @@ push to main
    │     4. Slack summary (inert until SLACK_DEPLOY_WEBHOOK_URL set)
    │
    └─ partykit/** ────────────────▶ .github/workflows/deploy-partykit.yml
-         redeploy the PROD party (partykit.t4diverclub.app) only
+         redeploy the PROD party (realtime.t4diverclub.app) only
 ```
 
 - **`deploy-prod.yml`** runs **migrate → Worker → Trigger** in order (code never

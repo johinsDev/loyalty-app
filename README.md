@@ -301,13 +301,13 @@ The backend was extracted out of Next.js into a standalone **Hono API on Cloudfl
           │                      └────────────────┘           └──────────────────┘
           │ wss
           ▼
-   partykit.t4diverclub.app  (PartyKit cloud-prem on Cloudflare)
+   realtime.t4diverclub.app  (PartyKit cloud-prem on Cloudflare)
 ```
 
 - **API** — a standalone Hono app deployed as one Cloudflare Worker (`loyalty-api`) at `https://api.t4diverclub.app`. It mounts Better Auth at `/api/auth/*` (a single issuer) and tRPC at `/trpc/*`, reusing `@loyalty/api`'s `appRouter` + `createContext` unchanged. `nodejs_compat` is on (Better Auth + crypto + `process.env`); the Worker is **"lean"** — heavy sends (Twilio/Resend/web-push) are enqueued to Trigger.dev jobs, never sent inline. DB access is `@libsql/client/web` against Turso.
 - **Front-ends** — the Next.js apps on Vercel: admin (`https://admin.t4diverclub.app`) and the web/customer PWA (`https://app.t4diverclub.app`). They are pure clients: when `NEXT_PUBLIC_API_URL` is set they call the Worker for both tRPC and auth. Auth is **same-site cross-subdomain** — the Better Auth cookie is `Domain=.t4diverclub.app`, `SameSite=Lax`, `Secure`, so it's shared across `api.` / `admin.` / `app.` with no Bearer tokens. The cutover (flipping `NEXT_PUBLIC_API_URL` → the Worker) is **done in prod**.
 - **Background jobs / cron** — Trigger.dev (Node). The Worker enqueues; the jobs do the actual sends and run scheduled work.
-- **Realtime** — PartyKit, deployed cloud-prem on Cloudflare. There are **three separate parties** (one Worker each, deployed with a distinct `--name`): dev runs locally at `localhost:1999`; preview/staging is `partykit-staging.t4diverclub.app`; prod is `partykit.t4diverclub.app`. Each has its own `REALTIME_AUTH_SECRET`. **Gotcha:** PartyKit cloud-prem deploys a project as a single Worker named `<login>-<projectName>`, and `--domain` sets that Worker's one custom domain — so separate prod/staging parties **require different `--name` values**, otherwise the second deploy steals the domain from the first.
+- **Realtime** — PartyKit, deployed cloud-prem on Cloudflare. There are **three separate parties** (one Worker each, deployed with a distinct `--name`): dev runs locally at `localhost:1999`; preview/staging is `partykit-staging.t4diverclub.app`; prod is `realtime.t4diverclub.app`. Each has its own `REALTIME_AUTH_SECRET`. **Gotcha:** PartyKit cloud-prem deploys a project as a single Worker named `<login>-<projectName>`, and `--domain` sets that Worker's one custom domain — so separate prod/staging parties **require different `--name` values**, otherwise the second deploy steals the domain from the first.
 - **DB** — Turso (libSQL). Prod is the `loyalty-app` database; previews each get a per-PR masked clone; dev is a local SQLite (Docker libSQL on `:8080`).
 - **Secrets** — Infisical (project `loyalty-app`). See "Infisical secret structure" below.
 
