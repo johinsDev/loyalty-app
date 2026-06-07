@@ -61,6 +61,8 @@
   "Auth": {
     "title": "Sign in",
     "subtitle": "Welcome to T4",
+    "completePhoneTitle": "Add your phone",
+    "completePhoneSubtitle": "We need your number to set up your loyalty card.",
     "googleButton": "Continue with Google",
     "or": "or",
     "phoneLabel": "Phone",

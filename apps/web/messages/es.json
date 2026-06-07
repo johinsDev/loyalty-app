@@ -61,6 +61,8 @@
   "Auth": {
     "title": "Iniciar sesión",
     "subtitle": "Bienvenido a T4",
+    "completePhoneTitle": "Completá tu teléfono",
+    "completePhoneSubtitle": "Necesitamos tu número para crear tu tarjeta de fidelización.",
     "googleButton": "Continuar con Google",
     "or": "o",
     "phoneLabel": "Teléfono",

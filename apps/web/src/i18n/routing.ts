@@ -13,6 +13,7 @@ export const routing = defineRouting({
     "/card": { es: "/tarjeta", en: "/card" },
     "/notifications": { es: "/notificaciones", en: "/notifications" },
     "/sign-in": { es: "/iniciar-sesion", en: "/sign-in" },
+    "/complete-phone": { es: "/completar-telefono", en: "/complete-phone" },
   },
 });
 

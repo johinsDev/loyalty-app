@@ -68,11 +68,17 @@ export function usePhoneOtp() {
   }, []);
 
   const verifyOtp = useCallback(
-    async (code: string): Promise<boolean> => {
+    async (
+      code: string,
+      opts?: { updatePhoneNumber?: boolean },
+    ): Promise<boolean> => {
       setState((s) => ({ ...s, isVerifying: true, error: null }));
       const { error } = await authClient.phoneNumber.verify({
         phoneNumber: state.phone,
         code,
+        // When linking a phone to an already-authenticated (Google) user,
+        // update the current session's user instead of creating a new one.
+        ...(opts?.updatePhoneNumber && { updatePhoneNumber: true }),
       });
       if (error) {
         setState((s) => ({
