@@ -10,4 +10,10 @@
 
 export { EmailLayout } from "./components/email-layout";
 export { renderEmail } from "./render";
+export {
+  TEST_EMAIL_TEMPLATE_IDS,
+  TEST_EMAIL_TEMPLATES,
+  renderTestEmailTemplate,
+  type TestEmailTemplateId,
+} from "./test-templates";
 export { WelcomeEmail, type WelcomeEmailProps } from "./templates/welcome-email";

@@ -138,7 +138,22 @@
     "labelReplyTo": "Reply-To:",
     "noBody": "(no body)",
     "metadataTitle": "Metadata",
-    "providerMessageId": "Provider message ID:"
+    "providerMessageId": "Provider message ID:",
+    "testTitle": "Send test email",
+    "testToLabel": "Recipient",
+    "testModeLabel": "Mode",
+    "testModeTemplate": "Template",
+    "testModeCustom": "Custom",
+    "testMailerLabel": "Mailer",
+    "mailerDefault": "Env default",
+    "testTemplateLabel": "Template",
+    "testSubjectLabel": "Subject",
+    "testHtmlLabel": "HTML body",
+    "testResendHint": "Sends a real email via Resend.",
+    "testButton": "Send test email",
+    "testSending": "Sending…",
+    "testSent": "Test email queued via {mailer}. If the active provider is outbox it will appear below in a few seconds.",
+    "testFailedGeneric": "Couldn't send the test email"
   },
   "PushOutbox": {
     "title": "Push Outbox",

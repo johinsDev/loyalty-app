@@ -11,6 +11,7 @@ import {
 import { FiltersForm } from "./filters-form";
 import { OutboxTable } from "./outbox-table";
 import { OutboxTableSkeleton } from "./outbox-table-skeleton";
+import { SendTestEmailForm } from "./send-test-email-form";
 
 type Props = { searchParams: RawSearchParams };
 
@@ -27,6 +28,8 @@ export async function OutboxList({ searchParams }: Props) {
         </div>
         <RefreshButton />
       </header>
+
+      <SendTestEmailForm />
 
       <FiltersForm />
 

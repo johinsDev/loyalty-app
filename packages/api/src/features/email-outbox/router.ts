@@ -1,11 +1,32 @@
-import { publicProcedure, router } from "../../trpc";
+import { tasks } from "@trigger.dev/sdk/v3";
+
+import { ownerProcedure, publicProcedure, router } from "../../trpc";
 import { EmailOutboxRepository } from "./repository";
 import {
   getInputSchema,
   latestForRecipientInputSchema,
   listInputSchema,
+  sendTestInputSchema,
 } from "./schemas";
 import { EmailOutboxService } from "./service";
+
+// Untyped trigger by ID — typing the payload would couple @loyalty/api
+// to @loyalty/jobs, but jobs already depends on api (cycle). The shape
+// stays in sync with packages/jobs/trigger/send-test-email.ts.
+type SendTestEmailPayload =
+  | {
+      mode: "template";
+      to: string;
+      templateId: "welcome";
+      mailer?: "log" | "outbox" | "resend";
+    }
+  | {
+      mode: "custom";
+      to: string;
+      subject: string;
+      html: string;
+      mailer?: "log" | "outbox" | "resend";
+    };
 
 /**
  * `publicProcedure` on purpose: the dev view on apps/web is gated by
@@ -39,5 +60,19 @@ export const emailOutboxRouter = router({
         new EmailOutboxRepository(ctx.db),
       );
       return service.latestForRecipient(input);
+    }),
+
+  /**
+   * Owner-only smoke helper behind the admin /email-outbox dev tool.
+   * Queues the `send-test-email` Trigger.dev task (template or custom
+   * body, optional mailer override) and returns immediately. Unlike the
+   * read procedures this is `ownerProcedure`: sending is a real side
+   * effect, so it's gated server-side, not just at the page layer.
+   */
+  sendTest: ownerProcedure
+    .input(sendTestInputSchema)
+    .mutation(async ({ input }) => {
+      await tasks.trigger("send-test-email", input as SendTestEmailPayload);
+      return { ok: true as const };
     }),
 });
