@@ -15,4 +15,10 @@ export {
   type MagicLinkEmailProps,
   renderMagicLinkEmail,
 } from "./templates/magic-link-email";
+export {
+  TEST_EMAIL_TEMPLATE_IDS,
+  TEST_EMAIL_TEMPLATES,
+  renderTestEmailTemplate,
+  type TestEmailTemplateId,
+} from "./test-templates";
 export { WelcomeEmail, type WelcomeEmailProps } from "./templates/welcome-email";

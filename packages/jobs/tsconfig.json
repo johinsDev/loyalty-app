@@ -1,8 +1,11 @@
 {
   "extends": "@loyalty/tsconfig/base.json",
-  // `react-jsx` so tsc can type-check the `@loyalty/email-templates` (.tsx)
-  // source it pulls in for the magic-link email render helper.
-  "compilerOptions": { "jsx": "react-jsx" },
+  // `react-jsx` + DOM lib so tsc can type-check the `@loyalty/email-templates`
+  // (.tsx) sources it pulls in for the magic-link + test-email render helpers.
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "jsx": "react-jsx"
+  },
   "include": ["trigger", "log.ts", "trigger.config.ts"],
   "exclude": ["node_modules", "dist", ".trigger"]
 }

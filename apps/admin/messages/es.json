@@ -139,7 +139,22 @@
     "labelReplyTo": "Responder a:",
     "noBody": "(sin cuerpo)",
     "metadataTitle": "Metadata",
-    "providerMessageId": "Provider message ID:"
+    "providerMessageId": "Provider message ID:",
+    "testTitle": "Enviar email de prueba",
+    "testToLabel": "Destinatario",
+    "testModeLabel": "Modo",
+    "testModeTemplate": "Template",
+    "testModeCustom": "Personalizado",
+    "testMailerLabel": "Mailer",
+    "mailerDefault": "Default del entorno",
+    "testTemplateLabel": "Template",
+    "testSubjectLabel": "Asunto",
+    "testHtmlLabel": "Cuerpo HTML",
+    "testResendHint": "Envía un email real vía Resend.",
+    "testButton": "Enviar email de prueba",
+    "testSending": "Enviando…",
+    "testSent": "Email de prueba encolado vía {mailer}. Si el provider activo es outbox, aparecerá abajo en unos segundos.",
+    "testFailedGeneric": "No se pudo enviar el email de prueba"
   },
   "PushOutbox": {
     "title": "Push Outbox",
