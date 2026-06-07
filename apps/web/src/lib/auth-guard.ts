@@ -28,6 +28,21 @@ export async function requireSession() {
   return session;
 }
 
+/**
+ * Like `requireSession`, but also requires the user to have a verified phone —
+ * i.e. to be a loyalty `customer`. Phone is the loyalty identity, so a user who
+ * signed in with Google has no phone yet: send them to `/complete-phone` to
+ * capture + verify it (which links the phone and provisions the customer). Use
+ * on every authenticated customer page. The proxy already guarantees a session
+ * cookie, so this only adds the phone gate.
+ */
+export async function requireCustomer() {
+  const session = await requireSession();
+  const phone = (session.user as { phoneNumber?: string | null }).phoneNumber;
+  if (!phone) redirect("/complete-phone");
+  return session;
+}
+
 export async function requireRole(allowed: readonly Role[]) {
   if (viaWorker) {
     const me = await (await trpc()).auth.me().catch(() => null);

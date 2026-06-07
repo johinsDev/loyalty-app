@@ -101,39 +101,6 @@ export function createAuth(
 
   return betterAuth({
     database: drizzleAdapter(db, { provider: "sqlite" }),
-    databaseHooks: {
-      user: {
-        create: {
-          // Mirror every phone-verified web sign-up into a `customer` row
-          // (id = user.id) so push tokens + notifications can address the
-          // person by their `session.user.id`. Phone-less accounts (admin
-          // Google sign-in) are intentionally not customers.
-          after: async (user) => {
-            const phone = (user as { phoneNumber?: string | null })
-              .phoneNumber;
-            if (!phone) return;
-            const organizationId = await getPrimaryOrganizationId();
-            if (!organizationId) return;
-            try {
-              await provisionCustomerForUser({
-                userId: user.id,
-                organizationId,
-                phone,
-                email: user.email ?? null,
-                name: user.name ?? null,
-              });
-            } catch (error) {
-              // Best-effort — never block sign-up on customer provisioning.
-              console.error("[auth] failed to provision customer", {
-                userId: user.id,
-                organizationId,
-                error: error instanceof Error ? error.message : String(error),
-              });
-            }
-          },
-        },
-      },
-    },
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL,
     // Better Auth rejects any request whose Origin isn't listed here
@@ -213,11 +180,47 @@ export function createAuth(
                   `${phone.replace(/\+/g, "")}@phone.local`,
                 getTempName: (phone) => phone,
               },
+              // Phone is the loyalty identity, so mirror the verified user into a
+              // `customer` row here. This is the single seam covering BOTH the
+              // phone-signup verify AND the Google→phone-link verify
+              // (`updatePhoneNumber: true`), so a Google customer who completes
+              // the phone step also gets provisioned. Idempotent.
+              callbackOnVerification: async ({ phoneNumber, user }) => {
+                await provisionCustomer(user, phoneNumber);
+              },
             }),
           ]
         : []),
     ],
   });
+}
+
+// Mirror a phone-verified user into a `customer` row (id = user.id) so push
+// tokens + notifications address the person by `session.user.id`. Called from
+// the phoneNumber plugin's `callbackOnVerification` — fires for both a fresh
+// phone signup and a Google user linking their phone. Best-effort + idempotent
+// (provisionCustomerForUser uses onConflictDoNothing) — never blocks verify.
+async function provisionCustomer(
+  user: { id: string; email?: string | null; name?: string | null },
+  phone: string,
+): Promise<void> {
+  const organizationId = await getPrimaryOrganizationId();
+  if (!organizationId) return;
+  try {
+    await provisionCustomerForUser({
+      userId: user.id,
+      organizationId,
+      phone,
+      email: user.email ?? null,
+      name: user.name ?? null,
+    });
+  } catch (error) {
+    console.error("[auth] failed to provision customer", {
+      userId: user.id,
+      organizationId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 // Hard cap per phone number across IPs/clients. Better Auth's rate limit

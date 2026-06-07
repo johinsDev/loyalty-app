@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  Alert,
-  AlertDescription,
   Button,
   Card,
   CardContent,
@@ -15,11 +13,9 @@ import {
   InputPhone,
   isValidE164Phone,
   Label,
-  Separator,
 } from "@loyalty/ui";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -27,14 +23,16 @@ import { z } from "zod";
 import { useRouter } from "@/i18n/navigation";
 
 import { usePhoneOtp } from "../hooks/use-phone-otp";
-import { GoogleSignInButton } from "./google-sign-in-button";
 
-export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
+/**
+ * Phone-capture step for customers who signed in with Google (the loyalty
+ * identity is the phone). Verifying with `updatePhoneNumber: true` links the
+ * phone to the current session and the Worker provisions their `customer` row.
+ */
+export function CompletePhoneForm() {
   const t = useTranslations("Auth");
   const locale = useLocale();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const forbidden = searchParams.get("error") === "forbidden";
   const otp = usePhoneOtp();
   const [codeInput, setCodeInput] = useState("");
 
@@ -63,7 +61,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const onVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (codeInput.length !== 6) return;
-    const ok = await otp.verifyOtp(codeInput);
+    const ok = await otp.verifyOtp(codeInput, { updatePhoneNumber: true });
     if (ok) router.push("/");
   };
 
@@ -75,28 +73,10 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>{t("title")}</CardTitle>
-        <CardDescription>{t("subtitle")}</CardDescription>
+        <CardTitle>{t("completePhoneTitle")}</CardTitle>
+        <CardDescription>{t("completePhoneSubtitle")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {forbidden ? (
-          <Alert variant="default" className="border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100">
-            <AlertDescription>{t("errorForbidden")}</AlertDescription>
-          </Alert>
-        ) : null}
-        {googleEnabled ? (
-          <>
-            <GoogleSignInButton />
-
-            <div className="relative">
-              <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs uppercase text-muted-foreground">
-                {t("or")}
-              </span>
-            </div>
-          </>
-        ) : null}
-
         {otp.step === "phone" ? (
           <form className="space-y-3" onSubmit={onRequestOtp} noValidate>
             <div className="space-y-1.5">
