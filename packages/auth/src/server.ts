@@ -7,7 +7,7 @@ import {
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
-import { organization, phoneNumber } from "better-auth/plugins";
+import { magicLink, organization, phoneNumber } from "better-auth/plugins";
 import { and, eq, gte, sql } from "drizzle-orm";
 
 import { coerceRole, ROLES, type Role } from "./roles";
@@ -24,6 +24,12 @@ export {
 
 export type AuthDeps = {
   sendOtp?: (args: { phoneNumber: string; code: string }) => Promise<void>;
+  /**
+   * Deliver the admin passwordless magic-link. Better Auth builds the full
+   * `url`; we just send it (the Worker enqueues a Trigger.dev email task so the
+   * lean Worker never runs the mailer). Omitted → the magicLink plugin is off.
+   */
+  sendMagicLink?: (args: { email: string; url: string }) => Promise<void>;
 };
 
 export type CreateAuthOptions = {
@@ -162,6 +168,7 @@ export function createAuth(
         "/phone-number/send-otp": { window: 60, max: 3 },
         "/phone-number/verify": { window: 60, max: 5 },
         "/sign-in/social": { window: 60, max: 10 },
+        "/sign-in/magic-link": { window: 60, max: 3 },
       },
     },
     emailAndPassword:
@@ -178,6 +185,20 @@ export function createAuth(
       : undefined,
     plugins: [
       organization(),
+      // Admin passwordless sign-in. `disableSignUp` → a magic-link to an
+      // unknown email is refused (staff are seeded/invited, never self-serve),
+      // which is what keeps this safe to leave enabled in prod.
+      ...(deps.sendMagicLink
+        ? [
+            magicLink({
+              expiresIn: 300,
+              disableSignUp: true,
+              sendMagicLink: async ({ email, url }) => {
+                await deps.sendMagicLink!({ email, url });
+              },
+            }),
+          ]
+        : []),
       ...(deps.sendOtp
         ? [
             phoneNumber({

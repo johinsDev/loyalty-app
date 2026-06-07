@@ -402,6 +402,7 @@
         "@loyalty/api": "workspace:*",
         "@loyalty/db": "workspace:*",
         "@loyalty/email": "workspace:*",
+        "@loyalty/email-templates": "workspace:*",
         "@loyalty/log": "workspace:*",
         "@loyalty/notifications": "workspace:*",
         "@loyalty/push": "workspace:*",

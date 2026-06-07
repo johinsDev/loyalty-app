@@ -43,10 +43,11 @@
   },
   "Auth": {
     "signInTitle": "Iniciar sesión",
-    "signInSubtitle": "Acceso para empleados con cuenta corporativa",
-    "googleButton": "Continuar con Google",
-    "googleError": "No pudimos iniciar sesión con Google",
-    "submitting": "Iniciando…",
+    "signInSubtitle": "Acceso para empleados",
+    "magicLinkButton": "Enviar enlace de acceso",
+    "magicLinkSent": "Te enviamos un enlace de acceso a {email}. Revisá tu correo.",
+    "magicLinkError": "No pudimos enviar el enlace de acceso",
+    "submitting": "Enviando…",
     "signOut": "Cerrar sesión",
     "signingOut": "Cerrando…",
     "errorForbidden": "No tenés permisos para acceder a esa sección. Iniciá sesión con una cuenta autorizada.",
@@ -54,7 +55,7 @@
     "orDivider": "o",
     "emailLabel": "Email",
     "passwordLabel": "Contraseña",
-    "emailSignInButton": "Iniciar sesión con email",
+    "emailSignInButton": "Iniciar sesión con contraseña",
     "emailPasswordError": "Email o contraseña incorrectos"
   },
   "Dashboard": {
