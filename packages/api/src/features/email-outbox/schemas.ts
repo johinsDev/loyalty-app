@@ -51,8 +51,6 @@ export const sendTestInputSchema = z.discriminatedUnion("mode", [
   }),
 ]);
 
-export type SendTestInput = z.infer<typeof sendTestInputSchema>;
-
 export type ListInput = z.infer<typeof listInputSchema>;
 export type LatestForRecipientInput = z.infer<
   typeof latestForRecipientInputSchema
