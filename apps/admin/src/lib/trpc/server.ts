@@ -37,6 +37,10 @@ const httpCaller = (cookie: string): ServerCaller => {
         url: getTrpcUrl(),
         transformer: superjson,
         headers: () => (cookie ? { cookie } : {}),
+        // Never let Next cache a server-side auth/data read — a cached `auth.me`
+        // would make guards (session/role) act on stale state.
+        fetch: (input, init) =>
+          fetch(input, { ...init, cache: "no-store" }),
       }),
     ],
   });
