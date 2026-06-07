@@ -70,7 +70,9 @@ export function SignInForm({ passwordEnabled }: Props) {
     const { error } = await authClient.signIn.email({
       email,
       password,
-      callbackURL: "/dashboard",
+      // Absolute admin URL — a relative callbackURL resolves against the
+      // Worker origin (where the auth client points), not the admin app.
+      callbackURL: `${getAppUrl()}/dashboard`,
     });
     if (error) {
       setError(error.message ?? t("emailPasswordError"));
