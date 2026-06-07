@@ -1,3 +1,5 @@
+import { eq } from "drizzle-orm";
+
 import { db } from "./client";
 import * as schema from "./schema";
 
@@ -36,4 +38,20 @@ export async function provisionCustomerForUser(
     })
     .onConflictDoNothing();
   return result.rowsAffected > 0;
+}
+
+/**
+ * Whether a `customer` row exists for this user (the `customer.id` mirrors the
+ * Better Auth `user.id`). This is the authoritative "is a loyalty customer"
+ * signal — set when the user verifies a phone — used by the web app's
+ * `requireCustomer` gate. A phone-less account (e.g. a Google sign-in that
+ * hasn't completed the phone step, or staff) returns `false`.
+ */
+export async function customerExistsForUser(userId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: schema.customer.id })
+    .from(schema.customer)
+    .where(eq(schema.customer.id, userId))
+    .limit(1);
+  return rows.length > 0;
 }

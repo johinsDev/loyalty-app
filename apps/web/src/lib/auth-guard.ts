@@ -29,18 +29,22 @@ export async function requireSession() {
 }
 
 /**
- * Like `requireSession`, but also requires the user to have a verified phone —
- * i.e. to be a loyalty `customer`. Phone is the loyalty identity, so a user who
- * signed in with Google has no phone yet: send them to `/complete-phone` to
- * capture + verify it (which links the phone and provisions the customer). Use
- * on every authenticated customer page. The proxy already guarantees a session
- * cookie, so this only adds the phone gate.
+ * Like `requireSession`, but also requires the user to be a loyalty `customer`
+ * (`me.isCustomer`, set when they verify a phone). Phone is the loyalty
+ * identity, so a Google sign-in with no phone yet is sent to `/complete-phone`
+ * to capture + verify it (which links the phone + provisions the customer). Use
+ * on every authenticated customer page — the proxy already guarantees a session
+ * cookie, so this only adds the customer gate.
+ *
+ * Gates on the `customer` row (authoritative), NOT the session user's
+ * `phoneNumber` field — that field isn't reliably surfaced by `auth.me`, which
+ * would loop a real customer back to `/complete-phone`.
  */
 export async function requireCustomer() {
-  const session = await requireSession();
-  const phone = (session.user as { phoneNumber?: string | null }).phoneNumber;
-  if (!phone) redirect("/complete-phone");
-  return session;
+  const me = await (await trpc()).auth.me().catch(() => null);
+  if (!me?.user) redirect("/sign-in");
+  if (!me.isCustomer) redirect("/complete-phone");
+  return { user: me.user };
 }
 
 export async function requireRole(allowed: readonly Role[]) {
