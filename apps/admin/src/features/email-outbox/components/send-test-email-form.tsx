@@ -19,6 +19,9 @@ import { useTRPC } from "@/lib/trpc/client";
 
 type Mode = "template" | "custom";
 type Mailer = "default" | "log" | "outbox" | "resend";
+// Mirrors TEST_EMAIL_TEMPLATE_IDS in @loyalty/email-templates (kept as a
+// literal so this client component doesn't import the React templates).
+type TemplateId = "welcome" | "magic-link";
 
 /**
  * Dev-only "Send test email" form. Queues the `send-test-email`
@@ -39,7 +42,7 @@ export function SendTestEmailForm() {
 
   const [to, setTo] = useState("");
   const [mode, setMode] = useState<Mode>("template");
-  const [templateId, setTemplateId] = useState<"welcome">("welcome");
+  const [templateId, setTemplateId] = useState<TemplateId>("welcome");
   const [subject, setSubject] = useState("");
   const [html, setHtml] = useState("");
   const [mailer, setMailer] = useState<Mailer>("default");
@@ -132,9 +135,12 @@ export function SendTestEmailForm() {
           <NativeSelect
             id="test-template"
             value={templateId}
-            onChange={(e) => setTemplateId(e.target.value as "welcome")}
+            onChange={(e) => setTemplateId(e.target.value as TemplateId)}
           >
             <NativeSelectOption value="welcome">Welcome</NativeSelectOption>
+            <NativeSelectOption value="magic-link">
+              Magic link
+            </NativeSelectOption>
           </NativeSelect>
         </div>
       ) : (

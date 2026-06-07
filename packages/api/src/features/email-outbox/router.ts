@@ -17,7 +17,7 @@ type SendTestEmailPayload =
   | {
       mode: "template";
       to: string;
-      templateId: "welcome";
+      templateId: "welcome" | "magic-link";
       mailer?: "log" | "outbox" | "resend";
     }
   | {

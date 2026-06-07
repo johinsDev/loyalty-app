@@ -1,4 +1,5 @@
 import { renderEmail } from "./render";
+import { MagicLinkEmail } from "./templates/magic-link-email";
 import { WelcomeEmail } from "./templates/welcome-email";
 
 /**
@@ -8,11 +9,11 @@ import { WelcomeEmail } from "./templates/welcome-email";
  * template's own `PreviewProps`, so an operator picks a template and
  * sends without typing anything.
  *
- * `welcome` is the only template today — add a case to
- * `renderTestEmailTemplate` when a new template ships.
+ * Add a template here AND a matching case in `renderTestEmailTemplate`.
  */
 export const TEST_EMAIL_TEMPLATES = [
   { id: "welcome", subject: "¡Bienvenida a T4! 🍵" },
+  { id: "magic-link", subject: "Tu acceso a T4 Admin 🔑" },
 ] as const;
 
 export type TestEmailTemplateId = (typeof TEST_EMAIL_TEMPLATES)[number]["id"];
@@ -38,6 +39,14 @@ export async function renderTestEmailTemplate(
         renderEmail(element, { plainText: true }),
       ]);
       return { subject: "¡Bienvenida a T4! 🍵", html, text };
+    }
+    case "magic-link": {
+      const element = <MagicLinkEmail {...MagicLinkEmail.PreviewProps} />;
+      const [html, text] = await Promise.all([
+        renderEmail(element),
+        renderEmail(element, { plainText: true }),
+      ]);
+      return { subject: "Tu acceso a T4 Admin 🔑", html, text };
     }
   }
   throw new Error(`Unknown test email template: ${id satisfies never}`);

@@ -41,7 +41,7 @@ export const sendTestInputSchema = z.discriminatedUnion("mode", [
   z.object({
     ...sendTestSharedFields,
     mode: z.literal("template"),
-    templateId: z.enum(["welcome"]),
+    templateId: z.enum(["welcome", "magic-link"]),
   }),
   z.object({
     ...sendTestSharedFields,
