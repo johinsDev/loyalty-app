@@ -5,6 +5,8 @@ import { Button } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { getAppUrl } from "@/lib/app-url";
+
 export function GoogleSignInButton() {
   const t = useTranslations("Auth");
   const [loading, setLoading] = useState(false);
@@ -15,7 +17,10 @@ export function GoogleSignInButton() {
     setLoading(true);
     const { error } = await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/",
+      // Absolute FE URL: the auth client targets the Worker, so a relative
+      // callbackURL would resolve against the Worker origin (it'd land on
+      // `loyalty-api ok`) instead of the web app.
+      callbackURL: `${getAppUrl()}/`,
     });
     if (error) {
       setError(t("errorGoogleFailed"));
