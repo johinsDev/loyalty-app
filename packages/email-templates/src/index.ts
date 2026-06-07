@@ -10,4 +10,9 @@
 
 export { EmailLayout } from "./components/email-layout";
 export { renderEmail } from "./render";
+export {
+  MagicLinkEmail,
+  type MagicLinkEmailProps,
+  renderMagicLinkEmail,
+} from "./templates/magic-link-email";
 export { WelcomeEmail, type WelcomeEmailProps } from "./templates/welcome-email";
