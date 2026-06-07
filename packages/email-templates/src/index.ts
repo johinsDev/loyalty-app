@@ -11,6 +11,11 @@
 export { EmailLayout } from "./components/email-layout";
 export { renderEmail } from "./render";
 export {
+  MagicLinkEmail,
+  type MagicLinkEmailProps,
+  renderMagicLinkEmail,
+} from "./templates/magic-link-email";
+export {
   TEST_EMAIL_TEMPLATE_IDS,
   TEST_EMAIL_TEMPLATES,
   renderTestEmailTemplate,

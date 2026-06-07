@@ -43,10 +43,11 @@
   },
   "Auth": {
     "signInTitle": "Sign in",
-    "signInSubtitle": "Staff access — sign in with your work Google account",
-    "googleButton": "Continue with Google",
-    "googleError": "We couldn't sign you in with Google",
-    "submitting": "Signing in…",
+    "signInSubtitle": "Staff access",
+    "magicLinkButton": "Send sign-in link",
+    "magicLinkSent": "We sent a sign-in link to {email}. Check your inbox.",
+    "magicLinkError": "We couldn't send the sign-in link",
+    "submitting": "Sending…",
     "signOut": "Sign out",
     "signingOut": "Signing out…",
     "errorForbidden": "You don't have access to that section. Sign in with an authorized account.",
@@ -54,7 +55,7 @@
     "orDivider": "or",
     "emailLabel": "Email",
     "passwordLabel": "Password",
-    "emailSignInButton": "Sign in with email",
+    "emailSignInButton": "Sign in with password",
     "emailPasswordError": "Invalid email or password"
   },
   "Dashboard": {
