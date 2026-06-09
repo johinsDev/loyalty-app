@@ -41,7 +41,7 @@
     "partykit:deploy": "bun run --cwd partykit deploy",
     "worker:deploy:prod": "infisical run --env=prod --recursive -- bun scripts/cloudflare/deploy-prod-worker.ts",
     "env:bootstrap": "bash scripts/infisical-bootstrap.sh",
-    "env:pull": "infisical export --env=${INFISICAL_ENV:-dev} --recursive --format=dotenv",
+    "env:pull": "bash scripts/env-pull.sh",
     "env:check": "infisical secrets --env=${INFISICAL_ENV:-dev} --recursive",
     "prepare": "lefthook install"
   },
