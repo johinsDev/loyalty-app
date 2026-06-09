@@ -110,8 +110,11 @@ flags the rows that aren't fully wired yet.
   Google** in prod. Current = web phone-OTP + admin Google. A deferred auth
   refactor moves web → Google-only and admin → password + passwordless
   (Magic Link).
-- **SMS / WhatsApp / Email prod creds** (Twilio/Resend) currently live in the
-  **Trigger.dev dashboard** (the jobs send them), not all in Infisical yet.
+- **Email prod creds** (Resend) **now live in Infisical** `prod:/shared`
+  (`RESEND_API_KEY` + `EMAIL_FROM` + `EMAIL_PROVIDER`) and are pushed to the
+  Trigger env by `syncEnvVars` on deploy (since 2026-06-09). **SMS / WhatsApp**
+  (Twilio) creds still live in the **Trigger.dev dashboard** (the jobs send
+  them) — not in Infisical yet, so `syncEnvVars` leaves them untouched.
 
 ---
 
