@@ -80,9 +80,10 @@ export default defineConfig({
       // bundler doesn't trace them) + listed in `external`, so Trigger's
       // dependency detection prunes them and they're NOT installed in the
       // deploy. Force-install the ones a deployed task actually uses:
-      // `web-push` for the push `webpush` provider (preview/prod). Add
-      // twilio/resend/expo-server-sdk here when prod selects those providers.
-      additionalPackages({ packages: ["web-push@^3.6.7"] }),
+      // `web-push` for the push `webpush` provider (preview/prod) and
+      // `resend` for the email `resend` provider (preview/prod). Add
+      // twilio/expo-server-sdk here when prod selects those providers.
+      additionalPackages({ packages: ["web-push@^3.6.7", "resend@^4.0.0"] }),
       syncEnvVars(() => {
         const keys = [
           "DATABASE_URL",
