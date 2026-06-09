@@ -234,7 +234,7 @@ Knobs:
 
 Helper scripts:
 
-- `bun run env:pull` — `infisical export` the current env as dotenv to stdout.
+- `bun run env:pull` — regenerate `.env` from Infisical in place (preserves the `INFISICAL_UNIVERSAL_AUTH_*` bootstrap creds; no `> .env`). See "Pulling an env locally".
 - `bun run env:check` — list every secret in the current env (all folders).
 
 ---
@@ -474,9 +474,17 @@ Infisical folder).
 A teammate can hydrate a `.env` from any environment:
 
 ```bash
-INFISICAL_ENV=staging bun run env:pull > .env        # or dev / prod
-# = infisical export --env=staging --recursive --format=dotenv
+INFISICAL_ENV=staging bun run env:pull        # or dev / prod — writes .env IN PLACE
+direnv reload                                 # pick up the regenerated .env
 ```
+
+`env:pull` runs `scripts/env-pull.sh`: it exports each folder (`/ /shared /mcp
+/api /ci`) — **not** `--recursive`, which `infisical export` doesn't support —
+and **preserves** the `INFISICAL_UNIVERSAL_AUTH_*` bootstrap creds (they live
+only in `.env`, never in the vault). **Never pipe `> .env`** — the redirect
+truncates `.env` before the script can read the creds to preserve; the script
+writes `.env` itself. A guard refuses to overwrite `.env` if the result has no
+bootstrap creds (e.g. expired `infisical login`).
 
 (Needs Infisical login + project membership. Note: `staging` is the preview
 base and has **no** `DATABASE_URL` — that's per-PR — so for a local DB still
