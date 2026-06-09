@@ -91,16 +91,19 @@ jobs:
       # Idempotent: creates a deterministic admin user + promotes it to
       # owner so anyone can log into this PR's preview without going
       # through Google OAuth. Reads ADMIN_PREVIEW_EMAIL / _PASSWORD +
-      # BETTER_AUTH_SECRET from Infisical staging (/shared, the preview
-      # base env), but DATABASE_URL / TURSO_AUTH_TOKEN come from THIS
-      # PR's masked DB — override them after `infisical run` so the
-      # staging values don't win.
+      # BETTER_AUTH_SECRET from Infisical staging — backend secrets now
+      # live in /api (NOT synced to FE Vercel); /shared keeps only the
+      # FE-facing config. Both paths are injected (nested infisical run).
+      # DATABASE_URL / TURSO_AUTH_TOKEN come from THIS PR's masked DB —
+      # override them after `infisical run` so the staging values don't win.
       - name: Seed deterministic preview admin
         env:
           PR_DB_URL: ${{ steps.db.outputs.database_url }}
           PR_DB_TOKEN: ${{ steps.db.outputs.auth_token }}
         run: |
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging \
+            --path=/api --token="$INFISICAL_TOKEN" -- \
+            infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging \
             --path=/shared --token="$INFISICAL_TOKEN" -- \
             bash -c 'DATABASE_URL="$PR_DB_URL" TURSO_AUTH_TOKEN="$PR_DB_TOKEN" \
               bun run --cwd packages/auth src/seed-preview-admin.ts'
@@ -117,9 +120,10 @@ jobs:
       # (NEXT_PUBLIC_API_URL, pinned BEFORE the build below so it's inlined),
       # and assign the admin./app. FE subdomains. The auth cookie is scoped to
       # .pr-<n>.t4diverclub.app (no leak to prod / other PRs). Gated separately
-      # from the DB pipeline. BETTER_AUTH_SECRET comes from staging/shared (must
-      # match the seeded preview admin); CLOUDFLARE_* / VERCEL_* from prod/ci —
-      # inner staging/shared wins on any overlap. See the api-worker plan (P3).
+      # from the DB pipeline. Backend secrets (BETTER_AUTH_SECRET — must match the
+      # seeded preview admin —, R2_*, REALTIME/TRIGGER, providers) come from
+      # staging/api; FE-facing config stays in staging/shared; CLOUDFLARE_* /
+      # VERCEL_* from prod/ci. Innermost (/shared) wins on any overlap. P3.
       - name: Deploy preview API Worker + point FE at it
         if: ${{ vars.PREVIEW_API_WORKER_ENABLED == 'true' }}
         env:
@@ -130,6 +134,8 @@ jobs:
         run: >
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
           --path=/ci --token="$INFISICAL_TOKEN" --
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
+          --path=/api --token="$INFISICAL_TOKEN" --
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
           --path=/shared --token="$INFISICAL_TOKEN" -- bash -c '
             bun run scripts/cloudflare/deploy-preview-worker.ts
@@ -176,6 +182,8 @@ jobs:
           # Worker-issued ticket. syncEnvVars forwards it into the Trigger env.
           REALTIME_ROOM_PREFIX: pr-${{ github.event.number }}-
         run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
+          --path=/api --token="$INFISICAL_TOKEN" --
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
           --path=/shared --token="$INFISICAL_TOKEN" --
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
