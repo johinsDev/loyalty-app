@@ -169,6 +169,26 @@ The bootstrap pre-builds every mailer it can — `undefined` entries (e.g. `rese
 | `log` | none | n/a |
 | `outbox` | `DATABASE_URL` (Drizzle `db`) | already enforced at the DB layer |
 
+> **`resend` is an optional peer dep of `@loyalty/email`** (provider-agnostic by
+> design), so the runtime that actually *uses* the resend transport must install
+> `resend` itself. All system email funnels through **Trigger.dev (`@loyalty/jobs`)**
+> — the auth Worker only enqueues — so `resend` lives in `packages/jobs/package.json`.
+> If you hit `MissingDependencyError: [resend] resend is not installed`, it's a
+> **two-place fix**: (1) add `resend` to the consuming package's `dependencies`
+> (fixes local `trigger dev`), **and** (2) add `resend@^4` to `additionalPackages`
+> in `packages/jobs/trigger.config.ts` (the Trigger *deploy* prunes it otherwise —
+> it's in `build.external` + obfuscated dynamic import, so package.json alone won't
+> ship it). Mirrors how `web-push` is wired. See the `env-deploy` skill.
+
+> **Prod deliverability (DNS).** Sends go from the verified subdomain
+> `mail.t4diverclub.app` (Resend, `us-east-1`). The Cloudflare `t4diverclub.app`
+> zone holds **DKIM + SPF + DMARC** (`_dmarc` TXT = `v=DMARC1; p=none; …`, added
+> 2026-06-09 — Resend's per-email *Insights* tab flags a missing DMARC). Prod and
+> dev/preview use **separate** Resend keys (sending-only, domain-scoped); the
+> Resend MCP authenticates with yet another key (`MCP_RESEND_API_KEY` in `.env`).
+> Verify any Resend key with a real `POST /emails` — a sending-only key 401s on
+> `GET /domains` even when valid.
+
 ### Switching mailers explicitly
 
 ```ts
