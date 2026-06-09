@@ -168,6 +168,7 @@ apps/storybook/storybook-static/
 scripts/*
 !scripts/with-infisical.sh
 !scripts/infisical-bootstrap.sh
+!scripts/env-pull.sh
 !scripts/sandbox.ts
 !scripts/db
 !scripts/db/**

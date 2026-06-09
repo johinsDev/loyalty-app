@@ -248,7 +248,7 @@ Both `apps/web` and `apps/admin` are internationalized with **next-intl** (Spani
 | `bun run db:migrate:docker` | Migrate the Dockerized libSQL from the host (the stack also auto-migrates on up) |
 | `bun run sandbox -- --<channel>=<provider>` | Validate one real third party's credentials from your machine |
 | `bun run env:bootstrap` | Create the Infisical folder structure (`-- --import .env --env dev` to migrate an old `.env`) |
-| `bun run env:pull` | Export the current Infisical env as dotenv to stdout |
+| `bun run env:pull` | Regenerate the repo-root `.env` from Infisical (writes in place; preserves the `INFISICAL_UNIVERSAL_AUTH_*` bootstrap creds). Run `direnv reload` after. Do **not** pipe `> .env` |
 | `bun run env:check` | List every secret in the current Infisical env |
 | `bun run db:generate` | Generate a Drizzle migration from the schema |
 | `bun run db:migrate` | Apply migrations to Turso |
