@@ -138,8 +138,10 @@ push to main
   (`WORKER_DEPLOY_SKIP_SECRETS=true`) — its secrets persist across deploys; run
   `bun run worker:deploy:prod` locally to re-sync after rotating one. The
   Trigger step's `syncEnvVars` (in `trigger.config.ts`) **upserts** — it pushes
-  the Infisical-injected vars (DB/auth/realtime/VAPID) without deleting the
-  dashboard-managed ones (Twilio/Resend).
+  every listed key present in the Infisical-injected env (DB/auth/realtime/VAPID
+  **and** `RESEND_API_KEY`/`EMAIL_FROM`/`EMAIL_PROVIDER`/Twilio), and leaves keys
+  Infisical doesn't provide at their existing Trigger-dashboard value. **It runs
+  on `trigger deploy` only — see the `trigger dev` gotcha below.**
 - **`deploy-partykit.yml`** redeploys the **prod party only**. Two known gaps:
   it does **not** redeploy the staging party (redeploy it separately on
   `partykit/**` changes), and it needs `PARTYKIT_TOKEN` in Infisical prod `/ci`
@@ -449,6 +451,18 @@ KEY=VALUE --env=dev --path=/shared`, or the Infisical MCP.
 - **Trigger.dev (jobs)** — add the key to the `syncEnvVars` list in
   `trigger.config.ts`; `trigger deploy` then pushes it into the Trigger env.
 
+> **⚠️ Trigger.dev is a SEPARATE env store and does NOT auto-sync for local dev.**
+> `syncEnvVars` is a *build extension* — it runs on `trigger deploy` (preview/prod),
+> not on `trigger dev`. Local jobs runs read the Trigger.dev **Development** env
+> vars from the dashboard, and those **override** the Infisical-injected
+> `process.env` — so updating Infisical alone does **not** fix `trigger dev`. To
+> fix local dev you must also set the var in the Trigger.dev Development env
+> (dashboard, or Management API `POST /api/v1/projects/{ref}/envvars/{dev|prod}/import`
+> with the PAT `TRIGGER_ACCESS_TOKEN` from Infisical `/ci`). This bit us 2026-06-09:
+> Infisical had the valid `RESEND_API_KEY` but Trigger Development still had a dead
+> key, so `trigger dev` kept 401-ing. preview/prod self-heal on the next deploy; dev
+> never does.
+
 **5. Document it** in `.env.example` (the matrix: var · consumer · scope ·
 Infisical folder).
 
@@ -507,7 +521,9 @@ Never commit a real value to `.env.example` — it is the matrix, not a vault.
 | CI fails calling infisical | The wrapper should skip on `CI=true`. Check the workflow isn't calling `infisical run` directly without a service token. |
 | A var is missing only on Vercel preview | It is not in `/shared` or the app's folder, or the Infisical→Vercel integration scope excludes that folder. |
 | `invalid_client` on Google | Worker is the auth issuer — `GOOGLE_CLIENT_*` live in Infisical `/api` and the redirect URI is `https://api.t4diverclub.app/api/auth/callback/google`. Preview uses a different client than prod (no per-PR wildcards), so Google is not used in preview. |
-| Trigger deploy: "X is not set" | `deploy-prod.yml` syncs Trigger env via `syncEnvVars` (upsert) from Infisical prod. Add the key to the `syncEnvVars` list in `trigger.config.ts`; dashboard-managed creds (Twilio/Resend) stay. |
+| Trigger deploy: "X is not set" | `deploy-prod.yml` syncs Trigger env via `syncEnvVars` (upsert) from Infisical prod. Add the key to the `syncEnvVars` list in `trigger.config.ts`; keys Infisical doesn't provide keep their Trigger-dashboard value. |
+| `trigger dev` uses a stale/wrong secret (e.g. Resend 401) even after updating Infisical | `trigger dev` does NOT run `syncEnvVars` — it reads the Trigger.dev **Development** dashboard env, which overrides `process.env`. Update the var in the Trigger.dev Development env (dashboard or Management API), then restart `trigger dev`. See the ⚠️ box under "It reaches each runtime automatically". |
+| A deployed task throws `MissingDependencyError` for a provider SDK that IS in `package.json` | The Trigger deploy prunes provider SDKs (they're in `build.external` + obfuscated dynamic import). Add the package to `additionalPackages` in `trigger.config.ts` too — package.json alone only fixes local `trigger dev`. |
 | Worker missing a secret after rotation | Auto-deploys are code-only (`WORKER_DEPLOY_SKIP_SECRETS=true`). Re-push with `bun run worker:deploy:prod`. |
 | `deploy-partykit.yml` does nothing / auth fails | Needs `PARTYKIT_TOKEN` in Infisical prod `/ci`; until then use `bun run partykit:deploy`. It also only redeploys the **prod** party — redeploy staging separately. |
 | `dev:docker`: web/admin crash on boot | `env.ts` throws if `DATABASE_URL`/`BETTER_AUTH_SECRET` missing. The compose fallbacks cover this; if you overrode them with empty values, unset the override. |
