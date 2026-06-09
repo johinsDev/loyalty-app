@@ -11,6 +11,7 @@
         "scripts/vercel/trigger-preview-deploy.ts",
         "scripts/vercel/alias-preview-domains.ts",
         "scripts/vercel/unalias-preview-domains.ts",
+        "scripts/vercel/prune-synced-env.ts",
         "scripts/cloudflare/deploy-preview-worker.ts",
         "scripts/cloudflare/delete-preview-worker.ts",
         "scripts/cloudflare/smoke-preview-worker.ts",
