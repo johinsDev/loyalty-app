@@ -1,34 +1,50 @@
-// Image transform endpoint for the Worker. Cloudflare Image Transformations via
-// the URL form (`/cdn-cgi/image/`) don't engage on our R2-native custom domain,
-// and the Origin-Rule workaround needs a plan tier we don't have — so we resize
-// in the Worker, where `fetch(url, { cf: { image } })` works regardless of plan
-// or the "any origin" setting (it's the Worker's own resizing capability).
+// Image transform endpoint for the Worker. Cloudflare's URL-form transforms
+// (`/cdn-cgi/image/`) don't engage on our R2-native custom domain, and the
+// Origin-Rule workaround needs a plan tier we don't have — so we resize in the
+// Worker with `fetch(src, { cf: { image } })`.
 //
-// Public images: fetched from the public R2 domain + long-immutable cached.
-// Protected images (seam, not built yet): gated by session, fetched via a SIGNED
-// R2 URL (so the object is NOT publicly reachable — the `src` can't bypass the
-// gate), and marked `private, no-store` so no shared cache leaks them.
+// Crucial finding (verified live): the resizing engine CANNOT read our R2
+// objects through the public custom domain — its fetch gets a 403 (same-zone),
+// even though a plain Worker fetch gets 200 (`cf-resized: err=9408`). It CAN
+// read a SIGNED S3 URL on `*.r2.cloudflarestorage.com`. So `signSource` mints a
+// signed GET and we resize that. Because the signed URL changes per request, the
+// ROUTE (not this fn) caches the result via the Worker Cache API, keyed on the
+// stable request URL.
+//
+// Public images → `public, immutable`. Protected images (seam, not wired yet) →
+// session gate + `private, no-store` (and `signSource` would point at a private
+// bucket, so the object is never publicly reachable — the src can't bypass auth).
 const ONE_YEAR = 31_536_000;
 
-export type CfImageOptions = { width?: number; quality: number; format: string };
+export type CfImageOptions = { width?: number; quality: number; format?: string };
 
-export type ImageFetchInit = {
-  cf: { image: CfImageOptions; cacheTtl: number; cacheEverything: boolean };
-};
+export type ImageFetchInit = { cf: { image: CfImageOptions } };
 
 export type ImageFetch = (url: string, init: ImageFetchInit) => Promise<Response>;
 
+/**
+ * Pick the output format from the client's `Accept`. We set it EXPLICITLY rather
+ * than `format: "auto"` — auto didn't convert in our Worker `cf.image` setup
+ * (kept the original even with Accept forwarded). avif > webp > keep original.
+ * The chosen format also keys the edge cache (see the route), so each variant is
+ * cached separately.
+ */
+export function pickFormat(accept: string | null): "avif" | "webp" | undefined {
+  if (!accept) return undefined;
+  if (accept.includes("image/avif")) return "avif";
+  if (accept.includes("image/webp")) return "webp";
+  return undefined;
+}
+
 export type TransformDeps = {
-  /** Public R2 origin, e.g. `https://images.t4diverclub.app` (no trailing slash). */
-  publicUrlBase: string;
+  /** Mint a SIGNED R2 GET URL (off-zone) the resizing engine can read. */
+  signSource: (key: string) => Promise<string>;
   /** Injectable for tests; defaults to the global `fetch` (which honours `cf`). */
   fetchImpl?: ImageFetch;
-  /** True → the key requires auth + a signed source. Default: everything public. */
+  /** True → the key requires auth. Default: everything public. */
   isProtected?: (key: string) => boolean;
   /** Resolve the caller's session from the request (cookie). Protected only. */
   resolveSession?: (request: Request) => Promise<{ userId: string } | null>;
-  /** Sign a private-bucket GET so the Worker (and only it) can read the object. */
-  signPrivateUrl?: (key: string) => Promise<string>;
 };
 
 export async function transformImage(
@@ -61,30 +77,26 @@ export async function transformImage(
     quality = q;
   }
 
-  const format = url.searchParams.get("f") ?? "auto";
+  const format = pickFormat(request.headers.get("accept"));
 
-  let source: string;
   let cacheControl: string;
   if (deps.isProtected?.(key)) {
     const session = (await deps.resolveSession?.(request)) ?? null;
     if (!session) return new Response("unauthorized", { status: 401 });
-    source = deps.signPrivateUrl
-      ? await deps.signPrivateUrl(key)
-      : `${deps.publicUrlBase}/${key}`;
     cacheControl = "private, no-store";
   } else {
-    source = `${deps.publicUrlBase}/${key}`;
     cacheControl = `public, max-age=${ONE_YEAR}, immutable`;
   }
 
-  const image: CfImageOptions = { quality, format };
+  const source = await deps.signSource(key);
+
+  const image: CfImageOptions = { quality };
   if (width !== undefined) image.width = width;
+  if (format) image.format = format;
 
   const doFetch: ImageFetch =
     deps.fetchImpl ?? ((u, init) => fetch(u, init as unknown as RequestInit));
-  const res = await doFetch(source, {
-    cf: { image, cacheTtl: ONE_YEAR, cacheEverything: true },
-  });
+  const res = await doFetch(source, { cf: { image } });
 
   if (!res.ok) return new Response(null, { status: res.status });
 

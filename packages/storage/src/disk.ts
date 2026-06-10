@@ -110,6 +110,17 @@ export class StorageDisk {
     return this.provider.getSignedUrl(this.#physical(key), expiresIn ?? 300);
   }
 
+  /**
+   * Always mint a SIGNED read URL, even when the disk is public. Cloudflare
+   * image resizing (`cf.image`) can't read our R2 objects through the public
+   * custom domain (the resizing fetch gets a 403 — same-zone), but it CAN read
+   * a signed S3 URL on `*.r2.cloudflarestorage.com`. The image Worker signs the
+   * source with this. Defaults to a 5-minute TTL.
+   */
+  async signedReadUrl(key: string, expiresIn?: number): Promise<string> {
+    return this.provider.getSignedUrl(this.#physical(key), expiresIn ?? 300);
+  }
+
   async delete(key: string): Promise<void> {
     this.#log("info", { key, op: "delete" });
     return this.provider.delete(this.#physical(key));

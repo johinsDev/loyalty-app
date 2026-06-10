@@ -17,7 +17,7 @@ import { log } from "./lib/log";
 import { rateLimiter } from "./lib/rate-limit";
 import { realtime } from "./lib/realtime";
 import { captureError } from "./lib/sentry";
-import { transformImage } from "./lib/images";
+import { pickFormat, transformImage } from "./lib/images";
 import { storage } from "./lib/storage";
 
 /**
@@ -87,15 +87,33 @@ app.all("/trpc/*", (c) =>
 app.put("/api/storage/upload", (c) => storage.handleSignedUpload(c.req.raw));
 app.get("/api/storage/serve", (c) => storage.handleSignedServe(c.req.raw));
 
-// Image transforms: resize + webp/avif R2 images via the Worker's `cf.image`
-// (the URL-form `/cdn-cgi/image/` doesn't engage on our R2-native custom
-// domain, and the Origin-Rule workaround needs a higher CF plan). Public images
-// only for now; protected images add a session gate + a signed source later.
-app.get("/img/*", (c) =>
-  env.R2_PUBLIC_URL
-    ? transformImage(c.req.raw, { publicUrlBase: env.R2_PUBLIC_URL })
-    : c.notFound(),
-);
+// Image transforms: resize + webp/avif R2 images via the Worker's `cf.image`.
+// (The URL-form `/cdn-cgi/image/` doesn't engage on our R2-native custom domain;
+// the Origin-Rule workaround needs a higher CF plan.) The resizing engine can't
+// read R2 through the public domain (403, same-zone) — so we resize a SIGNED S3
+// URL, and cache the result via the Worker Cache API keyed on the stable request
+// URL (the signed source changes per request). Public only for now; protected
+// images add a session gate later. Inert without R2 (dev → Next default).
+app.get("/img/*", async (c) => {
+  if (!env.R2_BUCKET) return c.notFound();
+  const request = c.req.raw;
+  // The output format varies by Accept, but caches.default keys on URL only — so
+  // fold the chosen format into the cache key (webp/avif/origin cached apart).
+  const fmt = pickFormat(request.headers.get("accept")) ?? "origin";
+  const cacheKey = `${request.url}${request.url.includes("?") ? "&" : "?"}_f=${fmt}`;
+  const cache = caches.default;
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  const res = await transformImage(request, {
+    signSource: (key) => storage.disk().signedReadUrl(key),
+  });
+
+  if (res.ok && res.headers.get("cache-control")?.startsWith("public")) {
+    c.executionCtx.waitUntil(cache.put(cacheKey, res.clone()));
+  }
+  return res;
+});
 
 app.get("/", (c) => c.text("loyalty-api ok"));
 
