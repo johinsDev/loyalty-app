@@ -46,7 +46,18 @@ describe("transformImage — public", () => {
 
     const [url, cfInit] = fetchImpl.mock.calls[0]!;
     expect(url).toBe("https://r2.example/signed/logo.png?sig=x");
-    expect(cfInit.cf.image).toMatchObject({ width: 80, quality: 75, format: "avif" });
+    expect(cfInit.cf.image).toMatchObject({
+      width: 80,
+      quality: 75,
+      format: "avif",
+      fit: "scale-down",
+    });
+  });
+
+  it("always passes fit=scale-down so it never upscales past the original", async () => {
+    const fetchImpl = okFetch();
+    await transformImage(req("/img/a.png?w=4000"), { signSource, fetchImpl });
+    expect(fetchImpl.mock.calls[0]![1].cf.image.fit).toBe("scale-down");
   });
 
   it("defaults quality to 75 and omits format when the client sends no Accept", async () => {

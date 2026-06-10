@@ -16,7 +16,14 @@
 // bucket, so the object is never publicly reachable — the src can't bypass auth).
 const ONE_YEAR = 31_536_000;
 
-export type CfImageOptions = { width?: number; quality: number; format?: string };
+export type CfImageOptions = {
+  width?: number;
+  quality: number;
+  format?: string;
+  // `scale-down` never upscales past the original — a 200px source asked for
+  // w=800 stays 200px (avoids blurry upscales + wasted bytes).
+  fit: "scale-down";
+};
 
 export type ImageFetchInit = { cf: { image: CfImageOptions } };
 
@@ -90,7 +97,7 @@ export async function transformImage(
 
   const source = await deps.signSource(key);
 
-  const image: CfImageOptions = { quality };
+  const image: CfImageOptions = { quality, fit: "scale-down" };
   if (width !== undefined) image.width = width;
   if (format) image.format = format;
 

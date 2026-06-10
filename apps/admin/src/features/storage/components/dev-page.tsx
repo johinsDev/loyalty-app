@@ -8,9 +8,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@loyalty/ui";
-import Image from "next/image";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+
+import { LoyaltyImage } from "@/components/loyalty-image";
 
 import { FileUpload } from "./file-upload";
 import { RHFFileUpload } from "./rhf-file-upload";
@@ -19,9 +20,12 @@ interface AvatarForm {
   avatar: string[];
 }
 
-// A known public R2 object, so the demo shows a transformed image without
-// uploading first. Swap/remove freely — it's only used on this dev page.
+// A known public R2 object + its precomputed thumbhash, so the demo shows a
+// transformed image WITH blur-up without uploading first.
 const DEMO_SRC = "https://images.t4diverclub.app/demo.jpg";
+const DEMO_THUMBHASH = "GAgKLYR1d3ePd4h0eGiIhIaAZwho";
+
+type Uploaded = { url: string; thumbhash: string | null };
 
 /**
  * Smoke surface for the storage channel. Three demos:
@@ -36,7 +40,7 @@ const DEMO_SRC = "https://images.t4diverclub.app/demo.jpg";
  */
 export function StorageDevPage() {
   const form = useForm<AvatarForm>({ defaultValues: { avatar: [] } });
-  const [uploaded, setUploaded] = useState<string[]>([]);
+  const [uploaded, setUploaded] = useState<Uploaded | null>(null);
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-6">
@@ -46,37 +50,42 @@ export function StorageDevPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>0. Image transform — upload → next/image</CardTitle>
+          <CardTitle>0. Image transform + blur-up — upload → &lt;LoyaltyImage&gt;</CardTitle>
           <CardDescription>
             The full flow: upload with our <code>&lt;FileUpload&gt;</code> +{" "}
-            <code>@loyalty/storage</code>, then render the result through{" "}
-            <code>next/image</code>. In <strong>prod</strong> the custom loader
-            rewrites the R2 src to the API Worker&apos;s <code>/img</code>{" "}
-            endpoint (resized webp/avif). Open DevTools → Network and check the
-            request goes to <code>api.t4diverclub.app/img/…</code> with{" "}
-            <code>content-type: image/avif</code> (or webp). In dev/preview the
-            loader is a no-op (Next default optimizer).
+            <code>@loyalty/storage</code> (which computes a <strong>thumbhash</strong>{" "}
+            blur in the browser at upload), then render via{" "}
+            <code>&lt;LoyaltyImage&gt;</code> — it decodes the thumbhash into a{" "}
+            <code>blurDataURL</code> for a deterministic blur-up (no extra
+            fetch). In <strong>prod</strong> the loader rewrites the R2 src to the
+            Worker&apos;s <code>/img</code> endpoint (resized webp/avif,{" "}
+            <code>fit=scale-down</code> so it never upscales). DevTools → Network:
+            the request goes to <code>api.t4diverclub.app/img/…</code> with{" "}
+            <code>content-type: image/avif</code>. Dev/preview: loader no-op.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <FileUpload
-            value={uploaded}
-            onChange={setUploaded}
+            value={null}
+            onUploaded={(e) =>
+              e.url && setUploaded({ url: e.url, thumbhash: e.thumbhash })
+            }
             accept={{ "image/*": [] }}
             maxFiles={1}
             maxSize={5 * 1024 * 1024}
             label="Subí una imagen"
-            description="JPG/PNG hasta 5MB — se muestra abajo vía next/image"
+            description="JPG/PNG hasta 5MB — se muestra abajo con blur-up"
           />
 
-          {uploaded[0] ? (
+          {uploaded ? (
             <figure className="space-y-2">
               <figcaption className="text-sm font-medium">
-                Your upload (via next/image, w=400):
+                Your upload (blur-up via &lt;LoyaltyImage&gt;, w=400):
               </figcaption>
               <div className="relative h-64 w-full max-w-md overflow-hidden rounded-md border bg-muted">
-                <Image
-                  src={uploaded[0]}
+                <LoyaltyImage
+                  src={uploaded.url}
+                  thumbhash={uploaded.thumbhash}
                   alt="Uploaded preview"
                   fill
                   sizes="400px"
@@ -84,18 +93,19 @@ export function StorageDevPage() {
                 />
               </div>
               <p className="break-all text-xs text-muted-foreground">
-                src: {uploaded[0]}
+                src: {uploaded.url} · thumbhash: {uploaded.thumbhash ?? "—"}
               </p>
             </figure>
           ) : null}
 
           <figure className="space-y-2">
             <figcaption className="text-sm font-medium">
-              Static demo (<code>demo.jpg</code>, w=400):
+              Static demo (<code>demo.jpg</code> + precomputed thumbhash, w=400):
             </figcaption>
             <div className="relative h-64 w-full max-w-md overflow-hidden rounded-md border bg-muted">
-              <Image
+              <LoyaltyImage
                 src={DEMO_SRC}
+                thumbhash={DEMO_THUMBHASH}
                 alt="Demo image"
                 fill
                 sizes="400px"
