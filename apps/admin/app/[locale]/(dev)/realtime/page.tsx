@@ -1,8 +1,7 @@
-import { auth } from "@loyalty/auth/server";
-import { headers } from "next/headers";
 import { setRequestLocale } from "next-intl/server";
 
 import { env } from "@/env";
+import { getSession } from "@/lib/auth-guard";
 import { RealtimeDevPage } from "@/features/realtime/components/dev-page";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -15,7 +14,7 @@ export default async function RealtimeSmokePage({ params }: Props) {
   // only in dev / preview. Still need a session to mint tickets — the
   // realtime.issueTicket mutation is `protectedProcedure`, so pass
   // `null` when signed out and let the dev page render a sign-in hint.
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
   const selfId = session?.user?.id ?? null;
 
   return (

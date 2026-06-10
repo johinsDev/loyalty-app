@@ -28,6 +28,21 @@ export async function requireSession() {
   return session;
 }
 
+/**
+ * Non-redirecting session lookup — returns `null` when signed out (vs
+ * `requireSession`, which redirects). For pages that render for both signed-in
+ * and signed-out users. Routes through the Worker when `viaWorker` so the page
+ * never touches the in-process `auth` (which would need BETTER_AUTH_SECRET).
+ */
+export async function getSession(): Promise<{ user: { id: string } } | null> {
+  if (viaWorker) {
+    const me = await (await trpc()).auth.me().catch(() => null);
+    return me?.user ? { user: me.user } : null;
+  }
+  const session = await auth.api.getSession({ headers: await headers() });
+  return session?.user ? { user: session.user } : null;
+}
+
 export async function requireRole(allowed: readonly Role[]) {
   if (viaWorker) {
     const me = await (await trpc()).auth.me().catch(() => null);

@@ -1,9 +1,8 @@
-import { auth } from "@loyalty/auth/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@loyalty/ui";
-import { headers } from "next/headers";
 import { getTranslations } from "next-intl/server";
 
 import { env } from "@/env";
+import { getSession } from "@/lib/auth-guard";
 import { trpc } from "@/lib/trpc/server";
 
 import { HealthPingClient } from "./health-ping-client";
@@ -22,7 +21,7 @@ export async function CardView() {
   const t = await getTranslations("Card");
   const api = await trpc();
   const ping = await api.health.ping();
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
   const customerId = session?.user?.id ?? null;
 
   return (
