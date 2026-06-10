@@ -112,6 +112,20 @@ export class StorageManager<
     return disk;
   }
 
+  /**
+   * Entry points for the API Worker's `/api/storage/{upload,serve}` routes.
+   * Routes to the default disk's provider (the token carries its own disk +
+   * the physical key). Returns 404 when that provider presigns straight to
+   * its backend (r2) and has no HTTP handler.
+   */
+  handleSignedUpload(request: Request): Promise<Response> {
+    return this.disk().handleSignedUpload(request);
+  }
+
+  handleSignedServe(request: Request): Promise<Response> {
+    return this.disk().handleSignedServe(request);
+  }
+
   /** Activate the fake disk. Subsequent `disk()` returns the fake. */
   fake(): FakeDisk {
     this.restore();

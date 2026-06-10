@@ -80,6 +80,12 @@ app.all("/trpc/*", (c) =>
   }),
 );
 
+// HTTP side of the storage presigned URLs. Only active when the disk's
+// provider serves them (memory in dev/preview-without-R2); r2 presigns
+// straight to the bucket, so these 404 in prod and are never hit.
+app.put("/api/storage/upload", (c) => storage.handleSignedUpload(c.req.raw));
+app.get("/api/storage/serve", (c) => storage.handleSignedServe(c.req.raw));
+
 app.get("/", (c) => c.text("loyalty-api ok"));
 
 // Wrap the handler with Sentry (@sentry/cloudflare) — initialises per request

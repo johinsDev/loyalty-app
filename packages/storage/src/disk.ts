@@ -131,6 +131,26 @@ export class StorageDisk {
     return file ? { ...file, key: this.#logical(file.key) } : null;
   }
 
+  /**
+   * Delegate a signed upload/serve HTTP request to the provider. The token
+   * already carries the physical (prefixed) key, so we don't re-prefix.
+   * Providers that presign straight to their backend (r2) don't implement
+   * these — that route is then a 404.
+   */
+  handleSignedUpload(request: Request): Promise<Response> {
+    if (!this.provider.handleSignedUpload) {
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    }
+    return this.provider.handleSignedUpload(request);
+  }
+
+  handleSignedServe(request: Request): Promise<Response> {
+    if (!this.provider.handleSignedServe) {
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    }
+    return this.provider.handleSignedServe(request);
+  }
+
   #log(
     level: "info" | "warn",
     bindings: Record<string, unknown>,

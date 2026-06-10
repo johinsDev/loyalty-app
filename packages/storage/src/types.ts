@@ -87,6 +87,16 @@ export interface StorageProvider {
   delete(key: string): Promise<void>;
   list(options?: ListOptions): Promise<StorageListResult>;
   head(key: string): Promise<StorageFile | null>;
+
+  /**
+   * Serve the HTTP side of the presigned URLs (the PUT upload / GET serve
+   * routes the API Worker mounts at `/api/storage/*`). Only the providers
+   * whose signed URLs point back at the app implement these — `memory`
+   * (and `local`); `r2` presigns straight to the bucket, so it omits them
+   * and the disk/manager returns 404 for that route.
+   */
+  handleSignedUpload?(request: Request): Promise<Response>;
+  handleSignedServe?(request: Request): Promise<Response>;
 }
 
 /**
