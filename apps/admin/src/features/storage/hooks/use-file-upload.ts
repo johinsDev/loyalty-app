@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTRPC } from "@/lib/trpc/client";
+import { fileToThumbhash } from "../lib/thumbhash";
 
 export type FileUploadStatus = "queued" | "uploading" | "success" | "error";
 
@@ -18,6 +19,12 @@ export interface FileUploadEntry {
   previewUrl: string | null;
   /** Set on success — this is the URL the form value points at. */
   url: string | null;
+  /**
+   * ThumbHash (base64) blur placeholder, computed in the browser at upload for
+   * image files. Pass to `<LoyaltyImage thumbhash>`. Null for non-images / on
+   * failure.
+   */
+  thumbhash: string | null;
   /** Set on failure. */
   error: string | null;
 }
@@ -83,6 +90,9 @@ export function useFileUpload(args: UseFileUploadArgs = {}): UseFileUploadReturn
 
   const uploadOne = useCallback(
     async (entry: FileUploadEntry) => {
+      // Compute the blur placeholder in parallel with the upload — it's not on
+      // the critical path, so never let it block or fail the upload.
+      const thumbhashPromise = fileToThumbhash(entry.file).catch(() => null);
       try {
         if (args.maxSize !== undefined && entry.file.size > args.maxSize) {
           throw new Error(
@@ -139,10 +149,12 @@ export function useFileUpload(args: UseFileUploadArgs = {}): UseFileUploadReturn
           key: presigned.key,
           ...(args.disk && { disk: args.disk }),
         });
+        const thumbhash = await thumbhashPromise;
         updateEntry(entry.id, {
           progress: 100,
           status: "success",
           url,
+          thumbhash,
         });
         const finalEntry: FileUploadEntry = {
           ...entry,
@@ -150,6 +162,7 @@ export function useFileUpload(args: UseFileUploadArgs = {}): UseFileUploadReturn
           progress: 100,
           status: "success",
           url,
+          thumbhash,
         };
         callbacksRef.current.onSuccess?.(finalEntry);
       } catch (err) {
@@ -178,6 +191,7 @@ export function useFileUpload(args: UseFileUploadArgs = {}): UseFileUploadReturn
           ? URL.createObjectURL(file)
           : null,
         url: null,
+        thumbhash: null,
         error: null,
       }));
       setEntries((prev) => [...prev, ...newEntries]);

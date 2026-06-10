@@ -23,6 +23,8 @@ interface FileUploadProps {
   value: string[] | null | undefined;
   /** Fired every time the set of successful URLs changes. */
   onChange?: (urls: string[]) => void;
+  /** Fired once per file on success, with the full entry (url + thumbhash). */
+  onUploaded?: (entry: FileUploadEntry) => void;
   accept?: Accept;
   maxFiles?: number;
   maxSize?: number;
@@ -44,6 +46,7 @@ interface FileUploadProps {
 export function FileUpload({
   value,
   onChange,
+  onUploaded,
   accept,
   maxFiles,
   maxSize,
@@ -58,6 +61,7 @@ export function FileUpload({
     ...(accept && { accept }),
     ...(maxSize !== undefined && { maxSize }),
     ...(disk && { disk }),
+    ...(onUploaded && { onSuccess: onUploaded }),
   });
 
   // Bubble URL set to caller whenever entries change.
