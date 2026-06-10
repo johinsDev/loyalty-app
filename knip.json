@@ -16,6 +16,7 @@
         "scripts/cloudflare/delete-preview-worker.ts",
         "scripts/cloudflare/smoke-preview-worker.ts",
         "scripts/cloudflare/deploy-prod-worker.ts",
+        "scripts/cloudflare/set-image-cache-rules.ts",
         "scripts/r2/cleanup-preview-prefix.ts",
         "scripts/cache/flush-preview-namespace.ts"
       ]
