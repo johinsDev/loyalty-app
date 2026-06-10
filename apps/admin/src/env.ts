@@ -55,8 +55,9 @@ export const env = createEnv({
     // Sentry browser DSN (public). Browser + server SDKs both read it.
     // Unset → Sentry is inert. See `.claude/skills/sentry/SKILL.md`.
     NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
-    // Host (no protocol) for the Cloudflare zone with Image Transformations
-    // enabled. Loader no-ops when unset. See
+    // Public R2 image host (no protocol). With NEXT_PUBLIC_API_URL, the custom
+    // loader rewrites R2-hosted `<Image>` src to the Worker's `/img` transform
+    // endpoint (webp/avif via `cf.image`). Loader no-ops when unset. See
     // `.claude/skills/image-loader/SKILL.md`.
     NEXT_PUBLIC_IMAGE_CDN_HOST: z.string().optional(),
   },
