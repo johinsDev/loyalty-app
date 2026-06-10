@@ -9,6 +9,8 @@
     "smoke": "bun run src/smoke.ts",
     "lint": "oxlint src",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "clean": "rm -rf .turbo node_modules .wrangler"
   },
   "dependencies": {
@@ -31,8 +33,11 @@
     "@cloudflare/workers-types": "^4.20250620.0",
     "@loyalty/jobs": "workspace:*",
     "@loyalty/tsconfig": "workspace:*",
+    "@loyalty/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "^2.1.0",
     "oxlint": "^0.15.0",
     "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
     "wrangler": "^4.20.0"
   }
 }
