@@ -246,9 +246,24 @@ async function enforcePhoneOtpCap(phoneNumber: string): Promise<void> {
   }
 }
 
-export const auth = createAuth();
-
 export type Auth = ReturnType<typeof createAuth>;
+
+// Lazy so importing this module is side-effect free — `createAuth()` (which
+// requires BETTER_AUTH_SECRET + the Google creds) runs on first property
+// access, not at import. Mirrors the `db` Proxy in `@loyalty/db`. The FE apps
+// import `auth` but only touch it on the in-process (non-Worker) path, so when
+// `NEXT_PUBLIC_API_URL` routes auth through the Worker their Vercel projects
+// boot without any backend secrets. The Worker calls `createAuth(deps)`
+// directly, so it's unaffected.
+let authInstance: Auth | undefined;
+export const auth = new Proxy({} as Auth, {
+  get(_target, prop) {
+    authInstance ??= createAuth();
+    const real = authInstance as unknown as Record<string | symbol, unknown>;
+    const value = real[prop];
+    return typeof value === "function" ? value.bind(real) : value;
+  },
+});
 export type Session = Auth["$Infer"]["Session"];
 
 /**
