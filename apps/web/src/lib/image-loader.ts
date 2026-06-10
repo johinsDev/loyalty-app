@@ -1,14 +1,20 @@
 /**
- * Next.js custom image loader — rewrites `<Image>` src through Cloudflare
- * Image Transformations when `NEXT_PUBLIC_IMAGE_CDN_HOST` is set, otherwise
- * returns the src untouched (dev + previews).
+ * Next.js custom image loader — rewrites `<Image>` src through the API Worker's
+ * `/img` transform endpoint (which resizes + serves webp/avif via `cf.image`)
+ * when both the Worker URL and the public image host are set (prod). Otherwise
+ * returns src untouched (dev + previews → Next's default optimizer).
+ *
+ * Why the Worker and not `/cdn-cgi/image/`: the URL-form transform doesn't
+ * engage on our R2-native custom domain, and the Origin-Rule workaround needs a
+ * higher Cloudflare plan. The Worker's `fetch(url, { cf: { image } })` resizes
+ * regardless of plan. See `.claude/skills/image-loader/SKILL.md`.
  *
  * Final URL shape (prod):
- *   https://<CDN_HOST>/cdn-cgi/image/width=<w>,quality=<q>,format=auto/<src>
- *
- * See `.claude/skills/image-loader/SKILL.md` for the CF runbook and the
- * cost model. Mirror file lives at `apps/admin/src/lib/image-loader.ts`.
+ *   https://<API_URL>/img/<key>?w=<w>&q=<q>
+ * Only images on NEXT_PUBLIC_IMAGE_CDN_HOST (our R2) are rewritten; external or
+ * relative srcs pass through. Mirror at `apps/admin/src/lib/image-loader.ts`.
  */
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
 const CDN_HOST = process.env.NEXT_PUBLIC_IMAGE_CDN_HOST;
 
 export default function loyaltyImageLoader({
@@ -20,13 +26,17 @@ export default function loyaltyImageLoader({
   width: number;
   quality?: number;
 }): string {
-  if (!CDN_HOST) return src;
+  // dev / preview (no Worker URL or no CDN host) → Next's default optimizer.
+  if (!API_URL || !CDN_HOST) return src;
 
-  const sameOrigin = src.startsWith(`https://${CDN_HOST}/`);
-  const source = sameOrigin ? src.slice(`https://${CDN_HOST}`.length) : src;
+  // Only our R2-hosted images go through the Worker; external/relative pass through.
+  const prefix = `https://${CDN_HOST}/`;
+  if (!src.startsWith(prefix)) return src;
 
-  const opts = [`width=${width}`, `quality=${quality ?? 75}`, "format=auto"].join(
-    ",",
-  );
-  return `https://${CDN_HOST}/cdn-cgi/image/${opts}${source.startsWith("/") ? "" : "/"}${source}`;
+  const key = src.slice(prefix.length);
+  const params = new URLSearchParams({
+    w: String(width),
+    q: String(quality ?? 75),
+  });
+  return `${API_URL}/img/${key}?${params.toString()}`;
 }
