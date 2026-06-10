@@ -1,5 +1,6 @@
 import { FileNotFoundError } from "../errors";
-import { signStorageToken } from "../token";
+import { signStorageToken, verifyStorageToken } from "../token";
+import type { StorageTokenPayload } from "../token";
 import type {
   ListOptions,
   PresignedUpload,
@@ -119,6 +120,71 @@ export class MemoryProvider implements StorageProvider {
 
   async head(key: string): Promise<StorageFile | null> {
     return this.#store.get(key)?.file ?? null;
+  }
+
+  // Signed-request handlers — the HTTP side of the presigned URLs minted
+  // by putSignedUrl/getSignedUrl. The API Worker mounts these at
+  // /api/storage/{upload,serve}; they verify the token with this provider's
+  // own secret (so signer + verifier can't diverge) and enforce the token's
+  // upload constraints before touching the store.
+
+  async handleSignedUpload(request: Request): Promise<Response> {
+    const token = new URL(request.url).searchParams.get("token");
+    if (!token) return new Response("missing token", { status: 401 });
+    let payload: StorageTokenPayload;
+    try {
+      payload = await verifyStorageToken({
+        token,
+        secret: this.#config.secret,
+        expectedMode: "put",
+      });
+    } catch {
+      return new Response("invalid token", { status: 401 });
+    }
+    const requestType = request.headers.get("content-type") ?? undefined;
+    if (payload.contentType && requestType && requestType !== payload.contentType) {
+      return new Response("content-type mismatch", { status: 415 });
+    }
+    const body = new Uint8Array(await request.arrayBuffer());
+    if (payload.maxSize !== undefined && body.byteLength > payload.maxSize) {
+      return new Response("file too large", { status: 413 });
+    }
+    await this.put(payload.key, body, {
+      contentType: payload.contentType ?? requestType,
+    });
+    return new Response(null, { status: 200 });
+  }
+
+  async handleSignedServe(request: Request): Promise<Response> {
+    const token = new URL(request.url).searchParams.get("token");
+    if (!token) return new Response("missing token", { status: 401 });
+    let payload: StorageTokenPayload;
+    try {
+      payload = await verifyStorageToken({
+        token,
+        secret: this.#config.secret,
+        expectedMode: "get",
+      });
+    } catch {
+      return new Response("invalid token", { status: 401 });
+    }
+    try {
+      const { body, file } = await this.get(payload.key);
+      // Re-wrap so the body is `Uint8Array<ArrayBuffer>` (not the TS 5.7
+      // `<ArrayBufferLike>` generic, which `BodyInit` rejects under the DOM
+      // lib). Same fix as r2-fetch's PUT body.
+      return new Response(new Uint8Array(body), {
+        status: 200,
+        ...(file.contentType && {
+          headers: { "content-type": file.contentType },
+        }),
+      });
+    } catch (err) {
+      if (err instanceof FileNotFoundError) {
+        return new Response("not found", { status: 404 });
+      }
+      throw err;
+    }
   }
 
   // Test helpers
