@@ -138,6 +138,7 @@ jobs:
           --path=/api --token="$INFISICAL_TOKEN" --
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
           --path=/shared --token="$INFISICAL_TOKEN" -- bash -c '
+            set -e
             # Realtime publisher points at this PR dedicated party (not staging).
             export PARTYKIT_HOST="partykit.pr-${PR_NUMBER}.t4diverclub.app"
             bun run scripts/cloudflare/deploy-preview-worker.ts
@@ -171,6 +172,7 @@ jobs:
           --path=/ci --token="$INFISICAL_TOKEN" --
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
           --path=/api --token="$INFISICAL_TOKEN" -- bash -c '
+            set -e
             bun run scripts/cloudflare/deploy-preview-partykit.ts
             ENV_KEY=NEXT_PUBLIC_PARTYKIT_HOST ENV_VALUE="partykit.pr-${PR_NUMBER}.t4diverclub.app" bun run scripts/vercel/set-preview-env.ts
           '
