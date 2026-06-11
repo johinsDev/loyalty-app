@@ -14,6 +14,12 @@ workers_dev = true
 [observability]
 enabled = true
 
+# Tags every server-side analytics event with the runtime env — the Worker has
+# no Vercel `VERCEL_ENV`, so without this `baseProperties` (packages/api) would
+# mis-tag every prod event as `development`.
+[vars]
+APP_ENV = "production"
+
 # Production custom domain — wrangler creates the DNS record + edge cert on the
 # t4diverclub.app zone (already in this Cloudflare account).
 [[routes]]
@@ -22,6 +28,10 @@ custom_domain = true
 
 # Per-PR previews are deployed by scripts/cloudflare/deploy-preview-worker.ts as
 # `loyalty-api-pr-<n>` on `api.pr-<n>.t4diverclub.app` (a generated config); this
-# `[env.preview]` stanza is the static fallback.
+# `[env.preview]` stanza is the static fallback. Named envs don't inherit the
+# top-level `[vars]`, so APP_ENV is redeclared.
 [env.preview]
 name = "loyalty-api-preview"
+
+[env.preview.vars]
+APP_ENV = "preview"
