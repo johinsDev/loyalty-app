@@ -17,8 +17,13 @@ const pr = need("PR_NUMBER");
 const zone = process.env.PREVIEW_ZONE ?? "t4diverclub.app";
 const accountId = need("CLOUDFLARE_ACCOUNT_ID");
 const token = need("CLOUDFLARE_API_TOKEN");
+// PartyKit deploys cloud-prem as `<login>-<name>`, so the actual Cloudflare
+// Worker script is `johinsdev-loyalty-realtime-pr-<n>` — the delete must target
+// that exact name, not the bare `--name` we pass at deploy. PARTYKIT_LOGIN is in
+// Infisical /ci alongside the CF creds.
+const login = need("PARTYKIT_LOGIN");
 
-const workerName = `loyalty-realtime-pr-${pr}`;
+const workerName = `${login}-loyalty-realtime-pr-${pr}`;
 const host = `partykit.pr-${pr}.${zone}`;
 
 const base = "https://api.cloudflare.com/client/v4";
