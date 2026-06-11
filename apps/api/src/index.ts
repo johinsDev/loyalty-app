@@ -122,10 +122,17 @@ app.get("/", (c) => c.text("loyalty-api ok"));
 // `Sentry.captureException` (the tRPC error hook in lib/sentry) report within the
 // request scope. Inert when SENTRY_DSN is unset (errors then only log).
 export default Sentry.withSentry(
-  () => ({
-    dsn: env.SENTRY_DSN,
-    tracesSampleRate: 0,
-    ...(env.SENTRY_ENVIRONMENT && { environment: env.SENTRY_ENVIRONMENT }),
-  }),
+  () => {
+    // Reuse APP_ENV (set per-env in wrangler [vars]) when a dedicated
+    // SENTRY_ENVIRONMENT isn't set, so preview/prod are tagged without a
+    // separate var. `release` groups events + is what source maps attach to.
+    const environment = env.SENTRY_ENVIRONMENT ?? env.APP_ENV;
+    return {
+      dsn: env.SENTRY_DSN,
+      tracesSampleRate: 0,
+      ...(environment && { environment }),
+      ...(env.SENTRY_RELEASE && { release: env.SENTRY_RELEASE }),
+    };
+  },
   app,
 );

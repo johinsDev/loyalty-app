@@ -11,6 +11,11 @@ compatibility_date = "2025-05-01"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
+# Emit + upload source maps so stack traces (Cloudflare observability + the
+# Sentry handler) symbolicate to the original TS instead of the bundle. See
+# `.claude/skills/sentry/SKILL.md`.
+upload_source_maps = true
+
 [observability]
 enabled = true
 
