@@ -1,8 +1,8 @@
 // Per-PR PartyKit (realtime) preview deploy — a dedicated party per PR, mirroring
-// the per-PR API Worker (scripts/cloudflare/deploy-preview-worker.ts). Off by
-// default; the preview pipeline only runs this when PREVIEW_PARTYKIT_ENABLED is
-// set. Without it, all previews share `partykit-staging.t4diverclub.app` and
-// isolate by REALTIME_ROOM_PREFIX (the cheaper default).
+// the per-PR API Worker (scripts/cloudflare/deploy-preview-worker.ts). Runs in
+// the preview pipeline alongside the API Worker (same PREVIEW_API_WORKER_ENABLED
+// gate), so each PR — including ones that change the party code (partykit/src) —
+// gets its own isolated party instead of sharing partykit-staging.
 //
 // PartyKit cloud-prem: `partykit deploy` reads CLOUDFLARE_ACCOUNT_ID +
 // CLOUDFLARE_API_TOKEN from the env and provisions the worker + custom domain
