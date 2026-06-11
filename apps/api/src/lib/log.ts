@@ -28,5 +28,5 @@ export const log = new LogManager({
   default: env.BETTER_STACK_SOURCE_TOKEN ? "better-stack" : "console",
   channels,
   minLevel,
-  baseBindings: { service: "api" },
+  baseBindings: { service: "api", env: env.APP_ENV ?? "development" },
 }).logger();

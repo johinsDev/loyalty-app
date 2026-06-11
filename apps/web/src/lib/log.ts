@@ -61,7 +61,9 @@ export const logManager = new LogManager({
   minLevel,
   baseBindings: {
     service: "web",
-    env: process.env.NODE_ENV ?? "development",
+    // VERCEL_ENV distinguishes preview vs production; NODE_ENV is
+    // "production" for both on Vercel. Falls back to NODE_ENV off-platform.
+    env: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "development",
   },
 });
 
