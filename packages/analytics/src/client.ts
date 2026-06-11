@@ -3,7 +3,6 @@
 // Browser entry: `import { createAnalytics } from "@loyalty/analytics/client"`.
 
 import { MissingDependencyError } from "./errors";
-import { dynamicImport } from "./providers/_lazy";
 import type {
   Analytics,
   AnalyticsEvent,
@@ -71,7 +70,13 @@ function makePostHogAnalytics(
     initPromise = (async () => {
       let mod: { default: PostHogJsLike };
       try {
-        mod = (await dynamicImport("posthog-js")) as unknown as typeof mod;
+        // Literal `import()` (not the Function-wrapped `dynamicImport`): this
+        // runs ONLY in the browser, so the bundler must see the specifier to
+        // code-split posthog-js into a lazy chunk. The Function-hack hides it
+        // from the bundler — fine server-side (Node resolves bare specifiers at
+        // runtime) but fatal here (the browser can't resolve an unbundled bare
+        // specifier). client.ts never runs on the Worker, so no code-gen risk.
+        mod = (await import("posthog-js")) as unknown as typeof mod;
       } catch {
         throw new MissingDependencyError("posthog", "posthog-js");
       }
