@@ -13,6 +13,10 @@ export type FlagValue = string | boolean;
 export type FlagKey =
   | "new-stamp-flow"
   | "new-rewards-page"
+  // Smoke flags for the (dev)/flags page — a boolean kill-switch + an A/B
+  // variant — used to verify server + client evaluation per environment.
+  | "flags-smoke"
+  | "flags-smoke-ab"
   | (string & {});
 
 export interface FlagsLogger {
