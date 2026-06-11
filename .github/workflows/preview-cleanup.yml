@@ -114,3 +114,16 @@ jobs:
             bun run scripts/cloudflare/delete-preview-worker.ts
             bun run scripts/vercel/unalias-preview-domains.ts
           '
+
+      # Delete this PR's realtime party (loyalty-realtime-pr-<n> + its custom
+      # domain). The branch-scoped NEXT_PUBLIC_PARTYKIT_HOST is already removed by
+      # the unset-preview-env step above.
+      - name: Delete the preview realtime party
+        if: ${{ vars.PREVIEW_PARTYKIT_ENABLED == 'true' }}
+        continue-on-error: true
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+        run: >
+          infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
+          --path=/ci --token="$INFISICAL_TOKEN" --
+          bun run scripts/cloudflare/delete-preview-partykit.ts
