@@ -55,8 +55,9 @@ const triggerVars = [
 // realtime.issueTicket 500s), Better Stack log (HTTP), R2 storage (aws4fetch
 // driver). Rate-limit deliberately stays on the in-memory provider in previews
 // to save Upstash quota (previews are ephemeral) — prod gets Upstash (now
-// Workers-safe via the static provider). PostHog still uses dynamicImport → null
-// provider until its Workers-safe slice. Those creds are NOT forwarded.
+// Workers-safe via the static provider). PostHog (analytics + flags) runs on the
+// `fetch` driver (REST /decide + /capture), so the public key IS forwarded —
+// the Worker evaluates flags server-side against the real project.
 const realtimeSecret = process.env.REALTIME_AUTH_SECRET;
 const betterStackToken =
   process.env.BETTER_STACK_SOURCE_TOKEN_API ?? process.env.BETTER_STACK_SOURCE_TOKEN;
@@ -82,6 +83,15 @@ const providerVars = [
     ? `R2_PUBLIC_URL = "${process.env.R2_PUBLIC_URL}"`
     : "",
   `STORAGE_KEY_PREFIX = "pr-${pr}/"`,
+  // PostHog (analytics + flags via the Workers-safe `fetch` driver). The phc_
+  // key is public/embeddable, so it's a `[var]`, not a secret. Without it the
+  // Worker falls to the null provider (flags return caller defaults).
+  process.env.NEXT_PUBLIC_POSTHOG_KEY
+    ? `NEXT_PUBLIC_POSTHOG_KEY = "${process.env.NEXT_PUBLIC_POSTHOG_KEY}"`
+    : "",
+  process.env.NEXT_PUBLIC_POSTHOG_HOST
+    ? `NEXT_PUBLIC_POSTHOG_HOST = "${process.env.NEXT_PUBLIC_POSTHOG_HOST}"`
+    : "",
 ]
   .filter(Boolean)
   .join("\n");

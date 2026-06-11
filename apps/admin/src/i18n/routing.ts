@@ -25,6 +25,7 @@ export const routing = defineRouting({
     "/push-outbox/[id]": "/push-outbox/[id]",
     "/realtime": "/realtime",
     "/storage": "/storage",
+    "/flags": "/flags",
   },
 });
 

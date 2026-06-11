@@ -1,0 +1,1 @@
+export { flagsRouter } from "./router";

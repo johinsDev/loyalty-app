@@ -22,13 +22,17 @@ export function getClientIp(headers: Headers): string {
 }
 
 /**
- * Per-request distinct id. Authenticated users get `user:<id>`
- * (stable, follows them across IPs). Anonymous callers get
- * `anon:<ip>` — best PostHog can do without a cookie.
+ * Per-request distinct id. Authenticated users get their RAW user id —
+ * the same value the browser passes to `posthog.identify(userId)` (see
+ * the `@loyalty/analytics` react provider), so server- and client-side
+ * events + flag evaluations resolve to ONE PostHog person: consistent
+ * A-B bucketing and merged event attribution. Anonymous callers get
+ * `anon:<ip>` — best PostHog can do server-side without the posthog-js
+ * cookie.
  */
 export function resolveDistinctId(ctx: Context): string {
   const userId = ctx.session?.user?.id;
-  if (userId) return `user:${userId}`;
+  if (userId) return userId;
   return `anon:${getClientIp(ctx.headers)}`;
 }
 
