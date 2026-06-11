@@ -92,6 +92,11 @@ const providerVars = [
   process.env.NEXT_PUBLIC_POSTHOG_HOST
     ? `NEXT_PUBLIC_POSTHOG_HOST = "${process.env.NEXT_PUBLIC_POSTHOG_HOST}"`
     : "",
+  // Sentry: forward the api-project DSN (public/embeddable → `[var]`) so the
+  // preview Worker reports backend errors too (env tag comes from APP_ENV).
+  // Without it the Worker's Sentry is inert (errors only log). Release = this PR.
+  process.env.SENTRY_DSN ? `SENTRY_DSN = "${process.env.SENTRY_DSN}"` : "",
+  `SENTRY_RELEASE = "pr-${pr}"`,
 ]
   .filter(Boolean)
   .join("\n");
@@ -111,6 +116,7 @@ account_id = "${accountId}"
 compatibility_date = "2025-05-01"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = false
+upload_source_maps = true
 
 [observability]
 enabled = true

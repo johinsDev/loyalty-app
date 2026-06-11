@@ -40,4 +40,7 @@ export const env = {
   // the browser DSN as a fallback. Unset → Sentry is inert (errors only log).
   SENTRY_DSN: e.SENTRY_DSN ?? e.NEXT_PUBLIC_SENTRY_DSN,
   SENTRY_ENVIRONMENT: e.SENTRY_ENVIRONMENT,
+  // Release id for grouping + source-map symbolication. Falls back to
+  // SENTRY_ENVIRONMENT-less default (undefined → no release tag).
+  SENTRY_RELEASE: e.SENTRY_RELEASE,
 } as const;
