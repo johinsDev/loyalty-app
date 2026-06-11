@@ -131,6 +131,22 @@ function wrangler(args: string[], input?: string): void {
   }
 }
 
+// `wrangler secret put` flakes intermittently (transient API errors) — a single
+// failure used to abort the deploy mid-loop, leaving the Worker half-configured
+// and the FE DNS uncreated (the steps below never ran). Retry a few times.
+function secretPut(key: string, value: string, attempts = 3): void {
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      wrangler(["secret", "put", key], value);
+      return;
+    } catch (err) {
+      if (i === attempts) throw err;
+      console.warn(`  secret put ${key} failed (${i}/${attempts}), retrying…`);
+      spawnSync("sleep", ["3"]);
+    }
+  }
+}
+
 console.info(`→ Deploying ${name} → https://${apiHost}`);
 wrangler(["deploy"]);
 
@@ -156,7 +172,7 @@ const secrets: Record<string, string> = {
 };
 for (const [key, value] of Object.entries(secrets)) {
   console.info(`→ secret put ${key}`);
-  wrangler(["secret", "put", key], value);
+  secretPut(key, value);
 }
 
 // FE DNS: the worker custom domain already created api.pr-<N>; the admin./app.
