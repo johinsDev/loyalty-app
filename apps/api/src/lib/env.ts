@@ -7,6 +7,9 @@
 const e = process.env as Record<string, string | undefined>;
 
 export const env = {
+  // runtime env tag (set in wrangler [vars]; no VERCEL_ENV on Workers). Used to
+  // stamp logs + analytics events with preview/production. See baseProperties.
+  APP_ENV: e.APP_ENV,
   // rate-limit (Upstash REST)
   UPSTASH_REDIS_REST_URL: e.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: e.UPSTASH_REDIS_REST_TOKEN,
