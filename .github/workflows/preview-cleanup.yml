@@ -119,7 +119,7 @@ jobs:
       # domain). The branch-scoped NEXT_PUBLIC_PARTYKIT_HOST is already removed by
       # the unset-preview-env step above.
       - name: Delete the preview realtime party
-        if: ${{ vars.PREVIEW_PARTYKIT_ENABLED == 'true' }}
+        if: ${{ vars.PREVIEW_API_WORKER_ENABLED == 'true' }}
         continue-on-error: true
         env:
           PR_NUMBER: ${{ github.event.number }}

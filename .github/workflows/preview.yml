@@ -131,10 +131,6 @@ jobs:
           GIT_BRANCH: ${{ github.head_ref }}
           PREVIEW_DATABASE_URL: ${{ steps.db.outputs.database_url }}
           PREVIEW_AUTH_TOKEN: ${{ steps.db.outputs.auth_token }}
-          # When per-PR parties are on, the Worker (realtime publisher) must point
-          # at THIS PR's party, not the shared staging one — overrides the
-          # PARTYKIT_HOST that staging/shared injects below.
-          PREVIEW_PARTYKIT_ENABLED: ${{ vars.PREVIEW_PARTYKIT_ENABLED }}
         run: >
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
           --path=/ci --token="$INFISICAL_TOKEN" --
@@ -142,7 +138,8 @@ jobs:
           --path=/api --token="$INFISICAL_TOKEN" --
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
           --path=/shared --token="$INFISICAL_TOKEN" -- bash -c '
-            [ "$PREVIEW_PARTYKIT_ENABLED" = "true" ] && export PARTYKIT_HOST="partykit.pr-${PR_NUMBER}.t4diverclub.app"
+            # Realtime publisher points at this PR dedicated party (not staging).
+            export PARTYKIT_HOST="partykit.pr-${PR_NUMBER}.t4diverclub.app"
             bun run scripts/cloudflare/deploy-preview-worker.ts
             ENV_KEY=NEXT_PUBLIC_API_URL ENV_VALUE="https://api.pr-${PR_NUMBER}.t4diverclub.app" bun run scripts/vercel/set-preview-env.ts
             bun run scripts/vercel/alias-preview-domains.ts
@@ -159,12 +156,13 @@ jobs:
         run: bun run scripts/cloudflare/smoke-preview-worker.ts
 
       # Per-PR PartyKit (realtime) party — a dedicated party for this PR instead
-      # of the shared staging one (off by default). The Worker (above) + jobs
-      # (below) publish to it and the FE subscribes to it. CLOUDFLARE_* from /ci,
-      # REALTIME_AUTH_SECRET from staging/api, VERCEL_* from /ci. Must run before
-      # the Vercel build trigger so the FE build picks up the pinned host.
+      # of the shared staging one. Rides the same flag as the API Worker (they're
+      # both per-PR backend infra). The Worker (above) + jobs (below) publish to
+      # it and the FE subscribes to it. CLOUDFLARE_* from /ci, REALTIME_AUTH_SECRET
+      # from staging/api, VERCEL_* from /ci. Must run before the Vercel build
+      # trigger so the FE build picks up the pinned host.
       - name: Deploy preview realtime party + point FE at it
-        if: ${{ vars.PREVIEW_PARTYKIT_ENABLED == 'true' }}
+        if: ${{ vars.PREVIEW_API_WORKER_ENABLED == 'true' }}
         env:
           PR_NUMBER: ${{ github.event.number }}
           GIT_BRANCH: ${{ github.head_ref }}
@@ -206,9 +204,6 @@ jobs:
           # events to the SAME room the web/admin clients subscribe to via the
           # Worker-issued ticket. syncEnvVars forwards it into the Trigger env.
           REALTIME_ROOM_PREFIX: pr-${{ github.event.number }}-
-          # When per-PR parties are on, jobs (a realtime publisher) point at THIS
-          # PR's party too — same override as the Worker step.
-          PREVIEW_PARTYKIT_ENABLED: ${{ vars.PREVIEW_PARTYKIT_ENABLED }}
         run: >
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=staging
           --path=/api --token="$INFISICAL_TOKEN" --
@@ -216,7 +211,8 @@ jobs:
           --path=/shared --token="$INFISICAL_TOKEN" --
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
           --path=/ci --token="$INFISICAL_TOKEN" -- bash -c '
-            [ "$PREVIEW_PARTYKIT_ENABLED" = "true" ] && export PARTYKIT_HOST="partykit.pr-${PR_NUMBER}.t4diverclub.app"
+            # jobs (a realtime publisher) point at this PR dedicated party too.
+            export PARTYKIT_HOST="partykit.pr-${PR_NUMBER}.t4diverclub.app"
             cd packages/jobs && bunx trigger.dev@latest deploy --env preview --branch "$GIT_BRANCH"
           '
 
