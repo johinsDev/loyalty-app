@@ -40,6 +40,14 @@ export function resolveDistinctId(ctx: Context): string {
  * Base props baked onto every event. The `app` is set by the app
  * itself (the only thing this helper can't infer). Locale is read
  * from the `x-locale` header if set; otherwise omitted.
+ *
+ * `environment` prefers `APP_ENV` because this helper runs in the
+ * Cloudflare Worker (`apps/api`), where Vercel's `VERCEL_ENV` is never
+ * set — without it every server-side event was mis-tagged
+ * `development`. The Worker sets `APP_ENV` per env (preview/production in
+ * wrangler `[vars]`; dev falls through to the default). `VERCEL_ENV`
+ * stays as a fallback so the helper is still correct if ever run on
+ * Vercel.
  */
 export function baseProperties(
   ctx: Context,
@@ -47,7 +55,8 @@ export function baseProperties(
 ): BaseProperties {
   return {
     app,
-    environment: process.env.VERCEL_ENV ?? "development",
+    environment:
+      process.env.APP_ENV ?? process.env.VERCEL_ENV ?? "development",
     locale: ctx.headers.get("x-locale") ?? undefined,
   };
 }

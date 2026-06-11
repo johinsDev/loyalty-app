@@ -120,6 +120,7 @@ pattern = "${apiHost}"
 custom_domain = true
 
 [vars]
+APP_ENV = "preview"
 BETTER_AUTH_URL = "https://${apiHost}"
 BETTER_AUTH_TRUSTED_ORIGINS = "https://${adminHost},https://${webHost}"
 AUTH_COOKIE_DOMAIN = "${cookieDomain}"
