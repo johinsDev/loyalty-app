@@ -1,7 +1,16 @@
 "use client";
 
-import { Button, Input, Label } from "@loyalty/ui";
+import {
+  Button,
+  Input,
+  Label,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@loyalty/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { CopyIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
@@ -103,7 +112,8 @@ export function ShortlinksView() {
         </div>
       </form>
 
-      <section className="space-y-3">
+      <TooltipProvider delay={150}>
+        <section className="space-y-3">
         {list.isLoading ? (
           <p className="text-muted-foreground text-sm">{t("loading")}</p>
         ) : list.data && list.data.rows.length > 0 ? (
@@ -123,15 +133,24 @@ export function ShortlinksView() {
               <tbody>
                 {list.data.rows.map((row) => (
                   <tr key={row.id} className="border-b last:border-0">
-                    <td className="px-3 py-2 font-mono">
-                      <button
-                        type="button"
-                        onClick={() => copy(row.shortUrl)}
-                        className="hover:underline"
-                        title={t("copy")}
-                      >
-                        /{row.slug}
-                      </button>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <Tooltip>
+                          <TooltipTrigger className="block max-w-[220px] cursor-default truncate text-left font-mono text-muted-foreground text-xs">
+                            {row.shortUrl}
+                          </TooltipTrigger>
+                          <TooltipContent>{row.shortUrl}</TooltipContent>
+                        </Tooltip>
+                        <button
+                          type="button"
+                          onClick={() => copy(row.shortUrl)}
+                          title={t("copy")}
+                          aria-label={t("copy")}
+                          className="shrink-0 rounded p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        >
+                          <CopyIcon className="size-3.5" />
+                        </button>
+                      </div>
                     </td>
                     <td className="max-w-[280px] truncate px-3 py-2 text-muted-foreground">
                       {row.targetUrl}
@@ -175,7 +194,8 @@ export function ShortlinksView() {
         ) : (
           <p className="text-muted-foreground text-sm">{t("empty")}</p>
         )}
-      </section>
+        </section>
+      </TooltipProvider>
     </main>
   );
 }
