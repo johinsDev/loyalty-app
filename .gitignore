@@ -135,6 +135,8 @@ apps/storybook/storybook-static/
 !.claude/skills/rate-limit/**
 !.claude/skills/realtime
 !.claude/skills/realtime/**
+!.claude/skills/shortlinks
+!.claude/skills/shortlinks/**
 !.claude/skills/storage
 !.claude/skills/storage/**
 !.claude/skills/file-upload
