@@ -121,7 +121,16 @@ app.get("/r/:slug", async (c) => {
       );
     }
   }
-  if (!link) return c.text("Not found", 404);
+  if (!link) {
+    // Diagnostic: total tells wrong-DB (0) from slug-mismatch (>0). Remove once
+    // the redirect-miss cause is understood.
+    const total = await shortlinkRepository.countAll().catch(() => -1);
+    log.warn(
+      { slug, total, host: c.req.header("host") },
+      "shortlink.redirect.miss",
+    );
+    return c.text("Not found", 404);
+  }
 
   const cf = (c.req.raw as { cf?: { country?: string; city?: string } }).cf;
   c.executionCtx.waitUntil(
