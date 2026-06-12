@@ -1,4 +1,9 @@
 export { baseProperties, resolveDistinctId } from "./analytics";
+export {
+  createShortlinkStore,
+  type ResolvedLink,
+  ShortlinkRepository,
+} from "./features/shortlinks";
 export { appRouter, type AppRouter } from "./routers/_app";
 export { type CaptureError, createContext, type Context } from "./trpc";
 // FE wizard step schemas are shared via the client-safe subpath

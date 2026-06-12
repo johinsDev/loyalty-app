@@ -18,6 +18,11 @@ import { rateLimiter } from "./lib/rate-limit";
 import { realtime } from "./lib/realtime";
 import { captureError } from "./lib/sentry";
 import { pickFormat, transformImage } from "./lib/images";
+import {
+  shortlinkBaseUrl,
+  shortlinkRepository,
+  shortlinks,
+} from "./lib/shortlinks";
 import { storage } from "./lib/storage";
 
 /**
@@ -76,6 +81,8 @@ app.all("/trpc/*", (c) =>
         flags: flags.forRequest({ distinctId }),
         log,
         captureError,
+        shortlinkBaseUrl,
+        shortlinks,
       };
     },
   }),
@@ -86,6 +93,48 @@ app.all("/trpc/*", (c) =>
 // straight to the bucket, so these 404 in prod and are never hit.
 app.put("/api/storage/upload", (c) => storage.handleSignedUpload(c.req.raw));
 app.get("/api/storage/serve", (c) => storage.handleSignedServe(c.req.raw));
+
+// Short-link redirect (self-hosted shortener). `<shortHost>/r/<slug>` → 302 to
+// the target. Hot slugs are cached in `caches.default` (~5min) to skip the DB
+// read; the click is recorded via `waitUntil` (geo from `request.cf`) so it
+// never blocks the redirect. 404 when missing / inactive / expired.
+const SHORTLINK_CACHE_TTL = 300;
+app.get("/r/:slug", async (c) => {
+  const slug = c.req.param("slug");
+  const cache = caches.default;
+  const cacheKey = new Request(`https://shortlink-cache.internal/${slug}`);
+
+  let link: { id: string; targetUrl: string } | null = null;
+  const cached = await cache.match(cacheKey);
+  if (cached) {
+    link = (await cached.json()) as { id: string; targetUrl: string };
+  } else {
+    link = await shortlinkRepository.findActiveBySlug(slug);
+    if (link) {
+      c.executionCtx.waitUntil(
+        cache.put(
+          cacheKey,
+          new Response(JSON.stringify(link), {
+            headers: { "cache-control": `max-age=${SHORTLINK_CACHE_TTL}` },
+          }),
+        ),
+      );
+    }
+  }
+  if (!link) return c.text("Not found", 404);
+
+  const cf = (c.req.raw as { cf?: { country?: string; city?: string } }).cf;
+  c.executionCtx.waitUntil(
+    shortlinkRepository.recordClick({
+      shortlinkId: link.id,
+      country: cf?.country,
+      city: cf?.city,
+      userAgent: c.req.header("user-agent") ?? undefined,
+      referer: c.req.header("referer") ?? undefined,
+    }),
+  );
+  return c.redirect(link.targetUrl, 302);
+});
 
 // Image transforms: resize + webp/avif R2 images via the Worker's `cf.image`.
 // (The URL-form `/cdn-cgi/image/` doesn't engage on our R2-native custom domain;

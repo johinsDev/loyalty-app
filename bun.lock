@@ -74,10 +74,12 @@
         "@loyalty/analytics": "workspace:*",
         "@loyalty/api": "workspace:*",
         "@loyalty/auth": "workspace:*",
+        "@loyalty/db": "workspace:*",
         "@loyalty/feature-flags": "workspace:*",
         "@loyalty/log": "workspace:*",
         "@loyalty/rate-limit": "workspace:*",
         "@loyalty/realtime": "workspace:*",
+        "@loyalty/shortlinks": "workspace:*",
         "@loyalty/storage": "workspace:*",
         "@sentry/cloudflare": "^10.56.0",
         "@trigger.dev/sdk": "^4.4.0",
@@ -225,6 +227,7 @@
         "@loyalty/push": "workspace:*",
         "@loyalty/rate-limit": "workspace:*",
         "@loyalty/realtime": "workspace:*",
+        "@loyalty/shortlinks": "workspace:*",
         "@loyalty/storage": "workspace:*",
         "@trigger.dev/sdk": "^4.4.0",
         "@trpc/server": "^11.0.0",
@@ -528,6 +531,19 @@
       },
       "peerDependencies": {
         "react": "^19.0.0",
+      },
+    },
+    "packages/shortlinks": {
+      "name": "@loyalty/shortlinks",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@loyalty/tsconfig": "workspace:*",
+        "@loyalty/vitest-config": "workspace:*",
+        "@types/node": "^22.0.0",
+        "@vitest/coverage-v8": "^2.1.0",
+        "oxlint": "^0.15.0",
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
       },
     },
     "packages/sms": {
@@ -1058,6 +1074,8 @@
     "@loyalty/rate-limit": ["@loyalty/rate-limit@workspace:packages/rate-limit"],
 
     "@loyalty/realtime": ["@loyalty/realtime@workspace:packages/realtime"],
+
+    "@loyalty/shortlinks": ["@loyalty/shortlinks@workspace:packages/shortlinks"],
 
     "@loyalty/sms": ["@loyalty/sms@workspace:packages/sms"],
 

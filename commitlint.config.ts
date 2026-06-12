@@ -24,6 +24,7 @@ const config: UserConfig = {
         "push",
         "rate-limit",
         "realtime",
+        "shortlinks",
         "sms",
         "storage",
         "ui",
