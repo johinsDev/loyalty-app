@@ -59,14 +59,6 @@ export class ShortlinkRepository {
     return rows[0] as ShortlinkRow;
   }
 
-  /** Diagnostic: total rows the connection sees (debug redirect misses). */
-  async countAll(): Promise<number> {
-    const rows = await this.db
-      .select({ value: sql<number>`count(*)` })
-      .from(shortlink);
-    return rows[0]?.value ?? 0;
-  }
-
   async slugExists(slug: string): Promise<boolean> {
     const rows = await this.db
       .select({ id: shortlink.id })
