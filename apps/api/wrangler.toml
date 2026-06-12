@@ -30,10 +30,11 @@ APP_ENV = "production"
 # the prod Worker (the Worker doesn't read Infisical /shared).
 NEXT_PUBLIC_POSTHOG_KEY = "phc_HFbTepSwVVU52lEno4WzrPg7TB70nmpVMu6thSWvAk3"
 NEXT_PUBLIC_POSTHOG_HOST = "https://us.i.posthog.com"
-# Shortlinks redirect base (short host + /r). Non-secret config. Needs the
-# `l.t4diverclub.app` route + DNS (Fase 4) to actually serve; until then this
-# is the canonical prod value the admin create + jobs `shorten()` build URLs from.
-SHORTLINK_BASE_URL = "https://l.t4diverclub.app/r"
+# Shortlinks: SHORTLINK_BASE_URL is left UNSET so the Worker derives the short
+# host from its own origin (api.t4diverclub.app/r) — which resolves + serves
+# today. Set it to "https://l.t4diverclub.app/r" only once that pretty host's
+# route + DNS exist (Fase 4); setting it before that would point links at a
+# non-resolving host.
 
 # Production custom domain — wrangler creates the DNS record + edge cert on the
 # t4diverclub.app zone (already in this Cloudflare account).

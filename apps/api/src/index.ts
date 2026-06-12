@@ -19,7 +19,6 @@ import { realtime } from "./lib/realtime";
 import { captureError } from "./lib/sentry";
 import { pickFormat, transformImage } from "./lib/images";
 import {
-  shortlinkBaseUrl,
   shortlinkRepository,
   shortlinks,
 } from "./lib/shortlinks";
@@ -81,7 +80,12 @@ app.all("/trpc/*", (c) =>
         flags: flags.forRequest({ distinctId }),
         log,
         captureError,
-        shortlinkBaseUrl,
+        // Short host = SHORTLINK_BASE_URL when set (the pretty l.t4diverclub.app
+        // once its DNS lands), else the Worker's OWN origin + /r — so prod uses
+        // api.t4diverclub.app/r, preview api.pr-<n>/r, dev localhost:8787/r,
+        // never a hardcoded localhost.
+        shortlinkBaseUrl:
+          env.SHORTLINK_BASE_URL ?? `${new URL(c.req.raw.url).origin}/r`,
         shortlinks,
       };
     },
