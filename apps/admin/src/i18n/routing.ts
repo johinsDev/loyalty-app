@@ -26,6 +26,8 @@ export const routing = defineRouting({
     "/realtime": "/realtime",
     "/storage": "/storage",
     "/flags": "/flags",
+    "/shortlinks": { es: "/enlaces", en: "/shortlinks" },
+    "/shortlinks/[id]": { es: "/enlaces/[id]", en: "/shortlinks/[id]" },
   },
 });
 

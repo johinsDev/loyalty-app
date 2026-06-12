@@ -5,5 +5,6 @@ export * from "./notifications";
 export * from "./promotions";
 export * from "./push-outbox";
 export * from "./push-tokens";
+export * from "./shortlinks";
 export * from "./sms-outbox";
 export * from "./whatsapp-outbox";

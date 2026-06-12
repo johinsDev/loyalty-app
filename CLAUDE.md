@@ -126,6 +126,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Send a push (web + Expo), register a device token, debug outbox | `push` |
 | Send one event across many channels (mail/sms/push/whatsapp/realtime/database), author a `Notification`, manage marketing opt-outs | `notifications` |
 | Real-time events via PartyKit, add a party, debug WebSocket | `realtime` |
+| Shorten a URL for SMS/WhatsApp, add a shortlink, debug the `/r/:slug` redirect or click counts | `shortlinks` |
 | Upload + serve files (presigned URLs, R2 setup), add a provider | `storage` |
 | Dropzone primitive + useFileUpload + react-hook-form bridge | `file-upload` |
 | Slack bot setup, scopes, posting from MCP | `slack` |
@@ -138,7 +139,7 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `sentry`, `log`, `slack`, `auth`, `tooling`, `zod`, `zustand`, `react-hook-form`, `input-phone`, `trpc-perf`, `wizard`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `shortlinks`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `sentry`, `log`, `slack`, `auth`, `tooling`, `zod`, `zustand`, `react-hook-form`, `input-phone`, `trpc-perf`, `wizard`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 

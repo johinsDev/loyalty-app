@@ -119,7 +119,32 @@ export type Context = {
    * See `.claude/skills/sentry/SKILL.md`.
    */
   captureError?: CaptureError;
+  /**
+   * Short host base URL (e.g. `https://l.t4diverclub.app/r`) bound by the
+   * app so the `shortlinks` router can return full short URLs. Optional —
+   * unset on apps that don't serve shortlinks. See `.claude/skills/shortlinks/SKILL.md`.
+   */
+  shortlinkBaseUrl?: string;
+  /**
+   * Shortlinks creation binding — the `@loyalty/shortlinks` manager. The
+   * admin `create` procedure calls `ctx.shortlinks.shorten(...)` so slug-gen
+   * + dedupe live in the provider. Optional — only the Worker binds it.
+   */
+  shortlinks?: ShortlinksBinding;
 };
+
+/** Structural slice of the `@loyalty/shortlinks` manager (the `shorten` op). */
+export interface ShortlinksBinding {
+  shorten(
+    url: string,
+    opts: {
+      organizationId: string;
+      slug?: string;
+      expiresAt?: Date;
+      createdByUserId?: string;
+    },
+  ): Promise<{ shortUrl: string; slug: string | null }>;
+}
 
 /** Shape of the app-provided Sentry capture hook (see `captureError`). */
 export type CaptureError = (

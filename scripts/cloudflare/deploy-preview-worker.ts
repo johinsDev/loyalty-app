@@ -83,6 +83,10 @@ const providerVars = [
     ? `R2_PUBLIC_URL = "${process.env.R2_PUBLIC_URL}"`
     : "",
   `STORAGE_KEY_PREFIX = "pr-${pr}/"`,
+  // Shortlinks: the redirect + admin create run on THIS per-PR Worker, so the
+  // short host is the Worker's own host + /r. The `shortlink` rows live in the
+  // per-PR DB clone (isolated). Non-secret config → `[var]`.
+  `SHORTLINK_BASE_URL = "https://${apiHost}/r"`,
   // PostHog (analytics + flags via the Workers-safe `fetch` driver). The phc_
   // key is public/embeddable, so it's a `[var]`, not a secret. Without it the
   // Worker falls to the null provider (flags return caller defaults).

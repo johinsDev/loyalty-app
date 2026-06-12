@@ -7,8 +7,20 @@ import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
 type NavItem = {
-  href: "/dashboard" | "/customers" | "/rewards" | "/notifications" | "/promotions";
-  key: "dashboard" | "customers" | "rewards" | "notifications" | "promotions";
+  href:
+    | "/dashboard"
+    | "/customers"
+    | "/rewards"
+    | "/notifications"
+    | "/promotions"
+    | "/shortlinks";
+  key:
+    | "dashboard"
+    | "customers"
+    | "rewards"
+    | "notifications"
+    | "promotions"
+    | "shortlinks";
 };
 
 const ITEMS: readonly NavItem[] = [
@@ -18,6 +30,7 @@ const ITEMS: readonly NavItem[] = [
   { href: "/notifications", key: "notifications" },
   // Promotions wizard — gated to manager+ (the router is `managerProcedure`).
   { href: "/promotions", key: "promotions" },
+  { href: "/shortlinks", key: "shortlinks" },
 ];
 
 // Dev tooling lives under (dev). Visible only to owners; staff and

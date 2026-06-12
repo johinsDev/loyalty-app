@@ -22,6 +22,8 @@ export const env = {
   // analytics / flags (PostHog)
   POSTHOG_KEY: e.NEXT_PUBLIC_POSTHOG_KEY ?? e.POSTHOG_KEY,
   POSTHOG_HOST: e.NEXT_PUBLIC_POSTHOG_HOST ?? e.POSTHOG_HOST,
+  // shortlinks (self-hosted redirect base, includes the /r suffix)
+  SHORTLINK_BASE_URL: e.SHORTLINK_BASE_URL,
   // log (Better Stack HTTP — per-service token preferred)
   BETTER_STACK_SOURCE_TOKEN:
     e.BETTER_STACK_SOURCE_TOKEN_API ?? e.BETTER_STACK_SOURCE_TOKEN,
