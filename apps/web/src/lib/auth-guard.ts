@@ -44,6 +44,17 @@ export async function getSession(): Promise<{ user: { id: string } } | null> {
 }
 
 /**
+ * For auth pages (sign-in) — if the visitor is already signed in, send them out
+ * (default home `/`, where `requireCustomer` then routes a customer to the app
+ * or a phone-less account to `/complete-phone`). Keeps a logged-in user from
+ * seeing the login screen again.
+ */
+export async function redirectIfSignedIn(to = "/"): Promise<void> {
+  const session = await getSession();
+  if (session) redirect(to);
+}
+
+/**
  * Like `requireSession`, but also requires the user to be a loyalty `customer`
  * (`me.isCustomer`, set when they verify a phone). Phone is the loyalty
  * identity, so a Google sign-in with no phone yet is sent to `/complete-phone`

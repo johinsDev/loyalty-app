@@ -1,7 +1,30 @@
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 
 import { db } from "./client";
 import * as schema from "./schema";
+
+/**
+ * Whether a phone number is already linked to a user account (the unique
+ * `user.phoneNumber`). Used to warn a Google user UPFRONT in /complete-phone
+ * before sending an OTP they could never verify (the phone is taken). Pass the
+ * current user's id to exclude their own number.
+ */
+export async function phoneNumberInUse(
+  phone: string,
+  excludeUserId?: string,
+): Promise<boolean> {
+  const rows = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(
+      and(
+        eq(schema.user.phoneNumber, phone),
+        excludeUserId ? ne(schema.user.id, excludeUserId) : undefined,
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
 
 export interface ProvisionCustomerInput {
   /** Customer id — set to the Better Auth `user.id` so the web profile
