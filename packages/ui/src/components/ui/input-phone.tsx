@@ -1,9 +1,10 @@
 "use client";
 
 import { Combobox as ComboboxPrimitive } from "@base-ui/react";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, SearchIcon, XIcon } from "lucide-react";
 import * as React from "react";
 
+import { useIsMobile } from "../../hooks/use-mobile";
 import { cn } from "../../cn";
 import {
   Combobox,
@@ -13,6 +14,13 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "./combobox";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "./drawer";
 import {
   COUNTRIES,
   type CountryCode,
@@ -29,6 +37,9 @@ import {
 
 const INPUT_CLASSNAME =
   "h-14 w-full min-w-0 rounded-r-xl border border-l-0 border-input bg-transparent px-4 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80";
+
+const TRIGGER_CLASSNAME =
+  "inline-flex h-14 shrink-0 items-center gap-1.5 rounded-l-xl border border-input bg-transparent px-3.5 text-base font-medium transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:border-ring aria-expanded:ring-3 aria-expanded:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30";
 
 function countryLabel(code: CountryCode, locale?: string): string {
   try {
@@ -91,6 +102,8 @@ export function InputPhone({
   );
   const [digits, setDigits] = React.useState<string>(seed?.nationalNumber ?? "");
   const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const isMobile = useIsMobile();
 
   const country = countryProp ?? countryState;
 
@@ -150,9 +163,117 @@ export function InputPhone({
   const Flag = def.Flag;
   const display = formatNational(digits, country);
 
+  const q = query.trim().toLowerCase();
+  const filtered =
+    q.length === 0
+      ? [...countries]
+      : [...countries].filter(
+          (code) =>
+            countryLabel(code, locale).toLowerCase().includes(q) ||
+            `+${COUNTRIES[code].dialCode}`.includes(q),
+        );
+
   return (
     <div className={cn("flex w-full", className)}>
-      <Combobox
+      {isMobile ? (
+        <>
+          <button
+            type="button"
+            disabled={disabled}
+            data-slot="input-phone-country"
+            aria-expanded={open}
+            onClick={() => setOpen(true)}
+            className={TRIGGER_CLASSNAME}
+          >
+            <Flag className="size-5 shrink-0 rounded-[2px]" />
+            <span className="inline-block w-12 text-left tabular-nums text-muted-foreground">
+              +{def.dialCode}
+            </span>
+            <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+          <Drawer
+            open={open}
+            onOpenChange={(o) => {
+              setOpen(o);
+              if (!o) setQuery("");
+            }}
+          >
+            <DrawerContent className="max-h-[85vh]">
+              <DrawerHeader className="flex flex-row items-center justify-between border-b py-3 text-left">
+                <DrawerTitle className="text-lg">Elegí tu país</DrawerTitle>
+                <DrawerClose
+                  aria-label="Cerrar"
+                  className="text-muted-foreground hover:bg-muted flex size-8 items-center justify-center rounded-full"
+                >
+                  <XIcon className="size-5" />
+                </DrawerClose>
+              </DrawerHeader>
+              <div className="px-4 pt-3 pb-2">
+                <div className="border-input flex h-12 items-center gap-2 rounded-xl border px-3.5">
+                  <SearchIcon className="text-muted-foreground size-4 shrink-0" />
+                  <input
+                    autoFocus
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Buscar país…"
+                    className="placeholder:text-muted-foreground h-full w-full bg-transparent text-base outline-none"
+                  />
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+                {filtered.length === 0 ? (
+                  <p className="text-muted-foreground px-3 py-6 text-center text-sm">
+                    Sin resultados.
+                  </p>
+                ) : (
+                  filtered.map((code) => {
+                    const c = COUNTRIES[code];
+                    const ItemFlag = c.Flag;
+                    const selected = code === country;
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => {
+                          handleCountry(code);
+                          setQuery("");
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors",
+                          selected ? "bg-accent" : "hover:bg-muted",
+                        )}
+                      >
+                        <ItemFlag className="size-7 shrink-0 rounded-[3px]" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-base font-medium">
+                            {countryLabel(code, locale)}
+                          </p>
+                          <p className="text-muted-foreground text-sm">
+                            +{c.dialCode}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            "flex size-5 shrink-0 items-center justify-center rounded-full border-2",
+                            selected
+                              ? "border-primary"
+                              : "border-muted-foreground/40",
+                          )}
+                        >
+                          {selected && (
+                            <span className="bg-primary size-2.5 rounded-full" />
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </DrawerContent>
+          </Drawer>
+        </>
+      ) : (
+        <Combobox
         items={[...countries]}
         value={country}
         onValueChange={(next) => handleCountry(next as CountryCode | null)}
@@ -166,7 +287,7 @@ export function InputPhone({
           type="button"
           disabled={disabled}
           data-slot="input-phone-country"
-          className="inline-flex h-14 shrink-0 items-center gap-1.5 rounded-l-xl border border-input bg-transparent px-3.5 text-base font-medium transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:border-ring aria-expanded:ring-3 aria-expanded:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30"
+          className={TRIGGER_CLASSNAME}
         >
           <Flag className="size-5 shrink-0 rounded-[2px]" />
           <span className="inline-block w-12 text-left tabular-nums text-muted-foreground">
@@ -204,7 +325,8 @@ export function InputPhone({
           </ComboboxList>
           <ComboboxEmpty>Sin resultados.</ComboboxEmpty>
         </ComboboxContent>
-      </Combobox>
+        </Combobox>
+      )}
       <input
         {...inputProps}
         type="tel"
