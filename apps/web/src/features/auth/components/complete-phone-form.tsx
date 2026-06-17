@@ -28,14 +28,20 @@ export function CompletePhoneForm() {
   const router = useRouter();
   const otp = usePhoneOtp();
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [code, setCode] = useState("");
 
   const phoneValid = isValidE164Phone(phone);
 
   const onSendCode = async () => {
-    if (!phoneValid) return;
+    if (!phoneValid) {
+      setPhoneError(t("phoneInvalid"));
+      return;
+    }
+    setPhoneError(null);
     const ok = await otp.requestOtp(phone);
     if (ok) setCode("");
+    else setPhoneError(t("errorSendFailed"));
   };
 
   const onVerify = async () => {
@@ -64,10 +70,17 @@ export function CompletePhoneForm() {
               defaultCountry="CO"
               locale={locale}
               value={phone}
-              onChange={(v) => setPhone(v.e164)}
+              onChange={(v) => {
+                setPhone(v.e164);
+                if (phoneError) setPhoneError(null);
+              }}
+              aria-invalid={!!phoneError}
               placeholder={t("phonePlaceholder")}
               autoFocus
             />
+            {phoneError && (
+              <p className="text-destructive mt-2 text-sm">{phoneError}</p>
+            )}
           </>
         ) : (
           <>
@@ -115,7 +128,7 @@ export function CompletePhoneForm() {
           <Button
             variant="gradient"
             className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
-            disabled={!phoneValid || otp.isSending}
+            disabled={otp.isSending}
             onClick={() => void onSendCode()}
           >
             {otp.isSending ? (

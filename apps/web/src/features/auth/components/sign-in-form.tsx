@@ -46,6 +46,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
     setIntro(i);
   };
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -62,11 +63,17 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   };
 
   const onSendCode = async () => {
-    if (!phoneValid) return;
+    if (!phoneValid) {
+      setPhoneError(t("phoneInvalid"));
+      return;
+    }
+    setPhoneError(null);
     const ok = await otp.requestOtp(phone);
     if (ok) {
       setCode("");
       setScreen("otp");
+    } else {
+      setPhoneError(t("errorSendFailed"));
     }
   };
 
@@ -195,21 +202,23 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
               defaultCountry="CO"
               locale={locale}
               value={phone}
-              onChange={(v) => setPhone(v.e164)}
+              onChange={(v) => {
+                setPhone(v.e164);
+                if (phoneError) setPhoneError(null);
+              }}
+              aria-invalid={!!phoneError}
               placeholder={t("phonePlaceholder")}
               autoFocus
             />
-            {otp.error && (
-              <p className="text-destructive mt-2 text-sm">
-                {t.has(otp.error) ? t(otp.error) : t("genericError")}
-              </p>
+            {phoneError && (
+              <p className="text-destructive mt-2 text-sm">{phoneError}</p>
             )}
           </Content>
           <Footer>
             <Button
               variant="gradient"
               className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
-              disabled={!phoneValid || otp.isSending}
+              disabled={otp.isSending}
               onClick={() => void onSendCode()}
             >
               {otp.isSending ? (

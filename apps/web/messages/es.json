@@ -81,6 +81,7 @@
     "signingOut": "Cerrando…",
     "errorInvalidPhone": "Número de teléfono inválido",
     "errorOtpFailed": "El código no es correcto o expiró",
+    "errorSendFailed": "No pudimos enviar el código. Probá de nuevo.",
     "errorGoogleFailed": "No pudimos iniciar sesión con Google",
     "errorForbidden": "No tenés permisos para acceder a esa sección. Iniciá sesión con una cuenta autorizada.",
     "genericError": "Algo salió mal, intenta de nuevo",

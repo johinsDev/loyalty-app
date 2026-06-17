@@ -81,6 +81,7 @@
     "signingOut": "Signing out…",
     "errorInvalidPhone": "Invalid phone number",
     "errorOtpFailed": "The code is incorrect or expired",
+    "errorSendFailed": "We couldn't send the code. Try again.",
     "errorGoogleFailed": "We couldn't sign you in with Google",
     "errorForbidden": "You don't have access to that section. Sign in with an authorized account.",
     "genericError": "Something went wrong, try again",
