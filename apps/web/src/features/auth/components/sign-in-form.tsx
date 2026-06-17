@@ -20,6 +20,7 @@ import { getAppUrl } from "@/lib/app-url";
 import { usePhoneOtp } from "../hooks/use-phone-otp";
 import { Confetti } from "./confetti";
 import { EmojiTile } from "./emoji-tile";
+import { IconWhatsApp } from "./icon-whatsapp";
 
 type Screen = "intro" | "phone" | "otp" | "success";
 
@@ -73,26 +74,30 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const intros = [
     { emoji: "🧋", title: t("intro1Title"), sub: t("intro1Sub") },
     { emoji: "⭐", title: t("intro2Title"), sub: t("intro2Sub") },
+    { emoji: "🎁", title: t("intro3Title"), sub: t("intro3Sub") },
   ];
+  const lastIntro = intros.length - 1;
 
   return (
     <div className="text-foreground mx-auto flex min-h-[100dvh] w-full max-w-md flex-col">
       {/* ===== 1 · INTRO ===== */}
       {screen === "intro" && (
         <Screen>
-          <div className="flex justify-end px-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setScreen("phone")}
-              className="text-muted-foreground px-2 py-1 text-base font-semibold"
-            >
-              {t("skip")}
-            </button>
+          <div className="flex justify-end px-4 pt-2">
+            {intro < lastIntro && (
+              <button
+                type="button"
+                onClick={() => setIntro(lastIntro)}
+                className="text-muted-foreground px-2 py-1 text-base font-semibold"
+              >
+                {t("skip")}
+              </button>
+            )}
           </div>
           <Content className="items-center justify-center gap-7 text-center">
             <button
               type="button"
-              onClick={() => setIntro((i) => (i === 0 ? 1 : 0))}
+              onClick={() => setIntro((i) => Math.min(i + 1, lastIntro))}
               aria-label={t("next")}
             >
               <EmojiTile size="lg">{intros[intro]!.emoji}</EmojiTile>
@@ -106,9 +111,9 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {[0, 1].map((i) => (
+              {intros.map((slide, i) => (
                 <button
-                  key={i}
+                  key={slide.emoji}
                   type="button"
                   onClick={() => setIntro(i)}
                   aria-label={`${i + 1}`}
@@ -120,28 +125,40 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             </div>
           </Content>
           <Footer>
-            <Button
-              variant="gradient"
-              className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
-              onClick={() => setScreen("phone")}
-            >
-              <span className="text-xl">💬</span>
-              {t("whatsappButton")}
-            </Button>
-            {googleEnabled && (
-              <button
-                type="button"
-                onClick={() => void onGoogle()}
-                disabled={googleLoading}
-                className="text-primary h-11 text-base font-semibold disabled:opacity-50"
+            {intro < lastIntro ? (
+              <Button
+                variant="gradient"
+                className="h-14 w-full rounded-full text-base font-bold"
+                onClick={() => setIntro((i) => Math.min(i + 1, lastIntro))}
               >
-                {t("googleLink")}
-              </button>
-            )}
-            {forbidden && (
-              <p className="text-center text-sm font-semibold text-amber-600">
-                {t("errorForbidden")}
-              </p>
+                {t("next")}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="gradient"
+                  className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
+                  onClick={() => setScreen("phone")}
+                >
+                  <IconWhatsApp className="size-6" />
+                  {t("whatsappButton")}
+                </Button>
+                {googleEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => void onGoogle()}
+                    disabled={googleLoading}
+                    className="text-primary h-11 text-base font-semibold disabled:opacity-50"
+                  >
+                    {t("googleLink")}
+                  </button>
+                )}
+                {forbidden && (
+                  <p className="text-center text-sm font-semibold text-amber-600">
+                    {t("errorForbidden")}
+                  </p>
+                )}
+              </>
             )}
           </Footer>
         </Screen>
@@ -152,7 +169,9 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
         <Screen>
           <BackBar onClick={() => setScreen("intro")} label={t("back")} />
           <Content className="gap-0">
-            <EmojiTile className="mb-6">💬</EmojiTile>
+            <EmojiTile className="mb-6">
+              <IconWhatsApp className="size-11 text-[#25D366]" />
+            </EmojiTile>
             <h1 className="font-display mb-2 text-3xl leading-[1.05] font-semibold tracking-tight">
               {t("phoneScreenTitle")}
             </h1>
@@ -169,7 +188,9 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
               autoFocus
             />
             {otp.error && (
-              <p className="text-destructive mt-2 text-sm">{otp.error}</p>
+              <p className="text-destructive mt-2 text-sm">
+                {t.has(otp.error) ? t(otp.error) : t("genericError")}
+              </p>
             )}
           </Content>
           <Footer>
