@@ -186,3 +186,9 @@ scripts/*
 !scripts/cloudflare/**
 !scripts/slack
 !scripts/slack/**
+
+# design-sync durable state (config + notes only; sb-reference/.cache/learnings stay ignored)
+!.design-sync/
+.design-sync/*
+!.design-sync/config.json
+!.design-sync/NOTES.md

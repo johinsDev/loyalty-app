@@ -1,0 +1,9 @@
+{
+  "projectId": "f45dbdc7-5c42-459f-b5b0-6bdcfc4c2618",
+  "shape": "storybook",
+  "pkg": "@loyalty/ui",
+  "globalName": "LoyaltyUI",
+  "entry": "packages/ui/src/index.ts",
+  "storybookConfigDir": "apps/storybook/.storybook",
+  "storybookStatic": ".design-sync/sb-reference"
+}
