@@ -12,7 +12,7 @@ import {
 } from "@loyalty/ui";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
 import { getAppUrl } from "@/lib/app-url";
@@ -51,6 +51,18 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const phoneValid = isValidE164Phone(phone);
+
+  // Autofocus the phone field when its screen opens (the conditional remount
+  // makes React's autoFocus unreliable across the slide transition).
+  useEffect(() => {
+    if (screen !== "phone") return;
+    const id = window.setTimeout(() => {
+      document
+        .querySelector<HTMLInputElement>('[data-slot="input-phone-number"]')
+        ?.focus();
+    }, 60);
+    return () => window.clearTimeout(id);
+  }, [screen]);
 
   const onGoogle = async () => {
     if (!googleEnabled) return;
@@ -95,7 +107,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
       {/* ===== 1 · INTRO ===== */}
       {screen === "intro" && (
         <Screen>
-          <div className="flex justify-end px-4 pt-2">
+          <div className="flex h-12 items-center justify-end px-4">
             {intro < lastIntro && (
               <button
                 type="button"
@@ -144,9 +156,27 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             </div>
           </Content>
           <Footer>
-            {/* Stable height across slides — the primary button is always
-                present (label/action swap), and the secondary row reserves
-                h-11 so adding the Google link on the last slide doesn't jump. */}
+            {/* Primary button is the LAST child → anchored at the bottom on
+                every slide. The Google row sits ABOVE it with a reserved height,
+                so it appears on the last slide without moving the button (no
+                jump, button stays low). */}
+            {forbidden && (
+              <p className="text-center text-sm font-semibold text-amber-600">
+                {t("errorForbidden")}
+              </p>
+            )}
+            <div className="flex h-11 items-center justify-center">
+              {intro === lastIntro && googleEnabled && (
+                <button
+                  type="button"
+                  onClick={() => void onGoogle()}
+                  disabled={googleLoading}
+                  className="text-primary text-base font-semibold disabled:opacity-50"
+                >
+                  {t("googleLink")}
+                </button>
+              )}
+            </div>
             <Button
               variant="gradient"
               className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
@@ -163,23 +193,6 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
                 </>
               )}
             </Button>
-            <div className="flex h-11 items-center justify-center">
-              {intro === lastIntro && googleEnabled && (
-                <button
-                  type="button"
-                  onClick={() => void onGoogle()}
-                  disabled={googleLoading}
-                  className="text-primary text-base font-semibold disabled:opacity-50"
-                >
-                  {t("googleLink")}
-                </button>
-              )}
-            </div>
-            {forbidden && (
-              <p className="text-center text-sm font-semibold text-amber-600">
-                {t("errorForbidden")}
-              </p>
-            )}
           </Footer>
         </Screen>
       )}
@@ -192,14 +205,15 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             <EmojiTile className="mb-6">
               <IconWhatsApp className="size-11 text-[#25D366]" />
             </EmojiTile>
-            <h1 className="font-display mb-2 text-3xl leading-[1.05] font-semibold tracking-tight">
+            <h1 className="font-display mb-2 text-[2rem] leading-[1.05] font-semibold tracking-tight">
               {t("phoneScreenTitle")}
             </h1>
             <p className="text-muted-foreground mb-7 text-base leading-relaxed">
               {t("phoneScreenSubtitle")}
             </p>
-            <span className="mb-2 text-sm font-bold">{t("phoneFieldLabel")}</span>
+            <span className="mb-2 text-base font-bold">{t("phoneFieldLabel")}</span>
             <InputPhone
+              className="[&_button]:h-16 [&_input]:h-16 [&_input]:text-lg"
               defaultCountry="CO"
               locale={locale}
               value={phone}
@@ -241,7 +255,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
           <BackBar onClick={() => setScreen("phone")} label={t("back")} />
           <Content className="gap-0">
             <EmojiTile className="mb-6">🔑</EmojiTile>
-            <h1 className="font-display mb-2 text-3xl leading-[1.05] font-semibold tracking-tight">
+            <h1 className="font-display mb-2 text-[2rem] leading-[1.05] font-semibold tracking-tight">
               {t("otpTitle")}
             </h1>
             <p className="text-muted-foreground mb-7 text-base leading-relaxed">
@@ -309,7 +323,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
           <Confetti />
           <Content className="z-10 items-center pt-8 text-center">
             <EmojiTile size="lg">🎉</EmojiTile>
-            <h1 className="font-display mt-6 mb-2 text-3xl leading-[1.05] font-semibold tracking-tight whitespace-pre-line">
+            <h1 className="font-display mt-6 mb-2 text-[2rem] leading-[1.05] font-semibold tracking-tight whitespace-pre-line">
               {t("successTitle")}
             </h1>
             <p className="text-muted-foreground mb-6 text-base">

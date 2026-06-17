@@ -59,14 +59,15 @@ export function CompletePhoneForm() {
         </div>
         {otp.step === "phone" ? (
           <>
-            <h1 className="font-display mb-2 text-3xl leading-[1.05] font-semibold tracking-tight">
+            <h1 className="font-display mb-2 text-[2rem] leading-[1.05] font-semibold tracking-tight">
               {t("completePhoneTitle")}
             </h1>
             <p className="text-muted-foreground mb-7 text-base leading-relaxed">
               {t("completePhoneSubtitle")}
             </p>
-            <span className="mb-2 text-sm font-bold">{t("phoneFieldLabel")}</span>
+            <span className="mb-2 text-base font-bold">{t("phoneFieldLabel")}</span>
             <InputPhone
+              className="[&_button]:h-16 [&_input]:h-16 [&_input]:text-lg"
               defaultCountry="CO"
               locale={locale}
               value={phone}
@@ -84,7 +85,7 @@ export function CompletePhoneForm() {
           </>
         ) : (
           <>
-            <h1 className="font-display mb-2 text-3xl leading-[1.05] font-semibold tracking-tight">
+            <h1 className="font-display mb-2 text-[2rem] leading-[1.05] font-semibold tracking-tight">
               {t("otpTitle")}
             </h1>
             <p className="text-muted-foreground mb-7 text-base leading-relaxed">

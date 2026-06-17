@@ -15,7 +15,7 @@ export function EmojiTile({
   const dims =
     size === "lg"
       ? "size-36 rounded-[2.5rem] text-[78px]"
-      : "size-24 rounded-[1.75rem] text-5xl";
+      : "size-28 rounded-[2rem] text-6xl";
   return (
     <div
       className={`flex items-center justify-center bg-linear-to-b from-[#f1fffb] to-[#d6f6ed] shadow-xl shadow-primary/35 ${dims} ${className}`}
