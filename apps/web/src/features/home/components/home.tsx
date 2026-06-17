@@ -1,55 +1,67 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@loyalty/ui";
+import { SidebarInset, SidebarProvider } from "@loyalty/ui";
 import { getTranslations } from "next-intl/server";
-import Image from "next/image";
 
-import { Link } from "@/i18n/navigation";
-
-// 4×4 grey LQIP — placeholder while the real image loads. Swap to a real
-// per-asset blurDataURL when the brand asset lands in R2.
-const BRAND_BLUR =
-  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0IDQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNlNWU3ZWIiLz48L3N2Zz4=";
+import { AppSidebar } from "./app-sidebar";
+import { BottomNav } from "./bottom-nav";
+import { GreetingHeader } from "./greeting-header";
+import { PointsCard } from "./points-card";
+import { PromosCarousel } from "./promos-carousel";
+import { RecentVisits } from "./recent-visits";
+import { RewardCard } from "./reward-card";
+import { ScanCta } from "./scan-cta";
+import { StampsCard } from "./stamps-card";
+import { Usuals } from "./usuals";
 
 /**
- * Customer PWA landing card with quick links into Card + Profile.
- * Dev tooling (outboxes, realtime/storage smoke) lives in apps/admin
- * under (dev) — gated by role=owner.
+ * Customer home — a faithful build of the "T4 Lovers · Home / Sellos" Claude
+ * Design templates. Mobile-first (the phone design) with a wider desktop
+ * variation: a collapsible sidebar (md+) replaces the bottom nav, and the
+ * wallet cards sit side by side. All data is hardcoded sample content (see
+ * `../data`); both wallet models — points ring and stamp card — are shown.
  */
 export async function Home() {
   const t = await getTranslations("Home");
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-6 p-6">
-      <Image
-        src="https://placehold.co/480x160/0ea5e9/ffffff/png?text=T4+Loyalty"
-        alt="T4 Loyalty"
-        width={240}
-        height={80}
-        priority
-        sizes="(max-width: 640px) 50vw, 240px"
-        placeholder="blur"
-        blurDataURL={BRAND_BLUR}
-      />
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>{t("cardTitle")}</CardTitle>
-          <CardDescription>{t("cardDescription")}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <Link href="/card">
-            <Button className="w-full">{t("viewCard")}</Button>
-          </Link>
-          <Link href="/profile">
-            <Button variant="outline" className="w-full">
-              {t("myProfile")}
-            </Button>
-          </Link>
-          <Link href="/notifications">
-            <Button variant="outline" className="w-full">
-              {t("myNotifications")}
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
-    </main>
+    <SidebarProvider style={{ "--sidebar-width": "18rem" } as React.CSSProperties}>
+      <AppSidebar />
+      <SidebarInset className="from-primary/5 to-background text-foreground overflow-x-clip bg-gradient-to-b">
+        <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-5xl lg:px-8 lg:pt-12">
+          <GreetingHeader />
+
+        {/* Wallet models — points ring + stamp card, side by side on desktop. */}
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <PointsCard />
+          <StampsCard />
+        </div>
+
+        <div className="mt-4">
+          <ScanCta />
+        </div>
+
+        <section className="mt-6">
+          <p className="text-muted-foreground mb-3 text-xs font-bold tracking-wider">
+            {t("readyToClaim")}
+          </p>
+          <RewardCard />
+        </section>
+
+        <div className="mt-6">
+          <PromosCarousel />
+        </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="min-w-0">
+              <Usuals />
+            </div>
+            <div className="min-w-0">
+              <RecentVisits />
+            </div>
+          </div>
+        </div>
+
+        <BottomNav />
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
