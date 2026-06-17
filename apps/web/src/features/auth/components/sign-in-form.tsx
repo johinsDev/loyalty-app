@@ -144,40 +144,41 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             </div>
           </Content>
           <Footer>
-            {intro < lastIntro ? (
-              <Button
-                variant="gradient"
-                className="h-14 w-full rounded-full text-base font-bold"
-                onClick={() => goIntro(Math.min(intro + 1, lastIntro))}
-              >
-                {t("next")}
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="gradient"
-                  className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
-                  onClick={() => setScreen("phone")}
-                >
+            {/* Stable height across slides — the primary button is always
+                present (label/action swap), and the secondary row reserves
+                h-11 so adding the Google link on the last slide doesn't jump. */}
+            <Button
+              variant="gradient"
+              className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
+              onClick={() =>
+                intro < lastIntro ? goIntro(intro + 1) : setScreen("phone")
+              }
+            >
+              {intro < lastIntro ? (
+                t("next")
+              ) : (
+                <>
                   <IconWhatsApp className="size-6" />
                   {t("whatsappButton")}
-                </Button>
-                {googleEnabled && (
-                  <button
-                    type="button"
-                    onClick={() => void onGoogle()}
-                    disabled={googleLoading}
-                    className="text-primary h-11 text-base font-semibold disabled:opacity-50"
-                  >
-                    {t("googleLink")}
-                  </button>
-                )}
-                {forbidden && (
-                  <p className="text-center text-sm font-semibold text-amber-600">
-                    {t("errorForbidden")}
-                  </p>
-                )}
-              </>
+                </>
+              )}
+            </Button>
+            <div className="flex h-11 items-center justify-center">
+              {intro === lastIntro && googleEnabled && (
+                <button
+                  type="button"
+                  onClick={() => void onGoogle()}
+                  disabled={googleLoading}
+                  className="text-primary text-base font-semibold disabled:opacity-50"
+                >
+                  {t("googleLink")}
+                </button>
+              )}
+            </div>
+            {forbidden && (
+              <p className="text-center text-sm font-semibold text-amber-600">
+                {t("errorForbidden")}
+              </p>
             )}
           </Footer>
         </Screen>
