@@ -12,6 +12,7 @@ export const routing = defineRouting({
   // "/profile" for en.
   pathnames: {
     "/": "/",
+    "/welcome": { es: "/bienvenida", en: "/welcome" },
     "/profile": { es: "/perfil", en: "/profile" },
     "/card": { es: "/tarjeta", en: "/card" },
     "/notifications": { es: "/notificaciones", en: "/notifications" },

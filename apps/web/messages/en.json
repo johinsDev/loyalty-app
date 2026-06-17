@@ -43,6 +43,13 @@
     "navMenu": "Menu",
     "navProfile": "Profile"
   },
+  "Welcome": {
+    "title": "Welcome, {name}!",
+    "subtitle": "You earned 50 bonus points",
+    "pointsPill": "+50 points",
+    "viewCard": "View my card",
+    "addToWallet": "Add to Apple Wallet"
+  },
   "Notifications": {
     "title": "Notifications",
     "newNotification": "You have a new notification",

@@ -10,7 +10,7 @@ import { usePathname } from "@/i18n/navigation";
 // overlap them (and aren't part of the design). Hide all global chrome there; it
 // still shows on the inner app pages. (Install + theme/locale move into the
 // profile later.)
-const HIDDEN_ON = ["/", "/sign-in", "/complete-phone"];
+const HIDDEN_ON = ["/", "/welcome", "/sign-in", "/complete-phone"];
 
 export function AppChrome() {
   const pathname = usePathname();

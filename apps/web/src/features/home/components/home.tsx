@@ -23,7 +23,7 @@ export async function Home() {
   const t = await getTranslations("Home");
 
   return (
-    <SidebarProvider>
+    <SidebarProvider style={{ "--sidebar-width": "18rem" } as React.CSSProperties}>
       <AppSidebar />
       <SidebarInset className="from-primary/5 to-background text-foreground overflow-x-clip bg-gradient-to-b">
         <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-5xl lg:px-8 lg:pt-12">
