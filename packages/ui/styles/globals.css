@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /* Tailwind v4 auto-detects content next to this file, but consumer apps
    (apps/{web,admin,storybook}) live outside this directory. Explicit
