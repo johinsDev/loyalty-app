@@ -30,6 +30,15 @@ type SendMagicLinkPayload = { email: string; url: string };
 export const auth = createAuth(
   {
     sendOtp: async ({ phoneNumber, code }) => {
+      // Local dev (no Trigger.dev): don't dispatch — log the code so it can be
+      // entered from the console. Prod/preview always set TRIGGER_SECRET_KEY.
+      if (!process.env.TRIGGER_SECRET_KEY) {
+        log.warn(
+          { phoneNumber, code },
+          "auth.phoneNumber.sendOtp.devLog — TRIGGER_SECRET_KEY unset; OTP logged, not sent",
+        );
+        return;
+      }
       await tasks.trigger<typeof sendOtpWhatsappTask>("send-otp-whatsapp", {
         phoneNumber,
         code,
@@ -37,6 +46,13 @@ export const auth = createAuth(
       log.info({ phoneNumber }, "auth.phoneNumber.sendOtp.queued");
     },
     sendMagicLink: async ({ email, url }) => {
+      if (!process.env.TRIGGER_SECRET_KEY) {
+        log.warn(
+          { email, url },
+          "auth.magicLink.send.devLog — TRIGGER_SECRET_KEY unset; magic link logged, not sent",
+        );
+        return;
+      }
       const payload: SendMagicLinkPayload = { email, url };
       await tasks.trigger("send-magic-link-email", payload);
       log.info({ email }, "auth.magicLink.send.queued");

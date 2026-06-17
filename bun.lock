@@ -142,7 +142,6 @@
       "name": "@loyalty/web",
       "version": "0.0.0",
       "dependencies": {
-        "@hookform/resolvers": "^5.4.0",
         "@loyalty/analytics": "workspace:*",
         "@loyalty/api": "workspace:*",
         "@loyalty/auth": "workspace:*",
@@ -166,7 +165,6 @@
         "posthog-js": "^1.180.0",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
-        "react-hook-form": "^7.77.0",
         "server-only": "^0.0.1",
         "serwist": "^9.0.0",
         "sonner": "^2.0.7",
@@ -646,6 +644,7 @@
         "oxlint": "^0.15.0",
         "react": "^19.0.0",
         "tailwindcss": "^4.0.0",
+        "tw-animate-css": "^1.4.0",
         "typescript": "^5.7.0",
         "vitest": "^2.1.0",
       },
@@ -3242,6 +3241,8 @@
     "tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
 
     "turbo": ["turbo@2.9.16", "", { "optionalDependencies": { "@turbo/darwin-64": "2.9.16", "@turbo/darwin-arm64": "2.9.16", "@turbo/linux-64": "2.9.16", "@turbo/linux-arm64": "2.9.16", "@turbo/windows-64": "2.9.16", "@turbo/windows-arm64": "2.9.16" }, "bin": { "turbo": "bin/turbo" } }, "sha512-NqgRQy6j6dPYcdSdv0q1g9QsZg7SWg87RERM8otw/1AtKU2yTFVClOM7cbwKzOonZr/Ek1blTBucw64L9H0Bwg=="],
+
+    "tw-animate-css": ["tw-animate-css@1.4.0", "", {}, "sha512-7bziOlRqH0hJx80h/3mbicLW7o8qLsH5+RaLR2t+OHM3D0JlWGODQKQ4cxbK7WlvmUxpcj6Kgu6EKqjrGFe3QQ=="],
 
     "twilio": ["twilio@6.0.2", "", { "dependencies": { "axios": "^1.13.5", "dayjs": "^1.11.9", "https-proxy-agent": "^5.0.0", "jsonwebtoken": "^9.0.3", "qs": "^6.14.1", "scmp": "^2.1.0", "xmlbuilder": "^13.0.2" } }, "sha512-RN3TZxUtxLz2HBZVt62+LdZxQbrMVgYKtuzLgwmO7nqKvR+gQS5mCackD9hf4Y7MmoK/bX7tCm7kaJC8kC8zFA=="],
 

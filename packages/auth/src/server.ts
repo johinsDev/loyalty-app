@@ -98,6 +98,9 @@ export function createAuth(
     !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
 
   const baseURL = options.baseURL ?? defaultBaseURL;
+  // Loosen the OTP/auth rate limits for local dev only — `wrangler dev` forces
+  // APP_ENV="production", so key off the localhost baseURL instead.
+  const isLocalDev = baseURL.includes("localhost");
 
   return betterAuth({
     database: drizzleAdapter(db, { provider: "sqlite" }),
@@ -131,12 +134,14 @@ export function createAuth(
       enabled: true,
       window: 60,
       max: 100,
-      customRules: {
-        "/phone-number/send-otp": { window: 60, max: 3 },
-        "/phone-number/verify": { window: 60, max: 5 },
-        "/sign-in/social": { window: 60, max: 10 },
-        "/sign-in/magic-link": { window: 60, max: 3 },
-      },
+      customRules: isLocalDev
+        ? {}
+        : {
+            "/phone-number/send-otp": { window: 60, max: 3 },
+            "/phone-number/verify": { window: 60, max: 5 },
+            "/sign-in/social": { window: 60, max: 10 },
+            "/sign-in/magic-link": { window: 60, max: 3 },
+          },
     },
     emailAndPassword:
       options.emailAndPasswordEnabled === false
@@ -228,6 +233,8 @@ async function provisionCustomer(
 // for one number. This caps to N requests / window per phoneNumber by
 // counting rows in the verification table.
 async function enforcePhoneOtpCap(phoneNumber: string): Promise<void> {
+  // Local dev: don't cap, so the onboarding can be tested freely.
+  if ((process.env.BETTER_AUTH_URL ?? "").includes("localhost")) return;
   const since = new Date(Date.now() - PHONE_OTP_WINDOW_SECONDS * 1000);
   const [row] = await db
     .select({ count: sql<number>`count(*)` })

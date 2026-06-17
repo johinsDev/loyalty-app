@@ -2,25 +2,18 @@
 
 import {
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
   InputPhone,
   isValidE164Phone,
-  Label,
+  Spinner,
 } from "@loyalty/ui";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { z } from "zod";
+import { useState } from "react";
 
-import { useRouter } from "@/i18n/navigation";
+import { useTRPC } from "@/lib/trpc/client";
 
 import { usePhoneOtp } from "../hooks/use-phone-otp";
 
@@ -28,147 +21,167 @@ import { usePhoneOtp } from "../hooks/use-phone-otp";
  * Phone-capture step for customers who signed in with Google (the loyalty
  * identity is the phone). Verifying with `updatePhoneNumber: true` links the
  * phone to the current session and the Worker provisions their `customer` row.
+ * Matches the "T4 Onboarding · Fun" capture screen (full-screen, mobile-first).
  */
 export function CompletePhoneForm() {
   const t = useTranslations("Auth");
   const locale = useLocale();
-  const router = useRouter();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const otp = usePhoneOtp();
-  const [codeInput, setCodeInput] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [code, setCode] = useState("");
 
-  const phoneSchema = useMemo(
-    () =>
-      z.object({
-        phone: z
-          .string()
-          .refine(isValidE164Phone, { message: t("phoneInvalid") }),
-      }),
-    [t],
-  );
-  const {
-    control,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<{ phone: string }>({
-    resolver: zodResolver(phoneSchema),
-    defaultValues: { phone: "" },
-  });
+  const phoneValid = isValidE164Phone(phone);
 
-  const onRequestOtp = handleSubmit(async ({ phone }) => {
-    await otp.requestOtp(phone);
-  });
-
-  const onVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (codeInput.length !== 6) return;
-    const ok = await otp.verifyOtp(codeInput, { updatePhoneNumber: true });
-    if (ok) router.push("/");
+  const onSendCode = async () => {
+    if (!phoneValid) {
+      setPhoneError(t("phoneInvalid"));
+      return;
+    }
+    setPhoneError(null);
+    // Warn upfront if the number is already linked to another account — the
+    // updatePhoneNumber verify would otherwise fail cryptically ("otp not found").
+    setChecking(true);
+    const { available } = await queryClient.fetchQuery(
+      trpc.auth.phoneAvailable.queryOptions({ phone }),
+    );
+    setChecking(false);
+    if (!available) {
+      setPhoneError(t("phoneTaken"));
+      return;
+    }
+    const ok = await otp.requestOtp(phone);
+    if (ok) setCode("");
+    else setPhoneError(t("errorSendFailed"));
   };
 
-  const onChangePhone = () => {
-    setCodeInput("");
-    otp.reset();
+  const onVerify = async () => {
+    if (code.length !== 6) return;
+    const ok = await otp.verifyOtp(code, { updatePhoneNumber: true });
+    // Hard navigation so the home is fetched fresh with the new session cookie
+    // (a soft router.push serves the cached, unauthenticated RSC → bounce loop).
+    if (ok) window.location.href = "/";
   };
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>{t("completePhoneTitle")}</CardTitle>
-        <CardDescription>{t("completePhoneSubtitle")}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <form
+      className="text-foreground mx-auto flex min-h-[100dvh] w-full max-w-md flex-col"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (otp.step === "phone") void onSendCode();
+        else void onVerify();
+      }}
+    >
+      <div className="flex-1 overflow-y-auto px-7 pt-6 pb-3">
+        {/* orange tile — distinct from the teal flow, per the design */}
+        <div className="mb-6 flex size-24 items-center justify-center rounded-[1.75rem] bg-linear-to-b from-[#fff6ec] to-[#ffe7cf] text-5xl shadow-xl shadow-[#ffaa50]/35">
+          📲
+        </div>
         {otp.step === "phone" ? (
-          <form className="space-y-3" onSubmit={onRequestOtp} noValidate>
-            <div className="space-y-1.5">
-              <Label htmlFor="phone">{t("phoneLabel")}</Label>
-              <Controller
-                control={control}
-                name="phone"
-                render={({ field }) => (
-                  <InputPhone
-                    id="phone"
-                    defaultCountry="CO"
-                    locale={locale}
-                    value={field.value}
-                    onChange={(v) => field.onChange(v.e164)}
-                    onBlur={field.onBlur}
-                    aria-invalid={!!errors.phone}
-                    placeholder={t("phonePlaceholder")}
-                  />
-                )}
-              />
-              {errors.phone ? (
-                <p className="text-destructive text-sm">{errors.phone.message}</p>
-              ) : null}
-            </div>
-            {otp.error ? (
-              <p className="text-destructive text-sm">{otp.error}</p>
-            ) : null}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={otp.isSending || isSubmitting}
-            >
-              {otp.isSending ? t("sending") : t("sendCodeButton")}
-            </Button>
-          </form>
+          <>
+            <h1 className="font-display mb-2 text-[2rem] leading-[1.05] font-semibold tracking-tight">
+              {t("completePhoneTitle")}
+            </h1>
+            <p className="text-muted-foreground mb-7 text-base leading-relaxed">
+              {t("completePhoneSubtitle")}
+            </p>
+            <span className="mb-2 text-base font-bold">{t("phoneFieldLabel")}</span>
+            <InputPhone
+              className="[&_button]:h-16 [&_input]:h-16 [&_input]:text-lg"
+              defaultCountry="CO"
+              locale={locale}
+              value={phone}
+              onChange={(v) => {
+                setPhone(v.e164);
+                if (phoneError) setPhoneError(null);
+              }}
+              aria-invalid={!!phoneError}
+              placeholder={t("phonePlaceholder")}
+              autoFocus
+            />
+            {phoneError && (
+              <p className="text-destructive mt-2 text-sm">{phoneError}</p>
+            )}
+          </>
         ) : (
-          <form className="space-y-3" onSubmit={onVerifyOtp}>
-            <div className="space-y-1.5">
-              <Label>{t("codeLabel")}</Label>
-              <p className="text-muted-foreground text-sm">
-                {t("codeSentTo", { phone: otp.phone })}
-              </p>
-              <div className="flex justify-center pt-2">
-                <InputOTP
-                  maxLength={6}
-                  value={codeInput}
-                  onChange={setCodeInput}
-                  autoFocus
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
+          <>
+            <h1 className="font-display mb-2 text-[2rem] leading-[1.05] font-semibold tracking-tight">
+              {t("otpTitle")}
+            </h1>
+            <p className="text-muted-foreground mb-7 text-base leading-relaxed">
+              {t("codeSentTo", { phone: otp.phone })}
+            </p>
+            <div className="mb-4 flex justify-center">
+              <InputOTP maxLength={6} value={code} onChange={setCode} autoFocus>
+                <InputOTPGroup className="gap-2">
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <InputOTPSlot key={i} index={i} className="rounded-2xl" />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
             </div>
-            {otp.error ? (
-              <p className="text-destructive text-sm">{otp.error}</p>
-            ) : null}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={otp.isVerifying || codeInput.length !== 6}
-            >
-              {otp.isVerifying ? t("verifying") : t("verifyButton")}
-            </Button>
-            <div className="flex flex-col items-center gap-1.5 text-sm">
-              <button
-                type="button"
-                onClick={() => void otp.resendOtp()}
-                disabled={!otp.canResend || otp.isSending}
-                className="text-muted-foreground hover:text-foreground disabled:hover:text-muted-foreground underline disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {otp.canResend
-                  ? t("resendCode")
-                  : t("resendIn", { seconds: otp.secondsLeft })}
-              </button>
-              <button
-                type="button"
-                onClick={onChangePhone}
-                className="text-muted-foreground hover:text-foreground underline"
-              >
-                {t("changePhone")}
-              </button>
+            <div className="min-h-6 text-center">
+              {otp.error ? (
+                <span className="text-destructive text-sm font-bold">
+                  {t("otpError")}
+                </span>
+              ) : (
+                <span className="text-muted-foreground text-sm">
+                  {t("notReceived")}{" "}
+                  <button
+                    type="button"
+                    onClick={() => void otp.resendOtp()}
+                    disabled={!otp.canResend || otp.isSending}
+                    className="text-primary font-semibold disabled:text-muted-foreground/70 disabled:cursor-not-allowed"
+                  >
+                    {otp.canResend
+                      ? t("resendCode")
+                      : t("resendIn", { seconds: otp.secondsLeft })}
+                  </button>
+                </span>
+              )}
             </div>
-          </form>
+          </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+      <div className="px-6 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        {otp.step === "phone" ? (
+          <Button
+            type="submit"
+            variant="gradient"
+            className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
+            disabled={otp.isSending || checking}
+          >
+            {otp.isSending || checking ? (
+              <>
+                <Spinner className="size-5" />
+                {t("sending")}
+              </>
+            ) : (
+              t("sendCodeButton")
+            )}
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            variant="gradient"
+            className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
+            disabled={code.length !== 6 || otp.isVerifying}
+          >
+            {otp.isVerifying ? (
+              <>
+                <Spinner className="size-5" />
+                {t("verifying")}
+              </>
+            ) : (
+              t("verifyButton")
+            )}
+          </Button>
+        )}
+      </div>
+    </form>
   );
 }

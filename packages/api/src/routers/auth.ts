@@ -1,5 +1,6 @@
 import { getUserRole } from "@loyalty/auth/server";
-import { customerExistsForUser } from "@loyalty/db";
+import { customerExistsForUser, phoneNumberInUse } from "@loyalty/db";
+import { z } from "zod";
 
 import { protectedProcedure, router } from "../trpc";
 
@@ -21,4 +22,16 @@ export const authRouter = router({
     ]);
     return { user: ctx.session.user, role, isCustomer };
   }),
+
+  /**
+   * Whether a phone can be linked to the current account — false when it's
+   * already registered to another user. Lets /complete-phone warn upfront
+   * instead of sending an OTP the user could never verify (the phone is taken).
+   */
+  phoneAvailable: protectedProcedure
+    .input(z.object({ phone: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const taken = await phoneNumberInUse(input.phone, ctx.session.user.id);
+      return { available: !taken };
+    }),
 });

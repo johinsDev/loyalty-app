@@ -5,9 +5,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { InstallPrompt } from "@/components/install-prompt";
-import { LocaleSwitcher } from "@/components/locale-switcher";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppChrome } from "@/components/app-chrome";
 import { env } from "@/env";
 import { RealtimeNotifications } from "@/features/realtime/components/realtime-notifications";
 import { routing } from "@/i18n/routing";
@@ -42,13 +40,9 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   return (
     <Providers locale={locale} messages={messages}>
-      <div className="absolute right-4 top-4 z-50 flex items-center gap-2">
-        <ThemeToggle />
-        <LocaleSwitcher />
-      </div>
+      <AppChrome />
       {children}
       <RealtimeNotifications host={env.NEXT_PUBLIC_PARTYKIT_HOST} />
-      <InstallPrompt />
       <Toaster position="top-center" />
     </Providers>
   );
