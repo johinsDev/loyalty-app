@@ -81,6 +81,7 @@
         "src/index.ts",
         "src/migrate.ts",
         "src/seed-owner.ts",
+        "src/seed-org.ts",
         "src/backfill-customers.ts"
       ]
     },
