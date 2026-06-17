@@ -14,6 +14,7 @@ export const routing = defineRouting({
     "/": "/",
     "/welcome": { es: "/bienvenida", en: "/welcome" },
     "/profile": { es: "/perfil", en: "/profile" },
+    "/rewards": { es: "/recompensas", en: "/rewards" },
     "/card": { es: "/tarjeta", en: "/card" },
     "/notifications": { es: "/notificaciones", en: "/notifications" },
     "/sign-in": { es: "/iniciar-sesion", en: "/sign-in" },
