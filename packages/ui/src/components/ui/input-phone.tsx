@@ -168,13 +168,17 @@ export function InputPhone({
           data-slot="input-phone-country"
           className="inline-flex h-14 shrink-0 items-center gap-1.5 rounded-l-xl border border-input bg-transparent px-3.5 text-base font-medium transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30"
         >
-          <Flag className="size-4 rounded-[2px]" />
-          <span className="tabular-nums text-muted-foreground">
+          <Flag className="size-5 shrink-0 rounded-[2px]" />
+          <span className="inline-block w-12 text-left tabular-nums text-muted-foreground">
             +{def.dialCode}
           </span>
         </ComboboxTrigger>
-        <ComboboxContent className="w-[260px]">
-          <ComboboxInput placeholder="Buscar país…" showTrigger={false} />
+        <ComboboxContent className="w-[300px]">
+          <ComboboxInput
+            placeholder="Buscar país…"
+            showTrigger={false}
+            autoFocus
+          />
           <ComboboxList>
             {(code: CountryCode) => {
               const c = COUNTRIES[code];
@@ -184,14 +188,14 @@ export function InputPhone({
                   key={code}
                   value={code}
                   data-slot="combobox-item"
-                  className="relative flex w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50"
+                  className="relative flex w-full cursor-default items-center gap-2.5 rounded-lg px-2.5 py-2 text-base outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50"
                 >
-                  <ItemFlag className="size-4 shrink-0 rounded-[2px]" />
+                  <ItemFlag className="size-5 shrink-0 rounded-[2px]" />
                   <span className="truncate">{countryLabel(code, locale)}</span>
                   <ComboboxPrimitive.ItemIndicator className="text-muted-foreground">
-                    <CheckIcon className="size-3.5" />
+                    <CheckIcon className="size-4" />
                   </ComboboxPrimitive.ItemIndicator>
-                  <span className="ml-auto tabular-nums text-muted-foreground text-xs">
+                  <span className="ml-auto tabular-nums text-muted-foreground text-sm">
                     +{c.dialCode}
                   </span>
                 </ComboboxPrimitive.Item>
