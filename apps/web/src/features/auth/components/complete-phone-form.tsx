@@ -9,8 +9,11 @@ import {
   isValidE164Phone,
   Spinner,
 } from "@loyalty/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
+
+import { useTRPC } from "@/lib/trpc/client";
 
 import { usePhoneOtp } from "../hooks/use-phone-otp";
 
@@ -23,9 +26,12 @@ import { usePhoneOtp } from "../hooks/use-phone-otp";
 export function CompletePhoneForm() {
   const t = useTranslations("Auth");
   const locale = useLocale();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const otp = usePhoneOtp();
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
   const [code, setCode] = useState("");
 
   const phoneValid = isValidE164Phone(phone);
@@ -36,6 +42,17 @@ export function CompletePhoneForm() {
       return;
     }
     setPhoneError(null);
+    // Warn upfront if the number is already linked to another account — the
+    // updatePhoneNumber verify would otherwise fail cryptically ("otp not found").
+    setChecking(true);
+    const { available } = await queryClient.fetchQuery(
+      trpc.auth.phoneAvailable.queryOptions({ phone }),
+    );
+    setChecking(false);
+    if (!available) {
+      setPhoneError(t("phoneTaken"));
+      return;
+    }
     const ok = await otp.requestOtp(phone);
     if (ok) setCode("");
     else setPhoneError(t("errorSendFailed"));
@@ -136,9 +153,9 @@ export function CompletePhoneForm() {
             type="submit"
             variant="gradient"
             className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
-            disabled={otp.isSending}
+            disabled={otp.isSending || checking}
           >
-            {otp.isSending ? (
+            {otp.isSending || checking ? (
               <>
                 <Spinner className="size-5" />
                 {t("sending")}
