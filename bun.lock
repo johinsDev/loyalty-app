@@ -142,7 +142,6 @@
       "name": "@loyalty/web",
       "version": "0.0.0",
       "dependencies": {
-        "@hookform/resolvers": "^5.4.0",
         "@loyalty/analytics": "workspace:*",
         "@loyalty/api": "workspace:*",
         "@loyalty/auth": "workspace:*",
@@ -166,7 +165,6 @@
         "posthog-js": "^1.180.0",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
-        "react-hook-form": "^7.77.0",
         "server-only": "^0.0.1",
         "serwist": "^9.0.0",
         "sonner": "^2.0.7",
