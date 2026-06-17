@@ -387,7 +387,7 @@ function Footer({ children }: { children: React.ReactNode }) {
 
 function BackBar({ onClick, label }: { onClick: () => void; label: string }) {
   return (
-    <div className="px-5 pt-2">
+    <div className="px-5 pt-6 pb-2">
       <button
         type="button"
         onClick={onClick}
