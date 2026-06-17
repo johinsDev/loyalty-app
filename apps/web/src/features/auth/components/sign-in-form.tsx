@@ -12,6 +12,7 @@ import {
 } from "@loyalty/ui";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import { parseAsInteger, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
 
 import { getAppUrl } from "@/lib/app-url";
@@ -21,7 +22,7 @@ import { Confetti } from "./confetti";
 import { EmojiTile } from "./emoji-tile";
 import { IconWhatsApp } from "./icon-whatsapp";
 
-type Screen = "intro" | "phone" | "otp" | "success";
+const STEPS = ["intro", "phone", "otp", "success"] as const;
 
 /**
  * Playful WhatsApp-first onboarding — implements the "T4 Onboarding · Fun"
@@ -36,12 +37,23 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const forbidden = useSearchParams().get("error") === "forbidden";
 
   const otp = usePhoneOtp();
-  const [screen, setScreen] = useState<Screen>("intro");
-  const [intro, setIntro] = useState(0);
+  // The whole flow is URL-driven: `?step=` is the wizard stage (the browser
+  // back button mirrors the in-screen back button) and `?slide=` is the
+  // onboarding card. Both clear from the URL at their default for a clean entry.
+  const [step, setStep] = useQueryState(
+    "step",
+    parseAsStringLiteral(STEPS)
+      .withDefault("intro")
+      .withOptions({ history: "push", clearOnDefault: true }),
+  );
+  const [intro, setIntro] = useQueryState(
+    "slide",
+    parseAsInteger.withDefault(0).withOptions({ clearOnDefault: true }),
+  );
   const [dir, setDir] = useState<"next" | "prev">("next");
   const goIntro = (i: number) => {
     setDir(i >= intro ? "next" : "prev");
-    setIntro(i);
+    void setIntro(i);
   };
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -53,14 +65,14 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   // Autofocus the phone field when its screen opens (the conditional remount
   // makes React's autoFocus unreliable across the slide transition).
   useEffect(() => {
-    if (screen !== "phone") return;
+    if (step !== "phone") return;
     const id = window.setTimeout(() => {
       document
         .querySelector<HTMLInputElement>('[data-slot="input-phone-number"]')
         ?.focus();
     }, 60);
     return () => window.clearTimeout(id);
-  }, [screen]);
+  }, [step]);
 
   const onGoogle = async () => {
     if (!googleEnabled) return;
@@ -81,7 +93,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
     const ok = await otp.requestOtp(phone);
     if (ok) {
       setCode("");
-      setScreen("otp");
+      void setStep("otp");
     } else {
       setPhoneError(t("errorSendFailed"));
     }
@@ -90,7 +102,11 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const onVerify = async () => {
     if (code.length !== 6) return;
     const ok = await otp.verifyOtp(code);
-    if (ok) setScreen("success");
+    // Hard navigation (not router.push) so the home is fetched fresh with the
+    // new session cookie — a soft nav serves the cached, unauthenticated RSC
+    // which bounces back to /sign-in. (The success/confetti screen is a stub
+    // we'll remove; redirect straight to the card.)
+    if (ok) window.location.href = "/";
   };
 
   const intros = [
@@ -99,14 +115,17 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
     { emoji: "🎁", title: t("intro3Title"), sub: t("intro3Sub") },
   ];
   const lastIntro = intros.length - 1;
+  // Clamp the URL-supplied slide so a hand-typed `?slide=99` can't index past
+  // the carousel (the raw value still drives the slide-direction animation).
+  const slideIdx = Math.min(Math.max(intro, 0), lastIntro);
 
   return (
     <div className="text-foreground mx-auto flex min-h-[100dvh] w-full max-w-md flex-col overflow-x-hidden">
       {/* ===== 1 · INTRO ===== */}
-      {screen === "intro" && (
+      {step === "intro" && (
         <Screen>
           <div className="flex h-12 items-center justify-end px-4">
-            {intro < lastIntro && (
+            {slideIdx < lastIntro && (
               <button
                 type="button"
                 onClick={() => goIntro(lastIntro)}
@@ -118,24 +137,24 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
           </div>
           <Content className="items-center justify-center gap-7 text-center">
             <div
-              key={intro}
+              key={slideIdx}
               className={`animate-in fade-in-0 flex flex-col items-center gap-7 duration-300 ease-out ${
                 dir === "next" ? "slide-in-from-right-10" : "slide-in-from-left-10"
               }`}
             >
               <button
                 type="button"
-                onClick={() => goIntro(Math.min(intro + 1, lastIntro))}
+                onClick={() => goIntro(Math.min(slideIdx + 1, lastIntro))}
                 aria-label={t("next")}
               >
-                <EmojiTile size="lg">{intros[intro]!.emoji}</EmojiTile>
+                <EmojiTile size="lg">{intros[slideIdx]!.emoji}</EmojiTile>
               </button>
               <div className="flex flex-col gap-3">
                 <h1 className="font-display text-4xl leading-[1.05] font-semibold tracking-tight whitespace-pre-line">
-                  {intros[intro]!.title}
+                  {intros[slideIdx]!.title}
                 </h1>
                 <p className="text-muted-foreground text-base leading-relaxed">
-                  {intros[intro]!.sub}
+                  {intros[slideIdx]!.sub}
                 </p>
               </div>
             </div>
@@ -147,7 +166,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
                   onClick={() => goIntro(i)}
                   aria-label={`${i + 1}`}
                   className={`h-2.5 rounded-full transition-all ${
-                    intro === i ? "bg-primary w-6" : "w-2.5 bg-muted-foreground/30"
+                    slideIdx === i ? "bg-primary w-6" : "w-2.5 bg-muted-foreground/30"
                   }`}
                 />
               ))}
@@ -164,7 +183,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
               </p>
             )}
             <div className="flex h-11 items-center justify-center">
-              {intro === lastIntro && googleEnabled && (
+              {slideIdx === lastIntro && googleEnabled && (
                 <button
                   type="button"
                   onClick={() => void onGoogle()}
@@ -179,10 +198,10 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
               variant="gradient"
               className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
               onClick={() =>
-                intro < lastIntro ? goIntro(intro + 1) : setScreen("phone")
+                slideIdx < lastIntro ? goIntro(slideIdx + 1) : void setStep("phone")
               }
             >
-              {intro < lastIntro ? (
+              {slideIdx < lastIntro ? (
                 t("next")
               ) : (
                 <>
@@ -196,7 +215,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
       )}
 
       {/* ===== 2 · TELÉFONO ===== */}
-      {screen === "phone" && (
+      {step === "phone" && (
         <form
           className="flex flex-1 flex-col"
           onSubmit={(e) => {
@@ -204,7 +223,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             void onSendCode();
           }}
         >
-          <BackBar onClick={() => setScreen("intro")} label={t("back")} />
+          <BackBar onClick={() => void setStep("intro")} label={t("back")} />
           <Content className="gap-0">
             <EmojiTile className="mb-6">
               <IconWhatsApp className="size-11 text-[#25D366]" />
@@ -254,7 +273,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
       )}
 
       {/* ===== 3 · CÓDIGO (OTP) ===== */}
-      {screen === "otp" && (
+      {step === "otp" && (
         <form
           className="flex flex-1 flex-col"
           onSubmit={(e) => {
@@ -262,7 +281,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             void onVerify();
           }}
         >
-          <BackBar onClick={() => setScreen("phone")} label={t("back")} />
+          <BackBar onClick={() => void setStep("phone")} label={t("back")} />
           <Content className="gap-0">
             <EmojiTile className="mb-6">🔑</EmojiTile>
             <h1 className="font-display mb-2 text-[2rem] leading-[1.05] font-semibold tracking-tight">
@@ -328,7 +347,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
       )}
 
       {/* ===== 5 · ÉXITO ===== */}
-      {screen === "success" && (
+      {step === "success" && (
         <Screen className="relative overflow-hidden">
           <Confetti />
           <Content className="z-10 items-center pt-8 text-center">
@@ -386,7 +405,9 @@ function Content({
   className?: string;
 }) {
   return (
-    <div className={`flex flex-1 flex-col overflow-y-auto px-7 pt-4 pb-3 ${className}`}>
+    <div
+      className={`flex flex-1 flex-col overflow-x-hidden overflow-y-auto px-7 pt-4 pb-3 ${className}`}
+    >
       {children}
     </div>
   );
