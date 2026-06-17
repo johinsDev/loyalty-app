@@ -198,7 +198,7 @@ export function InputPhone({
               if (!o) setQuery("");
             }}
           >
-            <DrawerContent className="max-h-[85vh]">
+            <DrawerContent className="h-[80vh]">
               <DrawerHeader className="flex flex-row items-center justify-between border-b py-3 text-left">
                 <DrawerTitle className="text-lg">Elegí tu país</DrawerTitle>
                 <DrawerClose
