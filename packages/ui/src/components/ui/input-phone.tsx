@@ -28,7 +28,7 @@ import {
 } from "./input-phone.lib";
 
 const INPUT_CLASSNAME =
-  "h-8 w-full min-w-0 rounded-r-lg border border-l-0 border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80";
+  "h-11 w-full min-w-0 rounded-r-lg border border-l-0 border-input bg-transparent px-3 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80";
 
 function countryLabel(code: CountryCode, locale?: string): string {
   try {
@@ -166,7 +166,7 @@ export function InputPhone({
           type="button"
           disabled={disabled}
           data-slot="input-phone-country"
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-l-lg border border-input bg-transparent px-2 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30"
+          className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-l-lg border border-input bg-transparent px-3 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30"
         >
           <Flag className="size-4 rounded-[2px]" />
           <span className="tabular-nums text-muted-foreground">

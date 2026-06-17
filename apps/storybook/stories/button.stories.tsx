@@ -9,6 +9,7 @@ export const Outline = { render: () => <Button variant="outline">Outline</Button
 export const Secondary = { render: () => <Button variant="secondary">Secondary</Button> };
 export const Ghost = { render: () => <Button variant="ghost">Ghost</Button> };
 export const Destructive = { render: () => <Button variant="destructive">Destructive</Button> };
+export const Gradient = { render: () => <Button variant="gradient">Gradient</Button> };
 export const LinkVariant = { name: "Link", render: () => <Button variant="link">Link</Button> };
 export const Sm = { render: () => <Button size="sm">Small</Button> };
 export const Lg = { render: () => <Button size="lg">Large</Button> };
