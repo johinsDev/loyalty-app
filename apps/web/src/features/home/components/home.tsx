@@ -1,5 +1,7 @@
+import { SidebarInset, SidebarProvider } from "@loyalty/ui";
 import { getTranslations } from "next-intl/server";
 
+import { AppSidebar } from "./app-sidebar";
 import { BottomNav } from "./bottom-nav";
 import { GreetingHeader } from "./greeting-header";
 import { PointsCard } from "./points-card";
@@ -13,16 +15,19 @@ import { Usuals } from "./usuals";
 /**
  * Customer home — a faithful build of the "T4 Lovers · Home / Sellos" Claude
  * Design templates. Mobile-first (the phone design) with a wider desktop
- * variation at `lg`. All data is hardcoded sample content (see `../data`); both
- * wallet models — points ring and stamp card — are shown side by side.
+ * variation: a collapsible sidebar (md+) replaces the bottom nav, and the
+ * wallet cards sit side by side. All data is hardcoded sample content (see
+ * `../data`); both wallet models — points ring and stamp card — are shown.
  */
 export async function Home() {
   const t = await getTranslations("Home");
 
   return (
-    <main className="min-h-[100dvh] bg-[#eef3f2] text-foreground dark:bg-background">
-      <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 lg:max-w-5xl lg:px-8 lg:pt-12">
-        <GreetingHeader />
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset className="from-primary/5 to-background text-foreground overflow-x-clip bg-gradient-to-b">
+        <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-5xl lg:px-8 lg:pt-12">
+          <GreetingHeader />
 
         {/* Wallet models — points ring + stamp card, side by side on desktop. */}
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -45,13 +50,18 @@ export async function Home() {
           <PromosCarousel />
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <Usuals />
-          <RecentVisits />
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="min-w-0">
+              <Usuals />
+            </div>
+            <div className="min-w-0">
+              <RecentVisits />
+            </div>
+          </div>
         </div>
-      </div>
 
-      <BottomNav />
-    </main>
+        <BottomNav />
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

@@ -1,42 +1,73 @@
-import { getTranslations } from "next-intl/server";
+"use client";
+
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useRef } from "react";
 
 import { promos } from "../data";
 
 /**
- * Promos / banners as a horizontal snap carousel with a "see all" affordance.
- * Each card's gradient comes from the data so the org can theme campaigns.
+ * Promos / banners as a horizontal snap carousel with arrow controls and a
+ * "see all" affordance. Each card's gradient is data-driven so the org can theme
+ * campaigns; the track keeps vertical padding so card shadows aren't clipped.
  */
-export async function PromosCarousel() {
-  const t = await getTranslations("Home");
+export function PromosCarousel() {
+  const t = useTranslations("Home");
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  const scrollByCard = (dir: 1 | -1) =>
+    trackRef.current?.scrollBy({ left: dir * 300, behavior: "smooth" });
+
   return (
     <section>
       <div className="mb-3 flex items-center justify-between">
         <p className="text-muted-foreground text-xs font-bold tracking-wider">
           {t("forYouToday")}
         </p>
-        <button type="button" className="text-primary text-xs font-bold">
-          {t("seeAll")}
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" className="text-primary text-xs font-bold">
+            {t("seeAll")}
+          </button>
+          <button
+            type="button"
+            aria-label="‹"
+            onClick={() => scrollByCard(-1)}
+            className="bg-card text-primary grid size-8 place-items-center rounded-full shadow-md shadow-black/5 active:scale-95"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="›"
+            onClick={() => scrollByCard(1)}
+            className="bg-card text-primary grid size-8 place-items-center rounded-full shadow-md shadow-black/5 active:scale-95"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
       </div>
-      <div className="-mx-5 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-5 pb-1 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
+      <div
+        ref={trackRef}
+        className="scrollbar-hide -mx-5 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-5 pt-1 pb-6"
+      >
         {promos.map((p) => {
           const Icon = p.icon;
           return (
             <article
               key={p.id}
-              className="flex h-[190px] w-[286px] flex-none snap-center flex-col justify-between overflow-hidden rounded-[28px] p-[22px] text-white shadow-[0_20px_36px_-18px_rgba(27,173,157,.6)]"
+              className="flex h-48 w-72 flex-none snap-center flex-col justify-between overflow-hidden rounded-3xl p-5 text-white shadow-lg shadow-primary/30"
               style={{
                 backgroundImage: `linear-gradient(150deg, ${p.gradient[0]}, ${p.gradient[1]})`,
               }}
             >
               <div className="flex items-start justify-between">
-                <span className="inline-flex rounded-full bg-white/25 px-3 py-1 text-[11px] font-extrabold tracking-wider">
+                <span className="inline-flex rounded-full bg-white/25 px-3 py-1 text-xs font-extrabold tracking-wider">
                   {p.badge}
                 </span>
                 <Icon className="size-10" />
               </div>
               <div>
-                <h3 className="font-display text-[27px] font-semibold tracking-tight">
+                <h3 className="font-display text-2xl font-semibold tracking-tight">
                   {p.title}
                 </h3>
                 <p className="text-sm text-white/90">{p.sub}</p>

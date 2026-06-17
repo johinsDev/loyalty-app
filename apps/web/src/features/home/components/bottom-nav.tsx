@@ -32,27 +32,39 @@ function TabLink({
   return (
     <Link
       href={href}
-      className={`flex flex-1 flex-col items-center gap-0.5 text-[10px] font-semibold ${
-        active ? "text-primary" : "text-muted-foreground"
-      }`}
+      className="flex flex-1 flex-col items-center gap-1 pt-1"
     >
-      <Icon className="size-[21px]" />
-      <span>{label}</span>
+      <span
+        className={`grid size-10 place-items-center rounded-full transition-colors ${
+          active ? "bg-primary/10 text-primary" : "text-muted-foreground"
+        }`}
+      >
+        <Icon className="size-6" />
+      </span>
+      <span
+        className={`text-xs font-semibold ${
+          active ? "text-primary" : "text-muted-foreground"
+        }`}
+      >
+        {label}
+      </span>
     </Link>
   );
 }
 
 /**
- * Customer app bottom tab bar with an elevated center scan button. Centered to a
- * phone width so it reads as a mobile bar even on desktop. Rendered by the home
- * for now; promote to a shared (app) layout once the inner pages adopt it.
+ * Customer app bottom tab bar with an elevated, gently pulsing center scan
+ * button. Taller than a standard bar and with a pill behind the active tab so
+ * the current section reads at a glance. Centered to a phone width so it stays a
+ * mobile bar even on desktop. Rendered by the home for now; promote to a shared
+ * (app) layout once the inner pages adopt it.
  */
 export function BottomNav() {
   const t = useTranslations("Home");
   const pathname = usePathname();
 
   return (
-    <nav className="bg-card fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-md items-start px-5 pt-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-16px_rgba(0,3,35,.3)]">
+    <nav className="bg-card border-border fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-md items-start border-t px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden">
       {LEFT.map((tab) => (
         <TabLink
           key={tab.key}
@@ -63,13 +75,19 @@ export function BottomNav() {
         />
       ))}
       <div className="flex flex-1 justify-center">
-        <Link
-          href="/card"
-          aria-label={t("navScan")}
-          className="from-primary -mt-6 grid size-[62px] place-items-center rounded-full border-4 border-[var(--card)] bg-gradient-to-br to-[#7fd8c8] text-white shadow-[0_14px_26px_-10px_rgba(27,173,157,.75)]"
-        >
-          <QrCode className="size-6" />
-        </Link>
+        <div className="relative -mt-8 size-16">
+          <span
+            aria-hidden
+            className="bg-primary/40 absolute inset-0 animate-ping rounded-full"
+          />
+          <Link
+            href="/card"
+            aria-label={t("navScan")}
+            className="from-primary to-primary/60 border-card relative grid size-16 place-items-center rounded-full border-4 bg-gradient-to-br text-white shadow-lg shadow-primary/50 transition-transform active:scale-95"
+          >
+            <QrCode className="size-7" />
+          </Link>
+        </div>
       </div>
       {RIGHT.map((tab) => (
         <TabLink

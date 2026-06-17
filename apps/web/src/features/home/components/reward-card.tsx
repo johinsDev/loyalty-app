@@ -7,15 +7,15 @@ export async function RewardCard() {
   const t = await getTranslations("Home");
   const { title, meta, icon: Icon } = readyReward;
   return (
-    <div className="bg-card flex items-center gap-3.5 rounded-3xl p-4 shadow-[0_12px_28px_-20px_rgba(0,3,35,.35)]">
-      <span className="text-primary grid size-[54px] flex-none place-items-center rounded-[18px] bg-gradient-to-br from-[#f1fffb] to-[#d6f6ed]">
+    <div className="bg-card flex items-center gap-3.5 rounded-3xl p-4 shadow-lg shadow-black/5 ring-1 ring-black/5 dark:ring-white/10">
+      <span className="bg-primary/10 text-primary grid size-14 flex-none place-items-center rounded-2xl">
         <Icon className="size-7" />
       </span>
       <div className="flex flex-1 flex-col gap-0.5">
-        <span className="text-base font-bold text-foreground">{title}</span>
-        <span className="text-muted-foreground text-[13px]">{meta}</span>
+        <span className="text-foreground text-base font-bold">{title}</span>
+        <span className="text-muted-foreground text-sm">{meta}</span>
       </div>
-      <Button className="h-9 rounded-full px-5 text-[13px] font-bold">
+      <Button className="h-9 rounded-full px-5 text-sm font-bold">
         {t("redeem")}
       </Button>
     </div>

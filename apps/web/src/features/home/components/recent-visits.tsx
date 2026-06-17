@@ -10,17 +10,17 @@ export async function RecentVisits() {
       <p className="text-muted-foreground mb-3 text-xs font-bold tracking-wider">
         {t("recentVisits")}
       </p>
-      <div className="bg-card rounded-3xl px-[18px] py-1.5 shadow-[0_12px_28px_-20px_rgba(0,3,35,.35)]">
+      <div className="bg-card rounded-3xl px-4 py-1.5 shadow-lg shadow-black/5 ring-1 ring-black/5 dark:ring-white/10">
         {visits.map((v) => (
           <div
             key={v.id}
-            className="flex items-center justify-between border-b border-[#f0f2f3] py-3.5 last:border-0 dark:border-white/5"
+            className="border-border flex items-center justify-between border-b py-3.5 last:border-0"
           >
             <div className="flex items-center gap-3">
-              <span className="grid size-9 place-items-center rounded-xl bg-[#f1f7f5] text-foreground dark:bg-white/5">
-                <CupSoda className="size-[18px]" />
+              <span className="bg-primary/10 text-primary grid size-9 place-items-center rounded-xl">
+                <CupSoda className="size-4" />
               </span>
-              <span className="text-sm font-semibold text-foreground">
+              <span className="text-foreground text-sm font-semibold">
                 {v.place}
               </span>
             </div>
