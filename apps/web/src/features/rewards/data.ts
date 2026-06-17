@@ -12,18 +12,75 @@
 /** Current stamp balance the whole screen reasons about. */
 export const stampsBalance = 12;
 
-/** Tier / level standing — current level, the next one, and what it unlocks. */
-export const tier = {
-  current: { name: "Hoja", emoji: "🌿" },
-  next: { name: "Flor", emoji: "🌸", at: 20 },
-  /** Stamps still needed to reach `next` (kept in sync with `at` − balance). */
-  remaining: 8,
+export type Tier = {
+  /** Stable key (used for React keys / nuqs). */
+  key: string;
+  name: string;
+  emoji: string;
+  /** Stamp balance at which this tier unlocks. */
+  at: number;
+  benefits: readonly string[];
+  /** Fine print shown in the "all levels" sheet. */
+  conditions: string;
+};
+
+/**
+ * The loyalty tiers, ascending. The first (`at: 0`) is the entry level. Single
+ * source of truth for the tier card, the reward detail, and the "all levels"
+ * sheet — derive everything else (current / next / progress) from the balance
+ * via the helpers below.
+ */
+/** The entry level — also the fallback when nothing else matches. */
+const ENTRY_TIER: Tier = {
+  key: "hoja",
+  name: "Hoja",
+  emoji: "🌿",
+  at: 0,
   benefits: [
-    "Bebida de especialidad gratis",
-    "Combo amigo: 2 bebidas",
-    "Línea exprés en el local",
+    "Sello de bienvenida de regalo",
+    "Ofertas semanales para miembros",
+    "Sellos x2 los miércoles",
   ],
-} as const;
+  conditions: "Nivel de entrada. Sumás sellos con cada compra en cualquier local T4.",
+};
+
+export const tiers: readonly Tier[] = [
+  ENTRY_TIER,
+  {
+    key: "flor",
+    name: "Flor",
+    emoji: "🌸",
+    at: 20,
+    benefits: [
+      "Bebida de especialidad gratis",
+      "Combo amigo: 2 bebidas",
+      "Línea exprés en el local",
+    ],
+    conditions: "Alcanzás Flor al acumular 20 sellos. Los beneficios se mantienen mientras seas miembro.",
+  },
+  {
+    key: "reserva",
+    name: "Reserva",
+    emoji: "⭐",
+    at: 50,
+    benefits: [
+      "Cata de reserva, edición limitada",
+      "Acceso anticipado a lanzamientos",
+      "Regalo de cumpleaños premium",
+    ],
+    conditions: "Nivel máximo, desde 50 sellos. Incluye todos los beneficios de los niveles anteriores.",
+  },
+];
+
+/** Highest tier the balance has reached. */
+export function currentTier(balance: number = stampsBalance): Tier {
+  return [...tiers].reverse().find((t) => balance >= t.at) ?? ENTRY_TIER;
+}
+
+/** The next tier above the balance, or `null` at the top tier. */
+export function nextTier(balance: number = stampsBalance): Tier | null {
+  return tiers.find((t) => t.at > balance) ?? null;
+}
 
 export type Reward = {
   id: string;
@@ -35,6 +92,11 @@ export type Reward = {
   /** Tier this reward belongs to — shown when it's still locked. */
   tier?: string;
 };
+
+/** The tier that gates a reward (falls back to the entry tier). */
+export function tierForReward(reward: Reward): Tier {
+  return tiers.find((t) => t.name === reward.tier) ?? ENTRY_TIER;
+}
 
 export const rewards: readonly Reward[] = [
   {

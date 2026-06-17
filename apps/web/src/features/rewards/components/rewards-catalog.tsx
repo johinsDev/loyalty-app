@@ -15,13 +15,28 @@ import {
   InputGroupInput,
   Skeleton,
 } from "@loyalty/ui";
-import { Lock, Search } from "lucide-react";
+import { useDebounce } from "ahooks";
+import { Check, Layers, Lock, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
+import {
+  parseAsBoolean,
+  parseAsString,
+  parseAsStringLiteral,
+  useQueryStates,
+} from "nuqs";
 import { useEffect, useMemo, useState } from "react";
 
-import { type Reward, rewards, stampsBalance } from "../data";
+import {
+  type Reward,
+  nextTier,
+  recentRedemptions,
+  rewards,
+  stampsBalance,
+  tierForReward,
+} from "../data";
 
-type FilterKey = "all" | "ready" | "soon";
+const FILTER_KEYS = ["all", "ready", "soon", "redeemed"] as const;
+type FilterKey = (typeof FILTER_KEYS)[number];
 
 /** Per-reward derived state shared by the list rows and the detail drawer. */
 function useRewardView(reward: Reward) {
@@ -35,16 +50,31 @@ function useRewardView(reward: Reward) {
 }
 
 /**
- * The interactive heart of the rewards screen: a search field, the
- * todas/listas/próximas filter chips, the claimable + coming-up reward cards,
- * loading skeletons, and a bottom Drawer that opens with a reward's detail when
- * a card is tapped. Client component — everything below the tier card is state.
+ * The interactive heart of the rewards screen: a debounced search field, the
+ * todas/listas/próximas/canjeadas filter chips, the claimable + coming-up reward
+ * cards (or the redemption ledger), loading skeletons, and a bottom Drawer with a
+ * reward's detail — its gating tier, benefits and progress. All filter, search
+ * and open-drawer state lives in the URL via nuqs, so views are shareable and
+ * survive a reload. Client component.
  */
 export function RewardsCatalog() {
   const t = useTranslations("Rewards");
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<FilterKey>("all");
-  const [selected, setSelected] = useState<Reward | null>(null);
+
+  const [q, setQ] = useQueryStates({
+    f: parseAsStringLiteral(FILTER_KEYS).withDefault("all"),
+    search: parseAsString.withDefault(""),
+    reward: parseAsString,
+    // Owned by AllLevelsSheet; set here so the detail can open it.
+    levels: parseAsBoolean.withDefault(false),
+  });
+
+  // The input is local + debounced; the debounced value is what hits the URL.
+  const [input, setInput] = useState(q.search);
+  const debounced = useDebounce(input, { wait: 350 });
+  useEffect(() => {
+    if (debounced !== q.search) void setQ({ search: debounced || null });
+  }, [debounced, q.search, setQ]);
+
   const [loading, setLoading] = useState(true);
 
   // Demo-only: exercise the skeletons on mount. Remove once the catalog is
@@ -58,19 +88,35 @@ export function RewardsCatalog() {
     { key: "all", label: t("filterAll") },
     { key: "ready", label: t("filterReady") },
     { key: "soon", label: t("filterSoon") },
+    { key: "redeemed", label: t("filterRedeemed") },
   ];
 
+  const query = q.search.trim().toLowerCase();
+
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
     return rewards.filter((reward) => {
       const ready = stampsBalance >= reward.cost;
-      if (filter === "ready" && !ready) return false;
-      if (filter === "soon" && ready) return false;
-      if (q && !`${reward.name} ${reward.description}`.toLowerCase().includes(q))
+      if (q.f === "ready" && !ready) return false;
+      if (q.f === "soon" && ready) return false;
+      if (
+        query &&
+        !`${reward.name} ${reward.description}`.toLowerCase().includes(query)
+      )
         return false;
       return true;
     });
-  }, [query, filter]);
+  }, [query, q.f]);
+
+  const visibleRedemptions = useMemo(() => {
+    if (!query) return recentRedemptions;
+    return recentRedemptions.filter((item) =>
+      item.name.toLowerCase().includes(query),
+    );
+  }, [query]);
+
+  const selected = q.reward
+    ? (rewards.find((reward) => reward.id === q.reward) ?? null)
+    : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -79,8 +125,8 @@ export function RewardsCatalog() {
           <Search className="text-muted-foreground size-4" />
         </InputGroupAddon>
         <InputGroupInput
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
           placeholder={t("searchPlaceholder")}
           aria-label={t("searchPlaceholder")}
         />
@@ -88,12 +134,12 @@ export function RewardsCatalog() {
 
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {filters.map((item) => {
-          const active = filter === item.key;
+          const active = q.f === item.key;
           return (
             <button
               key={item.key}
               type="button"
-              onClick={() => setFilter(item.key)}
+              onClick={() => void setQ({ f: item.key })}
               aria-pressed={active}
               className={`h-9 shrink-0 rounded-full border px-4 text-xs font-bold whitespace-nowrap transition-colors ${
                 active
@@ -109,19 +155,49 @@ export function RewardsCatalog() {
 
       {loading ? (
         <CatalogSkeleton />
+      ) : q.f === "redeemed" ? (
+        visibleRedemptions.length === 0 ? (
+          <EmptyState
+            text={query ? t("emptySearch", { query: q.search.trim() }) : t("emptyRedeemed")}
+          />
+        ) : (
+          <ul className="bg-card divide-border/70 divide-y rounded-3xl px-5 shadow-lg shadow-black/5 ring-1 ring-black/5 dark:ring-white/10">
+            {visibleRedemptions.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-center justify-between gap-3 py-3.5"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="bg-primary/10 grid size-10 shrink-0 place-items-center rounded-xl text-xl">
+                    {item.emoji}
+                  </span>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-foreground truncate text-sm font-bold">
+                      {item.name}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {item.date}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-muted-foreground shrink-0 text-sm font-bold">
+                  {item.amount}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )
       ) : visible.length === 0 ? (
-        <p className="text-muted-foreground rounded-3xl border border-dashed py-10 text-center text-sm">
-          {query.trim()
-            ? t("emptySearch", { query: query.trim() })
-            : t("emptyFilter")}
-        </p>
+        <EmptyState
+          text={query ? t("emptySearch", { query: q.search.trim() }) : t("emptyFilter")}
+        />
       ) : (
         <div className="grid gap-3.5 sm:grid-cols-2">
           {visible.map((reward) => (
             <RewardCard
               key={reward.id}
               reward={reward}
-              onSelect={() => setSelected(reward)}
+              onSelect={() => void setQ({ reward: reward.id })}
             />
           ))}
         </div>
@@ -129,13 +205,26 @@ export function RewardsCatalog() {
 
       <Drawer
         open={selected !== null}
-        onOpenChange={(open) => !open && setSelected(null)}
+        onOpenChange={(open) => !open && void setQ({ reward: null })}
       >
         <DrawerContent className="mx-auto w-full max-w-md lg:max-w-lg">
-          {selected ? <RewardDetail reward={selected} /> : null}
+          {selected ? (
+            <RewardDetail
+              reward={selected}
+              onViewLevels={() => void setQ({ reward: null, levels: true })}
+            />
+          ) : null}
         </DrawerContent>
       </Drawer>
     </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <p className="text-muted-foreground rounded-3xl border border-dashed py-10 text-center text-sm">
+      {text}
+    </p>
   );
 }
 
@@ -203,9 +292,17 @@ function RewardCard({
   );
 }
 
-function RewardDetail({ reward }: { reward: Reward }) {
+function RewardDetail({
+  reward,
+  onViewLevels,
+}: {
+  reward: Reward;
+  onViewLevels: () => void;
+}) {
   const t = useTranslations("Rewards");
   const { ready, missing } = useRewardView(reward);
+  const tier = tierForReward(reward);
+  const next = nextTier();
 
   return (
     <div className="flex flex-col items-center px-6 pb-2 text-center">
@@ -226,6 +323,46 @@ function RewardDetail({ reward }: { reward: Reward }) {
           {reward.description}
         </DrawerDescription>
       </DrawerHeader>
+
+      {/* Gating tier — which level unlocks this reward and what it includes. */}
+      <div className="bg-muted/60 mt-1 w-full rounded-2xl p-4 text-left">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className="text-foreground text-sm font-bold">
+            {t("detailTier", { name: `${tier.emoji} ${tier.name}` })}
+          </span>
+          {next ? (
+            <span className="text-muted-foreground text-xs font-semibold whitespace-nowrap">
+              {t("detailToNext", {
+                count: Math.max(0, next.at - stampsBalance),
+                name: `${next.emoji} ${next.name}`,
+              })}
+            </span>
+          ) : null}
+        </div>
+        <ul className="flex flex-col gap-1.5">
+          {tier.benefits.map((benefit) => (
+            <li
+              key={benefit}
+              className="text-foreground flex items-center gap-2 text-sm"
+            >
+              <Check className="text-primary size-3.5 shrink-0" />
+              {benefit}
+            </li>
+          ))}
+        </ul>
+        <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+          {t("conditions")}
+        </p>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onViewLevels}
+          className="text-primary mt-1 h-9 px-0 text-sm font-bold"
+        >
+          <Layers className="size-4" />
+          {t("viewAllLevels")}
+        </Button>
+      </div>
 
       <DrawerFooter className="w-full gap-2 px-0">
         {ready ? (
