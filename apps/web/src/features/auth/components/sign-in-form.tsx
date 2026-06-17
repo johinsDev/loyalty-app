@@ -1,194 +1,380 @@
 "use client";
 
+import { authClient } from "@loyalty/auth/client";
 import {
-  Alert,
-  AlertDescription,
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
   InputPhone,
   isValidE164Phone,
-  Label,
-  Separator,
+  Spinner,
 } from "@loyalty/ui";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { z } from "zod";
+import { useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
+import { getAppUrl } from "@/lib/app-url";
 
 import { usePhoneOtp } from "../hooks/use-phone-otp";
-import { GoogleSignInButton } from "./google-sign-in-button";
+import { Confetti } from "./confetti";
+import { EmojiTile } from "./emoji-tile";
 
+type Screen = "intro" | "phone" | "otp" | "success";
+
+/**
+ * Playful WhatsApp-first onboarding — implements the "T4 Onboarding · Fun"
+ * Claude Design template. Mobile-first single-column flow: intro carousel →
+ * phone → OTP → success. Phone-OTP + Google run through the real auth client
+ * (`usePhoneOtp` + `authClient.signIn.social`). On verify it lands on a
+ * celebration screen; "Ver mi tarjeta" goes home.
+ */
 export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const t = useTranslations("Auth");
   const locale = useLocale();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const forbidden = searchParams.get("error") === "forbidden";
+  const forbidden = useSearchParams().get("error") === "forbidden";
+
   const otp = usePhoneOtp();
-  const [codeInput, setCodeInput] = useState("");
+  const [screen, setScreen] = useState<Screen>("intro");
+  const [intro, setIntro] = useState(0);
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const phoneSchema = useMemo(
-    () =>
-      z.object({
-        phone: z
-          .string()
-          .refine(isValidE164Phone, { message: t("phoneInvalid") }),
-      }),
-    [t],
-  );
-  const {
-    control,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<{ phone: string }>({
-    resolver: zodResolver(phoneSchema),
-    defaultValues: { phone: "" },
-  });
+  const phoneValid = isValidE164Phone(phone);
 
-  const onRequestOtp = handleSubmit(async ({ phone }) => {
-    await otp.requestOtp(phone);
-  });
-
-  const onVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (codeInput.length !== 6) return;
-    const ok = await otp.verifyOtp(codeInput);
-    if (ok) router.push("/");
+  const onGoogle = async () => {
+    if (!googleEnabled) return;
+    setGoogleLoading(true);
+    const { error } = await authClient.signIn.social({
+      provider: "google",
+      callbackURL: `${getAppUrl()}/`,
+    });
+    if (error) setGoogleLoading(false);
   };
 
-  const onChangePhone = () => {
-    setCodeInput("");
-    otp.reset();
+  const onSendCode = async () => {
+    if (!phoneValid) return;
+    const ok = await otp.requestOtp(phone);
+    if (ok) {
+      setCode("");
+      setScreen("otp");
+    }
   };
+
+  const onVerify = async () => {
+    if (code.length !== 6) return;
+    const ok = await otp.verifyOtp(code);
+    if (ok) setScreen("success");
+  };
+
+  const intros = [
+    { emoji: "🧋", title: t("intro1Title"), sub: t("intro1Sub") },
+    { emoji: "⭐", title: t("intro2Title"), sub: t("intro2Sub") },
+  ];
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>{t("title")}</CardTitle>
-        <CardDescription>{t("subtitle")}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {forbidden ? (
-          <Alert variant="default" className="border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100">
-            <AlertDescription>{t("errorForbidden")}</AlertDescription>
-          </Alert>
-        ) : null}
-        {googleEnabled ? (
-          <>
-            <GoogleSignInButton />
-
-            <div className="relative">
-              <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs uppercase text-muted-foreground">
-                {t("or")}
-              </span>
-            </div>
-          </>
-        ) : null}
-
-        {otp.step === "phone" ? (
-          <form className="space-y-3" onSubmit={onRequestOtp} noValidate>
-            <div className="space-y-1.5">
-              <Label htmlFor="phone">{t("phoneLabel")}</Label>
-              <Controller
-                control={control}
-                name="phone"
-                render={({ field }) => (
-                  <InputPhone
-                    id="phone"
-                    defaultCountry="CO"
-                    locale={locale}
-                    value={field.value}
-                    onChange={(v) => field.onChange(v.e164)}
-                    onBlur={field.onBlur}
-                    aria-invalid={!!errors.phone}
-                    placeholder={t("phonePlaceholder")}
-                  />
-                )}
-              />
-              {errors.phone ? (
-                <p className="text-destructive text-sm">{errors.phone.message}</p>
-              ) : null}
-            </div>
-            {otp.error ? (
-              <p className="text-destructive text-sm">{otp.error}</p>
-            ) : null}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={otp.isSending || isSubmitting}
+    <div className="text-foreground mx-auto flex min-h-[100dvh] w-full max-w-md flex-col">
+      {/* ===== 1 · INTRO ===== */}
+      {screen === "intro" && (
+        <Screen>
+          <div className="flex justify-end px-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setScreen("phone")}
+              className="text-muted-foreground px-2 py-1 text-base font-semibold"
             >
-              {otp.isSending ? t("sending") : t("sendCodeButton")}
-            </Button>
-          </form>
-        ) : (
-          <form className="space-y-3" onSubmit={onVerifyOtp}>
-            <div className="space-y-1.5">
-              <Label>{t("codeLabel")}</Label>
-              <p className="text-muted-foreground text-sm">
-                {t("codeSentTo", { phone: otp.phone })}
+              {t("skip")}
+            </button>
+          </div>
+          <Content className="items-center justify-center gap-7 text-center">
+            <button
+              type="button"
+              onClick={() => setIntro((i) => (i === 0 ? 1 : 0))}
+              aria-label={t("next")}
+            >
+              <EmojiTile size="lg">{intros[intro]!.emoji}</EmojiTile>
+            </button>
+            <div className="flex flex-col gap-3">
+              <h1 className="font-display text-4xl leading-[1.05] font-semibold tracking-tight whitespace-pre-line">
+                {intros[intro]!.title}
+              </h1>
+              <p className="text-muted-foreground text-base leading-relaxed">
+                {intros[intro]!.sub}
               </p>
-              <div className="flex justify-center pt-2">
-                <InputOTP
-                  maxLength={6}
-                  value={codeInput}
-                  onChange={setCodeInput}
-                  autoFocus
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
             </div>
-            {otp.error ? (
-              <p className="text-destructive text-sm">{otp.error}</p>
-            ) : null}
+            <div className="flex items-center gap-2">
+              {[0, 1].map((i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setIntro(i)}
+                  aria-label={`${i + 1}`}
+                  className={`h-2.5 rounded-full transition-all ${
+                    intro === i ? "bg-primary w-6" : "w-2.5 bg-muted-foreground/30"
+                  }`}
+                />
+              ))}
+            </div>
+          </Content>
+          <Footer>
             <Button
-              type="submit"
-              className="w-full"
-              disabled={otp.isVerifying || codeInput.length !== 6}
+              variant="gradient"
+              className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
+              onClick={() => setScreen("phone")}
             >
-              {otp.isVerifying ? t("verifying") : t("verifyButton")}
+              <span className="text-xl">💬</span>
+              {t("whatsappButton")}
             </Button>
-            <div className="flex flex-col items-center gap-1.5 text-sm">
+            {googleEnabled && (
               <button
                 type="button"
-                onClick={() => void otp.resendOtp()}
-                disabled={!otp.canResend || otp.isSending}
-                className="text-muted-foreground hover:text-foreground disabled:hover:text-muted-foreground underline disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => void onGoogle()}
+                disabled={googleLoading}
+                className="text-primary h-11 text-base font-semibold disabled:opacity-50"
               >
-                {otp.canResend
-                  ? t("resendCode")
-                  : t("resendIn", { seconds: otp.secondsLeft })}
+                {t("googleLink")}
               </button>
-              <button
-                type="button"
-                onClick={onChangePhone}
-                className="text-muted-foreground hover:text-foreground underline"
+            )}
+            {forbidden && (
+              <p className="text-center text-sm font-semibold text-amber-600">
+                {t("errorForbidden")}
+              </p>
+            )}
+          </Footer>
+        </Screen>
+      )}
+
+      {/* ===== 2 · TELÉFONO ===== */}
+      {screen === "phone" && (
+        <Screen>
+          <BackBar onClick={() => setScreen("intro")} label={t("back")} />
+          <Content className="gap-0">
+            <EmojiTile className="mb-6">💬</EmojiTile>
+            <h1 className="font-display mb-2 text-3xl leading-[1.05] font-semibold tracking-tight">
+              {t("phoneScreenTitle")}
+            </h1>
+            <p className="text-muted-foreground mb-7 text-base leading-relaxed">
+              {t("phoneScreenSubtitle")}
+            </p>
+            <span className="mb-2 text-sm font-bold">{t("phoneFieldLabel")}</span>
+            <InputPhone
+              defaultCountry="CO"
+              locale={locale}
+              value={phone}
+              onChange={(v) => setPhone(v.e164)}
+              placeholder={t("phonePlaceholder")}
+              autoFocus
+            />
+            {otp.error && (
+              <p className="text-destructive mt-2 text-sm">{otp.error}</p>
+            )}
+          </Content>
+          <Footer>
+            <Button
+              variant="gradient"
+              className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
+              disabled={!phoneValid || otp.isSending}
+              onClick={() => void onSendCode()}
+            >
+              {otp.isSending ? (
+                <>
+                  <Spinner className="size-5" />
+                  {t("sending")}
+                </>
+              ) : (
+                t("sendCodeButton")
+              )}
+            </Button>
+          </Footer>
+        </Screen>
+      )}
+
+      {/* ===== 3 · CÓDIGO (OTP) ===== */}
+      {screen === "otp" && (
+        <Screen>
+          <BackBar onClick={() => setScreen("phone")} label={t("back")} />
+          <Content className="gap-0">
+            <EmojiTile className="mb-6">🔑</EmojiTile>
+            <h1 className="font-display mb-2 text-3xl leading-[1.05] font-semibold tracking-tight">
+              {t("otpTitle")}
+            </h1>
+            <p className="text-muted-foreground mb-7 text-base leading-relaxed">
+              {t("codeSentTo", { phone: otp.phone })}
+            </p>
+            <div className="mb-4 flex justify-center">
+              <InputOTP
+                maxLength={6}
+                value={code}
+                onChange={(v) => setCode(v)}
+                autoFocus
               >
-                {t("changePhone")}
-              </button>
+                <InputOTPGroup className="gap-2">
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <InputOTPSlot key={i} index={i} className="rounded-2xl" />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
             </div>
-          </form>
-        )}
-      </CardContent>
-    </Card>
+            <div className="min-h-6 text-center">
+              {otp.error ? (
+                <span className="text-destructive text-sm font-bold">
+                  {t("otpError")}
+                </span>
+              ) : (
+                <span className="text-muted-foreground text-sm">
+                  {t("notReceived")}{" "}
+                  <button
+                    type="button"
+                    onClick={() => void otp.resendOtp()}
+                    disabled={!otp.canResend || otp.isSending}
+                    className="text-primary font-semibold disabled:text-muted-foreground/70 disabled:cursor-not-allowed"
+                  >
+                    {otp.canResend
+                      ? t("resendCode")
+                      : t("resendIn", { seconds: otp.secondsLeft })}
+                  </button>
+                </span>
+              )}
+            </div>
+          </Content>
+          <Footer>
+            <Button
+              variant="gradient"
+              className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
+              disabled={code.length !== 6 || otp.isVerifying}
+              onClick={() => void onVerify()}
+            >
+              {otp.isVerifying ? (
+                <>
+                  <Spinner className="size-5" />
+                  {t("verifying")}
+                </>
+              ) : (
+                t("verifyButton")
+              )}
+            </Button>
+          </Footer>
+        </Screen>
+      )}
+
+      {/* ===== 5 · ÉXITO ===== */}
+      {screen === "success" && (
+        <Screen className="relative overflow-hidden">
+          <Confetti />
+          <Content className="z-10 items-center pt-8 text-center">
+            <EmojiTile size="lg">🎉</EmojiTile>
+            <h1 className="font-display mt-6 mb-2 text-3xl leading-[1.05] font-semibold tracking-tight whitespace-pre-line">
+              {t("successTitle")}
+            </h1>
+            <p className="text-muted-foreground mb-6 text-base">
+              {t("successSubtitle")}
+            </p>
+            <div className="from-primary inline-flex items-center gap-2 rounded-full bg-linear-to-br to-[oklch(0.756_0.125_183.7)] px-6 py-3.5 text-xl font-extrabold text-white shadow-lg shadow-primary/30">
+              {t("welcomeStamp")}
+            </div>
+            <WelcomeCard
+              title={t("cardTitle")}
+              progress={t("cardProgress")}
+              remaining={t("cardRemaining")}
+            />
+          </Content>
+          <Footer>
+            <Button
+              variant="gradient"
+              className="h-14 w-full rounded-full text-base font-bold"
+              onClick={() => router.push("/")}
+            >
+              {t("viewCard")}
+            </Button>
+          </Footer>
+        </Screen>
+      )}
+    </div>
+  );
+}
+
+function Screen({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={`flex flex-1 flex-col ${className}`}>{children}</div>;
+}
+
+function Content({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`flex flex-1 flex-col overflow-y-auto px-7 pt-4 pb-3 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function Footer({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3 px-6 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      {children}
+    </div>
+  );
+}
+
+function BackBar({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <div className="px-5 pt-2">
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        className="flex size-11 items-center justify-center rounded-full bg-muted"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path
+            d="M15 5l-7 7 7 7"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+function WelcomeCard({
+  title,
+  progress,
+  remaining,
+}: {
+  title: string;
+  progress: string;
+  remaining: string;
+}) {
+  return (
+    <div className="ring-foreground/10 mt-4 w-full rounded-3xl p-6 text-left shadow-sm ring-1">
+      <div className="mb-3 flex items-baseline justify-between">
+        <span className="text-sm font-bold">{title}</span>
+        <span className="text-muted-foreground text-[13px]">{progress}</span>
+      </div>
+      <div className="flex gap-1.5">
+        {Array.from({ length: 10 }, (_, i) => (
+          <span
+            key={i}
+            className={`h-2.5 flex-1 rounded-full ${i === 0 ? "bg-primary" : "bg-muted"}`}
+          />
+        ))}
+      </div>
+      <p className="text-muted-foreground mt-3 text-[13px]">{remaining}</p>
+    </div>
   );
 }
