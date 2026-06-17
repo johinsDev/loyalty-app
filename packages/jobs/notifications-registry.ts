@@ -90,6 +90,50 @@ export class NewUserNotification
   }
 }
 
+/**
+ * First-purchase celebration — transactional, surfaced in-app via the
+ * `database` (feed) + `realtime` (live) channels and as a push. The web app
+ * pops a confetti celebration on entry when it sees a `first-purchase` row.
+ */
+export class FirstPurchaseNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  via(): ChannelName[] {
+    return ["database", "realtime", "push"];
+  }
+
+  toDatabase() {
+    return {
+      type: "first-purchase",
+      title: "¡Tu primera compra! 🎉",
+      body: "Sumaste tu primer sello. Te faltan 9 para tu bebida gratis. 🧋",
+      data: { stamps: 1 },
+    };
+  }
+
+  toRealtime() {
+    return {
+      event: "notification",
+      data: {
+        type: "first-purchase",
+        title: "¡Tu primera compra! 🎉",
+        body: "Sumaste tu primer sello · +1 🧋",
+      },
+    };
+  }
+
+  toPush() {
+    return {
+      title: "¡Tu primera compra! 🎉",
+      body: "Sumaste tu primer sello. Tu tarjeta ya está en marcha.",
+      data: { kind: "first-purchase" },
+    };
+  }
+}
+
 /** Marketing promo — respects per-channel marketing opt-out. */
 export class PromoNotification
   extends Notification
@@ -140,6 +184,8 @@ export function createNotification(
   switch (key) {
     case "new-user":
       return new NewUserNotification();
+    case "first-purchase":
+      return new FirstPurchaseNotification();
     case "promo": {
       const title =
         typeof payload?.title === "string" ? payload.title : undefined;

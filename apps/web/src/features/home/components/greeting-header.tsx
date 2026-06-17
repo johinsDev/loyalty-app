@@ -1,7 +1,6 @@
-import { Bell } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
-import { Link } from "@/i18n/navigation";
+import { NotificationsBell } from "@/features/notifications/components/notifications-bell";
 
 import { customer } from "../data";
 
@@ -17,14 +16,7 @@ export async function GreetingHeader() {
           {customer.name} {customer.emoji}
         </span>
       </div>
-      <Link
-        href="/notifications"
-        aria-label={t("notificationsAria")}
-        className="bg-card relative grid size-11 place-items-center rounded-full shadow-md shadow-black/5"
-      >
-        <Bell className="text-foreground size-5" />
-        <span className="ring-card absolute top-2.5 right-3 size-2.5 rounded-full bg-rose-400 ring-2" />
-      </Link>
+      <NotificationsBell />
     </header>
   );
 }

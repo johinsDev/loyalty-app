@@ -41,7 +41,11 @@
     "navRewards": "Recompensas",
     "navScan": "Escanear",
     "navMenu": "Menú",
-    "navProfile": "Perfil"
+    "navProfile": "Perfil",
+    "streakTitle": "RACHA",
+    "streakDays": "{days} días seguidos",
+    "streakSub": "Una compra por día. ¡No cortes la racha! 🔥",
+    "weekDays": "L,M,M,J,V,S,D"
   },
   "Welcome": {
     "title": "¡Bienvenida, {name}!",
@@ -61,7 +65,10 @@
     "delete": "Eliminar",
     "deleteAll": "Borrar todas",
     "deletedAll": "Se eliminaron {count} notificaciones.",
-    "actionFailed": "No se pudo completar la acción."
+    "actionFailed": "No se pudo completar la acción.",
+    "viewCard": "Ver mi tarjeta",
+    "notNow": "Ahora no",
+    "stampPill": "+1 sello 🧋"
   },
   "Profile": {
     "title": "Mi perfil",

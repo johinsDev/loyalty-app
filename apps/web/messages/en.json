@@ -41,7 +41,11 @@
     "navRewards": "Rewards",
     "navScan": "Scan",
     "navMenu": "Menu",
-    "navProfile": "Profile"
+    "navProfile": "Profile",
+    "streakTitle": "STREAK",
+    "streakDays": "{days} days in a row",
+    "streakSub": "One purchase a day. Don't break the streak! 🔥",
+    "weekDays": "M,T,W,T,F,S,S"
   },
   "Welcome": {
     "title": "Welcome, {name}!",
@@ -61,7 +65,10 @@
     "delete": "Delete",
     "deleteAll": "Delete all",
     "deletedAll": "Deleted {count} notifications.",
-    "actionFailed": "Could not complete the action."
+    "actionFailed": "Could not complete the action.",
+    "viewCard": "View my card",
+    "notNow": "Not now",
+    "stampPill": "+1 stamp 🧋"
   },
   "Profile": {
     "title": "My profile",

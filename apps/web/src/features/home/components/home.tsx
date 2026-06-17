@@ -10,6 +10,7 @@ import { RecentVisits } from "./recent-visits";
 import { RewardCard } from "./reward-card";
 import { ScanCta } from "./scan-cta";
 import { StampsCard } from "./stamps-card";
+import { StreakCard } from "./streak-card";
 import { Usuals } from "./usuals";
 
 /**
@@ -33,6 +34,10 @@ export async function Home() {
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <PointsCard />
           <StampsCard />
+        </div>
+
+        <div className="mt-4">
+          <StreakCard />
         </div>
 
         <div className="mt-4">
