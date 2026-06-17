@@ -40,6 +40,11 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const otp = usePhoneOtp();
   const [screen, setScreen] = useState<Screen>("intro");
   const [intro, setIntro] = useState(0);
+  const [dir, setDir] = useState<"next" | "prev">("next");
+  const goIntro = (i: number) => {
+    setDir(i >= intro ? "next" : "prev");
+    setIntro(i);
+  };
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -87,7 +92,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             {intro < lastIntro && (
               <button
                 type="button"
-                onClick={() => setIntro(lastIntro)}
+                onClick={() => goIntro(lastIntro)}
                 className="text-muted-foreground px-2 py-1 text-base font-semibold"
               >
                 {t("skip")}
@@ -95,27 +100,34 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             )}
           </div>
           <Content className="items-center justify-center gap-7 text-center">
-            <button
-              type="button"
-              onClick={() => setIntro((i) => Math.min(i + 1, lastIntro))}
-              aria-label={t("next")}
+            <div
+              key={intro}
+              className={`animate-in fade-in-0 flex flex-col items-center gap-7 duration-300 ease-out ${
+                dir === "next" ? "slide-in-from-right-10" : "slide-in-from-left-10"
+              }`}
             >
-              <EmojiTile size="lg">{intros[intro]!.emoji}</EmojiTile>
-            </button>
-            <div className="flex flex-col gap-3">
-              <h1 className="font-display text-4xl leading-[1.05] font-semibold tracking-tight whitespace-pre-line">
-                {intros[intro]!.title}
-              </h1>
-              <p className="text-muted-foreground text-base leading-relaxed">
-                {intros[intro]!.sub}
-              </p>
+              <button
+                type="button"
+                onClick={() => goIntro(Math.min(intro + 1, lastIntro))}
+                aria-label={t("next")}
+              >
+                <EmojiTile size="lg">{intros[intro]!.emoji}</EmojiTile>
+              </button>
+              <div className="flex flex-col gap-3">
+                <h1 className="font-display text-4xl leading-[1.05] font-semibold tracking-tight whitespace-pre-line">
+                  {intros[intro]!.title}
+                </h1>
+                <p className="text-muted-foreground text-base leading-relaxed">
+                  {intros[intro]!.sub}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {intros.map((slide, i) => (
                 <button
                   key={slide.emoji}
                   type="button"
-                  onClick={() => setIntro(i)}
+                  onClick={() => goIntro(i)}
                   aria-label={`${i + 1}`}
                   className={`h-2.5 rounded-full transition-all ${
                     intro === i ? "bg-primary w-6" : "w-2.5 bg-muted-foreground/30"
@@ -129,7 +141,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
               <Button
                 variant="gradient"
                 className="h-14 w-full rounded-full text-base font-bold"
-                onClick={() => setIntro((i) => Math.min(i + 1, lastIntro))}
+                onClick={() => goIntro(Math.min(intro + 1, lastIntro))}
               >
                 {t("next")}
               </Button>
