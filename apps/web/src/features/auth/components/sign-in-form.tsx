@@ -101,7 +101,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const lastIntro = intros.length - 1;
 
   return (
-    <div className="text-foreground mx-auto flex min-h-[100dvh] w-full max-w-md flex-col">
+    <div className="text-foreground mx-auto flex min-h-[100dvh] w-full max-w-md flex-col overflow-x-hidden">
       {/* ===== 1 · INTRO ===== */}
       {screen === "intro" && (
         <Screen>
