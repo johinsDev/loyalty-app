@@ -1,11 +1,24 @@
 import { ThemeProvider } from "@loyalty/ui";
 import type { Metadata } from "next";
+import { Fraunces, Inter } from "next/font/google";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { routing } from "@/i18n/routing";
 
 import "./globals.css";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Loyalty CRM",
@@ -19,7 +32,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     : routing.defaultLocale;
 
   return (
-    <html lang={lang} suppressHydrationWarning>
+    <html
+      lang={lang}
+      className={`${fraunces.variable} ${inter.variable}`}
+      suppressHydrationWarning
+    >
       <body>
         <ThemeProvider
           attribute="class"
