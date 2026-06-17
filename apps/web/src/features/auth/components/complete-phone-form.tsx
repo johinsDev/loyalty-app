@@ -12,8 +12,6 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { useRouter } from "@/i18n/navigation";
-
 import { usePhoneOtp } from "../hooks/use-phone-otp";
 
 /**
@@ -25,7 +23,6 @@ import { usePhoneOtp } from "../hooks/use-phone-otp";
 export function CompletePhoneForm() {
   const t = useTranslations("Auth");
   const locale = useLocale();
-  const router = useRouter();
   const otp = usePhoneOtp();
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -47,11 +44,20 @@ export function CompletePhoneForm() {
   const onVerify = async () => {
     if (code.length !== 6) return;
     const ok = await otp.verifyOtp(code, { updatePhoneNumber: true });
-    if (ok) router.push("/");
+    // Hard navigation so the home is fetched fresh with the new session cookie
+    // (a soft router.push serves the cached, unauthenticated RSC → bounce loop).
+    if (ok) window.location.href = "/";
   };
 
   return (
-    <div className="text-foreground mx-auto flex min-h-[100dvh] w-full max-w-md flex-col">
+    <form
+      className="text-foreground mx-auto flex min-h-[100dvh] w-full max-w-md flex-col"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (otp.step === "phone") void onSendCode();
+        else void onVerify();
+      }}
+    >
       <div className="flex-1 overflow-y-auto px-7 pt-6 pb-3">
         {/* orange tile — distinct from the teal flow, per the design */}
         <div className="mb-6 flex size-24 items-center justify-center rounded-[1.75rem] bg-linear-to-b from-[#fff6ec] to-[#ffe7cf] text-5xl shadow-xl shadow-[#ffaa50]/35">
@@ -127,10 +133,10 @@ export function CompletePhoneForm() {
       <div className="px-6 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         {otp.step === "phone" ? (
           <Button
+            type="submit"
             variant="gradient"
             className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
             disabled={otp.isSending}
-            onClick={() => void onSendCode()}
           >
             {otp.isSending ? (
               <>
@@ -143,10 +149,10 @@ export function CompletePhoneForm() {
           </Button>
         ) : (
           <Button
+            type="submit"
             variant="gradient"
             className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
             disabled={code.length !== 6 || otp.isVerifying}
-            onClick={() => void onVerify()}
           >
             {otp.isVerifying ? (
               <>
@@ -159,6 +165,6 @@ export function CompletePhoneForm() {
           </Button>
         )}
       </div>
-    </div>
+    </form>
   );
 }

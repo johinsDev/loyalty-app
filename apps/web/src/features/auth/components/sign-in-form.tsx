@@ -14,7 +14,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { useRouter } from "@/i18n/navigation";
 import { getAppUrl } from "@/lib/app-url";
 
 import { usePhoneOtp } from "../hooks/use-phone-otp";
@@ -34,7 +33,6 @@ type Screen = "intro" | "phone" | "otp" | "success";
 export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const t = useTranslations("Auth");
   const locale = useLocale();
-  const router = useRouter();
   const forbidden = useSearchParams().get("error") === "forbidden";
 
   const otp = usePhoneOtp();
@@ -199,7 +197,13 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
 
       {/* ===== 2 · TELÉFONO ===== */}
       {screen === "phone" && (
-        <Screen>
+        <form
+          className="flex flex-1 flex-col"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void onSendCode();
+          }}
+        >
           <BackBar onClick={() => setScreen("intro")} label={t("back")} />
           <Content className="gap-0">
             <EmojiTile className="mb-6">
@@ -231,10 +235,10 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
           </Content>
           <Footer>
             <Button
+              type="submit"
               variant="gradient"
               className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
               disabled={otp.isSending}
-              onClick={() => void onSendCode()}
             >
               {otp.isSending ? (
                 <>
@@ -246,12 +250,18 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
               )}
             </Button>
           </Footer>
-        </Screen>
+        </form>
       )}
 
       {/* ===== 3 · CÓDIGO (OTP) ===== */}
       {screen === "otp" && (
-        <Screen>
+        <form
+          className="flex flex-1 flex-col"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void onVerify();
+          }}
+        >
           <BackBar onClick={() => setScreen("phone")} label={t("back")} />
           <Content className="gap-0">
             <EmojiTile className="mb-6">🔑</EmojiTile>
@@ -299,10 +309,10 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
           </Content>
           <Footer>
             <Button
+              type="submit"
               variant="gradient"
               className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
               disabled={code.length !== 6 || otp.isVerifying}
-              onClick={() => void onVerify()}
             >
               {otp.isVerifying ? (
                 <>
@@ -314,7 +324,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
               )}
             </Button>
           </Footer>
-        </Screen>
+        </form>
       )}
 
       {/* ===== 5 · ÉXITO ===== */}
@@ -342,7 +352,12 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             <Button
               variant="gradient"
               className="h-14 w-full rounded-full text-base font-bold"
-              onClick={() => router.push("/")}
+              onClick={() => {
+                // Hard navigation (not router.push) so the home is fetched fresh
+                // with the new session cookie — a soft nav serves the cached,
+                // unauthenticated RSC which bounces back to /sign-in.
+                window.location.href = "/";
+              }}
             >
               {t("viewCard")}
             </Button>

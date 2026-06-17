@@ -7,6 +7,8 @@ description: The forms standard for the loyalty-app monorepo — React Hook Form
 
 Every form uses **React Hook Form (`^7`) + a Zod schema via `@hookform/resolvers/zodResolver`**. The schema is the single source of truth (see the `zod` skill) and is shared with the tRPC procedure that receives the submit. RHF keeps inputs **uncontrolled** (registered refs) so typing doesn't re-render the whole form — that's the performance win, don't fight it.
 
+**Rule — every form submits on Enter.** Always wrap inputs in a real `<form onSubmit={...}>` (RHF's `handleSubmit`, or `e.preventDefault()` + the handler for a plain form) and make the primary action a `<Button type="submit">` — never an `onClick`-only button outside a form. A sticky/bottom CTA still works: put the `<form>` around the whole screen (inputs + footer) so Enter in any field triggers submit. Validate on submit and show inline errors; don't disable the submit button just because the form is invalid — let the tap surface the validation.
+
 Existing example to copy: `apps/admin/src/features/storage/components/rhf-file-upload.tsx` (a `useFieldArray` + Dropzone bridge — see the `file-upload` skill).
 
 ## The baseline form
