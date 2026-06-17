@@ -11,7 +11,7 @@ export default async function AuthLayout({ children, params }: Props) {
   setRequestLocale(locale);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-6">
+    <main className="bg-background min-h-[100dvh] overflow-x-hidden">
       {children}
     </main>
   );

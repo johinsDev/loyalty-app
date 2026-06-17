@@ -21,29 +21,39 @@ import * as schema from "./schema";
  * loyalty program). When the SaaS opens up to other franchises this
  * grows an `orgSlug` parameter.
  */
-export async function promoteOwnerByEmail(email: string): Promise<void> {
-  // 1. Find or create the operator org.
+/**
+ * Find or create the singleton operator org (`t4-diverplaza`). Idempotent.
+ * This is the one row the whole pilot hangs off — customer provisioning
+ * (`getPrimaryOrganizationId`) returns null until it exists, so a fresh local
+ * DB needs this seeded before the customer onboarding can complete.
+ */
+export async function ensurePrimaryOrg(): Promise<
+  typeof schema.organization.$inferSelect
+> {
   const existingOrgs = await db
     .select()
     .from(schema.organization)
     .where(eq(schema.organization.slug, "t4-diverplaza"))
     .limit(1);
-  let org = existingOrgs[0];
-  if (!org) {
-    const inserted = await db
-      .insert(schema.organization)
-      .values({
-        id: crypto.randomUUID(),
-        name: "T4 Diverplaza",
-        slug: "t4-diverplaza",
-      })
-      .returning();
-    org = inserted[0];
-    if (!org) {
-      throw new Error("Failed to insert operator organization");
-    }
-    console.log(`✨ Created operator organization (id=${org.id})`);
-  }
+  const existing = existingOrgs[0];
+  if (existing) return existing;
+  const inserted = await db
+    .insert(schema.organization)
+    .values({
+      id: crypto.randomUUID(),
+      name: "T4 Diverplaza",
+      slug: "t4-diverplaza",
+    })
+    .returning();
+  const org = inserted[0];
+  if (!org) throw new Error("Failed to insert operator organization");
+  console.log(`✨ Created operator organization (id=${org.id})`);
+  return org;
+}
+
+export async function promoteOwnerByEmail(email: string): Promise<void> {
+  // 1. Find or create the operator org.
+  const org = await ensurePrimaryOrg();
 
   // 2. Look up the user by email.
   const [user] = await db
