@@ -301,8 +301,8 @@ function DrinkDetail({
   const [size, setSize] = useState<"m" | "l">("m");
 
   return (
-    <div className="flex flex-col">
-      <div className="from-primary/15 to-primary/5 relative grid h-48 place-items-center bg-gradient-to-br text-8xl">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="from-primary/15 to-primary/5 relative grid h-48 shrink-0 place-items-center bg-gradient-to-br text-8xl">
         <div className="absolute top-3 left-3 flex gap-2">
           {drink.seasonal ? (
             <span className="bg-card text-primary rounded-full px-3 py-1 text-xs font-extrabold tracking-wider">

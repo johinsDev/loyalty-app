@@ -51,7 +51,7 @@ export function AllLevelsSheet() {
             </DrawerDescription>
           </DrawerHeader>
 
-          <ul className="flex flex-col gap-3 px-5 pb-2">
+          <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 pb-2">
             {tiers.map((tier) => {
               const isCurrent = tier.key === current.key;
               const locked = stampsBalance < tier.at;
@@ -98,7 +98,7 @@ export function AllLevelsSheet() {
             })}
           </ul>
 
-          <div className="px-5 pt-2 pb-2">
+          <div className="shrink-0 px-5 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
             <DrawerClose asChild>
               <Button variant="ghost" className="text-muted-foreground w-full">
                 {t("close")}
