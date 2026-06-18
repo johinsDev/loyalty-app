@@ -100,7 +100,11 @@ export function AllLevelsSheet() {
 
           <div className="shrink-0 px-5 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
             <DrawerClose asChild>
-              <Button variant="ghost" className="text-muted-foreground w-full">
+              <Button
+                variant="secondary"
+                size="lg"
+                className="w-full rounded-full font-semibold"
+              >
                 {t("close")}
               </Button>
             </DrawerClose>

@@ -383,7 +383,11 @@ function RewardDetail({
           </Button>
         )}
         <DrawerClose asChild>
-          <Button variant="ghost" className="text-muted-foreground">
+          <Button
+            variant="secondary"
+            size="lg"
+            className="rounded-full font-semibold"
+          >
             {t("close")}
           </Button>
         </DrawerClose>
