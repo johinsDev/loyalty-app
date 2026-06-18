@@ -7,7 +7,7 @@ export async function ScanCta() {
   const t = await getTranslations("Home");
   return (
     <Link
-      href="/card"
+      href="/qr"
       className="from-primary to-primary/60 flex items-center justify-between gap-4 rounded-3xl bg-gradient-to-br p-5 text-left shadow-xl shadow-primary/30"
     >
       <div className="flex flex-col gap-0.5">

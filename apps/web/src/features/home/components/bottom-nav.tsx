@@ -81,7 +81,7 @@ export function BottomNav() {
             className="bg-primary/40 absolute inset-0 animate-ping rounded-full"
           />
           <Link
-            href="/card"
+            href="/qr"
             aria-label={t("navScan")}
             className="from-primary to-primary/60 border-card relative grid size-16 place-items-center rounded-full border-4 bg-gradient-to-br text-white shadow-lg shadow-primary/50 transition-transform active:scale-95"
           >

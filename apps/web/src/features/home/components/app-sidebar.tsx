@@ -122,7 +122,7 @@ export function AppSidebar() {
             <SidebarMenuButton
               size="lg"
               tooltip={t("navScan")}
-              render={<Link href="/card" />}
+              render={<Link href="/qr" />}
               className="bg-primary text-primary-foreground rounded-xl text-base font-semibold hover:bg-primary/90! hover:text-primary-foreground! [&_svg]:size-5!"
             >
               <QrCode />
