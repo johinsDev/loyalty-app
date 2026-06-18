@@ -9,6 +9,7 @@ import { AppChrome } from "@/components/app-chrome";
 import { env } from "@/env";
 import { NotificationsDrawer } from "@/features/notifications/components/notifications-drawer";
 import { NotificationsOnEntry } from "@/features/notifications/components/notifications-on-entry";
+import { QrDrawer } from "@/features/qr/components/qr-drawer";
 import { RealtimeNotifications } from "@/features/realtime/components/realtime-notifications";
 import { routing } from "@/i18n/routing";
 
@@ -47,6 +48,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <RealtimeNotifications host={env.NEXT_PUBLIC_PARTYKIT_HOST} />
       <NotificationsDrawer />
       <NotificationsOnEntry />
+      <QrDrawer />
       <Toaster position="top-center" />
     </Providers>
   );

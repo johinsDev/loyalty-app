@@ -4,6 +4,7 @@ import { CupSoda, Gift, Home as HomeIcon, QrCode, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { useQrDrawer } from "@/features/qr/hooks/use-qr-drawer";
 import { Link, usePathname } from "@/i18n/navigation";
 
 type Href = "/" | "/rewards" | "/menu" | "/card" | "/profile";
@@ -62,6 +63,7 @@ function TabLink({
 export function BottomNav() {
   const t = useTranslations("Home");
   const pathname = usePathname();
+  const openQr = useQrDrawer((s) => s.openDrawer);
 
   return (
     <nav className="bg-card border-border fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-md items-start border-t px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden">
@@ -80,13 +82,14 @@ export function BottomNav() {
             aria-hidden
             className="bg-primary/40 absolute inset-0 animate-ping rounded-full"
           />
-          <Link
-            href="/qr"
+          <button
+            type="button"
+            onClick={openQr}
             aria-label={t("navScan")}
             className="from-primary to-primary/60 border-card relative grid size-16 place-items-center rounded-full border-4 bg-gradient-to-br text-white shadow-lg shadow-primary/50 transition-transform active:scale-95"
           >
             <QrCode className="size-7" />
-          </Link>
+          </button>
         </div>
       </div>
       {RIGHT.map((tab) => (
