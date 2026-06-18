@@ -6,8 +6,9 @@ import { streak } from "../data";
 const DOW = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
 /**
- * Purchase streak — consecutive days with a purchase, with a per-day week strip.
- * Hardcoded sample (see `../data`) until the wallet/ledger feature drives it.
+ * Purchase streak — consecutive days with a purchase, with an even week strip
+ * (one cell per day, today highlighted). Hardcoded sample (see `../data`) until
+ * the wallet/ledger feature drives it.
  */
 export async function StreakCard() {
   const t = await getTranslations("Home");
@@ -15,47 +16,54 @@ export async function StreakCard() {
 
   return (
     <section className="bg-card rounded-3xl p-5 shadow-lg shadow-black/5 ring-1 ring-black/5 dark:ring-white/10">
-      <div className="mb-4 flex items-center gap-3">
-        <span className="grid size-12 flex-none place-items-center rounded-2xl bg-gradient-to-br from-amber-300 to-amber-400 text-white shadow-md shadow-amber-400/40">
+      <div className="mb-5 flex items-center gap-3">
+        <span className="grid size-12 flex-none place-items-center rounded-2xl bg-gradient-to-br from-orange-400 to-rose-500 text-white shadow-md shadow-orange-500/30">
           <Flame className="size-6" />
         </span>
-        <div className="flex flex-col">
-          <span className="text-muted-foreground text-xs font-bold tracking-wider">
-            {t("streakTitle")}
-          </span>
-          <span className="font-display text-foreground text-xl font-semibold tracking-tight">
+        <div className="flex flex-col leading-tight">
+          <span className="font-display text-foreground text-2xl font-semibold tracking-tight">
             {t("streakDays", { days: streak.days })}
+          </span>
+          <span className="text-muted-foreground text-sm">
+            {t("streakSub")}
           </span>
         </div>
       </div>
 
-      <div className="mb-3 flex items-center justify-between">
+      <div className="flex justify-between gap-1.5">
         {streak.week.map((bought, i) => {
           const isToday = i === streak.todayIndex;
           return (
-            <div key={DOW[i]} className="flex flex-col items-center gap-1.5">
+            <div
+              key={DOW[i]}
+              className="flex flex-1 flex-col items-center gap-2"
+            >
               <span
-                className={`grid size-9 place-items-center rounded-full ${
+                className={`grid aspect-square w-full max-w-11 place-items-center rounded-2xl text-sm font-bold ${
                   bought
-                    ? "bg-primary text-white"
-                    : "bg-muted text-muted-foreground"
-                } ${
-                  isToday
-                    ? "ring-primary ring-offset-card ring-2 ring-offset-2"
-                    : ""
+                    ? "bg-primary text-white shadow-sm shadow-primary/30"
+                    : isToday
+                      ? "border-primary text-primary border-2 border-dashed"
+                      : "bg-muted text-muted-foreground/60"
                 }`}
               >
-                {bought ? <Check className="size-4" /> : null}
+                {bought ? (
+                  <Check className="size-4" />
+                ) : isToday ? (
+                  <Flame className="size-4" />
+                ) : null}
               </span>
-              <span className="text-muted-foreground text-xs font-semibold">
+              <span
+                className={`text-xs font-bold ${
+                  isToday ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
                 {labels[i]}
               </span>
             </div>
           );
         })}
       </div>
-
-      <p className="text-muted-foreground text-sm">{t("streakSub")}</p>
     </section>
   );
 }

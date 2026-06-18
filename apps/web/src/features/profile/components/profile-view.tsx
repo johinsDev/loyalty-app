@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { env } from "@/env";
 import { requireSession } from "@/lib/auth-guard";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
@@ -21,6 +23,21 @@ export async function ProfileView() {
         <h1 className="mb-2 text-2xl font-semibold">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("placeholder")}</p>
       </div>
+      <section className="space-y-3 rounded-2xl border p-4">
+        <h2 className="text-sm font-semibold">{t("preferences.title")}</h2>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground text-sm">
+            {t("preferences.theme")}
+          </span>
+          <ThemeToggle />
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground text-sm">
+            {t("preferences.language")}
+          </span>
+          <LocaleSwitcher />
+        </div>
+      </section>
       <PushEnableButton vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
       <NotificationPreferences />
       <SignOutButton />

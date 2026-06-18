@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { Link, usePathname } from "@/i18n/navigation";
 
-type Href = "/" | "/rewards" | "/card" | "/profile";
+type Href = "/" | "/rewards" | "/menu" | "/card" | "/profile";
 type Tab = { key: string; href: Href; icon: LucideIcon };
 
 const LEFT: Tab[] = [
@@ -14,7 +14,7 @@ const LEFT: Tab[] = [
   { key: "navRewards", href: "/rewards", icon: Gift },
 ];
 const RIGHT: Tab[] = [
-  { key: "navMenu", href: "/card", icon: CupSoda },
+  { key: "navMenu", href: "/menu", icon: CupSoda },
   { key: "navProfile", href: "/profile", icon: User },
 ];
 

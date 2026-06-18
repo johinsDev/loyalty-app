@@ -38,13 +38,13 @@ import { useState } from "react";
 import { customer, pointsWallet } from "../data";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 
-type Href = "/" | "/rewards" | "/card" | "/profile";
+type Href = "/" | "/rewards" | "/menu" | "/card" | "/profile";
 type Item = { key: string; href: Href; icon: LucideIcon };
 
 const ITEMS: Item[] = [
   { key: "navHome", href: "/", icon: HomeIcon },
   { key: "navRewards", href: "/rewards", icon: Gift },
-  { key: "navMenu", href: "/card", icon: CupSoda },
+  { key: "navMenu", href: "/menu", icon: CupSoda },
   { key: "navProfile", href: "/profile", icon: User },
 ];
 
