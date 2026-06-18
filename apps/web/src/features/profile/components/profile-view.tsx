@@ -1,46 +1,30 @@
-import { getTranslations } from "next-intl/server";
+import { SidebarInset, SidebarProvider } from "@loyalty/ui";
 
-import { LocaleSwitcher } from "@/components/locale-switcher";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { env } from "@/env";
+import { AppSidebar } from "@/features/home/components/app-sidebar";
+import { BottomNav } from "@/features/home/components/bottom-nav";
 import { requireSession } from "@/lib/auth-guard";
-import { SignOutButton } from "@/features/auth/components/sign-out-button";
-import { NotificationPreferences } from "@/features/profile/components/notification-preferences";
-import { PushEnableButton } from "@/features/push/components/push-enable-button";
+
+import { ProfileScreen } from "./profile-screen";
 
 /**
- * Profile placeholder. Surfaces the customer's session controls:
- * Push enable (so they can opt in to "stamp earned" / "reward ready"
- * notifications) + Sign out.
+ * Customer profile / account — a faithful build of the "T4 · Perfil" Claude
+ * Design template. Mobile-first; on desktop the bottom nav gives way to the
+ * sidebar. Editable fields (name / nickname / birthday / avatar) are local
+ * design-first state (see {@link ProfileScreen}); theme, language, notification
+ * opt-outs and sign-out are the real, wired controls.
  */
 export async function ProfileView() {
-  const t = await getTranslations("Profile");
   await requireSession();
 
   return (
-    <main className="mx-auto max-w-md space-y-6 p-6">
-      <div>
-        <h1 className="mb-2 text-2xl font-semibold">{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("placeholder")}</p>
-      </div>
-      <section className="space-y-3 rounded-2xl border p-4">
-        <h2 className="text-sm font-semibold">{t("preferences.title")}</h2>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground text-sm">
-            {t("preferences.theme")}
-          </span>
-          <ThemeToggle />
+    <SidebarProvider style={{ "--sidebar-width": "18rem" } as React.CSSProperties}>
+      <AppSidebar />
+      <SidebarInset className="from-primary/5 to-background text-foreground overflow-x-clip bg-gradient-to-b">
+        <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-2xl lg:px-8 lg:pt-12">
+          <ProfileScreen />
         </div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground text-sm">
-            {t("preferences.language")}
-          </span>
-          <LocaleSwitcher />
-        </div>
-      </section>
-      <PushEnableButton vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
-      <NotificationPreferences />
-      <SignOutButton />
-    </main>
+        <BottomNav />
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
