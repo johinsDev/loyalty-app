@@ -18,6 +18,16 @@ import {
 
 export const customer = { name: "Ari", emoji: "🍵" } as const;
 
+/**
+ * Purchase streak — consecutive days with a purchase. `week` is the current
+ * week (Mon→Sun) where `true` = bought that day; `todayIndex` highlights today.
+ */
+export const streak = {
+  days: 5,
+  week: [true, true, false, true, true, true, false],
+  todayIndex: 5,
+} as const;
+
 /** Points wallet — the ring + tier model. */
 export const pointsWallet = {
   points: 312,

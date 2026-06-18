@@ -9,7 +9,11 @@ export const preferenceChannelSchema = z.enum([
 ]);
 
 /** Notification classes the admin can dispatch. Maps to the jobs registry. */
-export const notificationKeySchema = z.enum(["new-user", "promo"]);
+export const notificationKeySchema = z.enum([
+  "new-user",
+  "promo",
+  "first-purchase",
+]);
 
 export const feedFilterSchema = z.enum(["all", "unread"]);
 
