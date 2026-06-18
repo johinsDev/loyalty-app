@@ -8,8 +8,8 @@ export const profile = {
   name: "Ari Tanaka",
   nickname: "ari",
   email: "ari.tanaka@gmail.com",
-  /** 1-indexed month, day. */
-  birthday: { month: 7, day: 14 },
+  /** 1-indexed month + day + year. */
+  birthday: { month: 7, day: 14, year: 1998 },
   memberSince: "Mar 2024",
   points: 312,
   tier: "Hoja",

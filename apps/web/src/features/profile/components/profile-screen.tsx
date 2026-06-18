@@ -3,12 +3,12 @@
 import { authClient } from "@loyalty/auth/client";
 import {
   Button,
+  DateWheelPicker,
   Drawer,
   DrawerContent,
   DrawerDescription,
   DrawerTitle,
   Input,
-  MonthDayPicker,
 } from "@loyalty/ui";
 import {
   AtSign,
@@ -55,9 +55,11 @@ export function ProfileScreen() {
 
   const [name, setName] = useState<string>(profile.name);
   const [nick, setNick] = useState<string>(profile.nickname);
-  const [birthday, setBirthday] = useState<{ month: number; day: number }>(
-    profile.birthday,
-  );
+  const [birthday, setBirthday] = useState<{
+    month: number;
+    day: number;
+    year: number;
+  }>(profile.birthday);
   const [avatarId, setAvatarId] = useState<string>(teaAvatars[0]!.id);
   const [customAvatar, setCustomAvatar] = useState<string | null>(null);
   const [googleLinked, setGoogleLinked] = useState<boolean>(
@@ -69,11 +71,14 @@ export function ProfileScreen() {
 
   const fmt = (opts: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(locale, opts);
-  const monthLabel = (m: number) =>
-    fmt({ month: "short" }).format(new Date(2000, m, 1));
-  const birthdayText = fmt({ day: "numeric", month: "short" }).format(
-    new Date(2000, birthday.month - 1, birthday.day),
+  const monthNames = Array.from({ length: 12 }, (_, i) =>
+    fmt({ month: "long" }).format(new Date(2000, i, 1)),
   );
+  const birthdayText = fmt({
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(birthday.year, birthday.month - 1, birthday.day));
   const avatar = teaAvatars.find((a) => a.id === avatarId) ?? teaAvatars[0]!;
 
   const openEdit = (kind: "name" | "nick") => {
@@ -304,30 +309,29 @@ export function ProfileScreen() {
         open={drawer === "birthday"}
         onOpenChange={(open) => !open && setDrawer(null)}
       >
-        <DrawerContent className="mx-auto flex w-full max-w-md flex-col">
-          <div className="px-6 pt-2">
+        <DrawerContent className="mx-auto w-full max-w-md">
+          <div className="px-6 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             <DrawerTitle className="font-display text-xl font-semibold tracking-tight">
               {t("birthdayTitle")}
             </DrawerTitle>
             <DrawerDescription className="text-muted-foreground mt-1 text-sm">
               {t("birthdayHint")}
             </DrawerDescription>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4">
-            <MonthDayPicker
+            <DateWheelPicker
+              className="mt-4"
               value={birthday}
               onValueChange={setBirthday}
-              monthLabels={Array.from({ length: 12 }, (_, i) => monthLabel(i))}
-              monthLabel={t("monthLabel")}
+              monthLabels={monthNames}
               dayLabel={t("dayLabel")}
+              monthLabel={t("monthLabel")}
+              yearLabel={t("yearLabel")}
+              maxYear={new Date().getFullYear()}
             />
-          </div>
-          <div className="shrink-0 px-6 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             <Button
               onClick={() => setDrawer(null)}
               variant="gradient"
               size="lg"
-              className="h-12 w-full rounded-full"
+              className="mt-5 h-12 w-full rounded-full"
             >
               {t("done")} · {birthdayText}
             </Button>
