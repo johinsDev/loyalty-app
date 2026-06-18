@@ -75,7 +75,7 @@ export function NotificationsDrawer() {
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerContent>
+      <DrawerContent aria-describedby={undefined}>
         <DrawerHeader className="flex flex-row items-center justify-between border-b py-3 text-left">
           <DrawerTitle className="text-lg">{t("title")}</DrawerTitle>
           <div className="flex items-center gap-1">

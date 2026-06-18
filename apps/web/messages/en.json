@@ -91,6 +91,23 @@
     "viewCard": "View my card",
     "addToWallet": "Add to Apple Wallet"
   },
+  "Menu": {
+    "title": "Menu",
+    "favorites": "Favorites",
+    "all": "All",
+    "searchPlaceholder": "Search a drink",
+    "seasonalTag": "SEASONAL",
+    "seasonalTitle": "Spring drop is here",
+    "seasonalSub": "Peach oolong + strawberry cloud, now in store",
+    "featured": "FEATURED",
+    "empty": "No drinks match that filter.",
+    "onRedeem": "on redeem",
+    "size": "Size",
+    "sizeM": "Medium",
+    "sizeL": "Large +$0.80",
+    "toppings": "Toppings",
+    "addToOrder": "Add to order · {price}"
+  },
   "Notifications": {
     "title": "Notifications",
     "newNotification": "You have a new notification",
@@ -110,6 +127,11 @@
   "Profile": {
     "title": "My profile",
     "placeholder": "Edit your details (placeholder).",
+    "preferences": {
+      "title": "Preferences",
+      "theme": "Theme",
+      "language": "Language"
+    },
     "notifications": {
       "title": "Notification preferences",
       "description": "Choose which channels you want promotions on. Important messages (codes, confirmations) always come through.",

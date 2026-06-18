@@ -25,9 +25,15 @@ type Props = {
   locale: string;
   /** `getMessages()` result — wide structural type to avoid coupling. */
   messages: Record<string, unknown>;
+  /**
+   * Server render time, shared with the client so `format.relativeTime` has a
+   * stable reference and next-intl doesn't fall back to the runtime clock
+   * (which logs an `ENVIRONMENT_FALLBACK` error per call).
+   */
+  now: Date;
 };
 
-export const Providers = ({ children, locale, messages }: Props) => {
+export const Providers = ({ children, locale, messages, now }: Props) => {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -42,6 +48,7 @@ export const Providers = ({ children, locale, messages }: Props) => {
       locale={locale}
       messages={messages}
       timeZone="America/Bogota"
+      now={now}
     >
       <NuqsAdapter>
         <QueryClientProvider client={queryClient}>

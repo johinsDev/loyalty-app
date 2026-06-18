@@ -41,7 +41,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   const messages = await getMessages();
 
   return (
-    <Providers locale={locale} messages={messages}>
+    <Providers locale={locale} messages={messages} now={new Date()}>
       <AppChrome />
       {children}
       <RealtimeNotifications host={env.NEXT_PUBLIC_PARTYKIT_HOST} />
