@@ -6,12 +6,12 @@ import { useTranslations } from "next-intl";
 
 import { Link, usePathname } from "@/i18n/navigation";
 
-type Href = "/" | "/card" | "/profile";
+type Href = "/" | "/rewards" | "/card" | "/profile";
 type Tab = { key: string; href: Href; icon: LucideIcon };
 
 const LEFT: Tab[] = [
   { key: "navHome", href: "/", icon: HomeIcon },
-  { key: "navRewards", href: "/card", icon: Gift },
+  { key: "navRewards", href: "/rewards", icon: Gift },
 ];
 const RIGHT: Tab[] = [
   { key: "navMenu", href: "/card", icon: CupSoda },
