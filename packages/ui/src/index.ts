@@ -42,6 +42,7 @@ export * from "./components/ui/kbd";
 export * from "./components/ui/label";
 export * from "./components/ui/menubar";
 export * from "./components/ui/mode-toggle";
+export * from "./components/ui/month-day-picker";
 export * from "./components/ui/native-select";
 export * from "./components/ui/navigation-menu";
 export * from "./components/ui/pagination";

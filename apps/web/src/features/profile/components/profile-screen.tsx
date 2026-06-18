@@ -8,6 +8,7 @@ import {
   DrawerDescription,
   DrawerTitle,
   Input,
+  MonthDayPicker,
 } from "@loyalty/ui";
 import {
   AtSign,
@@ -313,51 +314,13 @@ export function ProfileScreen() {
             </DrawerDescription>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4">
-            <p className="text-muted-foreground mb-2.5 text-xs font-bold tracking-wider">
-              {t("monthLabel")}
-            </p>
-            <div className="scrollbar-hide -mx-6 mb-5 flex gap-2 overflow-x-auto px-6 pb-1">
-              {Array.from({ length: 12 }, (_, i) => {
-                const active = birthday.month === i + 1;
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setBirthday((b) => ({ ...b, month: i + 1 }))}
-                    className={`h-9 shrink-0 rounded-full border px-4 text-xs font-bold whitespace-nowrap ${
-                      active
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card text-muted-foreground"
-                    }`}
-                  >
-                    {monthLabel(i)}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-muted-foreground mb-2.5 text-xs font-bold tracking-wider">
-              {t("dayLabel")}
-            </p>
-            <div className="grid grid-cols-7 gap-2">
-              {Array.from({ length: 31 }, (_, i) => {
-                const day = i + 1;
-                const active = birthday.day === day;
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => setBirthday((b) => ({ ...b, day }))}
-                    className={`grid aspect-square place-items-center rounded-xl border text-sm font-semibold ${
-                      active
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card text-foreground"
-                    }`}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
+            <MonthDayPicker
+              value={birthday}
+              onValueChange={setBirthday}
+              monthLabels={Array.from({ length: 12 }, (_, i) => monthLabel(i))}
+              monthLabel={t("monthLabel")}
+              dayLabel={t("dayLabel")}
+            />
           </div>
           <div className="shrink-0 px-6 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             <Button
@@ -413,7 +376,7 @@ export function ProfileScreen() {
                 type="button"
                 onClick={() => fileRef.current?.click()}
                 aria-label={t("avatarUpload")}
-                className={`border-border text-muted-foreground grid aspect-square place-items-center rounded-full border-2 border-dashed ${
+                className={`border-border text-muted-foreground relative grid aspect-square place-items-center overflow-hidden rounded-full border-2 border-dashed ${
                   customAvatar
                     ? "ring-primary ring-offset-background ring-2 ring-offset-2"
                     : ""
@@ -423,7 +386,7 @@ export function ProfileScreen() {
                   <img
                     src={customAvatar}
                     alt=""
-                    className="size-full rounded-full object-cover"
+                    className="absolute inset-0 size-full object-cover"
                   />
                 ) : (
                   <Upload className="size-5" />
@@ -494,7 +457,7 @@ function AvatarFace({
       <img
         src={custom}
         alt=""
-        className="size-full rounded-full object-cover shadow-md"
+        className="absolute inset-0 size-full rounded-full object-cover shadow-md"
       />
     );
   }
@@ -503,7 +466,7 @@ function AvatarFace({
       style={{
         backgroundImage: `linear-gradient(150deg, ${avatar.gradient[0]}, ${avatar.gradient[1]})`,
       }}
-      className="grid size-full place-items-center rounded-full text-4xl shadow-md"
+      className="absolute inset-0 grid size-full place-items-center rounded-full text-4xl shadow-md"
     >
       {avatar.emoji}
     </span>
