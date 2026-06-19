@@ -129,6 +129,22 @@
     "toppings": "Toppings",
     "addToOrder": "Agregar al pedido · {price}"
   },
+  "Qr": {
+    "title": "Mi código",
+    "close": "Cerrar",
+    "brightness": "Brillo",
+    "tierLine": "Nivel {tier} · {points} pts",
+    "attachedRedeem": "CANJEÁS EN ESTE ESCANEO",
+    "memberNumber": "N° DE SOCIO",
+    "instruction": "Mostrá este código en caja antes de pagar para sumar puntos y sellos automáticamente.",
+    "instructionWithReward": "Mostrá este código en caja: canjeás tu recompensa y sumás puntos por el resto de tu compra.",
+    "redeemHeading": "CANJEAR UNA RECOMPENSA",
+    "none": "Ninguna",
+    "cost": "{count} sellos",
+    "manualCode": "Ingresar código manual",
+    "copied": "Código copiado",
+    "copyFailed": "No se pudo copiar"
+  },
   "Notifications": {
     "title": "Notificaciones",
     "newNotification": "Tenés una notificación nueva",
