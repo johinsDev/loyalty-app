@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Link, useRouter } from "@/i18n/navigation";
+import { useFadeUp } from "@/lib/animate";
 
 import {
   APP_VERSION,
@@ -52,6 +53,7 @@ type DrawerKind = "name" | "nick" | "birthday" | "avatar" | "signout" | null;
 
 export function ProfileScreen() {
   const t = useTranslations("Profile");
+  const fade = useFadeUp();
   const locale = useLocale();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -127,7 +129,10 @@ export function ProfileScreen() {
       </h1>
 
       {/* HEADER */}
-      <section className="from-primary to-primary/75 relative overflow-hidden rounded-3xl bg-gradient-to-br p-5 text-white shadow-xl shadow-primary/30">
+      <section
+        style={fade(0)}
+        className="from-primary to-primary/75 relative overflow-hidden rounded-3xl bg-gradient-to-br p-5 text-white shadow-xl shadow-primary/30"
+      >
         <span
           aria-hidden
           className="pointer-events-none absolute -right-5 -bottom-8 -rotate-12 text-9xl opacity-15"
@@ -163,7 +168,7 @@ export function ProfileScreen() {
       </section>
 
       {/* ACCOUNT */}
-      <Section label={t("secAccount")}>
+      <Section label={t("secAccount")} style={fade(1)}>
         <Row
           icon={User}
           label={t("rowName")}
@@ -226,10 +231,12 @@ export function ProfileScreen() {
       </Section>
 
       {/* NOTIFICATIONS — the real per-channel opt-out control */}
-      <NotificationPreferences />
+      <div style={fade(2)}>
+        <NotificationPreferences />
+      </div>
 
       {/* PREFERENCES */}
-      <Section label={t("preferences.title")}>
+      <Section label={t("preferences.title")} style={fade(3)}>
         <div className="flex items-center gap-3.5 px-4 py-3">
           <span className="bg-primary/10 grid size-10 flex-none place-items-center rounded-xl">
             <Globe className="text-primary size-5" />
@@ -251,7 +258,7 @@ export function ProfileScreen() {
       </Section>
 
       {/* ACTIVITY */}
-      <Section label={t("secActivity")}>
+      <Section label={t("secActivity")} style={fade(4)}>
         <Row
           icon={Receipt}
           label={t("purchaseHistory")}
@@ -269,7 +276,7 @@ export function ProfileScreen() {
       </Section>
 
       {/* HELP + SIGN OUT */}
-      <Section>
+      <Section style={fade(5)}>
         <Row icon={HelpCircle} label={t("help")} chevron />
         <button
           type="button"
@@ -511,12 +518,14 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 function Section({
   label,
   children,
+  style,
 }: {
   label?: string;
   children: React.ReactNode;
+  style?: React.CSSProperties;
 }) {
   return (
-    <section>
+    <section style={style}>
       {label ? (
         <p className="text-muted-foreground mb-2.5 px-1 text-xs font-bold tracking-wider">
           {label}
