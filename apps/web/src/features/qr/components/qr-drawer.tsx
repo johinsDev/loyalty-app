@@ -95,52 +95,62 @@ export function QrDrawer() {
             </button>
           </div>
 
-          <div className={bright ? "flex flex-1 items-center" : ""}>
-            <QrCard
-              reward={reward}
-              qrValue={qrValue}
-              big={bright}
-              onClearReward={() => setRewardId(null)}
-            />
+          <QrCard
+            reward={reward}
+            qrValue={qrValue}
+            onClearReward={() => setRewardId(null)}
+          />
+
+          <p
+            className={`mt-5 px-2 text-center text-sm leading-relaxed ${
+              bright ? "text-neutral-600" : "text-white/80"
+            }`}
+          >
+            {reward ? t("instructionWithReward") : t("instruction")}
+          </p>
+
+          <div className="mt-7">
+            <p
+              className={`mb-3 px-0.5 text-xs font-bold tracking-wider ${
+                bright ? "text-neutral-400" : "text-white/60"
+              }`}
+            >
+              {t("redeemHeading")}
+            </p>
+            <div className="scrollbar-hide -mx-6 flex gap-2 overflow-x-auto px-6 pb-1">
+              <Chip
+                active={!reward}
+                bright={bright}
+                onClick={() => setRewardId(null)}
+              >
+                {t("none")}
+              </Chip>
+              {attachableRewards.map((r) => (
+                <Chip
+                  key={r.id}
+                  active={reward?.id === r.id}
+                  bright={bright}
+                  onClick={() => setRewardId(r.id)}
+                >
+                  <span className="text-base">{r.emoji}</span>
+                  {r.name}
+                </Chip>
+              ))}
+            </div>
           </div>
 
-          {bright ? null : (
-            <>
-              <p className="mt-5 px-2 text-center text-sm leading-relaxed text-white/80">
-                {reward ? t("instructionWithReward") : t("instruction")}
-              </p>
-
-              <div className="mt-7">
-                <p className="mb-3 px-0.5 text-xs font-bold tracking-wider text-white/60">
-                  {t("redeemHeading")}
-                </p>
-                <div className="scrollbar-hide -mx-6 flex gap-2 overflow-x-auto px-6 pb-1">
-                  <Chip active={!reward} onClick={() => setRewardId(null)}>
-                    {t("none")}
-                  </Chip>
-                  {attachableRewards.map((r) => (
-                    <Chip
-                      key={r.id}
-                      active={reward?.id === r.id}
-                      onClick={() => setRewardId(r.id)}
-                    >
-                      <span className="text-base">{r.emoji}</span>
-                      {r.name}
-                    </Chip>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => void copyCode()}
-                className="mt-6 flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 text-sm font-semibold text-white"
-              >
-                <Copy className="size-4" />
-                {t("manualCode")}
-              </button>
-            </>
-          )}
+          <button
+            type="button"
+            onClick={() => void copyCode()}
+            className={`mt-6 flex h-12 items-center justify-center gap-2 rounded-2xl border text-sm font-semibold ${
+              bright
+                ? "border-neutral-200 bg-neutral-50 text-neutral-700"
+                : "border-white/20 bg-white/5 text-white"
+            }`}
+          >
+            <Copy className="size-4" />
+            {t("manualCode")}
+          </button>
         </div>
       </DrawerContent>
     </Drawer>
@@ -152,12 +162,10 @@ export function QrDrawer() {
 function QrCard({
   reward,
   qrValue,
-  big,
   onClearReward,
 }: {
   reward: AttachableReward | null;
   qrValue: string;
-  big: boolean;
   onClearReward: () => void;
 }) {
   const t = useTranslations("Qr");
@@ -203,7 +211,7 @@ function QrCard({
       <div className="mt-4 grid place-items-center rounded-2xl bg-white p-3">
         <QRCodeSVG
           value={qrValue}
-          size={big ? 280 : 236}
+          size={236}
           level="M"
           marginSize={0}
           fgColor="#000323"
@@ -225,23 +233,28 @@ function QrCard({
 
 function Chip({
   active,
+  bright,
   onClick,
   children,
 }: {
   active: boolean;
+  bright: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const cls = active
+    ? bright
+      ? "border-neutral-900 bg-neutral-900 text-white"
+      : "border-white bg-white text-neutral-900"
+    : bright
+      ? "border-neutral-200 bg-neutral-100 text-neutral-700"
+      : "border-white/20 bg-white/10 text-white/85";
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-xs font-bold whitespace-nowrap ${
-        active
-          ? "border-white bg-white text-neutral-900"
-          : "border-white/20 bg-white/10 text-white/85"
-      }`}
+      className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-xs font-bold whitespace-nowrap ${cls}`}
     >
       {children}
     </button>
