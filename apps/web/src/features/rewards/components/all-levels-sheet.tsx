@@ -103,7 +103,7 @@ export function AllLevelsSheet() {
               <Button
                 variant="secondary"
                 size="lg"
-                className="w-full rounded-full font-semibold"
+                className="h-13 w-full rounded-full text-base font-semibold"
               >
                 {t("close")}
               </Button>
