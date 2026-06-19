@@ -1,14 +1,26 @@
 "use client";
 
 import {
+  InputPhone,
+  isValidE164Phone,
+  ResponsiveModal,
+  ResponsiveModalClose,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalTitle,
+} from "@loyalty/ui";
+import {
   AlertTriangle,
   ArrowLeft,
+  Cake,
   Camera,
   Check,
   Clock,
   Coins,
   Delete,
   Gift,
+  Lock,
+  LogOut,
   Minus,
   Phone,
   Plus,
@@ -20,14 +32,20 @@ import {
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
+import { useRouter } from "@/i18n/navigation";
+
 import {
+  activePromos,
   type CashierError,
+  claimableRewards,
   DAILY_CAP,
   STAMPS_TODAY,
   attachedReward as REWARD,
   cashier,
   foundCustomer as CUST,
+  lockedRewards,
   manager,
+  memberDetail,
   products,
   recentMoves,
   store,
@@ -53,6 +71,7 @@ const GRAD = "bg-gradient-to-br from-primary to-primary/80";
  */
 export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
   const t = useTranslations("Cashier");
+  const router = useRouter();
   const [screen, setScreen] = useState<Screen>("earn-identify");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [phone, setPhone] = useState("");
@@ -61,6 +80,8 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
   const [error, setError] = useState<CashierError | null>(null);
   const [mgrOpen, setMgrOpen] = useState(false);
   const [mgrPin, setMgrPin] = useState("");
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [switchOpen, setSwitchOpen] = useState(false);
 
   const capReached = sellosBase >= DAILY_CAP;
   const totalStamps = useMemo(
@@ -72,6 +93,7 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
   const isEarn = screen.startsWith("earn");
   const isRedeem = screen.startsWith("redeem");
   const enough = CUST.stamps >= REWARD.cost;
+  const phoneValid = isValidE164Phone(phone);
 
   const addProduct = (id: string) =>
     setCart((c) => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
@@ -100,9 +122,6 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
     setPhone("");
   };
 
-  const pressPhone = (n: string) => setPhone((p) => (p + n).slice(0, 10));
-  const backPhone = () => setPhone((p) => p.slice(0, -1));
-
   const pressMgr = (n: string) => {
     const pin = (mgrPin + n).slice(0, 4);
     setMgrPin(pin);
@@ -124,7 +143,7 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
 
   return (
     <div className="bg-muted/40 text-foreground relative flex h-screen flex-col overflow-hidden">
-      <style>{`@keyframes t4scan{0%{top:14%}50%{top:80%}100%{top:14%}}`}</style>
+      <style>{`@keyframes t4scan{0%{top:14%}50%{top:80%}100%{top:14%}}@keyframes t4confetti{0%{transform:translateY(-12%) rotate(0);opacity:0}8%{opacity:1}100%{transform:translateY(110vh) rotate(680deg);opacity:0}}`}</style>
 
       {/* ===== STAFF / SHIFT BAR ===== */}
       <header className="bg-card border-border flex flex-none flex-wrap items-center gap-4 border-b px-6 py-3.5 pr-28">
@@ -170,6 +189,7 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
             </div>
             <button
               type="button"
+              onClick={() => setSwitchOpen(true)}
               className="text-primary text-xs font-extrabold whitespace-nowrap"
             >
               {t("switchCashier")}
@@ -181,6 +201,16 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
             {cashier.initials}
           </span>
         </div>
+
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard")}
+          aria-label={t("exit")}
+          className="border-border bg-card text-muted-foreground hover:text-foreground flex h-10 flex-none items-center gap-1.5 rounded-xl border px-3 text-sm font-bold"
+        >
+          <LogOut className="size-4" />
+          <span className="hidden sm:inline">{t("exit")}</span>
+        </button>
       </header>
 
       {capReached ? (
@@ -298,19 +328,17 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
               <p className="text-muted-foreground mt-1 mb-4 text-sm">
                 {t("phoneHint")}
               </p>
-              <div className="border-border bg-muted mb-4 flex h-16 items-center gap-2.5 rounded-2xl border px-4.5">
-                <Phone className="text-muted-foreground/70 size-5" />
-                <span
-                  className={`font-display text-2xl font-semibold tracking-widest ${phone ? "text-foreground" : "text-muted-foreground/70"}`}
-                >
-                  {phone || t("enterNumber")}
-                </span>
+              <div className="mb-4">
+                <InputPhone
+                  defaultCountry="CO"
+                  value={phone}
+                  onChange={(v) => setPhone(v.e164)}
+                  placeholder={t("enterNumber")}
+                />
               </div>
-              <Keypad onPress={pressPhone} onBack={backPhone} />
               <BigButton
-                onClick={() => setScreen("earn-found")}
-                disabled={phone.length < 6}
-                className="mt-4"
+                onClick={() => setError("notfound")}
+                disabled={!phoneValid}
               >
                 {t("searchMember")}
               </BigButton>
@@ -334,14 +362,23 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
                       {CUST.initials}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="text-lg font-extrabold">{CUST.name}</div>
+                      <div className="truncate text-lg font-extrabold">
+                        {CUST.name}
+                      </div>
                       <div className="text-muted-foreground text-sm font-semibold">
                         {CUST.phone}
                       </div>
+                      <span className="bg-muted mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold">
+                        {CUST.tierEmoji} {CUST.tier}
+                      </span>
                     </div>
-                    <span className="bg-muted inline-flex flex-none items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold">
-                      {CUST.tierEmoji} {CUST.tier}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setDetailOpen(true)}
+                      className="border-border bg-card text-muted-foreground hover:text-foreground flex-none rounded-full border px-3 py-1.5 text-xs font-bold"
+                    >
+                      {t("viewDetail")}
+                    </button>
                   </div>
                   <div className="mt-4 flex gap-3">
                     <div className="bg-muted flex-1 rounded-2xl p-3.5">
@@ -476,16 +513,16 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
       {/* ===== STICKY CONFIRM ===== */}
       {screen === "earn-found" ? (
         <div className="bg-card border-border flex-none border-t px-6 py-3.5">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4">
-            <div className="min-w-44 flex-1">
+          <div className="mx-auto flex max-w-5xl items-center gap-4">
+            <div className="min-w-0 flex-1">
               <div className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
                 {t("willAward")}
               </div>
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-2 whitespace-nowrap">
                 <span className="font-display text-primary text-3xl font-semibold">
                   +{totalStamps}
                 </span>
-                <span className="text-muted-foreground text-sm font-bold">
+                <span className="text-muted-foreground truncate text-sm font-bold">
                   {totalStamps === 1 ? t("stampOne") : t("stampMany")} ·{" "}
                   {t("nProducts", { count: cartCount })}
                 </span>
@@ -495,7 +532,7 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
               onClick={confirmEarn}
               disabled={totalStamps === 0 || capReached}
               icon={<Check className="size-6" />}
-              className="max-w-sm flex-1"
+              className="w-auto max-w-sm flex-1 px-6 whitespace-nowrap"
             >
               {t("confirmEarn", { count: totalStamps })}
             </BigButton>
@@ -503,39 +540,9 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
         </div>
       ) : null}
 
-      {/* ===== STATE RAIL (dev) ===== */}
-      <div className="border-border bg-muted flex flex-none gap-2 overflow-x-auto border-t px-6 py-3">
-        <span className="text-muted-foreground/70 flex-none self-center pr-1 text-[0.6875rem] font-extrabold tracking-wider">
-          {t("statesLabel")}
-        </span>
-        {(
-          [
-            ["notfound", t("stNotFound")],
-            ["insufficient", t("stInsufficient")],
-            ["cap", t("stCap")],
-            ["expired", t("stExpired")],
-            ["camera", t("stCamera")],
-          ] as const
-        ).map(([key, label]) => (
-          <RailButton key={key} onClick={() => setError(key)}>
-            {label}
-          </RailButton>
-        ))}
-        <RailButton
-          onClick={() => {
-            resetToIdentify();
-            setError(null);
-            setSellosBase(STAMPS_TODAY);
-          }}
-          primary
-        >
-          ↺ {t("reset")}
-        </RailButton>
-      </div>
-
       {/* ===== EARN SUCCESS ===== */}
       {screen === "earn-success" ? (
-        <div className="bg-muted/40 absolute inset-0 z-40 flex items-center justify-center overflow-y-auto p-8">
+        <div className="bg-background absolute inset-0 z-40 flex items-center justify-center overflow-y-auto p-8">
           <Confetti />
           <div className="relative mx-auto flex max-w-md flex-col items-center gap-3.5 text-center">
             <div
@@ -588,7 +595,7 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
 
       {/* ===== REDEEM OVERLAY ===== */}
       {isRedeem ? (
-        <div className="bg-muted/40 absolute inset-0 z-40 flex flex-col">
+        <div className="bg-background absolute inset-0 z-40 flex flex-col">
           <div className="bg-card border-border flex flex-none items-center gap-3.5 border-b px-6 py-4">
             <button
               type="button"
@@ -754,10 +761,101 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
         </>
       ) : null}
 
-      {/* ===== ERROR OVERLAY ===== */}
-      {error ? (
-        <ErrorOverlay errKey={error} onClose={() => setError(null)} />
-      ) : null}
+      {/* ===== MEMBER DETAIL (verify birthday / see promos + rewards) ===== */}
+      <ResponsiveModal open={detailOpen} onOpenChange={setDetailOpen}>
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
+          <div className="flex flex-col gap-4 px-6 pt-2 pb-6">
+            <div className="flex items-center gap-3.5">
+              <span
+                className="font-display grid size-14 flex-none place-items-center rounded-full text-xl font-semibold text-amber-900"
+                style={{ backgroundImage: "linear-gradient(150deg,#ffd0ad,#ff9d6e)" }}
+              >
+                {CUST.initials}
+              </span>
+              <div className="min-w-0">
+                <ResponsiveModalTitle className="text-lg font-extrabold">
+                  {CUST.name}
+                </ResponsiveModalTitle>
+                <ResponsiveModalDescription className="text-muted-foreground text-sm font-semibold">
+                  {CUST.phone} · {CUST.tierEmoji} {CUST.tier}
+                </ResponsiveModalDescription>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <InfoTile icon={<Cake className="size-4" />} label={t("birthday")} value={memberDetail.birthday} />
+              <InfoTile label={t("memberSince")} value={memberDetail.memberSince} />
+              <InfoTile label={t("email")} value={memberDetail.email} />
+              <InfoTile label={t("visits")} value={`${memberDetail.visits}`} />
+            </div>
+
+            <DetailSection title={t("promosActive")}>
+              {activePromos.map((p) => (
+                <DetailRow key={p.name} emoji={p.emoji} name={p.name} note={p.detail} />
+              ))}
+            </DetailSection>
+
+            <DetailSection title={t("rewardsClaimable")}>
+              {claimableRewards.map((r) => (
+                <DetailRow
+                  key={r.name}
+                  emoji={r.emoji}
+                  name={r.name}
+                  note={t("costStamps", { count: r.cost }) + " · " + t("rewardReady")}
+                />
+              ))}
+            </DetailSection>
+
+            <DetailSection title={t("rewardsLocked")}>
+              {lockedRewards.map((r) => (
+                <DetailRow
+                  key={r.name}
+                  emoji={r.emoji}
+                  name={r.name}
+                  note={t("costStamps", { count: r.cost })}
+                  locked
+                />
+              ))}
+            </DetailSection>
+
+            <ResponsiveModalClose className="w-full">
+              {t("close")}
+            </ResponsiveModalClose>
+          </div>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
+
+      {/* ===== SWITCH CASHIER (confirm → re-login) ===== */}
+      <ResponsiveModal open={switchOpen} onOpenChange={setSwitchOpen}>
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
+          <div className="flex flex-col items-center px-6 pt-2 pb-6 text-center">
+            <span className="bg-muted mb-4 grid size-20 place-items-center rounded-3xl">
+              <LogOut className="size-9" />
+            </span>
+            <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
+              {t("switchTitle")}
+            </ResponsiveModalTitle>
+            <ResponsiveModalDescription className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              {t("switchBody")}
+            </ResponsiveModalDescription>
+            <BigButton
+              onClick={() => router.push("/sign-in")}
+              className="mt-6"
+            >
+              {t("switchConfirm")}
+            </BigButton>
+            <ResponsiveModalClose
+              variant="ghost"
+              className="mt-1 h-auto w-full bg-transparent text-sm shadow-none"
+            >
+              {t("cancel")}
+            </ResponsiveModalClose>
+          </div>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
+
+      {/* ===== ERROR / EMPTY STATES (responsive modal) ===== */}
+      <ErrorModal errKey={error} onClose={() => setError(null)} />
     </div>
   );
 }
@@ -829,26 +927,6 @@ function ModeButton({
   );
 }
 
-function RailButton({
-  onClick,
-  primary,
-  children,
-}: {
-  onClick: () => void;
-  primary?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`bg-card h-9 flex-none rounded-full border px-3.5 text-xs font-bold ${primary ? "text-primary border-primary/40" : "text-muted-foreground border-border"}`}
-    >
-      {children}
-    </button>
-  );
-}
-
 function Stepper({
   onClick,
   icon,
@@ -864,6 +942,72 @@ function Stepper({
     >
       {icon}
     </button>
+  );
+}
+
+function InfoTile({
+  icon,
+  label,
+  value,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="bg-muted rounded-2xl p-3.5">
+      <div className="text-muted-foreground/70 flex items-center gap-1.5 text-[0.6875rem] font-extrabold tracking-wider">
+        {icon}
+        {label}
+      </div>
+      <div className="text-foreground mt-1 text-sm font-bold">{value}</div>
+    </div>
+  );
+}
+
+function DetailSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="text-muted-foreground/70 mb-2 text-[0.6875rem] font-extrabold tracking-wider">
+        {title}
+      </div>
+      <div className="flex flex-col gap-2">{children}</div>
+    </div>
+  );
+}
+
+function DetailRow({
+  emoji,
+  name,
+  note,
+  locked,
+}: {
+  emoji: string;
+  name: string;
+  note: string;
+  locked?: boolean;
+}) {
+  return (
+    <div
+      className={`border-border bg-card flex items-center gap-3 rounded-2xl border p-3 ${locked ? "opacity-60" : ""}`}
+    >
+      <span className="bg-muted grid size-9 flex-none place-items-center rounded-xl text-lg">
+        {emoji}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-bold">{name}</div>
+        <div className="text-muted-foreground/70 text-xs font-semibold">
+          {note}
+        </div>
+      </div>
+      {locked ? <Lock className="text-muted-foreground/70 size-4 flex-none" /> : null}
+    </div>
   );
 }
 
@@ -943,17 +1087,15 @@ function Confetti() {
   const colors = ["#1BAD9D", "#5fe0c8", "#ffd36e", "#ff8fa3", "#8ad9ff"];
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {Array.from({ length: 28 }).map((_, i) => (
+      {Array.from({ length: 32 }).map((_, i) => (
         <span
           key={i}
-          className="absolute block w-2 rounded-sm"
+          className="absolute top-0 block w-2 rounded-sm"
           style={{
-            top: `${(i * 37) % 70}%`,
             left: `${(i * 53) % 100}%`,
             height: `${10 + (i % 4) * 4}px`,
             background: colors[i % colors.length],
-            transform: `rotate(${(i * 47) % 360}deg)`,
-            opacity: 0.9,
+            animation: `t4confetti ${(2.4 + (i % 5) * 0.4).toFixed(2)}s linear ${((i % 7) * 0.15).toFixed(2)}s infinite`,
           }}
         />
       ))}
@@ -961,58 +1103,65 @@ function Confetti() {
   );
 }
 
-function ErrorOverlay({
+const ERROR_CONFIG: Record<
+  CashierError,
+  { icon: React.ReactNode; tint: string; sec: boolean }
+> = {
+  notfound: { icon: <Search className="size-9" />, tint: "bg-muted", sec: true },
+  insufficient: { icon: <Coins className="size-9" />, tint: "bg-rose-500/15 text-rose-500", sec: false },
+  cap: { icon: <AlertTriangle className="size-9" />, tint: "bg-amber-500/15 text-amber-600", sec: true },
+  expired: { icon: <Clock className="size-9" />, tint: "bg-rose-500/15 text-rose-500", sec: true },
+  camera: { icon: <Camera className="size-9" />, tint: "bg-muted", sec: true },
+};
+
+/**
+ * Error / empty states surfaced as a {@link ResponsiveModal} (bottom sheet on
+ * tablet/phone, centered dialog on desktop) — they appear when the situation
+ * actually occurs in the flow (cap on confirm, not-found on phone search,
+ * expired on a manual code, camera on a blocked scanner), not from a dev rail.
+ */
+function ErrorModal({
   errKey,
   onClose,
 }: {
-  errKey: CashierError;
+  errKey: CashierError | null;
   onClose: () => void;
 }) {
   const t = useTranslations("Cashier");
-  const cfg: Record<
-    CashierError,
-    { icon: React.ReactNode; tint: string; sec: boolean }
-  > = {
-    notfound: { icon: <Search className="size-9" />, tint: "bg-muted", sec: true },
-    insufficient: { icon: <Coins className="size-9" />, tint: "bg-rose-500/15 text-rose-500", sec: false },
-    cap: { icon: <AlertTriangle className="size-9" />, tint: "bg-amber-500/15 text-amber-600", sec: true },
-    expired: { icon: <Clock className="size-9" />, tint: "bg-rose-500/15 text-rose-500", sec: true },
-    camera: { icon: <Camera className="size-9" />, tint: "bg-muted", sec: true },
-  };
-  const c = cfg[errKey];
+  const c = errKey ? ERROR_CONFIG[errKey] : null;
   return (
-    <div
-      className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 p-8"
-      onClick={onClose}
-    >
-      <div
-        className="bg-card border-border w-full max-w-sm rounded-3xl border p-7 text-center shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <span
-          className={`mx-auto mb-4 grid size-20 place-items-center rounded-3xl ${c.tint}`}
-        >
-          {c.icon}
-        </span>
-        <div className="font-display text-2xl font-semibold tracking-tight">
-          {t(`err.${errKey}.title`)}
-        </div>
-        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-          {t(`err.${errKey}.body`)}
-        </p>
-        <BigButton onClick={onClose} className="mt-5">
-          {t(`err.${errKey}.cta`)}
-        </BigButton>
-        {c.sec ? (
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-muted-foreground mt-3.5 text-sm font-bold"
-          >
-            {t(`err.${errKey}.sec`)}
-          </button>
+    <ResponsiveModal open={errKey !== null} onOpenChange={(o) => !o && onClose()}>
+      <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
+        {errKey && c ? (
+          <div className="flex flex-col items-center px-6 pt-2 pb-6 text-center">
+            <span
+              className={`mb-4 grid size-20 place-items-center rounded-3xl ${c.tint}`}
+            >
+              {c.icon}
+            </span>
+            <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
+              {t(`err.${errKey}.title`)}
+            </ResponsiveModalTitle>
+            <ResponsiveModalDescription className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              {t(`err.${errKey}.body`)}
+            </ResponsiveModalDescription>
+            <ResponsiveModalClose
+              variant="gradient"
+              className="mt-6 w-full text-base"
+            >
+              {t(`err.${errKey}.cta`)}
+            </ResponsiveModalClose>
+            {c.sec ? (
+              <ResponsiveModalClose
+                variant="ghost"
+                className="mt-1 h-auto w-full bg-transparent text-sm shadow-none"
+              >
+                {t(`err.${errKey}.sec`)}
+              </ResponsiveModalClose>
+            ) : null}
+          </div>
         ) : null}
-      </div>
-    </div>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

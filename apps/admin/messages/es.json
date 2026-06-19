@@ -348,6 +348,22 @@
         "cta": "Abrir ajustes",
         "sec": "Usar código manual"
       }
-    }
+    },
+    "viewDetail": "Ver detalle",
+    "exit": "Salir",
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "birthday": "Cumpleaños",
+    "memberSince": "Socio desde",
+    "email": "Correo",
+    "visits": "Visitas",
+    "promosActive": "PROMOS ACTIVAS",
+    "rewardsClaimable": "PUEDE CANJEAR",
+    "rewardsLocked": "POR DESBLOQUEAR",
+    "rewardReady": "disponible",
+    "costStamps": "{count} sellos",
+    "switchTitle": "¿Cambiar de cajero?",
+    "switchBody": "Se cerrará la caja en esta tablet y el siguiente cajero deberá iniciar su turno.",
+    "switchConfirm": "Cambiar de cajero"
   }
 }

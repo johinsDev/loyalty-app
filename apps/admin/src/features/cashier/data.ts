@@ -73,6 +73,38 @@ export const foundCustomer: CashierCustomer = {
   toNext: "Faltan 288 pts para 🌸 Flor",
 };
 
+/** Extra socio info the cashier can pull up to verify things (e.g. birthday). */
+export const memberDetail = {
+  email: "a·····z@gmail.com",
+  memberSince: "Mar 2024",
+  birthday: "14 de marzo",
+  visits: 23,
+};
+
+export type CashierPromo = { emoji: string; name: string; detail: string };
+export type CashierReward = {
+  emoji: string;
+  name: string;
+  cost: number;
+  locked?: boolean;
+};
+
+/** What's live for this customer — the cashier sees it to honor promos + canjes. */
+export const activePromos: CashierPromo[] = [
+  { emoji: "🔥", name: "2x1 en frappés", detail: "Todos los lunes · todo el día" },
+  { emoji: "⭐", name: "Doble puntos", detail: "Compras > $30 · esta semana" },
+];
+
+export const claimableRewards: CashierReward[] = [
+  { emoji: "🧋", name: "Bebida mediana gratis", cost: 6 },
+  { emoji: "✨", name: "Topping gratis", cost: 4 },
+];
+
+export const lockedRewards: CashierReward[] = [
+  { emoji: "🎂", name: "Postre del mes", cost: 12, locked: true },
+  { emoji: "🎁", name: "Combo para dos", cost: 18, locked: true },
+];
+
 export const attachedReward: AttachedReward = {
   emoji: "🧋",
   name: "Bebida mediana gratis",

@@ -348,6 +348,22 @@
         "cta": "Open settings",
         "sec": "Use manual code"
       }
-    }
+    },
+    "viewDetail": "View detail",
+    "exit": "Exit",
+    "close": "Close",
+    "cancel": "Cancel",
+    "birthday": "Birthday",
+    "memberSince": "Member since",
+    "email": "Email",
+    "visits": "Visits",
+    "promosActive": "ACTIVE PROMOS",
+    "rewardsClaimable": "CAN REDEEM",
+    "rewardsLocked": "TO UNLOCK",
+    "rewardReady": "available",
+    "costStamps": "{count} stamps",
+    "switchTitle": "Switch cashier?",
+    "switchBody": "The register will lock on this tablet and the next cashier must start their shift.",
+    "switchConfirm": "Switch cashier"
   }
 }
