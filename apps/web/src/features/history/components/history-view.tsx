@@ -1,6 +1,6 @@
 "use client";
 
-import { Drawer, DrawerContent } from "@loyalty/ui";
+import { ResponsiveModal, ResponsiveModalContent } from "@loyalty/ui";
 import { ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
@@ -129,14 +129,14 @@ export function HistoryView() {
         </div>
       )}
 
-      <Drawer
+      <ResponsiveModal
         open={selected !== null}
         onOpenChange={(next) => !next && void setQ({ o: null })}
       >
-        <DrawerContent className="mx-auto w-full max-w-md lg:max-w-lg">
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
           {selected ? <ReceiptSheet order={selected} /> : null}
-        </DrawerContent>
-      </Drawer>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </div>
   );
 }
