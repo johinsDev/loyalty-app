@@ -40,31 +40,33 @@ function Tab({
 }) {
   const Icon = tab.icon;
   return (
-    <Link
-      href={tab.href}
-      aria-current={active ? "page" : undefined}
-      className="relative flex flex-col items-center gap-1 rounded-2xl px-4 py-1.5"
-    >
-      {active ? (
-        <motion.span
-          layoutId="navPill"
-          transition={SPRING}
-          className="bg-primary/10 absolute inset-0 rounded-2xl"
-        />
-      ) : null}
-      <Icon
-        className={`relative z-10 size-6 transition-colors ${
-          active ? "text-primary" : "text-muted-foreground"
-        }`}
-      />
-      <span
-        className={`relative z-10 text-xs font-semibold transition-colors ${
-          active ? "text-primary" : "text-muted-foreground"
-        }`}
+    <div className="flex flex-1 items-center justify-center">
+      <Link
+        href={tab.href}
+        aria-current={active ? "page" : undefined}
+        className="relative flex flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2"
       >
-        {label}
-      </span>
-    </Link>
+        {active ? (
+          <motion.span
+            layoutId="navPill"
+            transition={SPRING}
+            className="bg-primary/10 absolute inset-0 rounded-2xl"
+          />
+        ) : null}
+        <Icon
+          className={`relative z-10 size-6 transition-colors ${
+            active ? "text-primary" : "text-muted-foreground"
+          }`}
+        />
+        <span
+          className={`relative z-10 text-xs font-semibold transition-colors ${
+            active ? "text-primary" : "text-muted-foreground"
+          }`}
+        >
+          {label}
+        </span>
+      </Link>
+    </div>
   );
 }
 
@@ -72,9 +74,10 @@ function Tab({
  * Customer app bottom tab bar — mounted once in the locale layout so it stays
  * put across client navigations. That persistence is what lets the active pill
  * (a shared `layoutId` element) *slide* between tabs the way a native tab bar
- * does, instead of snapping on every route change. Labels sit under the icons
- * and every tab keeps a stable width, so the elevated center scan button never
- * shifts. Centered to a phone width and `md:hidden` — desktop uses the sidebar.
+ * does, instead of snapping on every route change. The four tabs are equal
+ * cells aligned on one baseline; the elevated scan button is positioned
+ * absolutely over the center gap so it never shifts the tabs. `md:hidden` —
+ * desktop uses the sidebar.
  */
 export function BottomNav() {
   const t = useTranslations("Home");
@@ -86,19 +89,29 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="bg-card border-border fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-md items-center border-t px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden">
-      <div className="flex flex-1 justify-around">
-        {LEFT.map((tab) => (
-          <Tab
-            key={tab.key}
-            tab={tab}
-            active={isActive(pathname, tab.href)}
-            label={t(tab.key)}
-          />
-        ))}
-      </div>
+    <nav className="bg-card border-border fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-md items-stretch border-t px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden">
+      {LEFT.map((tab) => (
+        <Tab
+          key={tab.key}
+          tab={tab}
+          active={isActive(pathname, tab.href)}
+          label={t(tab.key)}
+        />
+      ))}
 
-      <div className="relative -mt-8 size-16 shrink-0">
+      {/* Reserves the center column the floating scan button sits over. */}
+      <div className="w-16 shrink-0" aria-hidden />
+
+      {RIGHT.map((tab) => (
+        <Tab
+          key={tab.key}
+          tab={tab}
+          active={isActive(pathname, tab.href)}
+          label={t(tab.key)}
+        />
+      ))}
+
+      <div className="absolute left-1/2 -top-6 size-16 -translate-x-1/2">
         <span
           aria-hidden
           className="bg-primary/40 absolute inset-0 animate-ping rounded-full"
@@ -111,17 +124,6 @@ export function BottomNav() {
         >
           <QrCode className="size-7" />
         </button>
-      </div>
-
-      <div className="flex flex-1 justify-around">
-        {RIGHT.map((tab) => (
-          <Tab
-            key={tab.key}
-            tab={tab}
-            active={isActive(pathname, tab.href)}
-            label={t(tab.key)}
-          />
-        ))}
       </div>
     </nav>
   );
