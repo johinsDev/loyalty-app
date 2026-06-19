@@ -121,6 +121,22 @@
     "viewCard": "Ver mi tarjeta",
     "addToWallet": "Agregar a Apple Wallet"
   },
+  "Store": {
+    "title": "Nuestra tienda",
+    "subtitle": "Dirección, horarios y cómo llegar",
+    "open": "Abierto",
+    "closed": "Cerrado",
+    "closesAt": "Cierra {time}",
+    "opensAt": "Abre {time}",
+    "opensDay": "Abre {day} {time}",
+    "today": "Hoy",
+    "hoursTitle": "HORARIOS",
+    "closedAllDay": "Cerrado",
+    "call": "Llamar",
+    "viewMap": "Ver en mapa",
+    "directions": "Cómo llegar",
+    "mapTitle": "Mapa de {name}"
+  },
   "Menu": {
     "title": "Menú",
     "favorites": "Favoritos",
@@ -191,6 +207,8 @@
     "unlink": "Desvincular",
     "tierPerks": "Beneficios nivel {tier}",
     "tierPerksSub": "Ya dominás el arte del té",
+    "rowStore": "Nuestra tienda",
+    "rowStoreSub": "Dirección, horarios y cómo llegar",
     "secActivity": "ACTIVIDAD",
     "purchaseHistory": "Historial de compras",
     "purchaseHistorySub": "5 visitas este mes",

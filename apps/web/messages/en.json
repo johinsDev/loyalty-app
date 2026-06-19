@@ -121,6 +121,22 @@
     "viewCard": "View my card",
     "addToWallet": "Add to Apple Wallet"
   },
+  "Store": {
+    "title": "Our store",
+    "subtitle": "Address, hours and directions",
+    "open": "Open",
+    "closed": "Closed",
+    "closesAt": "Closes {time}",
+    "opensAt": "Opens {time}",
+    "opensDay": "Opens {day} {time}",
+    "today": "Today",
+    "hoursTitle": "HOURS",
+    "closedAllDay": "Closed",
+    "call": "Call",
+    "viewMap": "View on map",
+    "directions": "Get directions",
+    "mapTitle": "Map of {name}"
+  },
   "Menu": {
     "title": "Menu",
     "favorites": "Favorites",
@@ -191,6 +207,8 @@
     "unlink": "Unlink",
     "tierPerks": "{tier} tier perks",
     "tierPerksSub": "You know your way around tea",
+    "rowStore": "Our store",
+    "rowStoreSub": "Address, hours and directions",
     "secActivity": "ACTIVITY",
     "purchaseHistory": "Purchase history",
     "purchaseHistorySub": "5 visits this month",
