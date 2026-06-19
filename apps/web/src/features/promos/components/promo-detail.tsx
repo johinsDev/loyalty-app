@@ -2,11 +2,11 @@
 
 import {
   Button,
-  DrawerClose,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
+  ResponsiveModalClose,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
 } from "@loyalty/ui";
 import { Clock, Copy } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -40,20 +40,20 @@ export function PromoDetail({ promo }: { promo: Promo }) {
       >
         <Icon className="size-11 text-[#000323]" />
       </span>
-      <DrawerHeader className="items-center gap-2">
-        <DrawerTitle className="font-display text-2xl font-semibold tracking-tight">
+      <ResponsiveModalHeader className="items-center gap-2">
+        <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
           {promo.name}
-        </DrawerTitle>
+        </ResponsiveModalTitle>
         <span className="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold">
           {promo.badge}
           <span aria-hidden>·</span>
           <Clock className="size-3.5" />
           {promo.validity}
         </span>
-        <DrawerDescription className="text-[0.9375rem] leading-relaxed">
+        <ResponsiveModalDescription className="text-[0.9375rem] leading-relaxed">
           {promo.description}
-        </DrawerDescription>
-      </DrawerHeader>
+        </ResponsiveModalDescription>
+      </ResponsiveModalHeader>
 
       <div className="border-primary/40 bg-primary/5 mt-1 flex w-full items-center gap-3 rounded-2xl border border-dashed p-4">
         <div className="min-w-0 flex-1 text-left">
@@ -79,22 +79,14 @@ export function PromoDetail({ promo }: { promo: Promo }) {
         {t("terms")}
       </p>
 
-      <DrawerFooter className="w-full gap-2 px-0">
-        <DrawerClose asChild>
-          <Button
-            variant="gradient"
-            size="lg"
-            className="h-13 rounded-full text-base"
-          >
-            {t("showAtRegister")}
-          </Button>
-        </DrawerClose>
-        <DrawerClose asChild>
-          <Button variant="secondary" size="lg" className="rounded-full font-semibold">
-            {t("close")}
-          </Button>
-        </DrawerClose>
-      </DrawerFooter>
+      <ResponsiveModalFooter className="w-full gap-2 px-0">
+        <ResponsiveModalClose variant="gradient" className="w-full sm:w-auto">
+          {t("showAtRegister")}
+        </ResponsiveModalClose>
+        <ResponsiveModalClose className="w-full sm:w-auto">
+          {t("close")}
+        </ResponsiveModalClose>
+      </ResponsiveModalFooter>
     </div>
   );
 }

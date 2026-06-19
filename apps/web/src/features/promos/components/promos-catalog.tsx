@@ -1,6 +1,6 @@
 "use client";
 
-import { Drawer, DrawerContent } from "@loyalty/ui";
+import { ResponsiveModal, ResponsiveModalContent } from "@loyalty/ui";
 import { ArrowRight, Clock, Search, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
@@ -119,14 +119,14 @@ export function PromosCatalog() {
         )}
       </section>
 
-      <Drawer
+      <ResponsiveModal
         open={selected !== null}
         onOpenChange={(next) => !next && void setQ({ promo: null })}
       >
-        <DrawerContent className="mx-auto w-full max-w-md lg:max-w-lg">
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
           {selected ? <PromoDetail promo={selected} /> : null}
-        </DrawerContent>
-      </Drawer>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </div>
   );
 }

@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
 } from "@loyalty/ui";
 import { CupSoda, Gift } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -117,14 +117,14 @@ export function StampsCard() {
         })}
       </div>
 
-      <Drawer
+      <ResponsiveModal
         open={selected !== null}
         onOpenChange={(next) => !next && setSelected(null)}
       >
-        <DrawerContent className="mx-auto w-full max-w-md lg:max-w-lg">
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
           <StampDetail selected={selected} />
-        </DrawerContent>
-      </Drawer>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </section>
   );
 }
@@ -136,11 +136,11 @@ function StampDetail({ selected }: { selected: Selected | null }) {
   if (selected.kind === "reward") {
     return (
       <>
-        <DrawerHeader className="text-left">
-          <DrawerTitle className="font-display text-2xl font-semibold tracking-tight">
+        <ResponsiveModalHeader className="text-left">
+          <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
             {t("stampRewardTitle")}
-          </DrawerTitle>
-        </DrawerHeader>
+          </ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         <div className="px-4 pb-6">
           <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-br from-amber-300 to-amber-400 p-5 text-white shadow-md shadow-amber-400/40">
             <Gift className="size-9 flex-none" />
@@ -154,11 +154,11 @@ function StampDetail({ selected }: { selected: Selected | null }) {
   if (selected.kind === "empty") {
     return (
       <>
-        <DrawerHeader className="text-left">
-          <DrawerTitle className="font-display text-2xl font-semibold tracking-tight">
+        <ResponsiveModalHeader className="text-left">
+          <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
             {t("stampEmptyTitle")}
-          </DrawerTitle>
-        </DrawerHeader>
+          </ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         <div className="px-4 pb-6">
           <div className="text-muted-foreground border-primary/30 bg-primary/5 rounded-2xl border-2 border-dashed p-5 text-sm font-semibold">
             {t("stampDetailEmpty", { count: stampsWallet.total - selected.n + 1 })}
@@ -171,12 +171,12 @@ function StampDetail({ selected }: { selected: Selected | null }) {
   const purchase = stampPurchases[selected.n];
   return (
     <>
-      <DrawerHeader className="text-left">
-        <DrawerTitle className="font-display text-2xl font-semibold tracking-tight">
+      <ResponsiveModalHeader className="text-left">
+        <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
           {t("stampFilledTitle")}
-        </DrawerTitle>
-        <DrawerDescription>{purchase?.meta}</DrawerDescription>
-      </DrawerHeader>
+        </ResponsiveModalTitle>
+        <ResponsiveModalDescription>{purchase?.meta}</ResponsiveModalDescription>
+      </ResponsiveModalHeader>
       <div className="px-4 pb-6">
         <div className="bg-card flex items-center gap-4 rounded-2xl p-4 ring-1 ring-black/5 dark:ring-white/10">
           <span className="from-primary/10 to-primary/5 grid size-14 flex-none place-items-center rounded-2xl bg-gradient-to-br text-2xl">

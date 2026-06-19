@@ -1,15 +1,14 @@
 "use client";
 
 import {
-  Button,
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerTitle,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ResponsiveModal,
+  ResponsiveModalClose,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalTitle,
 } from "@loyalty/ui";
 import { useDebounce } from "ahooks";
 import { Heart, Search } from "lucide-react";
@@ -185,11 +184,14 @@ export function MenuCatalog() {
         </>
       )}
 
-      <Drawer
+      <ResponsiveModal
         open={selected !== null}
         onOpenChange={(open) => !open && void setQ({ drink: null })}
       >
-        <DrawerContent className="mx-auto w-full max-w-md lg:max-w-lg">
+        <ResponsiveModalContent
+          mobileClassName="mx-auto w-full max-w-md"
+          showCloseButton={false}
+        >
           {selected ? (
             <DrinkDetail
               drink={selected}
@@ -197,8 +199,8 @@ export function MenuCatalog() {
               onFav={() => toggleFav(selected.id)}
             />
           ) : null}
-        </DrawerContent>
-      </Drawer>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </div>
   );
 }
@@ -321,16 +323,16 @@ function DrinkDetail({
 
       <div className="px-6 pt-5 pb-2">
         <div className="flex items-start justify-between gap-3">
-          <DrawerTitle className="font-display text-2xl font-semibold tracking-tight">
+          <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
             {drink.name}
-          </DrawerTitle>
+          </ResponsiveModalTitle>
           <span className="font-display text-primary text-2xl font-semibold whitespace-nowrap">
             {drink.price}
           </span>
         </div>
-        <DrawerDescription className="text-muted-foreground mt-2 text-left text-sm leading-relaxed">
+        <ResponsiveModalDescription className="text-muted-foreground mt-2 text-left text-sm leading-relaxed">
           {drink.description}
-        </DrawerDescription>
+        </ResponsiveModalDescription>
         <span className="text-primary mt-1 block text-sm font-bold">
           {drink.points} {t("onRedeem")}
         </span>
@@ -358,15 +360,9 @@ function DrinkDetail({
         </div>
 
         <div className="mt-6 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-          <DrawerClose asChild>
-            <Button
-              variant="gradient"
-              size="lg"
-              className="h-13 w-full rounded-full text-base"
-            >
-              {t("addToOrder", { price: drink.price })}
-            </Button>
-          </DrawerClose>
+          <ResponsiveModalClose variant="gradient" className="w-full">
+            {t("addToOrder", { price: drink.price })}
+          </ResponsiveModalClose>
         </div>
       </div>
     </div>

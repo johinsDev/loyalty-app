@@ -3,16 +3,16 @@
 import {
   Badge,
   Button,
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ResponsiveModal,
+  ResponsiveModalClose,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
   Skeleton,
 } from "@loyalty/ui";
 import { useDebounce } from "ahooks";
@@ -203,19 +203,19 @@ export function RewardsCatalog() {
         </div>
       )}
 
-      <Drawer
+      <ResponsiveModal
         open={selected !== null}
         onOpenChange={(open) => !open && void setQ({ reward: null })}
       >
-        <DrawerContent className="mx-auto w-full max-w-md lg:max-w-lg">
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
           {selected ? (
             <RewardDetail
               reward={selected}
               onViewLevels={() => void setQ({ reward: null, levels: true })}
             />
           ) : null}
-        </DrawerContent>
-      </Drawer>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </div>
   );
 }
@@ -309,20 +309,20 @@ function RewardDetail({
       <span className="from-primary/15 to-primary/5 shadow-primary/10 mt-2 grid size-24 place-items-center rounded-[1.75rem] bg-gradient-to-br text-5xl shadow-lg">
         {ready ? reward.emoji : <Lock className="text-muted-foreground size-10" />}
       </span>
-      <DrawerHeader className="items-center gap-2">
-        <DrawerTitle className="font-display text-2xl font-semibold tracking-tight">
+      <ResponsiveModalHeader className="items-center gap-2">
+        <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
           {reward.name}
-        </DrawerTitle>
+        </ResponsiveModalTitle>
         <Badge
           variant="secondary"
           className="text-primary rounded-full px-3 py-1 text-sm font-bold"
         >
           {t("costAmount", { count: reward.cost })}
         </Badge>
-        <DrawerDescription className="text-[0.9375rem] leading-relaxed">
+        <ResponsiveModalDescription className="text-[0.9375rem] leading-relaxed">
           {reward.description}
-        </DrawerDescription>
-      </DrawerHeader>
+        </ResponsiveModalDescription>
+      </ResponsiveModalHeader>
 
       {/* Gating tier — which level unlocks this reward and what it includes. */}
       <div className="bg-muted/60 mt-1 w-full rounded-2xl p-4 text-left">
@@ -364,34 +364,26 @@ function RewardDetail({
         </Button>
       </div>
 
-      <DrawerFooter className="w-full gap-2 px-0">
+      <ResponsiveModalFooter className="w-full gap-2 px-0">
         {ready ? (
-          <DrawerClose asChild>
-            <Button variant="gradient" size="lg" className="h-13 rounded-full text-base">
-              {t("redeemFor", { count: reward.cost })}
-            </Button>
-          </DrawerClose>
+          <ResponsiveModalClose variant="gradient" className="w-full sm:w-auto">
+            {t("redeemFor", { count: reward.cost })}
+          </ResponsiveModalClose>
         ) : (
           <Button
             variant="gradient"
             size="lg"
             disabled
-            className="h-13 rounded-full text-base"
+            className="h-13 w-full rounded-full text-base sm:w-auto"
           >
             <Lock />
             {t("lockedCta", { count: missing })}
           </Button>
         )}
-        <DrawerClose asChild>
-          <Button
-            variant="secondary"
-            size="lg"
-            className="h-13 rounded-full text-base font-semibold"
-          >
-            {t("close")}
-          </Button>
-        </DrawerClose>
-      </DrawerFooter>
+        <ResponsiveModalClose className="w-full sm:w-auto">
+          {t("close")}
+        </ResponsiveModalClose>
+      </ResponsiveModalFooter>
     </div>
   );
 }

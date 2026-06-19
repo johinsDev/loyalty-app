@@ -1,7 +1,12 @@
 "use client";
 
 import { useSession } from "@loyalty/auth/client";
-import { Drawer, DrawerContent, DrawerTitle } from "@loyalty/ui";
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalTitle,
+  useIsMobile,
+} from "@loyalty/ui";
 import { Copy, Sun, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
@@ -28,6 +33,7 @@ export function QrDrawer() {
   const open = useQrDrawer((s) => s.open);
   const setOpen = useQrDrawer((s) => s.setOpen);
   const { data: session } = useSession();
+  const isMobile = useIsMobile();
   const [rewardId, setRewardId] = useState<string | null>(null);
   const [bright, setBright] = useState(false);
 
@@ -49,20 +55,22 @@ export function QrDrawer() {
     : "bg-white/15 text-white";
 
   return (
-    <Drawer
+    <ResponsiveModal
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
         if (!next) setBright(false);
       }}
     >
-      <DrawerContent
+      <ResponsiveModalContent
         aria-describedby={undefined}
-        className="mx-auto max-w-md border-0"
+        showCloseButton={false}
+        className="border-0"
+        mobileClassName="mx-auto max-w-md"
+        desktopClassName="h-[85dvh]"
         style={{
-          height: "92dvh",
-          maxHeight: "92dvh",
           background: bright ? "#ffffff" : DARK_BG,
+          ...(isMobile ? { height: "92dvh", maxHeight: "92dvh" } : null),
         }}
       >
         <div className="flex h-full flex-col overflow-y-auto px-6 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
@@ -75,13 +83,13 @@ export function QrDrawer() {
             >
               <X className="size-5" />
             </button>
-            <DrawerTitle
+            <ResponsiveModalTitle
               className={`font-display flex-1 text-center text-xl font-semibold ${
                 bright ? "text-neutral-900" : "text-white"
               }`}
             >
               {t("title")}
-            </DrawerTitle>
+            </ResponsiveModalTitle>
             <button
               type="button"
               onClick={() => setBright((b) => !b)}
@@ -152,8 +160,8 @@ export function QrDrawer() {
             {t("manualCode")}
           </button>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }
 

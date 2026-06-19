@@ -1,6 +1,6 @@
 "use client";
 
-import { DrawerHeader, DrawerTitle } from "@loyalty/ui";
+import { ResponsiveModalHeader, ResponsiveModalTitle } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
 
 import { CountUp } from "@/lib/count-up";
@@ -19,17 +19,17 @@ export function ReceiptSheet({ order }: { order: Order }) {
 
   return (
     <div className="px-2 pb-6">
-      <DrawerHeader className="items-center text-center">
-        <DrawerTitle className="font-display text-2xl font-semibold tracking-tight">
+      <ResponsiveModalHeader className="items-center text-center">
+        <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
           {order.store}
-        </DrawerTitle>
+        </ResponsiveModalTitle>
         <p className="text-muted-foreground text-sm">
           {order.date} · {order.time}
         </p>
         <p className="text-muted-foreground/70 text-xs">
           {t("orderNo", { orderNo: order.orderNo })}
         </p>
-      </DrawerHeader>
+      </ResponsiveModalHeader>
 
       <div className="flex flex-col gap-3 px-4">
         {order.items.map((li, i) => (

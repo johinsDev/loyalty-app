@@ -1,11 +1,10 @@
 "use client";
 
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
   Spinner,
 } from "@loyalty/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -74,10 +73,12 @@ export function NotificationsDrawer() {
   };
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerContent aria-describedby={undefined}>
-        <DrawerHeader className="flex flex-row items-center justify-between border-b py-3 text-left">
-          <DrawerTitle className="text-lg">{t("title")}</DrawerTitle>
+    <ResponsiveModal open={open} onOpenChange={setOpen}>
+      <ResponsiveModalContent aria-describedby={undefined} showCloseButton={false}>
+        <ResponsiveModalHeader className="flex flex-row items-center justify-between border-b py-3 text-left">
+          <ResponsiveModalTitle className="text-lg">
+            {t("title")}
+          </ResponsiveModalTitle>
           <div className="flex items-center gap-1">
             {unread > 0 ? (
               <button
@@ -89,14 +90,16 @@ export function NotificationsDrawer() {
                 {t("markAllRead")}
               </button>
             ) : null}
-            <DrawerClose
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
               aria-label="Cerrar"
               className="text-muted-foreground hover:bg-muted grid size-8 place-items-center rounded-full"
             >
               <X className="size-5" />
-            </DrawerClose>
+            </button>
           </div>
-        </DrawerHeader>
+        </ResponsiveModalHeader>
 
         <div className="flex-1 overflow-y-auto px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           {list.isLoading ? (
@@ -170,7 +173,7 @@ export function NotificationsDrawer() {
             </ul>
           )}
         </div>
-      </DrawerContent>
-    </Drawer>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

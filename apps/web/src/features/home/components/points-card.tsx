@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
 } from "@loyalty/ui";
 import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -135,16 +135,16 @@ export function PointsCard() {
         />
       </div>
 
-      <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent className="mx-auto w-full max-w-md lg:max-w-lg">
-          <DrawerHeader className="text-left">
-            <DrawerTitle className="font-display text-2xl font-semibold tracking-tight">
+      <ResponsiveModal open={open} onOpenChange={setOpen}>
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
+          <ResponsiveModalHeader className="text-left">
+            <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
               {t("pointsDetailTitle")}
-            </DrawerTitle>
-            <DrawerDescription>
+            </ResponsiveModalTitle>
+            <ResponsiveModalDescription>
               {t("pointsDetailSubtitle", { points })}
-            </DrawerDescription>
-          </DrawerHeader>
+            </ResponsiveModalDescription>
+          </ResponsiveModalHeader>
           <div className="flex flex-col gap-2 px-4">
             {pointsActivity.map((e) => (
               <div
@@ -176,8 +176,8 @@ export function PointsCard() {
               <ArrowRight className="size-4" />
             </Link>
           </div>
-        </DrawerContent>
-      </Drawer>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </section>
   );
 }
