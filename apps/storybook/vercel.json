@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "ignoreCommand": "npx --yes turbo-ignore@^2 @loyalty/storybook",
   "framework": null,
   "buildCommand": "cd ../.. && bun run turbo build --filter=@loyalty/storybook",
   "outputDirectory": "storybook-static",
