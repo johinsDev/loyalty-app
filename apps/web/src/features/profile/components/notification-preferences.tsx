@@ -72,6 +72,7 @@ export function NotificationPreferences() {
               </Label>
               <Switch
                 id={id}
+                size="lg"
                 checked={enabled[channel] ?? true}
                 disabled={prefs.isLoading}
                 onCheckedChange={(checked) => onToggle(channel, checked)}
