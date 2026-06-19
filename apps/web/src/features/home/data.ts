@@ -1,12 +1,4 @@
-import {
-  CupSoda,
-  Flower2,
-  type LucideIcon,
-  Leaf,
-  Sparkles,
-  Users,
-  Zap,
-} from "lucide-react";
+import { CupSoda, Flower2, type LucideIcon, Leaf, Sparkles } from "lucide-react";
 
 /**
  * Hardcoded demo data for the customer home. Everything here is sample content
@@ -54,51 +46,6 @@ export const readyReward = {
   meta: "50 pts · disponible ahora",
   icon: Sparkles,
 } as const;
-
-export type Promo = {
-  id: string;
-  badge: string;
-  title: string;
-  sub: string;
-  icon: LucideIcon;
-  /** [from, to] for the card's diagonal gradient. */
-  gradient: readonly [string, string];
-};
-
-export const promos: readonly Promo[] = [
-  {
-    id: "spring",
-    badge: "NUEVA TEMPORADA",
-    title: "Spring drop",
-    sub: "Peach oolong, ya en tienda",
-    icon: Flower2,
-    gradient: ["#1BAD9D", "#5fe0c8"],
-  },
-  {
-    id: "wednesday",
-    badge: "MIÉRCOLES",
-    title: "Sellos x2",
-    sub: "Todos los miércoles del mes",
-    icon: Zap,
-    gradient: ["#0e8f9c", "#5fcfce"],
-  },
-  {
-    id: "friend",
-    badge: "MIEMBROS",
-    title: "Trae un amigo",
-    sub: "+5 sellos cuando se una",
-    icon: Users,
-    gradient: ["#0f8f86", "#46c9b3"],
-  },
-  {
-    id: "matcha",
-    badge: "NUEVO",
-    title: "Matcha Fresa",
-    sub: "Probá la combinación del mes",
-    icon: CupSoda,
-    gradient: ["#1BAD9D", "#9be6d2"],
-  },
-];
 
 export type Usual = { name: string; orders: number; icon: LucideIcon };
 

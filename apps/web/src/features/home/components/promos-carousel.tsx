@@ -4,12 +4,16 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRef } from "react";
 
-import { promos } from "../data";
+import { PROMO_THEME, featuredPromos, promoGradient } from "@/features/promos/data";
+import { Link } from "@/i18n/navigation";
 
 /**
- * Promos / banners as a horizontal snap carousel with arrow controls and a
- * "see all" affordance. Each card's gradient is data-driven so the org can theme
- * campaigns; the track keeps vertical padding so card shadows aren't clipped.
+ * Promos / banners as a horizontal snap carousel with arrow controls, a "see
+ * all" link to the promos hub, and cards that deep-link to a promo's detail.
+ * Shows the featured subset of the shared promos dataset (`features/promos/data`)
+ * so a tapped card resolves to the same detail drawer on `/promos`. Each card's
+ * gradient is data-driven so the org can theme campaigns; the track keeps
+ * vertical padding so card shadows aren't clipped.
  */
 export function PromosCarousel() {
   const t = useTranslations("Home");
@@ -25,9 +29,9 @@ export function PromosCarousel() {
           {t("forYouToday")}
         </p>
         <div className="flex items-center gap-2">
-          <button type="button" className="text-primary text-xs font-bold">
+          <Link href="/promos" className="text-primary text-xs font-bold">
             {t("seeAll")}
-          </button>
+          </Link>
           <button
             type="button"
             aria-label="‹"
@@ -50,14 +54,15 @@ export function PromosCarousel() {
         ref={trackRef}
         className="scrollbar-hide -mx-5 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-5 pt-1 pb-6"
       >
-        {promos.map((p) => {
+        {featuredPromos.map((p) => {
           const Icon = p.icon;
           return (
-            <article
+            <Link
               key={p.id}
-              className="flex h-48 w-72 flex-none snap-center flex-col justify-between overflow-hidden rounded-3xl p-5 text-white shadow-lg shadow-primary/30"
+              href={{ pathname: "/promos", query: { promo: p.id } }}
+              className="shadow-primary/30 flex h-48 w-72 flex-none snap-center flex-col justify-between overflow-hidden rounded-3xl p-5 text-white shadow-lg"
               style={{
-                backgroundImage: `linear-gradient(150deg, ${p.gradient[0]}, ${p.gradient[1]})`,
+                backgroundImage: promoGradient(PROMO_THEME[p.theme].card),
               }}
             >
               <div className="flex items-start justify-between">
@@ -68,11 +73,13 @@ export function PromosCarousel() {
               </div>
               <div>
                 <h3 className="font-display text-2xl font-semibold tracking-tight">
-                  {p.title}
+                  {p.name}
                 </h3>
-                <p className="text-sm text-white/90">{p.sub}</p>
+                <p className="line-clamp-2 text-sm text-white/90">
+                  {p.description}
+                </p>
               </div>
-            </article>
+            </Link>
           );
         })}
       </div>
