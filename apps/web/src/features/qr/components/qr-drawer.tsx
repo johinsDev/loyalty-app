@@ -67,13 +67,16 @@ export function QrDrawer() {
         showCloseButton={false}
         className="border-0"
         mobileClassName="mx-auto max-w-md"
-        desktopClassName="h-[85dvh]"
         style={{
           background: bright ? "#ffffff" : DARK_BG,
           ...(isMobile ? { height: "92dvh", maxHeight: "92dvh" } : null),
         }}
       >
-        <div className="flex h-full flex-col overflow-y-auto px-6 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        <div
+          className={`flex flex-col overflow-y-auto px-6 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${
+            isMobile ? "h-full" : ""
+          }`}
+        >
           <div className="mb-6 flex items-center gap-3">
             <button
               type="button"
