@@ -181,7 +181,7 @@ function PromoRow({ promo, onSelect }: { promo: Promo; onSelect: () => void }) {
     <button
       type="button"
       onClick={onSelect}
-      className="bg-card flex w-full items-center gap-3.5 rounded-[1.375rem] p-3.5 text-left shadow-lg shadow-black/5 ring-1 ring-black/5 transition-transform active:scale-[0.99] dark:ring-white/10"
+      className="bg-card flex w-full min-w-0 items-center gap-3.5 rounded-[1.375rem] p-3.5 text-left shadow-lg shadow-black/5 ring-1 ring-black/5 transition-transform active:scale-[0.99] dark:ring-white/10"
     >
       <span
         className="grid size-[3.375rem] flex-none place-items-center rounded-[1.0625rem]"
