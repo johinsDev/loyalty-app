@@ -386,7 +386,7 @@ function RewardDetail({
           <Button
             variant="secondary"
             size="lg"
-            className="rounded-full font-semibold"
+            className="h-13 rounded-full text-base font-semibold"
           >
             {t("close")}
           </Button>
