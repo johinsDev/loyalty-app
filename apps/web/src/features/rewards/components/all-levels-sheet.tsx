@@ -3,12 +3,13 @@
 import {
   Badge,
   Button,
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
+  ResponsiveModal,
+  ResponsiveModalClose,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
 } from "@loyalty/ui";
 import { Check, Layers, Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -40,16 +41,19 @@ export function AllLevelsSheet() {
         {t("viewAllLevels")}
       </Button>
 
-      <Drawer open={open} onOpenChange={(next) => void setOpen(next ? true : null)}>
-        <DrawerContent className="mx-auto w-full max-w-md lg:max-w-lg">
-          <DrawerHeader className="items-center gap-1 text-center">
-            <DrawerTitle className="font-display text-2xl font-semibold tracking-tight">
+      <ResponsiveModal
+        open={open}
+        onOpenChange={(next) => void setOpen(next ? true : null)}
+      >
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
+          <ResponsiveModalHeader className="items-center gap-1 text-center">
+            <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
               {t("allLevelsTitle")}
-            </DrawerTitle>
-            <DrawerDescription className="text-[0.9375rem] leading-relaxed">
+            </ResponsiveModalTitle>
+            <ResponsiveModalDescription className="text-[0.9375rem] leading-relaxed">
               {t("allLevelsSubtitle")}
-            </DrawerDescription>
-          </DrawerHeader>
+            </ResponsiveModalDescription>
+          </ResponsiveModalHeader>
 
           <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 pb-2">
             {tiers.map((tier) => {
@@ -98,19 +102,13 @@ export function AllLevelsSheet() {
             })}
           </ul>
 
-          <div className="shrink-0 px-5 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-            <DrawerClose asChild>
-              <Button
-                variant="secondary"
-                size="lg"
-                className="h-13 w-full rounded-full text-base font-semibold"
-              >
-                {t("close")}
-              </Button>
-            </DrawerClose>
-          </div>
-        </DrawerContent>
-      </Drawer>
+          <ResponsiveModalFooter className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <ResponsiveModalClose className="w-full sm:w-auto">
+              {t("close")}
+            </ResponsiveModalClose>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </>
   );
 }

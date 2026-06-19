@@ -4,11 +4,11 @@ import { authClient } from "@loyalty/auth/client";
 import {
   Button,
   DateWheelPicker,
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerTitle,
   Input,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalTitle,
 } from "@loyalty/ui";
 import {
   AtSign,
@@ -275,18 +275,18 @@ export function ProfileScreen() {
       />
 
       {/* ===== DRAWERS ===== */}
-      <Drawer
+      <ResponsiveModal
         open={drawer === "name" || drawer === "nick"}
         onOpenChange={(open) => !open && setDrawer(null)}
       >
-        <DrawerContent className="mx-auto w-full max-w-md">
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
           <div className="px-6 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-            <DrawerTitle className="font-display text-xl font-semibold tracking-tight">
+            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
               {drawer === "nick" ? t("rowNick") : t("rowName")}
-            </DrawerTitle>
-            <DrawerDescription className="text-muted-foreground mt-1 text-sm">
+            </ResponsiveModalTitle>
+            <ResponsiveModalDescription className="text-muted-foreground mt-1 text-sm">
               {drawer === "nick" ? t("editNickHint") : t("editNameHint")}
-            </DrawerDescription>
+            </ResponsiveModalDescription>
             <Input
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
@@ -302,21 +302,21 @@ export function ProfileScreen() {
               {t("save")}
             </Button>
           </div>
-        </DrawerContent>
-      </Drawer>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
-      <Drawer
+      <ResponsiveModal
         open={drawer === "birthday"}
         onOpenChange={(open) => !open && setDrawer(null)}
       >
-        <DrawerContent className="mx-auto w-full max-w-md">
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
           <div className="px-6 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-            <DrawerTitle className="font-display text-xl font-semibold tracking-tight">
+            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
               {t("birthdayTitle")}
-            </DrawerTitle>
-            <DrawerDescription className="text-muted-foreground mt-1 text-sm">
+            </ResponsiveModalTitle>
+            <ResponsiveModalDescription className="text-muted-foreground mt-1 text-sm">
               {t("birthdayHint")}
-            </DrawerDescription>
+            </ResponsiveModalDescription>
             <DateWheelPicker
               className="mt-4"
               value={birthday}
@@ -336,21 +336,21 @@ export function ProfileScreen() {
               {t("done")} · {birthdayText}
             </Button>
           </div>
-        </DrawerContent>
-      </Drawer>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
-      <Drawer
+      <ResponsiveModal
         open={drawer === "avatar"}
         onOpenChange={(open) => !open && setDrawer(null)}
       >
-        <DrawerContent className="mx-auto w-full max-w-md">
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
           <div className="px-6 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-            <DrawerTitle className="font-display text-xl font-semibold tracking-tight">
+            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
               {t("avatarTitle")}
-            </DrawerTitle>
-            <DrawerDescription className="text-muted-foreground mt-1 text-sm">
+            </ResponsiveModalTitle>
+            <ResponsiveModalDescription className="text-muted-foreground mt-1 text-sm">
               {t("avatarHint")}
-            </DrawerDescription>
+            </ResponsiveModalDescription>
             <div className="mt-4 grid grid-cols-4 gap-3">
               {teaAvatars.map((a) => {
                 const active = !customAvatar && a.id === avatarId;
@@ -406,21 +406,21 @@ export function ProfileScreen() {
               {t("done")}
             </Button>
           </div>
-        </DrawerContent>
-      </Drawer>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
-      <Drawer
+      <ResponsiveModal
         open={drawer === "signout"}
         onOpenChange={(open) => !open && setDrawer(null)}
       >
-        <DrawerContent
+        <ResponsiveModalContent
           aria-describedby={undefined}
-          className="mx-auto w-full max-w-md"
+          mobileClassName="mx-auto w-full max-w-md"
         >
           <div className="px-6 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-            <DrawerTitle className="font-display text-xl font-semibold tracking-tight">
+            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
               {t("signOutConfirm")}
-            </DrawerTitle>
+            </ResponsiveModalTitle>
             <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
               {t("signOutMessage")}
             </p>
@@ -443,8 +443,8 @@ export function ProfileScreen() {
               </Button>
             </div>
           </div>
-        </DrawerContent>
-      </Drawer>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </div>
   );
 }
