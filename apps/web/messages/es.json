@@ -45,7 +45,16 @@
     "streakTitle": "RACHA",
     "streakDays": "{days} días seguidos",
     "streakSub": "Una compra por día. ¡No cortes la racha! 🔥",
-    "weekDays": "L,M,X,J,V,S,D"
+    "weekDays": "L,M,X,J,V,S,D",
+    "pointsDetailAria": "Ver detalle de puntos",
+    "pointsDetailTitle": "Tus puntos",
+    "pointsDetailSubtitle": "Tienes {points} puntos acumulados",
+    "stampFilledTitle": "Sello ganado",
+    "stampEmptyTitle": "Sello pendiente",
+    "stampRewardTitle": "Tu premio",
+    "stampDetailEmpty": "Te faltan {count} sellos para tu bebida gratis 🧋",
+    "stampDetailReward": "Completa tu tarjeta y reclama una bebida gratis 🧋",
+    "stampPointsEarned": "+{points} pts ganados"
   },
   "Promos": {
     "title": "Promos",
@@ -285,5 +294,22 @@
     "cardProgress": "1 / 10 sellos",
     "cardRemaining": "Te faltan 9 para tu próximo bubble tea gratis.",
     "viewCard": "Ver mi tarjeta"
+  },
+  "History": {
+    "title": "Historial",
+    "summaryHeading": "Resumen · {month}",
+    "statVisits": "VISITAS",
+    "statPoints": "PUNTOS",
+    "statSellos": "SELLOS",
+    "periodAll": "Todo",
+    "periodMonth": "Este mes",
+    "periodLast": "Mes pasado",
+    "countOrders": "{count, plural, one {# compra} other {# compras}}",
+    "empty": "No hay compras en este período.",
+    "orderNo": "Pedido {orderNo}",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "pointsEarned": "PUNTOS GANADOS",
+    "sellosEarned": "SELLOS GANADOS"
   }
 }

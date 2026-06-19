@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { useCustomerRoom } from "@/features/realtime/hooks/use-customer-room";
+import { Celebrate } from "@/lib/celebrate";
 
 interface Props {
   customerId: string;
@@ -32,6 +33,7 @@ interface StampEarnedEvent {
 export function StampEarnedListener({ customerId, partykitHost }: Props) {
   const router = useRouter();
   const [banner, setBanner] = useState<ReactNode>(null);
+  const [celebrating, setCelebrating] = useState(false);
 
   useCustomerRoom<StampEarnedEvent>({
     customerId,
@@ -39,6 +41,7 @@ export function StampEarnedListener({ customerId, partykitHost }: Props) {
     onEvent: (event) => {
       if (event.event !== "stamp.earned") return;
       router.refresh();
+      setCelebrating(true);
       setBanner(
         <span>
           ¡Sumaste{" "}
@@ -52,14 +55,23 @@ export function StampEarnedListener({ customerId, partykitHost }: Props) {
     },
   });
 
-  if (!banner) return null;
+  if (!banner && !celebrating) return null;
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 shadow-lg backdrop-blur dark:text-emerald-100"
-    >
-      {banner}
-    </div>
+    <>
+      {celebrating ? (
+        <div className="pointer-events-none fixed inset-0 z-50">
+          <Celebrate distance={900} onDone={() => setCelebrating(false)} />
+        </div>
+      ) : null}
+      {banner ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 shadow-lg backdrop-blur dark:text-emerald-100"
+        >
+          {banner}
+        </div>
+      ) : null}
+    </>
   );
 }

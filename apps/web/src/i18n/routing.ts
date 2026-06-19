@@ -18,6 +18,7 @@ export const routing = defineRouting({
     "/menu": { es: "/menu", en: "/menu" },
     "/promos": { es: "/promociones", en: "/promos" },
     "/card": { es: "/tarjeta", en: "/card" },
+    "/history": { es: "/historial", en: "/history" },
     "/notifications": { es: "/notificaciones", en: "/notifications" },
     "/sign-in": { es: "/iniciar-sesion", en: "/sign-in" },
     "/complete-phone": { es: "/completar-telefono", en: "/complete-phone" },
