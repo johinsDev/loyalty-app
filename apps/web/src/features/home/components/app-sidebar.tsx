@@ -36,6 +36,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { customer, pointsWallet } from "../data";
+import { useQrDrawer } from "@/features/qr/hooks/use-qr-drawer";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 
 type Href = "/" | "/rewards" | "/menu" | "/card" | "/profile";
@@ -64,6 +65,7 @@ export function AppSidebar() {
   const tNotif = useTranslations("Notifications");
   const pathname = usePathname();
   const router = useRouter();
+  const openQr = useQrDrawer((s) => s.openDrawer);
   const [signingOut, setSigningOut] = useState(false);
 
   const onSignOut = async () => {
@@ -122,7 +124,7 @@ export function AppSidebar() {
             <SidebarMenuButton
               size="lg"
               tooltip={t("navScan")}
-              render={<Link href="/card" />}
+              onClick={openQr}
               className="bg-primary text-primary-foreground rounded-xl text-base font-semibold hover:bg-primary/90! hover:text-primary-foreground! [&_svg]:size-5!"
             >
               <QrCode />

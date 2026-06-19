@@ -108,6 +108,22 @@
     "toppings": "Toppings",
     "addToOrder": "Add to order · {price}"
   },
+  "Qr": {
+    "title": "My code",
+    "close": "Close",
+    "brightness": "Brightness",
+    "tierLine": "{tier} tier · {points} pts",
+    "attachedRedeem": "REDEEM IN THIS SCAN",
+    "memberNumber": "MEMBER No.",
+    "instruction": "Show this code at the counter before paying to earn points and stamps automatically.",
+    "instructionWithReward": "Show this at the counter: redeem your reward and earn points on the rest of your purchase.",
+    "redeemHeading": "REDEEM A REWARD",
+    "none": "None",
+    "cost": "{count} stamps",
+    "manualCode": "Enter code manually",
+    "copied": "Code copied",
+    "copyFailed": "Couldn't copy"
+  },
   "Notifications": {
     "title": "Notifications",
     "newNotification": "You have a new notification",
