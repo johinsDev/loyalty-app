@@ -47,6 +47,27 @@
     "streakSub": "Una compra por día. ¡No cortes la racha! 🔥",
     "weekDays": "L,M,X,J,V,S,D"
   },
+  "Promos": {
+    "title": "Promos",
+    "subtitle": "{count} promos activas para vos hoy",
+    "featured": "DESTACADAS",
+    "swipe": "Deslizá →",
+    "viewPromo": "Ver promo",
+    "allPromos": "TODAS LAS PROMOS",
+    "filterAll": "Todas",
+    "catDescuentos": "Descuentos",
+    "catCombos": "Combos",
+    "catPuntos": "Puntos x2",
+    "catEspeciales": "Especiales",
+    "empty": "No hay promos en esta categoría.",
+    "code": "Código",
+    "copy": "Copiar",
+    "codeCopied": "Código copiado",
+    "codeCopyFailed": "No se pudo copiar el código",
+    "terms": "Válido en cualquier local T4. Una promo por visita. No acumulable con otras promociones ni con canjes de puntos.",
+    "showAtRegister": "Mostrar en caja",
+    "close": "Cerrar"
+  },
   "Rewards": {
     "title": "Recompensas",
     "balance": "{count} sellos",

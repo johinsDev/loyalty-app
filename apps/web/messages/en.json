@@ -47,6 +47,27 @@
     "streakSub": "One purchase a day. Don't break the streak! 🔥",
     "weekDays": "M,T,W,T,F,S,S"
   },
+  "Promos": {
+    "title": "Promos",
+    "subtitle": "{count} active promos for you today",
+    "featured": "FEATURED",
+    "swipe": "Swipe →",
+    "viewPromo": "View promo",
+    "allPromos": "ALL PROMOS",
+    "filterAll": "All",
+    "catDescuentos": "Discounts",
+    "catCombos": "Combos",
+    "catPuntos": "Double points",
+    "catEspeciales": "Specials",
+    "empty": "No promos in this category.",
+    "code": "Code",
+    "copy": "Copy",
+    "codeCopied": "Code copied",
+    "codeCopyFailed": "Couldn't copy the code",
+    "terms": "Valid at any T4 store. One promo per visit. Not combinable with other promotions or point redemptions.",
+    "showAtRegister": "Show at register",
+    "close": "Close"
+  },
   "Rewards": {
     "title": "Rewards",
     "balance": "{count} stamps",
