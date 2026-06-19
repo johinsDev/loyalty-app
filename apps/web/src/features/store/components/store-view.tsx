@@ -2,6 +2,8 @@ import { SidebarInset, SidebarProvider } from "@loyalty/ui";
 import { MapPin, Navigation, Phone } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 
+import { FadeUp } from "@/lib/animate";
+
 import { AppSidebar } from "@/features/home/components/app-sidebar";
 
 import {
@@ -47,15 +49,22 @@ export async function StoreView() {
       <AppSidebar />
       <SidebarInset className="from-primary/5 to-background text-foreground overflow-x-clip bg-gradient-to-b">
         <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-2xl lg:px-8 lg:pt-12">
-          <header className="mb-5">
-            <h1 className="font-display text-3xl font-semibold tracking-tight">
-              {t("title")}
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm">{t("subtitle")}</p>
-          </header>
+          <FadeUp index={0}>
+            <header className="mb-5">
+              <h1 className="font-display text-3xl font-semibold tracking-tight">
+                {t("title")}
+              </h1>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {t("subtitle")}
+              </p>
+            </header>
+          </FadeUp>
 
           {/* Embedded Google map (keyless — no API key required). */}
-          <div className="ring-border mb-5 h-44 overflow-hidden rounded-3xl ring-1">
+          <FadeUp
+            index={1}
+            className="ring-border mb-5 h-44 overflow-hidden rounded-3xl ring-1"
+          >
             {/* The Google Maps embed needs both allow-scripts and allow-same-origin
                 to render an interactive map; the rule forbids that pair, but the
                 framed origin is trusted first-party Google. */}
@@ -69,9 +78,12 @@ export async function StoreView() {
               className="size-full border-0"
             />
             {/* oxlint-enable react/iframe-missing-sandbox */}
-          </div>
+          </FadeUp>
 
-          <section className="bg-card rounded-3xl p-5 shadow-lg shadow-black/5 ring-1 ring-black/5 dark:ring-white/10">
+          <FadeUp
+            index={2}
+            className="bg-card rounded-3xl p-5 shadow-lg shadow-black/5 ring-1 ring-black/5 dark:ring-white/10"
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h2 className="text-xl font-bold tracking-tight">{store.name}</h2>
@@ -138,7 +150,7 @@ export async function StoreView() {
               <Navigation className="size-5" />
               {t("directions")}
             </a>
-          </section>
+          </FadeUp>
         </div>
       </SidebarInset>
     </SidebarProvider>

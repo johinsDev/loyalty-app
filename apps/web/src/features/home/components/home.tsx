@@ -1,6 +1,8 @@
 import { SidebarInset, SidebarProvider } from "@loyalty/ui";
 import { getTranslations } from "next-intl/server";
 
+import { FadeUp } from "@/lib/animate";
+
 import { AppSidebar } from "./app-sidebar";
 import { GreetingHeader } from "./greeting-header";
 import { PointsCard } from "./points-card";
@@ -27,41 +29,46 @@ export async function Home() {
       <AppSidebar />
       <SidebarInset className="from-primary/5 to-background text-foreground overflow-x-clip bg-gradient-to-b">
         <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-5xl lg:px-8 lg:pt-12">
-          <GreetingHeader />
+          <FadeUp index={0}>
+            <GreetingHeader />
+          </FadeUp>
 
-        {/* Wallet models — points ring + stamp card, side by side on desktop. */}
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          <PointsCard />
-          <StampsCard />
-        </div>
+          {/* Wallet models — points ring + stamp card, side by side on desktop. */}
+          <FadeUp index={1} className="mt-5 grid gap-4 lg:grid-cols-2">
+            <PointsCard />
+            <StampsCard />
+          </FadeUp>
 
-        <div className="mt-4">
-          <StreakCard />
-        </div>
+          <FadeUp index={2} className="mt-4">
+            <StreakCard />
+          </FadeUp>
 
-        <div className="mt-4">
-          <ScanCta />
-        </div>
+          <FadeUp index={3} className="mt-4">
+            <ScanCta />
+          </FadeUp>
 
-        <section className="mt-6">
-          <p className="text-muted-foreground mb-3 text-xs font-bold tracking-wider">
-            {t("readyToClaim")}
-          </p>
-          <RewardCard />
-        </section>
+          <FadeUp index={4} className="mt-6">
+            <p className="text-muted-foreground mb-3 text-xs font-bold tracking-wider">
+              {t("readyToClaim")}
+            </p>
+            <RewardCard />
+          </FadeUp>
 
-        <div className="mt-6">
-          <PromosCarousel />
-        </div>
+          <FadeUp index={5} className="mt-6">
+            <PromosCarousel />
+          </FadeUp>
 
-          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <FadeUp
+            index={6}
+            className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2"
+          >
             <div className="min-w-0">
               <Usuals />
             </div>
             <div className="min-w-0">
               <RecentVisits />
             </div>
-          </div>
+          </FadeUp>
         </div>
 
       </SidebarInset>

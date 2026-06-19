@@ -7,3 +7,16 @@
     display: none;
   }
 }
+
+/* Staggered entrance shared across views (see @/lib/animate). The history list
+   established this motion; `useFadeUp` drives the per-item delay. */
+@keyframes tw-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

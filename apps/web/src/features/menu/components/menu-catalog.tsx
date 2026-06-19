@@ -18,7 +18,9 @@ import {
   parseAsString,
   useQueryStates,
 } from "nuqs";
-import { useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
+
+import { useFadeUp } from "@/lib/animate";
 
 import { CATEGORIES, type Drink, drinks } from "../data";
 
@@ -32,6 +34,7 @@ import { CATEGORIES, type Drink, drinks } from "../data";
  */
 export function MenuCatalog() {
   const t = useTranslations("Menu");
+  const fade = useFadeUp();
 
   const [q, setQ] = useQueryStates({
     search: parseAsString.withDefault(""),
@@ -171,13 +174,14 @@ export function MenuCatalog() {
             />
           ) : null}
           <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-3">
-            {grid.map((drink) => (
+            {grid.map((drink, i) => (
               <DrinkCard
                 key={drink.id}
                 drink={drink}
                 isFav={!!favorites[drink.id]}
                 onOpen={() => void setQ({ drink: drink.id })}
                 onFav={() => toggleFav(drink.id)}
+                style={fade(i)}
               />
             ))}
           </div>
@@ -237,18 +241,21 @@ function DrinkCard({
   isFav,
   onOpen,
   onFav,
+  style,
 }: {
   drink: Drink;
   featured?: boolean;
   isFav: boolean;
   onOpen: () => void;
   onFav: () => void;
+  style?: CSSProperties;
 }) {
   const t = useTranslations("Menu");
   return (
     <button
       type="button"
       onClick={onOpen}
+      style={style}
       className="bg-card relative flex w-full flex-col overflow-hidden rounded-3xl text-left shadow-lg shadow-black/5 ring-1 ring-black/5 transition-transform active:scale-95 dark:ring-white/10"
     >
       <HeartButton isFav={isFav} onClick={onFav} />
