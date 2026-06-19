@@ -1,6 +1,8 @@
 import { CupSoda } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { Link } from "@/i18n/navigation";
+
 import { visits } from "../data";
 
 export async function RecentVisits() {
@@ -28,9 +30,12 @@ export async function RecentVisits() {
           </div>
         ))}
         <div className="flex justify-center py-3.5">
-          <button type="button" className="text-primary text-sm font-semibold">
+          <Link
+            href="/history"
+            className="text-primary text-sm font-semibold"
+          >
             {t("seeAllHistory")}
-          </button>
+          </Link>
         </div>
       </div>
     </section>
