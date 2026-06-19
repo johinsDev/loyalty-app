@@ -1,7 +1,6 @@
 import { SidebarInset, SidebarProvider } from "@loyalty/ui";
 
 import { AppSidebar } from "@/features/home/components/app-sidebar";
-import { BottomNav } from "@/features/home/components/bottom-nav";
 
 import { MenuCatalog } from "./menu-catalog";
 
@@ -19,7 +18,6 @@ export function Menu() {
         <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-5xl lg:px-8 lg:pt-12">
           <MenuCatalog />
         </div>
-        <BottomNav />
       </SidebarInset>
     </SidebarProvider>
   );

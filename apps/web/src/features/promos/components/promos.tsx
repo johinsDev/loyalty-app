@@ -4,7 +4,6 @@ import { getTranslations } from "next-intl/server";
 import { promos } from "../data";
 import { PromosCatalog } from "./promos-catalog";
 import { AppSidebar } from "@/features/home/components/app-sidebar";
-import { BottomNav } from "@/features/home/components/bottom-nav";
 
 /**
  * Customer promos hub — a faithful build of the "T4 · Promos" Claude Design
@@ -35,7 +34,6 @@ export async function Promos() {
           <PromosCatalog />
         </div>
 
-        <BottomNav />
       </SidebarInset>
     </SidebarProvider>
   );
