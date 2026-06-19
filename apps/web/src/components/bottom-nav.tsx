@@ -2,7 +2,7 @@
 
 import { CupSoda, Gift, Home as HomeIcon, QrCode, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 
 import { useQrDrawer } from "@/features/qr/hooks/use-qr-drawer";
@@ -40,50 +40,41 @@ function Tab({
 }) {
   const Icon = tab.icon;
   return (
-    <motion.div layout className="relative flex" transition={SPRING}>
+    <Link
+      href={tab.href}
+      aria-current={active ? "page" : undefined}
+      className="relative flex flex-col items-center gap-1 rounded-2xl px-4 py-1.5"
+    >
       {active ? (
         <motion.span
           layoutId="navPill"
           transition={SPRING}
-          className="bg-primary/10 absolute inset-0 rounded-full"
+          className="bg-primary/10 absolute inset-0 rounded-2xl"
         />
       ) : null}
-      <Link
-        href={tab.href}
-        aria-current={active ? "page" : undefined}
-        className="relative z-10 flex items-center rounded-full px-3.5 py-2.5"
+      <Icon
+        className={`relative z-10 size-6 transition-colors ${
+          active ? "text-primary" : "text-muted-foreground"
+        }`}
+      />
+      <span
+        className={`relative z-10 text-xs font-semibold transition-colors ${
+          active ? "text-primary" : "text-muted-foreground"
+        }`}
       >
-        <Icon
-          className={`size-6 transition-colors ${
-            active ? "text-primary" : "text-muted-foreground"
-          }`}
-        />
-        <AnimatePresence initial={false}>
-          {active ? (
-            <motion.span
-              layout
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: "auto", opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={SPRING}
-              className="text-primary overflow-hidden text-sm font-semibold whitespace-nowrap"
-            >
-              <span className="pl-2">{label}</span>
-            </motion.span>
-          ) : null}
-        </AnimatePresence>
-      </Link>
-    </motion.div>
+        {label}
+      </span>
+    </Link>
   );
 }
 
 /**
  * Customer app bottom tab bar — mounted once in the locale layout so it stays
  * put across client navigations. That persistence is what lets the active pill
- * (a shared `layoutId` element) *slide* between tabs and expand to reveal the
- * label, the way a native tab bar does, instead of snapping on every route
- * change. An elevated, gently pulsing center button opens the scan QR drawer.
- * Centered to a phone width and `md:hidden` — desktop uses the sidebar.
+ * (a shared `layoutId` element) *slide* between tabs the way a native tab bar
+ * does, instead of snapping on every route change. Labels sit under the icons
+ * and every tab keeps a stable width, so the elevated center scan button never
+ * shifts. Centered to a phone width and `md:hidden` — desktop uses the sidebar.
  */
 export function BottomNav() {
   const t = useTranslations("Home");
@@ -95,15 +86,17 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="bg-card border-border fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-md items-center justify-between border-t px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden">
-      {LEFT.map((tab) => (
-        <Tab
-          key={tab.key}
-          tab={tab}
-          active={isActive(pathname, tab.href)}
-          label={t(tab.key)}
-        />
-      ))}
+    <nav className="bg-card border-border fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-md items-center border-t px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden">
+      <div className="flex flex-1 justify-around">
+        {LEFT.map((tab) => (
+          <Tab
+            key={tab.key}
+            tab={tab}
+            active={isActive(pathname, tab.href)}
+            label={t(tab.key)}
+          />
+        ))}
+      </div>
 
       <div className="relative -mt-8 size-16 shrink-0">
         <span
@@ -120,14 +113,16 @@ export function BottomNav() {
         </button>
       </div>
 
-      {RIGHT.map((tab) => (
-        <Tab
-          key={tab.key}
-          tab={tab}
-          active={isActive(pathname, tab.href)}
-          label={t(tab.key)}
-        />
-      ))}
+      <div className="flex flex-1 justify-around">
+        {RIGHT.map((tab) => (
+          <Tab
+            key={tab.key}
+            tab={tab}
+            active={isActive(pathname, tab.href)}
+            label={t(tab.key)}
+          />
+        ))}
+      </div>
     </nav>
   );
 }
