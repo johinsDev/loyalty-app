@@ -22,6 +22,7 @@ import {
   type LucideIcon,
   LogOut,
   Mail,
+  MapPin,
   Pencil,
   Receipt,
   Upload,
@@ -211,6 +212,13 @@ export function ProfileScreen() {
           label={t("tierPerks", { tier: profile.tier })}
           sub={t("tierPerksSub")}
           href="/rewards"
+          chevron
+        />
+        <Row
+          icon={MapPin}
+          label={t("rowStore")}
+          sub={t("rowStoreSub")}
+          href="/store"
           chevron
         />
       </Section>
@@ -528,7 +536,7 @@ function Row({
   value?: string;
   edit?: boolean;
   chevron?: boolean;
-  href?: "/rewards";
+  href?: "/rewards" | "/store";
   onClick?: () => void;
   children?: React.ReactNode;
 }) {
