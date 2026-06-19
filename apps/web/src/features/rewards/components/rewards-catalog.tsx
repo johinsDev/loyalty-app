@@ -24,7 +24,9 @@ import {
   parseAsStringLiteral,
   useQueryStates,
 } from "nuqs";
-import { useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
+
+import { useFadeUp } from "@/lib/animate";
 
 import {
   type Reward,
@@ -59,6 +61,7 @@ function useRewardView(reward: Reward) {
  */
 export function RewardsCatalog() {
   const t = useTranslations("Rewards");
+  const fade = useFadeUp();
 
   const [q, setQ] = useQueryStates({
     f: parseAsStringLiteral(FILTER_KEYS).withDefault("all"),
@@ -162,9 +165,10 @@ export function RewardsCatalog() {
           />
         ) : (
           <ul className="bg-card divide-border/70 divide-y rounded-3xl px-5 shadow-lg shadow-black/5 ring-1 ring-black/5 dark:ring-white/10">
-            {visibleRedemptions.map((item) => (
+            {visibleRedemptions.map((item, i) => (
               <li
                 key={item.id}
+                style={fade(i)}
                 className="flex items-center justify-between gap-3 py-3.5"
               >
                 <div className="flex min-w-0 items-center gap-3">
@@ -193,11 +197,12 @@ export function RewardsCatalog() {
         />
       ) : (
         <div className="grid gap-3.5 sm:grid-cols-2">
-          {visible.map((reward) => (
+          {visible.map((reward, i) => (
             <RewardCard
               key={reward.id}
               reward={reward}
               onSelect={() => void setQ({ reward: reward.id })}
+              style={fade(i)}
             />
           ))}
         </div>
@@ -231,9 +236,11 @@ function EmptyState({ text }: { text: string }) {
 function RewardCard({
   reward,
   onSelect,
+  style,
 }: {
   reward: Reward;
   onSelect: () => void;
+  style?: CSSProperties;
 }) {
   const t = useTranslations("Rewards");
   const { ready, have, missing, pct } = useRewardView(reward);
@@ -242,6 +249,7 @@ function RewardCard({
     <button
       type="button"
       onClick={onSelect}
+      style={style}
       className={`bg-card flex w-full flex-col gap-3.5 rounded-3xl p-[1.125rem] text-left shadow-lg shadow-black/5 ring-1 ring-black/5 transition-transform active:scale-[0.99] dark:ring-white/10 ${
         ready ? "" : "opacity-65"
       }`}

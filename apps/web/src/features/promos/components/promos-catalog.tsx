@@ -4,7 +4,9 @@ import { ResponsiveModal, ResponsiveModalContent } from "@loyalty/ui";
 import { ArrowRight, Clock, Search, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { useMemo } from "react";
+import { type CSSProperties, useMemo } from "react";
+
+import { useFadeUp } from "@/lib/animate";
 
 import {
   PROMO_THEME,
@@ -34,6 +36,7 @@ type CategoryFilter = (typeof CATEGORY_FILTER)[number];
  * card straight to its detail. Client component.
  */
 export function PromosCatalog() {
+  const fade = useFadeUp();
   const t = useTranslations("Promos");
 
   const [q, setQ] = useQueryStates({
@@ -73,8 +76,13 @@ export function PromosCatalog() {
           </span>
         </div>
         <div className="scrollbar-hide -mx-5 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-5 pt-1 pb-2 lg:mx-0 lg:px-0">
-          {featuredPromos.map((p) => (
-            <FeaturedCard key={p.id} promo={p} onSelect={() => open(p.id)} />
+          {featuredPromos.map((p, i) => (
+            <FeaturedCard
+              key={p.id}
+              promo={p}
+              onSelect={() => open(p.id)}
+              style={fade(i)}
+            />
           ))}
         </div>
       </section>
@@ -112,8 +120,13 @@ export function PromosCatalog() {
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
-            {list.map((p) => (
-              <PromoRow key={p.id} promo={p} onSelect={() => open(p.id)} />
+            {list.map((p, i) => (
+              <PromoRow
+                key={p.id}
+                promo={p}
+                onSelect={() => open(p.id)}
+                style={fade(i)}
+              />
             ))}
           </div>
         )}
@@ -134,9 +147,11 @@ export function PromosCatalog() {
 function FeaturedCard({
   promo,
   onSelect,
+  style,
 }: {
   promo: Promo;
   onSelect: () => void;
+  style?: CSSProperties;
 }) {
   const t = useTranslations("Promos");
   const Icon = promo.icon;
@@ -146,7 +161,10 @@ function FeaturedCard({
       type="button"
       onClick={onSelect}
       className="relative flex h-52 w-[19rem] flex-none snap-center flex-col justify-between overflow-hidden rounded-[1.75rem] p-[1.375rem] text-left text-white shadow-xl shadow-black/20 transition-transform active:scale-[0.99]"
-      style={{ backgroundImage: promoGradient(PROMO_THEME[promo.theme].card) }}
+      style={{
+        backgroundImage: promoGradient(PROMO_THEME[promo.theme].card),
+        ...style,
+      }}
     >
       <Icon className="pointer-events-none absolute -right-5 -bottom-6 size-36 rotate-[-12deg] opacity-15" />
       <span className="inline-flex w-fit items-center rounded-full bg-white/25 px-3 py-1.5 text-[0.6875rem] font-extrabold tracking-wide">
@@ -174,13 +192,22 @@ function FeaturedCard({
   );
 }
 
-function PromoRow({ promo, onSelect }: { promo: Promo; onSelect: () => void }) {
+function PromoRow({
+  promo,
+  onSelect,
+  style,
+}: {
+  promo: Promo;
+  onSelect: () => void;
+  style?: CSSProperties;
+}) {
   const Icon = promo.icon;
 
   return (
     <button
       type="button"
       onClick={onSelect}
+      style={style}
       className="bg-card flex w-full min-w-0 items-center gap-3.5 rounded-[1.375rem] p-3.5 text-left shadow-lg shadow-black/5 ring-1 ring-black/5 transition-transform active:scale-[0.99] dark:ring-white/10"
     >
       <span
