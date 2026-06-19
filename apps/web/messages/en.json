@@ -45,7 +45,16 @@
     "streakTitle": "STREAK",
     "streakDays": "{days} days in a row",
     "streakSub": "One purchase a day. Don't break the streak! 🔥",
-    "weekDays": "M,T,W,T,F,S,S"
+    "weekDays": "M,T,W,T,F,S,S",
+    "pointsDetailAria": "View points detail",
+    "pointsDetailTitle": "Your points",
+    "pointsDetailSubtitle": "You have {points} points banked",
+    "stampFilledTitle": "Stamp earned",
+    "stampEmptyTitle": "Stamp pending",
+    "stampRewardTitle": "Your reward",
+    "stampDetailEmpty": "{count} more stamps for your free drink 🧋",
+    "stampDetailReward": "Complete your card and claim a free drink 🧋",
+    "stampPointsEarned": "+{points} pts earned"
   },
   "Promos": {
     "title": "Promos",
@@ -111,6 +120,22 @@
     "pointsPill": "+50 points",
     "viewCard": "View my card",
     "addToWallet": "Add to Apple Wallet"
+  },
+  "Store": {
+    "title": "Our store",
+    "subtitle": "Address, hours and directions",
+    "open": "Open",
+    "closed": "Closed",
+    "closesAt": "Closes {time}",
+    "opensAt": "Opens {time}",
+    "opensDay": "Opens {day} {time}",
+    "today": "Today",
+    "hoursTitle": "HOURS",
+    "closedAllDay": "Closed",
+    "call": "Call",
+    "viewMap": "View on map",
+    "directions": "Get directions",
+    "mapTitle": "Map of {name}"
   },
   "Menu": {
     "title": "Menu",
@@ -182,6 +207,8 @@
     "unlink": "Unlink",
     "tierPerks": "{tier} tier perks",
     "tierPerksSub": "You know your way around tea",
+    "rowStore": "Our store",
+    "rowStoreSub": "Address, hours and directions",
     "secActivity": "ACTIVITY",
     "purchaseHistory": "Purchase history",
     "purchaseHistorySub": "5 visits this month",
@@ -285,5 +312,22 @@
     "cardProgress": "1 / 10 stamps",
     "cardRemaining": "9 more to go for your next free bubble tea.",
     "viewCard": "View my card"
+  },
+  "History": {
+    "title": "History",
+    "summaryHeading": "Summary · {month}",
+    "statVisits": "VISITS",
+    "statPoints": "POINTS",
+    "statSellos": "STAMPS",
+    "periodAll": "All",
+    "periodMonth": "This month",
+    "periodLast": "Last month",
+    "countOrders": "{count, plural, one {# order} other {# orders}}",
+    "empty": "No purchases in this period.",
+    "orderNo": "Order {orderNo}",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "pointsEarned": "POINTS EARNED",
+    "sellosEarned": "STAMPS EARNED"
   }
 }

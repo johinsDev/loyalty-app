@@ -18,10 +18,13 @@ import {
   ChevronRight,
   Gem,
   Gift,
+  Globe,
   HelpCircle,
   type LucideIcon,
   LogOut,
   Mail,
+  MapPin,
+  Moon,
   Pencil,
   Receipt,
   Upload,
@@ -213,6 +216,13 @@ export function ProfileScreen() {
           href="/rewards"
           chevron
         />
+        <Row
+          icon={MapPin}
+          label={t("rowStore")}
+          sub={t("rowStoreSub")}
+          href="/store"
+          chevron
+        />
       </Section>
 
       {/* NOTIFICATIONS — the real per-channel opt-out control */}
@@ -220,13 +230,23 @@ export function ProfileScreen() {
 
       {/* PREFERENCES */}
       <Section label={t("preferences.title")}>
-        <div className="flex items-center justify-between gap-3 px-4 py-3.5">
-          <span className="text-sm font-bold">{t("preferences.theme")}</span>
-          <ThemeToggle />
-        </div>
-        <div className="border-border flex items-center justify-between gap-3 border-t px-4 py-3.5">
-          <span className="text-sm font-bold">{t("preferences.language")}</span>
+        <div className="flex items-center gap-3.5 px-4 py-3">
+          <span className="bg-primary/10 grid size-10 flex-none place-items-center rounded-xl">
+            <Globe className="text-primary size-5" />
+          </span>
+          <span className="flex-1 text-sm font-bold">
+            {t("preferences.language")}
+          </span>
           <LocaleSwitcher />
+        </div>
+        <div className="border-border flex items-center gap-3.5 border-t px-4 py-3">
+          <span className="bg-primary/10 grid size-10 flex-none place-items-center rounded-xl">
+            <Moon className="text-primary size-5" />
+          </span>
+          <span className="flex-1 text-sm font-bold">
+            {t("preferences.theme")}
+          </span>
+          <ThemeToggle />
         </div>
       </Section>
 
@@ -528,7 +548,7 @@ function Row({
   value?: string;
   edit?: boolean;
   chevron?: boolean;
-  href?: "/rewards";
+  href?: "/rewards" | "/store";
   onClick?: () => void;
   children?: React.ReactNode;
 }) {
