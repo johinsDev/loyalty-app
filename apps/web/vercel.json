@@ -1,4 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "node -e \"process.exit(process.env.VERCEL_ENV==='preview' && !process.env.NEXT_PUBLIC_API_URL ? 0 : 1)\""
+  "ignoreCommand": "node -e \"process.exit(process.env.VERCEL_ENV==='preview' && !process.env.NEXT_PUBLIC_API_URL ? 0 : 1)\" || npx --yes turbo-ignore@^2 @loyalty/web"
 }
