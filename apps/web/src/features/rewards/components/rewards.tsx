@@ -6,7 +6,6 @@ import { RecentRedemptions } from "./recent-redemptions";
 import { RewardsCatalog } from "./rewards-catalog";
 import { TierCard } from "./tier-card";
 import { AppSidebar } from "@/features/home/components/app-sidebar";
-import { BottomNav } from "@/features/home/components/bottom-nav";
 
 /**
  * Customer rewards — a faithful build of the "T4 · Recompensas (Sellos)" Claude
@@ -50,7 +49,6 @@ export async function Rewards() {
           </div>
         </div>
 
-        <BottomNav />
       </SidebarInset>
     </SidebarProvider>
   );

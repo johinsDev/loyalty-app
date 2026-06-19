@@ -2,7 +2,6 @@ import { SidebarInset, SidebarProvider } from "@loyalty/ui";
 import { getTranslations } from "next-intl/server";
 
 import { AppSidebar } from "./app-sidebar";
-import { BottomNav } from "./bottom-nav";
 import { GreetingHeader } from "./greeting-header";
 import { PointsCard } from "./points-card";
 import { PromosCarousel } from "./promos-carousel";
@@ -65,7 +64,6 @@ export async function Home() {
           </div>
         </div>
 
-        <BottomNav />
       </SidebarInset>
     </SidebarProvider>
   );

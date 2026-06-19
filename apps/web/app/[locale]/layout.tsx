@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { AppChrome } from "@/components/app-chrome";
+import { BottomNav } from "@/components/bottom-nav";
 import { env } from "@/env";
 import { NotificationsDrawer } from "@/features/notifications/components/notifications-drawer";
 import { NotificationsOnEntry } from "@/features/notifications/components/notifications-on-entry";
@@ -45,6 +46,7 @@ export default async function LocaleLayout({ children, params }: Props) {
     <Providers locale={locale} messages={messages} now={new Date()}>
       <AppChrome />
       {children}
+      <BottomNav />
       <RealtimeNotifications host={env.NEXT_PUBLIC_PARTYKIT_HOST} />
       <NotificationsDrawer />
       <NotificationsOnEntry />
