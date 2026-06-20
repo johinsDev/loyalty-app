@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Button,
   InputPhone,
   isValidE164Phone,
   ResponsiveModal,
@@ -12,6 +13,7 @@ import {
 import {
   AlertTriangle,
   ArrowLeft,
+  BookOpen,
   Cake,
   Camera,
   Check,
@@ -37,6 +39,7 @@ import { useRouter } from "@/i18n/navigation";
 import {
   activePromos,
   type CashierError,
+  categories,
   claimableRewards,
   DAILY_CAP,
   STAMPS_TODAY,
@@ -46,6 +49,8 @@ import {
   lockedRewards,
   manager,
   memberDetail,
+  memberPurchases,
+  type Product,
   products,
   recentMoves,
   store,
@@ -82,6 +87,7 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
   const [mgrPin, setMgrPin] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   const capReached = sellosBase >= DAILY_CAP;
   const totalStamps = useMemo(
@@ -89,7 +95,6 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
       products.reduce((sum, p) => sum + (cart[p.id] ?? 0) * p.earns, 0),
     [cart],
   );
-  const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
   const isEarn = screen.startsWith("earn");
   const isRedeem = screen.startsWith("redeem");
   const enough = CUST.stamps >= REWARD.cost;
@@ -201,6 +206,15 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
             {cashier.initials}
           </span>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setCatalogOpen(true)}
+          className="border-border bg-card text-muted-foreground hover:text-foreground flex h-10 flex-none items-center gap-1.5 rounded-xl border px-3 text-sm font-bold"
+        >
+          <BookOpen className="size-4" />
+          <span className="hidden sm:inline">{t("viewMenu")}</span>
+        </button>
 
         <button
           type="button"
@@ -512,19 +526,18 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
 
       {/* ===== STICKY CONFIRM ===== */}
       {screen === "earn-found" ? (
-        <div className="bg-card border-border flex-none border-t px-6 py-3.5">
-          <div className="mx-auto flex max-w-5xl items-center gap-4">
-            <div className="min-w-0 flex-1">
+        <div className="bg-card border-border flex-none border-t px-4 py-3 sm:px-6">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+            <div className="min-w-0">
               <div className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
                 {t("willAward")}
               </div>
-              <div className="flex items-baseline gap-2 whitespace-nowrap">
+              <div className="flex items-baseline gap-1.5">
                 <span className="font-display text-primary text-3xl font-semibold">
                   +{totalStamps}
                 </span>
-                <span className="text-muted-foreground truncate text-sm font-bold">
-                  {totalStamps === 1 ? t("stampOne") : t("stampMany")} ·{" "}
-                  {t("nProducts", { count: cartCount })}
+                <span className="text-muted-foreground text-sm font-bold">
+                  {totalStamps === 1 ? t("stampOne") : t("stampMany")}
                 </span>
               </div>
             </div>
@@ -532,7 +545,7 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
               onClick={confirmEarn}
               disabled={totalStamps === 0 || capReached}
               icon={<Check className="size-6" />}
-              className="w-auto max-w-sm flex-1 px-6 whitespace-nowrap"
+              className="w-auto shrink-0 px-8 whitespace-nowrap"
             >
               {t("confirmEarn", { count: totalStamps })}
             </BigButton>
@@ -818,7 +831,34 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
               ))}
             </DetailSection>
 
-            <ResponsiveModalClose className="w-full">
+            <DetailSection title={t("purchaseHistory")}>
+              {memberPurchases.map((h) => (
+                <div
+                  key={h.id}
+                  className="border-border bg-card flex items-center gap-3 rounded-2xl border p-3"
+                >
+                  <span className="bg-muted grid size-9 flex-none place-items-center rounded-xl text-lg">
+                    🧾
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold">{h.items}</div>
+                    <div className="text-muted-foreground/70 text-xs font-semibold">
+                      {h.date}
+                    </div>
+                  </div>
+                  <span
+                    className={`flex-none text-sm font-extrabold ${h.stamps.startsWith("−") ? "text-muted-foreground" : "text-primary"}`}
+                  >
+                    {h.stamps}
+                  </span>
+                </div>
+              ))}
+            </DetailSection>
+
+            <ResponsiveModalClose
+              variant="secondary"
+              className="h-14 w-full rounded-2xl text-base"
+            >
               {t("close")}
             </ResponsiveModalClose>
           </div>
@@ -845,14 +885,17 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
               {t("switchConfirm")}
             </BigButton>
             <ResponsiveModalClose
-              variant="ghost"
-              className="mt-1 h-auto w-full bg-transparent text-sm shadow-none"
+              variant="secondary"
+              className="mt-2 h-14 w-full rounded-2xl text-base"
             >
               {t("cancel")}
             </ResponsiveModalClose>
           </div>
         </ResponsiveModalContent>
       </ResponsiveModal>
+
+      {/* ===== CATALOG (menu browser) ===== */}
+      <CatalogModal open={catalogOpen} onOpenChange={setCatalogOpen} />
 
       {/* ===== ERROR / EMPTY STATES (responsive modal) ===== */}
       <ErrorModal errKey={error} onClose={() => setError(null)} />
@@ -878,29 +921,34 @@ function Card({
   );
 }
 
+/** POS primary action — the @loyalty/ui Button at register scale. */
 function BigButton({
   onClick,
   disabled,
   icon,
+  variant = "gradient",
   className = "",
   children,
 }: {
   onClick?: () => void;
   disabled?: boolean;
   icon?: React.ReactNode;
+  variant?: React.ComponentProps<typeof Button>["variant"];
   className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant={variant}
+      size="lg"
       onClick={onClick}
       disabled={disabled}
-      className={`from-primary to-primary/80 flex h-16 w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-br text-lg font-extrabold text-white shadow-lg transition-transform active:scale-[0.99] disabled:bg-none disabled:bg-muted disabled:text-muted-foreground/70 disabled:shadow-none ${className}`}
+      className={`h-16 w-full gap-3 rounded-2xl text-lg font-extrabold ${className}`}
     >
       {icon}
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -941,6 +989,155 @@ function Stepper({
       className="border-border bg-card text-foreground grid size-9 place-items-center rounded-xl border"
     >
       {icon}
+    </button>
+  );
+}
+
+/**
+ * Read-only menu browser the cashier can open any time: search by name, filter
+ * by category, and tap a product to see its detail. Same catalog the earn
+ * picker marks from; here it's just to look things up.
+ */
+function CatalogModal({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const t = useTranslations("Cashier");
+  const [query, setQuery] = useState("");
+  const [cat, setCat] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Product | null>(null);
+
+  const reset = () => {
+    setSelected(null);
+    setQuery("");
+    setCat(null);
+  };
+  const filtered = products.filter(
+    (p) =>
+      (!cat || p.category === cat) &&
+      p.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+
+  return (
+    <ResponsiveModal
+      open={open}
+      onOpenChange={(o) => {
+        onOpenChange(o);
+        if (!o) reset();
+      }}
+    >
+      <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
+        {selected ? (
+          <div className="flex flex-col px-6 pt-2 pb-6">
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              className="text-muted-foreground mb-3 flex items-center gap-1 self-start text-sm font-bold"
+            >
+              <ArrowLeft className="size-4" />
+              {t("back")}
+            </button>
+            <span className="bg-muted mb-3 grid size-20 place-items-center rounded-3xl text-4xl">
+              {selected.emoji}
+            </span>
+            <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
+              {selected.name}
+            </ResponsiveModalTitle>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-bold">
+                {selected.category}
+              </span>
+              <span className="bg-primary/10 text-primary rounded-full px-2.5 py-1 text-xs font-extrabold">
+                +{selected.earns}{" "}
+                {selected.earns === 1 ? t("stampOne") : t("stampMany")}
+              </span>
+            </div>
+            <ResponsiveModalDescription className="text-foreground mt-3 text-sm leading-relaxed">
+              {selected.description}
+            </ResponsiveModalDescription>
+          </div>
+        ) : (
+          <div className="flex max-h-[78dvh] flex-col px-6 pt-2 pb-6">
+            <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
+              {t("menuTitle")}
+            </ResponsiveModalTitle>
+            <ResponsiveModalDescription className="sr-only">
+              {t("menuTitle")}
+            </ResponsiveModalDescription>
+            <div className="border-border bg-muted mt-3 flex h-12 flex-none items-center gap-2 rounded-2xl border px-4">
+              <Search className="text-muted-foreground/70 size-4" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("menuSearch")}
+                className="placeholder:text-muted-foreground/70 w-full bg-transparent text-sm font-semibold outline-none"
+              />
+            </div>
+            <div className="scrollbar-hide -mx-1 mt-3 flex flex-none gap-2 overflow-x-auto px-1 pb-1">
+              <Chip active={cat === null} onClick={() => setCat(null)}>
+                {t("all")}
+              </Chip>
+              {categories.map((c) => (
+                <Chip key={c} active={cat === c} onClick={() => setCat(c)}>
+                  {c}
+                </Chip>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-1 flex-col gap-2 overflow-y-auto">
+              {filtered.length === 0 ? (
+                <p className="text-muted-foreground py-10 text-center text-sm">
+                  {t("menuEmpty")}
+                </p>
+              ) : (
+                filtered.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelected(p)}
+                    className="border-border bg-card flex items-center gap-3 rounded-2xl border p-3 text-left"
+                  >
+                    <span className="bg-muted grid size-10 flex-none place-items-center rounded-xl text-xl">
+                      {p.emoji}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-bold">{p.name}</div>
+                      <div className="text-muted-foreground/70 truncate text-xs font-semibold">
+                        {p.description}
+                      </div>
+                    </div>
+                    <span className="bg-primary/10 text-primary flex-none rounded-full px-2 py-1 text-[0.6875rem] font-extrabold">
+                      +{p.earns}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </ResponsiveModalContent>
+    </ResponsiveModal>
+  );
+}
+
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-9 flex-none rounded-full border px-4 text-xs font-bold whitespace-nowrap transition-colors ${active ? "bg-foreground text-background border-foreground" : "bg-card text-muted-foreground border-border"}`}
+    >
+      {children}
     </button>
   );
 }
@@ -1147,14 +1344,14 @@ function ErrorModal({
             </ResponsiveModalDescription>
             <ResponsiveModalClose
               variant="gradient"
-              className="mt-6 w-full text-base"
+              className="mt-6 h-14 w-full rounded-2xl text-base"
             >
               {t(`err.${errKey}.cta`)}
             </ResponsiveModalClose>
             {c.sec ? (
               <ResponsiveModalClose
-                variant="ghost"
-                className="mt-1 h-auto w-full bg-transparent text-sm shadow-none"
+                variant="secondary"
+                className="mt-2 h-14 w-full rounded-2xl text-base"
               >
                 {t(`err.${errKey}.sec`)}
               </ResponsiveModalClose>

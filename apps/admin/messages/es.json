@@ -364,6 +364,12 @@
     "costStamps": "{count} sellos",
     "switchTitle": "¿Cambiar de cajero?",
     "switchBody": "Se cerrará la caja en esta tablet y el siguiente cajero deberá iniciar su turno.",
-    "switchConfirm": "Cambiar de cajero"
+    "switchConfirm": "Cambiar de cajero",
+    "viewMenu": "Ver menú",
+    "menuTitle": "Menú",
+    "menuSearch": "Buscar bebida…",
+    "all": "Todas",
+    "menuEmpty": "Sin resultados.",
+    "purchaseHistory": "COMPRAS RECIENTES"
   }
 }

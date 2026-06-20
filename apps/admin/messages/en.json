@@ -364,6 +364,12 @@
     "costStamps": "{count} stamps",
     "switchTitle": "Switch cashier?",
     "switchBody": "The register will lock on this tablet and the next cashier must start their shift.",
-    "switchConfirm": "Switch cashier"
+    "switchConfirm": "Switch cashier",
+    "viewMenu": "View menu",
+    "menuTitle": "Menu",
+    "menuSearch": "Search a drink…",
+    "all": "All",
+    "menuEmpty": "No results.",
+    "purchaseHistory": "RECENT PURCHASES"
   }
 }

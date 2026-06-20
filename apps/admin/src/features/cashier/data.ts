@@ -12,7 +12,28 @@ export type Product = {
   emoji: string;
   name: string;
   earns: number;
+  category: string;
+  description: string;
 };
+
+/** Catalog categories the cashier can filter the menu by. */
+export const categories = ["Tés", "Matcha", "Frappés", "Otros"] as const;
+
+export type MemberPurchase = {
+  id: string;
+  date: string;
+  items: string;
+  stamps: string;
+};
+
+/** The identified socio's recent purchases (also pulled for any customer). */
+export const memberPurchases: MemberPurchase[] = [
+  { id: "h1", date: "Hoy · 14:32", items: "Milk Tea, Matcha Latte", stamps: "+2" },
+  { id: "h2", date: "Ayer · 18:10", items: "Strawberry Matcha", stamps: "+2" },
+  { id: "h3", date: "12 jun · 09:48", items: "Frappé", stamps: "+1" },
+  { id: "h4", date: "8 jun · 16:22", items: "Canje · Topping gratis", stamps: "−4" },
+  { id: "h5", date: "3 jun · 11:05", items: "Premium del mes, Refresco", stamps: "+3" },
+];
 
 export type RecentMove = {
   id: string;
@@ -53,12 +74,12 @@ export const manager = { name: "D. Rojas" };
 export const store = { name: "T4 Centro", shift: "Turno mañana · 08:00–16:00" };
 
 export const products: Product[] = [
-  { id: "p1", emoji: "🧋", name: "Milk Tea", earns: 1 },
-  { id: "p2", emoji: "🍵", name: "Matcha Latte", earns: 1 },
-  { id: "p3", emoji: "🍓", name: "Strawberry Matcha", earns: 2 },
-  { id: "p4", emoji: "🧊", name: "Frappé", earns: 1 },
-  { id: "p5", emoji: "⭐", name: "Premium del mes", earns: 2 },
-  { id: "p6", emoji: "🥤", name: "Refresco", earns: 1 },
+  { id: "p1", emoji: "🧋", name: "Milk Tea", earns: 1, category: "Tés", description: "Té negro con leche y perlas de tapioca." },
+  { id: "p2", emoji: "🍵", name: "Matcha Latte", earns: 1, category: "Matcha", description: "Matcha ceremonial batido con leche." },
+  { id: "p3", emoji: "🍓", name: "Strawberry Matcha", earns: 2, category: "Matcha", description: "Matcha con capa de fresa natural." },
+  { id: "p4", emoji: "🧊", name: "Frappé", earns: 1, category: "Frappés", description: "Bebida helada licuada, base a elección." },
+  { id: "p5", emoji: "⭐", name: "Premium del mes", earns: 2, category: "Otros", description: "Edición especial — rota cada mes." },
+  { id: "p6", emoji: "🥤", name: "Refresco", earns: 1, category: "Otros", description: "Gaseosa o agua saborizada." },
 ];
 
 export const foundCustomer: CashierCustomer = {
