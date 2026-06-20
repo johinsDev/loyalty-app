@@ -58,19 +58,11 @@ export type CashierCustomer = {
   toNext: string;
 };
 
-export type AttachedReward = {
-  emoji: string;
-  name: string;
-  desc: string;
-  cost: number;
-};
-
 /** Per-cashier daily stamp cap (anti-fraud). */
 export const DAILY_CAP = 150;
 export const STAMPS_TODAY = 84;
 
 export const cashier = { name: "Lucía Fernández", initials: "LF" };
-export const manager = { name: "D. Rojas" };
 export const store = { name: "T4 Centro", shift: "Turno mañana · 08:00–16:00" };
 
 export const products: Product[] = [
@@ -126,13 +118,6 @@ export const lockedRewards: CashierReward[] = [
   { emoji: "🎁", name: "Combo para dos", cost: 18, locked: true },
 ];
 
-export const attachedReward: AttachedReward = {
-  emoji: "🧋",
-  name: "Bebida mediana gratis",
-  desc: "Cualquier bebida clásica, tamaño mediano.",
-  cost: 6,
-};
-
 export const recentMoves: RecentMove[] = [
   { id: "m1", icon: "🧋", name: "Sofía M.", detail: "2 productos · +2 sellos", amount: "+2", time: "14:32", kind: "earn" },
   { id: "m2", icon: "🎁", name: "Bruno T.", detail: "Canje · Topping gratis", amount: "−4", time: "14:18", kind: "redeem" },
@@ -142,9 +127,3 @@ export const recentMoves: RecentMove[] = [
   { id: "m6", icon: "🥤", name: "Diego A.", detail: "1 producto · +1 sello", amount: "+1", time: "12:58", kind: "earn" },
 ];
 
-export type CashierError =
-  | "notfound"
-  | "insufficient"
-  | "cap"
-  | "expired"
-  | "camera";
