@@ -63,7 +63,16 @@ export const DAILY_CAP = 150;
 export const STAMPS_TODAY = 84;
 
 export const cashier = { name: "Lucía Fernández", initials: "LF" };
+export const manager = { name: "D. Rojas" };
 export const store = { name: "T4 Centro", shift: "Turno mañana · 08:00–16:00" };
+
+/** The reward a member is redeeming (decoded from their single-use code). */
+export const redeemReward = {
+  emoji: "🧋",
+  name: "Bebida mediana gratis",
+  desc: "Cualquier bebida clásica, tamaño mediano.",
+  cost: 6,
+};
 
 export const products: Product[] = [
   { id: "p1", emoji: "🧋", name: "Milk Tea", earns: 1, category: "Tés", description: "Té negro con leche y perlas de tapioca." },

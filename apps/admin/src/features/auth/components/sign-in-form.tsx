@@ -96,37 +96,37 @@ export function SignInForm({ passwordEnabled }: Props) {
       <div className="bg-card flex w-full max-w-4xl flex-wrap overflow-hidden rounded-3xl shadow-2xl">
         {/* BRAND PANEL */}
         <div
-          className={`relative flex min-h-72 flex-1 basis-80 flex-col justify-between overflow-hidden p-10 text-white ${GRAD}`}
+          className={`relative flex flex-1 basis-80 flex-col gap-3 overflow-hidden p-6 text-white sm:min-h-72 sm:justify-between sm:gap-0 sm:p-10 ${GRAD}`}
         >
           <span className="absolute -top-28 -right-20 size-80 rounded-full bg-white/10" />
           <span className="absolute -bottom-16 -left-12 size-48 rounded-full bg-white/10" />
           <div className="relative flex items-center gap-3">
-            <span className="font-display grid size-12 place-items-center rounded-2xl bg-white/20 text-xl font-semibold">
+            <span className="font-display grid size-11 place-items-center rounded-2xl bg-white/20 text-lg font-semibold sm:size-12 sm:text-xl">
               T4
             </span>
-            <span className="font-display text-xl font-semibold tracking-tight">
+            <span className="font-display text-lg font-semibold tracking-tight sm:text-xl">
               T4 Lovers
             </span>
           </div>
           <div className="relative">
-            <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-extrabold tracking-wider">
+            <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-extrabold tracking-wider sm:mb-4">
               {t("brandBadge")}
             </span>
-            <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight">
+            <h1 className="font-display text-2xl leading-tight font-semibold tracking-tight sm:text-4xl">
               {t("brandHeadline")}
             </h1>
-            <p className="mt-3.5 max-w-xs text-sm leading-relaxed text-white/85">
+            <p className="mt-3.5 hidden max-w-xs text-sm leading-relaxed text-white/85 sm:block">
               {t("brandSub")}
             </p>
           </div>
-          <div className="relative flex items-center gap-2.5 text-sm text-white/80">
+          <div className="relative hidden items-center gap-2.5 text-sm text-white/80 sm:flex">
             <span className="size-2 rounded-full bg-teal-200" />
             {t("sharedTablet")}
           </div>
         </div>
 
         {/* FORM PANEL */}
-        <div className="flex min-h-72 flex-1 basis-80 flex-col justify-center p-10">
+        <div className="flex flex-1 basis-80 flex-col justify-center p-6 sm:min-h-72 sm:p-10">
           {forbidden ? (
             <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-100">
               {t("errorForbidden")}
