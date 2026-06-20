@@ -777,7 +777,7 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
       {/* ===== MEMBER DETAIL (verify birthday / see promos + rewards) ===== */}
       <ResponsiveModal open={detailOpen} onOpenChange={setDetailOpen}>
         <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
-          <div className="flex flex-col gap-4 px-6 pt-2 pb-6">
+          <div className="flex max-h-[80dvh] flex-col gap-4 overflow-y-auto px-6 pt-2 pb-6">
             <div className="flex items-center gap-3.5">
               <span
                 className="font-display grid size-14 flex-none place-items-center rounded-full text-xl font-semibold text-amber-900"
