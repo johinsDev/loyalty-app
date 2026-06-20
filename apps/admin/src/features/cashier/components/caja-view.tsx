@@ -527,28 +527,29 @@ export function CajaView({ amountTiers = false }: { amountTiers?: boolean }) {
       {/* ===== STICKY CONFIRM ===== */}
       {screen === "earn-found" ? (
         <div className="bg-card border-border flex-none border-t px-4 py-3 sm:px-6">
-          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
+          <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-baseline gap-2">
+              <span className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
                 {t("willAward")}
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-display text-primary text-3xl font-semibold">
-                  +{totalStamps}
-                </span>
-                <span className="text-muted-foreground text-sm font-bold">
-                  {totalStamps === 1 ? t("stampOne") : t("stampMany")}
-                </span>
-              </div>
+              </span>
+              <span className="font-display text-primary text-2xl font-semibold">
+                +{totalStamps}
+              </span>
+              <span className="text-muted-foreground text-sm font-bold">
+                {totalStamps === 1 ? t("stampOne") : t("stampMany")}
+              </span>
             </div>
-            <BigButton
+            <Button
+              type="button"
+              variant="gradient"
+              size="lg"
               onClick={confirmEarn}
               disabled={totalStamps === 0 || capReached}
-              icon={<Check className="size-6" />}
-              className="w-auto shrink-0 px-8 whitespace-nowrap"
+              className="h-14 w-full gap-2.5 rounded-2xl text-base font-extrabold whitespace-nowrap sm:w-auto sm:px-10"
             >
+              <Check className="size-5" />
               {t("confirmEarn", { count: totalStamps })}
-            </BigButton>
+            </Button>
           </div>
         </div>
       ) : null}
