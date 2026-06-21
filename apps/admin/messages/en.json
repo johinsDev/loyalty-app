@@ -392,6 +392,11 @@
     "birthdayHint": "Pick your date of birth.",
     "dayLabel": "DAY",
     "monthLabel": "MONTH",
-    "yearLabel": "YEAR"
+    "yearLabel": "YEAR",
+    "rewardsLockedTag": "Locked",
+    "receiptTitle": "Receipt",
+    "stampsEarned": "STAMPS EARNED",
+    "stampsSpent": "STAMPS SPENT",
+    "attendedBy": "Served by {name}"
   }
 }

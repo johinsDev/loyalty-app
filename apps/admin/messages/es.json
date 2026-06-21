@@ -392,6 +392,11 @@
     "birthdayHint": "Elegí tu fecha de nacimiento.",
     "dayLabel": "DÍA",
     "monthLabel": "MES",
-    "yearLabel": "AÑO"
+    "yearLabel": "AÑO",
+    "rewardsLockedTag": "Bloqueado",
+    "receiptTitle": "Recibo",
+    "stampsEarned": "SELLOS GANADOS",
+    "stampsSpent": "SELLOS USADOS",
+    "attendedBy": "Atendió {name}"
   }
 }

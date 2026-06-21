@@ -156,9 +156,9 @@ export function ScanView() {
             <button
               type="button"
               onClick={() => setStep("redeem-scan")}
-              className="text-primary mt-3 flex w-full items-center justify-center gap-2 text-sm font-extrabold"
+              className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 mt-2.5 flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl border text-base font-bold"
             >
-              <Gift className="size-4" />
+              <Gift className="size-5" />
               {t("validateRedeem")}
             </button>
           </div>
