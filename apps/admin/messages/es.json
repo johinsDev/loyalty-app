@@ -397,6 +397,13 @@
     "receiptTitle": "Recibo",
     "stampsEarned": "SELLOS GANADOS",
     "stampsSpent": "SELLOS USADOS",
-    "attendedBy": "Atendió {name}"
+    "attendedBy": "Atendió {name}",
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "avatarTitle": "Foto de perfil",
+    "avatarHint": "Elegí un avatar o subí una foto.",
+    "avatarUpload": "Subir foto",
+    "avatarErrorType": "Formato no válido. Usá PNG, JPG o WEBP.",
+    "avatarErrorSize": "La imagen supera {mb} MB."
   }
 }

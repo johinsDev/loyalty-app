@@ -397,6 +397,13 @@
     "receiptTitle": "Receipt",
     "stampsEarned": "STAMPS EARNED",
     "stampsSpent": "STAMPS SPENT",
-    "attendedBy": "Served by {name}"
+    "attendedBy": "Served by {name}",
+    "confirm": "Confirm",
+    "save": "Save",
+    "avatarTitle": "Profile photo",
+    "avatarHint": "Pick an avatar or upload a photo.",
+    "avatarUpload": "Upload photo",
+    "avatarErrorType": "Invalid format. Use PNG, JPG or WEBP.",
+    "avatarErrorSize": "The image is over {mb} MB."
   }
 }

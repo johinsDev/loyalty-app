@@ -285,7 +285,7 @@ export function ScanView() {
             <button
               type="button"
               onClick={reset}
-              className="text-muted-foreground mt-3 flex items-center gap-1.5 text-sm font-bold"
+              className="border-border bg-card text-muted-foreground hover:text-foreground mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-bold"
             >
               <X className="size-4" />
               {t("cancelIdentify")}
@@ -393,12 +393,9 @@ export function ScanView() {
 
           {/* sticky confirm */}
           <div className="bg-card border-border fixed inset-x-0 bottom-[4.5rem] z-20 border-t px-4 py-3 sm:px-6">
-            <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 lg:max-w-4xl">
-              <div className="flex items-baseline gap-2">
-                <span className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
-                  {t("willAward")}
-                </span>
-                <span className="font-display text-primary text-2xl font-semibold">
+            <div className="mx-auto flex max-w-2xl items-center gap-4 lg:max-w-4xl">
+              <div className="flex flex-none items-baseline gap-1.5">
+                <span className="font-display text-primary text-3xl font-semibold">
                   +{total}
                 </span>
                 <span className="text-muted-foreground text-sm font-bold">
@@ -410,10 +407,10 @@ export function ScanView() {
                 size="lg"
                 onClick={confirm}
                 disabled={total === 0 || capReached}
-                className="h-13 gap-2 rounded-2xl text-base font-extrabold whitespace-nowrap sm:px-8"
+                className="h-13 flex-1 gap-2 rounded-2xl text-base font-extrabold"
               >
                 <Check className="size-5" />
-                {t("confirmEarn", { count: total })}
+                {t("confirm")}
               </Button>
             </div>
           </div>
