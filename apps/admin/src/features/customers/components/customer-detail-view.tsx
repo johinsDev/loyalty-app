@@ -241,12 +241,12 @@ export function CustomerDetailView({ customer: c }: { customer: CustomerDetail }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-9 px-4">
+            <AlertDialogCancel className="h-10 px-4">
               {t("cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={onDelete}
-              className="bg-destructive h-9 px-4 text-white hover:bg-destructive/90"
+              className="bg-destructive h-10 px-4 text-white hover:bg-destructive/90"
             >
               {t("deleteConfirm")}
             </AlertDialogAction>
