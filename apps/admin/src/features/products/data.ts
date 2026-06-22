@@ -80,6 +80,17 @@ export const products: Product[] = [
 // Options → variants (Shopify-style). Options like {Tamaño:[Regular,Grande]};
 // the editor generates one variant per combination, each with price/sku/stock.
 export type ProductOption = { id: string; name: string; values: string[] };
+
+// Reusable option library — options + values created once become available for
+// the next product. Seam: an org-level options table. Editor seeds local state
+// from this and appends custom options/values.
+export type OptionPreset = { id: string; name: string; values: string[] };
+
+export const optionLibrary: OptionPreset[] = [
+  { id: "lib_size", name: "Tamaño", values: ["Regular", "Grande"] },
+  { id: "lib_temp", name: "Temperatura", values: ["Frío", "Caliente"] },
+  { id: "lib_sweet", name: "Dulzor", values: ["0%", "50%", "100%"] },
+];
 export type Variant = {
   id: string;
   combo: string[]; // one value per option, in option order

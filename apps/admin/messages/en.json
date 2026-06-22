@@ -853,7 +853,24 @@
     "searchSection": "Search section…",
     "createSection": "Create section",
     "newSectionPlaceholder": "Section name",
-    "done": "Done"
+    "done": "Done",
+    "step": {
+      "general": "General",
+      "pricing": "Pricing",
+      "variants": "Variants",
+      "inventory": "Inventory",
+      "organization": "Organization",
+      "review": "Review"
+    },
+    "addValue": "Add value",
+    "valuePlaceholder": "e.g. Large",
+    "reuseOption": "Existing option",
+    "customOption": "Create custom",
+    "libraryHint": "Reuse an option you already made or create a new one; it stays available for the next product.",
+    "previewNamePlaceholder": "Product name",
+    "priceFrom": "from {price}",
+    "noPrice": "No price",
+    "categoriesN": "{n} categories"
   },
   "Command": {
     "title": "Search",

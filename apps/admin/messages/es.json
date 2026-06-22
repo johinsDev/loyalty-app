@@ -853,7 +853,24 @@
     "searchSection": "Buscar sección…",
     "createSection": "Crear sección",
     "newSectionPlaceholder": "Nombre de la sección",
-    "done": "Listo"
+    "done": "Listo",
+    "step": {
+      "general": "General",
+      "pricing": "Precios",
+      "variants": "Variantes",
+      "inventory": "Inventario",
+      "organization": "Organización",
+      "review": "Revisar"
+    },
+    "addValue": "Agregar valor",
+    "valuePlaceholder": "Ej: Grande",
+    "reuseOption": "Opción existente",
+    "customOption": "Crear personalizada",
+    "libraryHint": "Reusa una opción ya creada o crea una nueva; quedará disponible para el próximo producto.",
+    "previewNamePlaceholder": "Nombre del producto",
+    "priceFrom": "desde {price}",
+    "noPrice": "Sin precio",
+    "categoriesN": "{n} categorías"
   },
   "Command": {
     "title": "Buscar",

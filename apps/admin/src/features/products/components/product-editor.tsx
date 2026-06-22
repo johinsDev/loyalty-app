@@ -5,6 +5,11 @@ import {
   Button,
   Checkbox,
   CurrencyInput,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Input,
   Label,
   NumberInput,
@@ -32,10 +37,11 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { WizardShell } from "@/components/wizard-shell";
 import { Link, useRouter } from "@/i18n/navigation";
 
 import {
@@ -47,6 +53,8 @@ import {
   FEATURED_SECTIONS,
   GENDERS,
   getProductDraft,
+  optionLibrary,
+  type OptionPreset,
   PRODUCT_EMOJIS,
   type ProductDraft,
   type ProductOption,
@@ -62,19 +70,32 @@ const slugify = (s: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const STEPS = [
+  "general",
+  "pricing",
+  "variants",
+  "inventory",
+  "organization",
+  "review",
+] as const;
+type Step = (typeof STEPS)[number];
+
 /**
- * Product editor — a Shopify/Tiendanube-style long form: name + rich
- * description, photos & video, pricing, options→variants matrix, type,
- * inventory, codes, shipping, marketing meta, multiple categories, featured
- * sections, and tags/brand/SEO. Design-first / hardcoded; save toasts + returns
- * to the list. The seam is the Phase A product catalog + storage channel.
+ * Product editor — a Shopify/Tiendanube-style catalog product as a stepper
+ * (general → pricing → variants → inventory → organization → review) with a live
+ * product preview. Options are reusable: pick an existing one (auto-fills its
+ * values, deselect what you don't want) or create a custom one — new options and
+ * values stay available for the next product. Design-first / hardcoded.
  */
 export function ProductEditor({ id }: { id?: string }) {
   const t = useTranslations("Products");
+  const locale = useLocale();
   const router = useRouter();
   const [draft, setDraft] = useState<ProductDraft>(
     id ? getProductDraft(id) : emptyProductDraft,
   );
+  const [stepIndex, setStepIndex] = useState(0);
+  const [library, setLibrary] = useState<OptionPreset[]>(optionLibrary);
   const fileRef = useRef<HTMLInputElement>(null);
   const [sectionsOpen, setSectionsOpen] = useState(false);
   const [sectionQuery, setSectionQuery] = useState("");
@@ -82,6 +103,17 @@ export function ProductEditor({ id }: { id?: string }) {
   const [sections, setSections] = useState(() =>
     FEATURED_SECTIONS.map((s) => ({ id: s as string, label: t(`section.${s}`) })),
   );
+
+  const step = STEPS[stepIndex]!;
+  const set = <K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) =>
+    setDraft((d) => ({ ...d, [key]: value }));
+
+  const setOptions = (options: ProductOption[]) =>
+    setDraft((d) => ({
+      ...d,
+      options,
+      variants: buildVariants(options, d.variants),
+    }));
 
   const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -93,15 +125,56 @@ export function ProductEditor({ id }: { id?: string }) {
     e.target.value = "";
   };
 
-  const set = <K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) =>
-    setDraft((d) => ({ ...d, [key]: value }));
+  // ── Reusable options ──────────────────────────────────────────────────────
+  const addFromPreset = (preset: OptionPreset) =>
+    setOptions([
+      ...draft.options,
+      {
+        id: `o_${preset.id}_${draft.options.length}`,
+        name: preset.name,
+        values: [...preset.values],
+      },
+    ]);
 
-  const setOptions = (options: ProductOption[]) =>
-    setDraft((d) => ({
-      ...d,
-      options,
-      variants: buildVariants(options, d.variants),
-    }));
+  const addCustomOption = () =>
+    setOptions([
+      ...draft.options,
+      { id: `o_custom_${Date.now()}`, name: "", values: [] },
+    ]);
+
+  const updateOption = (idx: number, next: ProductOption) => {
+    const options = [...draft.options];
+    options[idx] = next;
+    setOptions(options);
+  };
+
+  const addValue = (idx: number, value: string) => {
+    const v = value.trim();
+    if (!v) return;
+    const opt = draft.options[idx]!;
+    if (opt.values.includes(v)) return;
+    updateOption(idx, { ...opt, values: [...opt.values, v] });
+    // Keep the library in sync so the value is reusable next time.
+    setLibrary((lib) => {
+      const i = lib.findIndex(
+        (l) => l.name.toLowerCase() === opt.name.trim().toLowerCase(),
+      );
+      if (!opt.name.trim()) return lib;
+      if (i === -1)
+        return [...lib, { id: `lib_${slugify(opt.name)}`, name: opt.name.trim(), values: [v] }];
+      if (lib[i]!.values.includes(v)) return lib;
+      const copy = [...lib];
+      copy[i] = { ...copy[i]!, values: [...copy[i]!.values, v] };
+      return copy;
+    });
+  };
+
+  const availablePresets = library.filter(
+    (l) =>
+      !draft.options.some(
+        (o) => o.name.trim().toLowerCase() === l.name.toLowerCase(),
+      ),
+  );
 
   const onSave = () => {
     toast.success(
@@ -110,127 +183,129 @@ export function ProductEditor({ id }: { id?: string }) {
     router.push("/products");
   };
 
+  const onNext = () => {
+    if (stepIndex === STEPS.length - 1) {
+      onSave();
+      return;
+    }
+    setStepIndex((n) => n + 1);
+  };
+
   const margin =
     draft.price && draft.cost && draft.price > 0
       ? `${Math.round(((draft.price - draft.cost) / draft.price) * 100)}%`
       : "—";
 
+  const steps = STEPS.map((key) => ({ key, label: t(`step.${key}`) }));
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 py-6 lg:px-8">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          {id ? t("editTitle") : t("newTitle")}
-        </h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            className="h-10 rounded-xl"
-            onClick={() => router.push("/products")}
-          >
-            {t("cancel")}
-          </Button>
-          <Button className="h-10 rounded-xl font-semibold" onClick={onSave}>
-            {id ? t("saveChanges") : t("save")}
-          </Button>
-        </div>
-      </div>
+    <WizardShell
+      title={id ? t("editTitle") : t("newTitle")}
+      steps={steps}
+      current={step}
+      completed={STEPS.slice(0, stepIndex)}
+      onStepSelect={(key) => {
+        const i = STEPS.indexOf(key as Step);
+        if (i <= stepIndex) setStepIndex(i);
+      }}
+      onBack={() => setStepIndex((n) => Math.max(0, n - 1))}
+      onNext={onNext}
+      isFirst={stepIndex === 0}
+      isLast={stepIndex === STEPS.length - 1}
+      finishLabel={id ? t("saveChanges") : t("save")}
+      preview={<ProductPreview draft={draft} locale={locale} t={t} />}
+    >
+      {step === "general" ? (
+        <div className="space-y-6">
+          <Block title={t("secName")} ai>
+            <Field label={t("fieldName")}>
+              <Input
+                value={draft.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder={t("fieldNamePlaceholder")}
+                className="h-10"
+                autoFocus
+              />
+            </Field>
+            <Field label={t("fieldDescription")}>
+              <RichTextEditor
+                value={draft.description}
+                onValueChange={(html) => set("description", html)}
+              />
+            </Field>
+          </Block>
 
-      <div className="mt-5 space-y-4">
-        {/* Name & description */}
-        <Section title={t("secName")} ai>
-          <Field label={t("fieldName")}>
-            <Input
-              value={draft.name}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder={t("fieldNamePlaceholder")}
-              className="h-10"
-              autoFocus
-            />
-          </Field>
-          <Field label={t("fieldDescription")}>
-            <RichTextEditor
-              value={draft.description}
-              onValueChange={(html) => set("description", html)}
-            />
-          </Field>
-        </Section>
-
-        {/* Photos & video */}
-        <Section title={t("secMedia")}>
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-            {draft.media.map((m) => (
-              <div
-                key={m.id}
-                className="bg-muted/50 group relative grid aspect-square place-items-center rounded-2xl text-3xl"
-              >
-                {m.emoji}
-                <button
-                  type="button"
-                  aria-label={t("delete")}
-                  onClick={() =>
-                    set(
-                      "media",
-                      draft.media.filter((x) => x.id !== m.id),
-                    )
-                  }
-                  className="bg-card text-destructive absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full border opacity-0 group-hover:opacity-100"
+          <Block title={t("secMedia")} divided>
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+              {draft.media.map((m) => (
+                <div
+                  key={m.id}
+                  className="bg-muted/50 group relative grid aspect-square place-items-center rounded-2xl text-3xl"
                 >
-                  <X className="size-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="border-border bg-primary/5 hover:bg-primary/10 mt-2 grid w-full place-items-center rounded-2xl border border-dashed py-6 text-center transition-colors"
-          >
-            <ImagePlus className="text-primary size-6" />
-            <span className="text-primary mt-1 text-sm font-bold">
-              {t("mediaHint")}
-            </span>
-            <span className="text-muted-foreground/70 mt-0.5 text-xs">
-              {t("mediaFormats")}
-            </span>
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            multiple
-            hidden
-            onChange={onPickFiles}
-          />
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {PRODUCT_EMOJIS.map((e) => (
-              <button
-                key={e}
-                type="button"
-                onClick={() =>
-                  set("media", [
-                    ...draft.media,
-                    { id: `m_${e}_${draft.media.length}`, emoji: e },
-                  ])
-                }
-                className="bg-muted/50 hover:bg-muted grid size-9 place-items-center rounded-lg text-lg"
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-          <Field label={t("videoLabel")} hint={t("videoHint")}>
-            <Input
-              value={draft.videoUrl}
-              onChange={(e) => set("videoUrl", e.target.value)}
-              placeholder={t("videoPlaceholder")}
-              className="h-10"
+                  {m.emoji}
+                  <button
+                    type="button"
+                    aria-label={t("delete")}
+                    onClick={() =>
+                      set("media", draft.media.filter((x) => x.id !== m.id))
+                    }
+                    className="bg-card text-destructive absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full border opacity-0 group-hover:opacity-100"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="border-border bg-primary/5 hover:bg-primary/10 grid w-full place-items-center rounded-2xl border border-dashed py-6 text-center transition-colors"
+            >
+              <ImagePlus className="text-primary size-6" />
+              <span className="text-primary mt-1 text-sm font-bold">
+                {t("mediaHint")}
+              </span>
+              <span className="text-muted-foreground/70 mt-0.5 text-xs">
+                {t("mediaFormats")}
+              </span>
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={onPickFiles}
             />
-          </Field>
-        </Section>
-
-        {/* Pricing */}
-        <Section title={t("secPrices")}>
+            <div className="flex flex-wrap gap-1.5">
+              {PRODUCT_EMOJIS.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() =>
+                    set("media", [
+                      ...draft.media,
+                      { id: `m_${e}_${draft.media.length}`, emoji: e },
+                    ])
+                  }
+                  className="bg-muted/50 hover:bg-muted grid size-9 place-items-center rounded-lg text-lg"
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+            <Field label={t("videoLabel")} hint={t("videoHint")}>
+              <Input
+                value={draft.videoUrl}
+                onChange={(e) => set("videoUrl", e.target.value)}
+                placeholder={t("videoPlaceholder")}
+                className="h-10"
+              />
+            </Field>
+          </Block>
+        </div>
+      ) : step === "pricing" ? (
+        <Block title={t("secPrices")}>
           <Field label={t("currency")}>
             <Select
               value={draft.currency}
@@ -268,7 +343,7 @@ export function ProductEditor({ id }: { id?: string }) {
               />
             </Field>
           </div>
-          <label className="mt-1 flex items-center gap-2.5 text-sm font-medium">
+          <label className="flex items-center gap-2.5 text-sm font-medium">
             <Checkbox
               checked={draft.showPrice}
               onCheckedChange={(c) => set("showPrice", c === true)}
@@ -294,73 +369,58 @@ export function ProductEditor({ id }: { id?: string }) {
           <p className="text-muted-foreground/70 text-xs font-semibold">
             {t("costHint")}
           </p>
-        </Section>
-
-        {/* Variants */}
-        <Section title={t("secVariants")}>
+        </Block>
+      ) : step === "variants" ? (
+        <Block title={t("secVariants")}>
           <p className="text-muted-foreground text-sm font-semibold">
-            {t("variantsHint")}
+            {t("libraryHint")}
           </p>
+
           <div className="space-y-3">
             {draft.options.map((o, idx) => (
-              <div
+              <OptionCard
                 key={o.id}
-                className="border-border space-y-2 rounded-2xl border p-3"
-              >
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={o.name}
-                    onChange={(e) => {
-                      const next = [...draft.options];
-                      next[idx] = { ...o, name: e.target.value };
-                      setOptions(next);
-                    }}
-                    placeholder={t("optionNamePlaceholder")}
-                    className="h-10 flex-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label={t("removeOption")}
-                    className="text-destructive hover:bg-destructive/10 size-10 flex-none rounded-xl"
-                    onClick={() =>
-                      setOptions(draft.options.filter((x) => x.id !== o.id))
-                    }
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-                <Input
-                  value={o.values.join(", ")}
-                  onChange={(e) => {
-                    const next = [...draft.options];
-                    next[idx] = {
-                      ...o,
-                      values: e.target.value
-                        .split(",")
-                        .map((v) => v.trim())
-                        .filter(Boolean),
-                    };
-                    setOptions(next);
-                  }}
-                  placeholder={t("optionValuesPlaceholder")}
-                  className="h-10"
-                />
-              </div>
+                option={o}
+                onChangeName={(name) => updateOption(idx, { ...o, name })}
+                onAddValue={(v) => addValue(idx, v)}
+                onRemoveValue={(v) =>
+                  updateOption(idx, {
+                    ...o,
+                    values: o.values.filter((x) => x !== v),
+                  })
+                }
+                onRemove={() =>
+                  setOptions(draft.options.filter((x) => x.id !== o.id))
+                }
+                t={t}
+              />
             ))}
-            <Button
-              variant="outline"
-              className="h-10 gap-2 rounded-xl"
-              onClick={() =>
-                setOptions([
-                  ...draft.options,
-                  { id: `o_${draft.options.length}_${Date.now()}`, name: "", values: [] },
-                ])
-              }
-            >
-              <Plus className="size-4" />
-              {t("addOption")}
-            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="outline" className="h-10 gap-2 rounded-xl">
+                    <Plus className="size-4" />
+                    {t("addOption")}
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="start" className="w-64 rounded-xl">
+                {availablePresets.map((p) => (
+                  <DropdownMenuItem key={p.id} onClick={() => addFromPreset(p)}>
+                    <span className="flex-1 font-semibold">{p.name}</span>
+                    <span className="text-muted-foreground/70 truncate text-xs">
+                      {p.values.join(", ")}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+                {availablePresets.length > 0 ? <DropdownMenuSeparator /> : null}
+                <DropdownMenuItem onClick={addCustomOption}>
+                  <Plus className="size-4" />
+                  {t("customOption")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {draft.variants.length > 0 ? (
@@ -411,8 +471,8 @@ export function ProductEditor({ id }: { id?: string }) {
                             next[idx] = { ...v, stock: val ?? null };
                             set("variants", next);
                           }}
-                          className="h-9 w-24"
                           placeholder="∞"
+                          className="h-9 w-24"
                         />
                       </td>
                     </tr>
@@ -423,293 +483,325 @@ export function ProductEditor({ id }: { id?: string }) {
           ) : (
             <p className="text-muted-foreground/70 text-sm">{t("noVariants")}</p>
           )}
-        </Section>
-
-        {/* Type */}
-        <Section title={t("secType")}>
-          <SegmentedControl<ProductType>
-            value={draft.type}
-            onValueChange={(v) => set("type", v)}
-            options={[
-              { value: "physical", label: t("typePhysical"), icon: Box },
-              { value: "digital", label: t("typeDigital"), icon: Laptop },
-            ]}
-          />
-        </Section>
-
-        {/* Inventory */}
-        <Section title={t("secInventory")}>
-          <Field label={t("stock")}>
-            <SegmentedControl<StockMode>
-              value={draft.stockMode}
-              onValueChange={(v) => set("stockMode", v)}
+        </Block>
+      ) : step === "inventory" ? (
+        <div className="space-y-6">
+          <Block title={t("secType")}>
+            <SegmentedControl<ProductType>
+              value={draft.type}
+              onValueChange={(v) => set("type", v)}
               options={[
-                { value: "infinite", label: t("stockInfinite") },
-                { value: "limited", label: t("stockLimited") },
+                { value: "physical", label: t("typePhysical"), icon: Box },
+                { value: "digital", label: t("typeDigital"), icon: Laptop },
               ]}
             />
-          </Field>
-          {draft.stockMode === "limited" ? (
-            <Field label={t("quantity")}>
-              <NumberInput
-                value={draft.stock}
-                onValueChange={(v) => set("stock", v ?? 0)}
-                className="h-10 w-40"
-              />
-            </Field>
-          ) : null}
-        </Section>
+          </Block>
 
-        {/* Codes */}
-        <Section title={t("secCodes")}>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label={t("sku")} hint={t("optional")}>
-              <Input
-                value={draft.sku}
-                onChange={(e) => set("sku", e.target.value)}
-                placeholder="SKU-001"
-                className="h-10"
+          <Block title={t("secInventory")} divided>
+            <Field label={t("stock")}>
+              <SegmentedControl<StockMode>
+                value={draft.stockMode}
+                onValueChange={(v) => set("stockMode", v)}
+                options={[
+                  { value: "infinite", label: t("stockInfinite") },
+                  { value: "limited", label: t("stockLimited") },
+                ]}
               />
             </Field>
-            <Field label={t("barcode")} hint={t("optional")}>
-              <Input
-                value={draft.barcode}
-                onChange={(e) => set("barcode", e.target.value)}
-                placeholder="7501234567890"
-                className="h-10"
-              />
-            </Field>
-          </div>
-        </Section>
+            {draft.stockMode === "limited" ? (
+              <Field label={t("quantity")}>
+                <NumberInput
+                  value={draft.stock}
+                  onValueChange={(v) => set("stock", v ?? 0)}
+                  placeholder="0"
+                  className="h-10 w-40"
+                />
+              </Field>
+            ) : null}
+          </Block>
 
-        {/* Shipping */}
-        {draft.type === "physical" ? (
-          <Section title={t("secShipping")}>
-            <p className="text-muted-foreground text-sm font-semibold">
-              {t("shippingHint")}
-            </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Field label={t("weight")}>
-                <NumberInput
-                  value={draft.weight ?? undefined}
-                  onValueChange={(v) => set("weight", v ?? null)}
+          <Block title={t("secCodes")} divided>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label={t("sku")} hint={t("optional")}>
+                <Input
+                  value={draft.sku}
+                  onChange={(e) => set("sku", e.target.value)}
+                  placeholder="SKU-001"
                   className="h-10"
-                  decimalScale={2}
-                  suffix=" kg"
                 />
               </Field>
-              <Field label={t("depth")}>
-                <NumberInput
-                  value={draft.depth ?? undefined}
-                  onValueChange={(v) => set("depth", v ?? null)}
+              <Field label={t("barcode")} hint={t("optional")}>
+                <Input
+                  value={draft.barcode}
+                  onChange={(e) => set("barcode", e.target.value)}
+                  placeholder="7501234567890"
                   className="h-10"
-                  suffix=" cm"
-                />
-              </Field>
-              <Field label={t("width")}>
-                <NumberInput
-                  value={draft.width ?? undefined}
-                  onValueChange={(v) => set("width", v ?? null)}
-                  className="h-10"
-                  suffix=" cm"
-                />
-              </Field>
-              <Field label={t("height")}>
-                <NumberInput
-                  value={draft.height ?? undefined}
-                  onValueChange={(v) => set("height", v ?? null)}
-                  className="h-10"
-                  suffix=" cm"
                 />
               </Field>
             </div>
-          </Section>
-        ) : null}
+          </Block>
 
-        {/* Marketing meta */}
-        <Section title={t("secMarketing")}>
-          <p className="text-muted-foreground text-sm font-semibold">
-            {t("marketingHint")}
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Field label={t("mpn")} hint={t("optional")}>
-              <Input
-                value={draft.mpn}
-                onChange={(e) => set("mpn", e.target.value)}
-                placeholder="MPN-12345"
-                className="h-10"
-              />
-            </Field>
-            <Field label={t("ageRange")}>
-              <Select value={draft.ageRange} onValueChange={(v) => set("ageRange", v ?? "all")}>
-                <SelectTrigger size="lg" className="w-full text-sm">
-                  <SelectValue>{(v) => t(`age.${v as string}`)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {AGE_RANGES.map((a) => (
-                    <SelectItem key={a} value={a}>
-                      {t(`age.${a}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label={t("gender")}>
-              <Select value={draft.gender} onValueChange={(v) => set("gender", v ?? "unisex")}>
-                <SelectTrigger size="lg" className="w-full text-sm">
-                  <SelectValue>{(v) => t(`gender.${v as string}`)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {GENDERS.map((g) => (
-                    <SelectItem key={g} value={g}>
-                      {t(`gender.${g}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
-        </Section>
-
-        {/* Categories */}
-        <Section title={t("secCategories")}>
-          <p className="text-muted-foreground text-sm font-semibold">
-            {t("categoriesHint")}
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {categoryRefs().map((c) => {
-              const on = draft.categoryIds.includes(c.id);
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() =>
-                    set(
-                      "categoryIds",
-                      on
-                        ? draft.categoryIds.filter((x) => x !== c.id)
-                        : [...draft.categoryIds, c.id],
-                    )
-                  }
-                  className={`h-8 rounded-full px-3 text-xs font-bold transition-colors ${
-                    on
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {c.label}
-                </button>
-              );
-            })}
-          </div>
-          <Link
-            href="/products/categories"
-            className="text-primary inline-flex items-center gap-1.5 text-sm font-bold"
-          >
-            <FolderTree className="size-4" />
-            {t("manageCategories")}
-          </Link>
-        </Section>
-
-        {/* Featured sections */}
-        <Section title={t("secFeatured")}>
-          <p className="text-muted-foreground text-sm font-semibold">
-            {t("featuredHint")}
-          </p>
-          {draft.featuredSections.length > 0 ? (
+          {draft.type === "physical" ? (
+            <Block title={t("secShipping")} divided>
+              <p className="text-muted-foreground text-sm font-semibold">
+                {t("shippingHint")}
+              </p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <Field label={t("weight")}>
+                  <NumberInput
+                    value={draft.weight ?? undefined}
+                    onValueChange={(v) => set("weight", v ?? null)}
+                    decimalScale={2}
+                    suffix=" kg"
+                    placeholder="0.00"
+                    className="h-10"
+                  />
+                </Field>
+                <Field label={t("depth")}>
+                  <NumberInput
+                    value={draft.depth ?? undefined}
+                    onValueChange={(v) => set("depth", v ?? null)}
+                    suffix=" cm"
+                    placeholder="0"
+                    className="h-10"
+                  />
+                </Field>
+                <Field label={t("width")}>
+                  <NumberInput
+                    value={draft.width ?? undefined}
+                    onValueChange={(v) => set("width", v ?? null)}
+                    suffix=" cm"
+                    placeholder="0"
+                    className="h-10"
+                  />
+                </Field>
+                <Field label={t("height")}>
+                  <NumberInput
+                    value={draft.height ?? undefined}
+                    onValueChange={(v) => set("height", v ?? null)}
+                    suffix=" cm"
+                    placeholder="0"
+                    className="h-10"
+                  />
+                </Field>
+              </div>
+            </Block>
+          ) : null}
+        </div>
+      ) : step === "organization" ? (
+        <div className="space-y-6">
+          <Block title={t("secCategories")}>
+            <p className="text-muted-foreground text-sm font-semibold">
+              {t("categoriesHint")}
+            </p>
             <div className="flex flex-wrap gap-1.5">
-              {draft.featuredSections.map((id) => (
-                <span
-                  key={id}
-                  className="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
-                >
-                  {sections.find((s) => s.id === id)?.label ?? id}
+              {categoryRefs().map((c) => {
+                const on = draft.categoryIds.includes(c.id);
+                return (
                   <button
+                    key={c.id}
                     type="button"
-                    aria-label={t("delete")}
                     onClick={() =>
                       set(
-                        "featuredSections",
-                        draft.featuredSections.filter((x) => x !== id),
+                        "categoryIds",
+                        on
+                          ? draft.categoryIds.filter((x) => x !== c.id)
+                          : [...draft.categoryIds, c.id],
                       )
                     }
+                    className={`h-8 rounded-full px-3 text-xs font-bold transition-colors ${
+                      on
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    }`}
                   >
-                    <X className="size-3" />
+                    {c.label}
                   </button>
-                </span>
-              ))}
+                );
+              })}
             </div>
-          ) : null}
-          <Button
-            variant="outline"
-            className="h-10 gap-2 rounded-xl"
-            onClick={() => setSectionsOpen(true)}
-          >
-            <Plus className="size-4" />
-            {t("chooseSections")}
-          </Button>
-        </Section>
+            <Link
+              href="/products/categories"
+              className="text-primary inline-flex items-center gap-1.5 text-sm font-bold"
+            >
+              <FolderTree className="size-4" />
+              {t("manageCategories")}
+            </Link>
+          </Block>
 
-        {/* Tags, brand & SEO */}
-        <Section title={t("secSeo")} ai>
-          <Field label={t("tags")} hint={t("tagsHint")}>
-            <Input
-              value={draft.tags.join(", ")}
-              onChange={(e) =>
-                set(
-                  "tags",
-                  e.target.value.split(",").map((x) => x.trim()).filter(Boolean),
-                )
-              }
-              placeholder={t("tagsPlaceholder")}
-              className="h-10"
-            />
-          </Field>
-          <Field label={t("brand")}>
-            <Input
-              value={draft.brand}
-              onChange={(e) => set("brand", e.target.value)}
-              placeholder={t("brandPlaceholder")}
-              className="h-10"
-            />
-          </Field>
-          <Field label={t("seoTitle")} hint={`${draft.seoTitle.length}/70`}>
-            <Input
-              value={draft.seoTitle}
-              maxLength={70}
-              onChange={(e) => set("seoTitle", e.target.value)}
-              placeholder={t("seoTitlePlaceholder")}
-              className="h-10"
-            />
-          </Field>
-          <Field label={t("seoDesc")} hint={`${draft.seoDescription.length}/160`}>
-            <Textarea
-              value={draft.seoDescription}
-              maxLength={160}
-              onChange={(e) => set("seoDescription", e.target.value)}
-              placeholder={t("seoDescPlaceholder")}
-              rows={2}
-              className="min-h-20 rounded-xl"
-            />
-          </Field>
-          <Field label={t("slug")}>
-            <div className="border-input bg-input/30 focus-within:border-ring focus-within:ring-ring/50 flex h-10 items-center overflow-hidden rounded-xl border focus-within:ring-3">
-              <span className="text-muted-foreground/70 pl-4 text-sm whitespace-nowrap">
-                /productos/
-              </span>
-              <input
-                value={draft.slug}
-                onChange={(e) => set("slug", slugify(e.target.value))}
-                placeholder="smoothie-maracuya"
-                className="h-full flex-1 bg-transparent pr-4 pl-1 text-sm outline-none"
+          <Block title={t("secFeatured")} divided>
+            <p className="text-muted-foreground text-sm font-semibold">
+              {t("featuredHint")}
+            </p>
+            {draft.featuredSections.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {draft.featuredSections.map((sid) => (
+                  <span
+                    key={sid}
+                    className="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
+                  >
+                    {sections.find((s) => s.id === sid)?.label ?? sid}
+                    <button
+                      type="button"
+                      aria-label={t("delete")}
+                      onClick={() =>
+                        set(
+                          "featuredSections",
+                          draft.featuredSections.filter((x) => x !== sid),
+                        )
+                      }
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <Button
+              variant="outline"
+              className="h-10 gap-2 rounded-xl"
+              onClick={() => setSectionsOpen(true)}
+            >
+              <Plus className="size-4" />
+              {t("chooseSections")}
+            </Button>
+          </Block>
+
+          <Block title={t("secMarketing")} divided>
+            <p className="text-muted-foreground text-sm font-semibold">
+              {t("marketingHint")}
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <Field label={t("mpn")} hint={t("optional")}>
+                <Input
+                  value={draft.mpn}
+                  onChange={(e) => set("mpn", e.target.value)}
+                  placeholder="MPN-12345"
+                  className="h-10"
+                />
+              </Field>
+              <Field label={t("ageRange")}>
+                <Select
+                  value={draft.ageRange}
+                  onValueChange={(v) => set("ageRange", v ?? "all")}
+                >
+                  <SelectTrigger size="lg" className="w-full text-sm">
+                    <SelectValue>{(v) => t(`age.${v as string}`)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AGE_RANGES.map((a) => (
+                      <SelectItem key={a} value={a}>
+                        {t(`age.${a}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label={t("gender")}>
+                <Select
+                  value={draft.gender}
+                  onValueChange={(v) => set("gender", v ?? "unisex")}
+                >
+                  <SelectTrigger size="lg" className="w-full text-sm">
+                    <SelectValue>{(v) => t(`gender.${v as string}`)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GENDERS.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {t(`gender.${g}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+          </Block>
+
+          <Block title={t("secSeo")} ai divided>
+            <Field label={t("tags")} hint={t("tagsHint")}>
+              <Input
+                value={draft.tags.join(", ")}
+                onChange={(e) =>
+                  set(
+                    "tags",
+                    e.target.value.split(",").map((x) => x.trim()).filter(Boolean),
+                  )
+                }
+                placeholder={t("tagsPlaceholder")}
+                className="h-10"
               />
-            </div>
-          </Field>
-        </Section>
-      </div>
+            </Field>
+            <Field label={t("brand")}>
+              <Input
+                value={draft.brand}
+                onChange={(e) => set("brand", e.target.value)}
+                placeholder={t("brandPlaceholder")}
+                className="h-10"
+              />
+            </Field>
+            <Field label={t("seoTitle")} hint={`${draft.seoTitle.length}/70`}>
+              <Input
+                value={draft.seoTitle}
+                maxLength={70}
+                onChange={(e) => set("seoTitle", e.target.value)}
+                placeholder={t("seoTitlePlaceholder")}
+                className="h-10"
+              />
+            </Field>
+            <Field label={t("seoDesc")} hint={`${draft.seoDescription.length}/160`}>
+              <Textarea
+                value={draft.seoDescription}
+                maxLength={160}
+                onChange={(e) => set("seoDescription", e.target.value)}
+                placeholder={t("seoDescPlaceholder")}
+                rows={2}
+                className="min-h-20 rounded-xl"
+              />
+            </Field>
+            <Field label={t("slug")}>
+              <div className="border-input bg-input/30 focus-within:border-ring focus-within:ring-ring/50 flex h-10 items-center overflow-hidden rounded-xl border focus-within:ring-3">
+                <span className="text-muted-foreground/70 pl-4 text-sm whitespace-nowrap">
+                  /productos/
+                </span>
+                <input
+                  value={draft.slug}
+                  onChange={(e) => set("slug", slugify(e.target.value))}
+                  placeholder="smoothie-maracuya"
+                  className="h-full flex-1 bg-transparent pr-4 pl-1 text-sm outline-none"
+                />
+              </div>
+            </Field>
+          </Block>
+        </div>
+      ) : (
+        <Block title={t("reviewTitle")}>
+          <dl className="divide-border divide-y text-sm">
+            <ReviewRow label={t("fieldName")} value={draft.name || "—"} />
+            <ReviewRow
+              label={t("col.price")}
+              value={priceLabel(draft, locale)}
+            />
+            <ReviewRow
+              label={t("col.variants")}
+              value={`${draft.variants.length}`}
+            />
+            <ReviewRow
+              label={t("secCategories")}
+              value={t("categoriesN", { n: draft.categoryIds.length })}
+            />
+            <ReviewRow
+              label={t("secFeatured")}
+              value={
+                draft.featuredSections
+                  .map((sid) => sections.find((s) => s.id === sid)?.label ?? sid)
+                  .join(", ") || "—"
+              }
+            />
+          </dl>
+        </Block>
+      )}
 
-      {/* Featured-sections picker — searchable + create new (sections will be
-          manageable later; this lets the owner add one on the fly). */}
+      {/* Featured-sections picker — searchable + create new */}
       <ResponsiveModal open={sectionsOpen} onOpenChange={setSectionsOpen}>
         <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
           <div className="flex flex-col px-6 pt-2 pb-6">
@@ -719,7 +811,6 @@ export function ProductEditor({ id }: { id?: string }) {
             <ResponsiveModalDescription className="text-muted-foreground mt-1 text-sm">
               {t("featuredHint")}
             </ResponsiveModalDescription>
-
             <div className="border-input bg-input/30 mt-4 flex h-10 items-center gap-2 rounded-xl border px-3">
               <Search className="text-muted-foreground size-4" />
               <input
@@ -729,13 +820,10 @@ export function ProductEditor({ id }: { id?: string }) {
                 className="h-full flex-1 bg-transparent text-sm outline-none"
               />
             </div>
-
             <ul className="mt-2 max-h-64 space-y-1 overflow-y-auto">
               {sections
                 .filter((s) =>
-                  s.label
-                    .toLowerCase()
-                    .includes(sectionQuery.trim().toLowerCase()),
+                  s.label.toLowerCase().includes(sectionQuery.trim().toLowerCase()),
                 )
                 .map((s) => (
                   <li key={s.id}>
@@ -759,7 +847,6 @@ export function ProductEditor({ id }: { id?: string }) {
                   </li>
                 ))}
             </ul>
-
             <div className="border-border mt-3 flex items-center gap-2 border-t pt-3">
               <Input
                 value={newSection}
@@ -784,7 +871,6 @@ export function ProductEditor({ id }: { id?: string }) {
                 {t("createSection")}
               </Button>
             </div>
-
             <Button
               className="mt-4 h-10 w-full rounded-xl font-semibold"
               onClick={() => setSectionsOpen(false)}
@@ -794,22 +880,160 @@ export function ProductEditor({ id }: { id?: string }) {
           </div>
         </ResponsiveModalContent>
       </ResponsiveModal>
+    </WizardShell>
+  );
+}
+
+function priceLabel(draft: ProductDraft, locale: string): string {
+  const fmt = (n: number) =>
+    new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: draft.currency,
+    }).format(n);
+  if (draft.variants.length > 0) {
+    const min = Math.min(...draft.variants.map((v) => v.price));
+    return fmt(min);
+  }
+  return draft.price != null ? fmt(draft.price) : "—";
+}
+
+function ProductPreview({
+  draft,
+  locale,
+  t,
+}: {
+  draft: ProductDraft;
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const variantPrices = draft.variants.map((v) => v.price);
+  const min = variantPrices.length ? Math.min(...variantPrices) : null;
+  const fmt = (n: number) =>
+    new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: draft.currency,
+    }).format(n);
+  return (
+    <div className="bg-card border-border rounded-3xl border p-4 shadow-sm">
+      <div className="bg-muted/50 grid aspect-square place-items-center rounded-2xl text-6xl">
+        {draft.media[0]?.emoji ?? "🛍️"}
+      </div>
+      <div className="mt-3 font-bold">
+        {draft.name || t("previewNamePlaceholder")}
+      </div>
+      <div className="text-primary mt-0.5 font-extrabold">
+        {min != null
+          ? t("priceFrom", { price: fmt(min) })
+          : draft.price != null
+            ? fmt(draft.price)
+            : t("noPrice")}
+      </div>
+      {draft.categoryIds.length > 0 ? (
+        <div className="text-muted-foreground/70 mt-2 text-xs font-semibold">
+          {t("categoriesN", { n: draft.categoryIds.length })}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function Section({
+function OptionCard({
+  option,
+  onChangeName,
+  onAddValue,
+  onRemoveValue,
+  onRemove,
+  t,
+}: {
+  option: ProductOption;
+  onChangeName: (name: string) => void;
+  onAddValue: (value: string) => void;
+  onRemoveValue: (value: string) => void;
+  onRemove: () => void;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const [value, setValue] = useState("");
+  const commit = () => {
+    onAddValue(value);
+    setValue("");
+  };
+  return (
+    <div className="border-border space-y-2 rounded-2xl border p-3">
+      <div className="flex items-center gap-2">
+        <Input
+          value={option.name}
+          onChange={(e) => onChangeName(e.target.value)}
+          placeholder={t("optionNamePlaceholder")}
+          className="h-9 flex-1 font-semibold"
+        />
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={t("removeOption")}
+          className="text-destructive hover:bg-destructive/10 size-9 flex-none rounded-lg"
+          onClick={onRemove}
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {option.values.map((v) => (
+          <span
+            key={v}
+            className="bg-muted inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
+          >
+            {v}
+            <button
+              type="button"
+              aria-label={t("delete")}
+              onClick={() => onRemoveValue(v)}
+            >
+              <X className="size-3" />
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit();
+            }
+          }}
+          placeholder={t("valuePlaceholder")}
+          className="h-9 flex-1"
+        />
+        <Button
+          variant="outline"
+          className="h-9 gap-1.5 rounded-lg"
+          disabled={!value.trim()}
+          onClick={commit}
+        >
+          <Plus className="size-3.5" />
+          {t("addValue")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function Block({
   title,
   ai,
+  divided,
   children,
 }: {
   title: string;
   ai?: boolean;
+  divided?: boolean;
   children: ReactNode;
 }) {
   const t = useTranslations("Products");
   return (
-    <section className="bg-card border-border space-y-4 rounded-3xl border p-6 shadow-sm">
+    <section className={divided ? "border-border space-y-4 border-t pt-6" : "space-y-4"}>
       <div className="flex items-center gap-2">
         <h2 className="font-display text-lg font-semibold tracking-tight">
           {title}
@@ -849,6 +1073,15 @@ function Field({
         ) : null}
       </div>
       {children}
+    </div>
+  );
+}
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <dt className="text-muted-foreground font-semibold">{label}</dt>
+      <dd className="truncate text-right font-bold">{value}</dd>
     </div>
   );
 }
