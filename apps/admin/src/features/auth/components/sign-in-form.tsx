@@ -153,13 +153,13 @@ export function SignInForm({ passwordEnabled }: Props) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={busy}
-                    className="h-14 rounded-2xl text-base"
+                    className="h-10 rounded-xl text-sm"
                   />
                 </div>
                 <Button
                   type="submit"
                   size="lg"
-                  className="h-14 w-full rounded-2xl text-base"
+                  className="h-10 w-full rounded-xl text-sm"
                   disabled={busy}
                 >
                   {loading === "magic" ? t("submitting") : t("magicLinkButton")}
@@ -186,14 +186,14 @@ export function SignInForm({ passwordEnabled }: Props) {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         disabled={busy}
-                        className="h-14 rounded-2xl text-base"
+                        className="h-10 rounded-xl text-sm"
                       />
                     </div>
                     <Button
                       type="submit"
                       variant="outline"
                       size="lg"
-                      className="h-14 w-full rounded-2xl text-base"
+                      className="h-10 w-full rounded-xl text-sm"
                       disabled={busy}
                     >
                       {loading === "email"
@@ -253,7 +253,7 @@ export function SignInForm({ passwordEnabled }: Props) {
               </div>
               <Button
                 size="lg"
-                className="mt-4 h-14 w-full rounded-2xl text-base"
+                className="mt-4 h-10 w-full rounded-xl text-sm"
                 onClick={() => {
                   setPin("");
                   setStep("pin");

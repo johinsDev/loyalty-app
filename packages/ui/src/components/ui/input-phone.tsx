@@ -53,7 +53,7 @@ function countryLabel(code: CountryCode, locale?: string): string {
 export interface InputPhoneProps
   extends Omit<
     React.ComponentProps<"input">,
-    "value" | "defaultValue" | "onChange" | "type"
+    "value" | "defaultValue" | "onChange" | "type" | "size"
   > {
   /** Controlled value as E.164 (`+573122186181`). */
   value?: string;
@@ -70,6 +70,8 @@ export interface InputPhoneProps
   countries?: readonly CountryCode[];
   /** BCP-47 locale for country names (`Intl.DisplayNames`). Defaults to `es`. */
   locale?: string;
+  /** Control height: `default` = h-14 (customer/touch), `sm` = h-10 (admin). */
+  size?: "default" | "sm";
 }
 
 /**
@@ -89,6 +91,7 @@ export function InputPhone({
   locale,
   className,
   disabled,
+  size = "default",
   ...inputProps
 }: InputPhoneProps) {
   // Seed once from the initial prop (E.164 → country + national digits).
@@ -183,7 +186,7 @@ export function InputPhone({
             data-slot="input-phone-country"
             aria-expanded={open}
             onClick={() => setOpen(true)}
-            className={TRIGGER_CLASSNAME}
+            className={cn(TRIGGER_CLASSNAME, size === "sm" && "h-10")}
           >
             <Flag className="size-5 shrink-0 rounded-[2px]" />
             <span className="inline-block w-12 text-left tabular-nums text-muted-foreground">
@@ -287,7 +290,7 @@ export function InputPhone({
           type="button"
           disabled={disabled}
           data-slot="input-phone-country"
-          className={TRIGGER_CLASSNAME}
+          className={cn(TRIGGER_CLASSNAME, size === "sm" && "h-10")}
         >
           <Flag className="size-5 shrink-0 rounded-[2px]" />
           <span className="inline-block w-12 text-left tabular-nums text-muted-foreground">
@@ -299,6 +302,7 @@ export function InputPhone({
             placeholder="Buscar país…"
             showTrigger={false}
             autoFocus
+            className={cn(size === "sm" && "h-9 text-sm")}
           />
           <ComboboxList>
             {(code: CountryCode) => {
@@ -309,9 +313,17 @@ export function InputPhone({
                   key={code}
                   value={code}
                   data-slot="combobox-item"
-                  className="relative flex w-full cursor-default items-center gap-2.5 rounded-lg px-2.5 py-2 text-base outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50"
+                  className={cn(
+                    "relative flex w-full cursor-default items-center gap-2.5 rounded-lg px-2.5 outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+                    size === "sm" ? "py-1.5 text-sm" : "py-2 text-base",
+                  )}
                 >
-                  <ItemFlag className="size-5 shrink-0 rounded-[2px]" />
+                  <ItemFlag
+                    className={cn(
+                      "shrink-0 rounded-[2px]",
+                      size === "sm" ? "size-4" : "size-5",
+                    )}
+                  />
                   <span className="truncate">{countryLabel(code, locale)}</span>
                   <ComboboxPrimitive.ItemIndicator className="text-muted-foreground">
                     <CheckIcon className="size-4" />
@@ -337,7 +349,7 @@ export function InputPhone({
         disabled={disabled}
         value={display}
         onChange={handleInput}
-        className={INPUT_CLASSNAME}
+        className={cn(INPUT_CLASSNAME, size === "sm" && "h-10")}
       />
     </div>
   );
