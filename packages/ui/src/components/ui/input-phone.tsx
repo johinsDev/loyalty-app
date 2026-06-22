@@ -302,6 +302,7 @@ export function InputPhone({
             placeholder="Buscar país…"
             showTrigger={false}
             autoFocus
+            className={cn(size === "sm" && "h-9 text-sm")}
           />
           <ComboboxList>
             {(code: CountryCode) => {
@@ -312,9 +313,17 @@ export function InputPhone({
                   key={code}
                   value={code}
                   data-slot="combobox-item"
-                  className="relative flex w-full cursor-default items-center gap-2.5 rounded-lg px-2.5 py-2 text-base outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50"
+                  className={cn(
+                    "relative flex w-full cursor-default items-center gap-2.5 rounded-lg px-2.5 outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+                    size === "sm" ? "py-1.5 text-sm" : "py-2 text-base",
+                  )}
                 >
-                  <ItemFlag className="size-5 shrink-0 rounded-[2px]" />
+                  <ItemFlag
+                    className={cn(
+                      "shrink-0 rounded-[2px]",
+                      size === "sm" ? "size-4" : "size-5",
+                    )}
+                  />
                   <span className="truncate">{countryLabel(code, locale)}</span>
                   <ComboboxPrimitive.ItemIndicator className="text-muted-foreground">
                     <CheckIcon className="size-4" />

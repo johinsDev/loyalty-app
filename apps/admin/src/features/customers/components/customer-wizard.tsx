@@ -253,6 +253,7 @@ export function CustomerWizard({ id }: { id?: string }) {
               </p>
             </div>
             <Switch
+              size="lg"
               checked={draft.marketingOptIn}
               onCheckedChange={(c) => set("marketingOptIn", c)}
             />
@@ -412,7 +413,7 @@ function Field({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <Label>{label}</Label>
+        <Label className="text-xs">{label}</Label>
         {hint ? (
           <span className="text-muted-foreground/70 text-xs font-semibold">
             {hint}
