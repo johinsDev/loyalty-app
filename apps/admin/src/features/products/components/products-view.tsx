@@ -11,59 +11,78 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@loyalty/ui";
-import { Package, Pencil, Plus, Search, Stamp, Trash2 } from "lucide-react";
+import { FolderTree, Package, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/empty-state";
-import { type FilterOption, FilterMultiSelect } from "@/components/filters";
+import {
+  type FilterOption,
+  FilterMultiSelect,
+  FilterSelect,
+} from "@/components/filters";
+import { type ViewMode, ViewToggle } from "@/components/view-toggle";
 import { useFadeUp } from "@/lib/animate";
 import { useRouter } from "@/i18n/navigation";
 
-import { type Category, categories, type Product, products } from "../data";
+import {
+  categoryLabel,
+  categoryRefs,
+  type Product,
+  products,
+  type Status,
+} from "../data";
 
-type StatusKey = "active" | "inactive";
-const STATUSES: StatusKey[] = ["active", "inactive"];
+const STATUSES: Status[] = ["active", "draft"];
 
 /**
- * Productos — searchable, category/status multi-select-filtered card grid. Add
- * and edit open the product wizard; delete confirms via an AlertDialog then
- * offers undo. Design-first / hardcoded (../data).
+ * Productos — searchable catalog filtered by category (single-select) and status
+ * (multi-select), with a grid / list view toggle. Add/edit open the product
+ * wizard; "edit categories" jumps to the category manager; delete confirms via
+ * an AlertDialog then offers undo. Design-first / hardcoded (../data).
  */
 export function ProductsView() {
   const t = useTranslations("Products");
+  const tCommon = useTranslations("Common");
   const router = useRouter();
   const fade = useFadeUp({ step: 30 });
 
   const [query, setQuery] = useState("");
-  const [cats, setCats] = useState<Category[]>([...categories]);
-  const [statuses, setStatuses] = useState<StatusKey[]>([...STATUSES]);
+  const [category, setCategory] = useState<string | null>(null);
+  const [statuses, setStatuses] = useState<Status[]>([...STATUSES]);
+  const [view, setView] = useState<ViewMode>("grid");
   const [toDelete, setToDelete] = useState<Product | null>(null);
 
-  const catOptions: FilterOption<Category>[] = categories.map((c) => ({
-    value: c,
-    label: t(`category.${c}`),
+  const categoryOptions: FilterOption<string>[] = categoryRefs().map((r) => ({
+    value: r.id,
+    label: r.label,
   }));
-  const statusOptions: FilterOption<StatusKey>[] = [
-    { value: "active", label: t("active"), dot: "#1f9d68" },
-    { value: "inactive", label: t("inactive"), dot: "#9aa1ab" },
+  const statusOptions: FilterOption<Status>[] = [
+    { value: "active", label: t("status.active"), dot: "#1f9d68" },
+    { value: "draft", label: t("status.draft"), dot: "#9aa1ab" },
   ];
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return products.filter((p) => {
-      if (!cats.includes(p.category)) return false;
-      if (!statuses.includes(p.active ? "active" : "inactive")) return false;
+      if (category !== null && !p.categoryIds.includes(category)) return false;
+      if (!statuses.includes(p.status)) return false;
       if (q && !p.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [query, cats, statuses]);
+  }, [query, category, statuses]);
 
   const clearFilters = () => {
     setQuery("");
-    setCats([...categories]);
+    setCategory(null);
     setStatuses([...STATUSES]);
   };
 
@@ -92,13 +111,23 @@ export function ProductsView() {
             {t("subtitle")}
           </p>
         </div>
-        <Button
-          className="h-10 gap-2 rounded-xl font-semibold"
-          onClick={() => router.push("/products/new")}
-        >
-          <Plus className="size-4" />
-          {t("add")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="h-10 gap-2 rounded-xl font-semibold"
+            onClick={() => router.push("/products/categories")}
+          >
+            <FolderTree className="size-4" />
+            {t("editCategories")}
+          </Button>
+          <Button
+            className="h-10 gap-2 rounded-xl font-semibold"
+            onClick={() => router.push("/products/new")}
+          >
+            <Plus className="size-4" />
+            {t("add")}
+          </Button>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -112,11 +141,12 @@ export function ProductsView() {
             className="border-border bg-card placeholder:text-muted-foreground h-10 w-full rounded-xl border pr-3 pl-9 text-sm outline-none"
           />
         </div>
-        <FilterMultiSelect
-          label={t("categoryFilter")}
-          options={catOptions}
-          selected={cats}
-          onChange={setCats}
+        <FilterSelect
+          allLabel={t("categoryFilter")}
+          value={category}
+          onValueChange={setCategory}
+          options={categoryOptions}
+          searchable
         />
         <FilterMultiSelect
           label={t("statusFilter")}
@@ -124,9 +154,13 @@ export function ProductsView() {
           selected={statuses}
           onChange={setStatuses}
         />
+        <ViewToggle
+          value={view}
+          onValueChange={setView}
+          ariaLabel={tCommon("viewToggle")}
+        />
       </div>
 
-      {/* Grid */}
       {filtered.length === 0 ? (
         <EmptyState
           icon={Package}
@@ -138,22 +172,25 @@ export function ProductsView() {
             </Button>
           }
         />
-      ) : (
+      ) : view === "grid" ? (
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((p) => (
             <div
               key={p.id}
               style={fade(i++)}
-              className="bg-card border-border flex flex-col rounded-3xl border p-4 shadow-sm"
+              onClick={() =>
+                router.push({ pathname: "/products/[id]", params: { id: p.id } })
+              }
+              className="bg-card border-border flex cursor-pointer flex-col rounded-3xl border p-4 shadow-sm"
             >
               <div className="bg-muted/50 relative grid aspect-square place-items-center rounded-2xl text-6xl">
                 {p.emoji}
-                {!p.active ? (
+                {p.status === "draft" ? (
                   <Badge
                     variant="secondary"
                     className="text-muted-foreground absolute top-2 left-2"
                   >
-                    {t("inactive")}
+                    {t("status.draft")}
                   </Badge>
                 ) : null}
               </div>
@@ -161,39 +198,26 @@ export function ProductsView() {
                 <div className="min-w-0">
                   <div className="truncate font-bold">{p.name}</div>
                   <div className="text-muted-foreground/70 text-xs font-semibold">
-                    {t(`category.${p.category}`)}
+                    {categoryLabel(p.categoryIds[0] ?? "")}
                   </div>
                 </div>
-                <span className="font-bold">{p.price}</span>
+                <span className="font-bold">${p.price.toFixed(2)}</span>
               </div>
-              <div className="mt-2 flex items-center gap-2">
-                {p.earnsStamp ? (
-                  <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold">
-                    <Stamp className="size-3" />
-                    {t("earnsStamp")}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground/70 text-xs font-semibold">
-                    {t("noStamp")}
-                  </span>
-                )}
-                {p.points > 0 ? (
-                  <span className="text-muted-foreground/70 text-xs font-bold">
-                    +{p.points} pts
-                  </span>
-                ) : null}
-              </div>
+              <p className="text-muted-foreground/70 mt-2 text-xs font-semibold">
+                {t("variantsCount", { n: p.variantCount })}
+              </p>
               <div className="border-border mt-3 flex items-center gap-1 border-t pt-3">
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-9 flex-1 gap-1.5 rounded-lg"
-                  onClick={() =>
+                  onClick={(e) => {
+                    e.stopPropagation();
                     router.push({
                       pathname: "/products/[id]",
                       params: { id: p.id },
-                    })
-                  }
+                    });
+                  }}
                 >
                   <Pencil className="size-3.5" />
                   {t("edit")}
@@ -203,13 +227,99 @@ export function ProductsView() {
                   size="icon"
                   aria-label={t("delete")}
                   className="text-destructive hover:bg-destructive/10 size-9 rounded-lg"
-                  onClick={() => setToDelete(p)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setToDelete(p);
+                  }}
                 >
                   <Trash2 className="size-4" />
                 </Button>
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="bg-card border-border mt-5 overflow-hidden rounded-3xl border shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t("col.product")}</TableHead>
+                <TableHead>{t("col.category")}</TableHead>
+                <TableHead className="text-right">{t("col.variants")}</TableHead>
+                <TableHead className="text-right">{t("col.price")}</TableHead>
+                <TableHead>{t("col.status")}</TableHead>
+                <TableHead className="w-24" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((p) => (
+                <TableRow
+                  key={p.id}
+                  className="cursor-pointer"
+                  onClick={() =>
+                    router.push({ pathname: "/products/[id]", params: { id: p.id } })
+                  }
+                >
+                  <TableCell>
+                    <div className="flex items-center gap-2.5">
+                      <span className="bg-muted/50 grid size-9 flex-none place-items-center rounded-xl text-lg">
+                        {p.emoji}
+                      </span>
+                      <span className="font-bold">{p.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground font-semibold">
+                    {categoryLabel(p.categoryIds[0] ?? "")}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-right font-semibold">
+                    {p.variantCount}
+                  </TableCell>
+                  <TableCell className="text-right font-bold">
+                    ${p.price.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="secondary"
+                      className={
+                        p.status === "active"
+                          ? "text-emerald-600"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      {t(`status.${p.status}`)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label={t("edit")}
+                        className="size-8 rounded-lg"
+                        onClick={() =>
+                          router.push({
+                            pathname: "/products/[id]",
+                            params: { id: p.id },
+                          })
+                        }
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label={t("delete")}
+                        className="text-destructive hover:bg-destructive/10 size-8 rounded-lg"
+                        onClick={() => setToDelete(p)}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 
@@ -225,11 +335,12 @@ export function ProductsView() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel size="sm">{t("cancel")}</AlertDialogCancel>
+            <AlertDialogCancel className="h-10 px-4">
+              {t("cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
-              size="sm"
               onClick={onDelete}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              className="bg-destructive text-white hover:bg-destructive/90 h-10 px-4"
             >
               {t("deleteConfirm")}
             </AlertDialogAction>

@@ -28,6 +28,7 @@ import { toast } from "sonner";
 
 import { EmptyState } from "@/components/empty-state";
 import { type FilterOption, FilterMultiSelect } from "@/components/filters";
+import { type ViewMode, ViewToggle } from "@/components/view-toggle";
 import { useFadeUp } from "@/lib/animate";
 import { useRouter } from "@/i18n/navigation";
 
@@ -56,12 +57,14 @@ const CHANNEL_ICON: Record<Channel, LucideIcon> = {
  */
 export function CampaignsView() {
   const t = useTranslations("Campaigns");
+  const tCommon = useTranslations("Common");
   const router = useRouter();
   const fade = useFadeUp({ step: 35 });
 
   const [query, setQuery] = useState("");
   const [statuses, setStatuses] = useState<Status[]>([...STATUSES]);
   const [types, setTypes] = useState<CampaignType[]>([...TYPES]);
+  const [view, setView] = useState<ViewMode>("list");
 
   const statusOptions: FilterOption<Status>[] = [
     { value: "active", label: t("status.active"), dot: "#1f9d68" },
@@ -170,6 +173,11 @@ export function CampaignsView() {
             selected={types}
             onChange={setTypes}
           />
+          <ViewToggle
+            value={view}
+            onValueChange={setView}
+            ariaLabel={tCommon("viewToggle")}
+          />
         </div>
 
         {filtered.length === 0 ? (
@@ -183,7 +191,7 @@ export function CampaignsView() {
               </Button>
             }
           />
-        ) : (
+        ) : view === "list" ? (
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -201,6 +209,75 @@ export function CampaignsView() {
               ))}
             </TableBody>
           </Table>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                style={fade(i++)}
+                onClick={() =>
+                  router.push({ pathname: "/campaigns/[id]", params: { id: c.id } })
+                }
+                className="bg-card border-border cursor-pointer rounded-3xl border p-5 text-left shadow-sm"
+              >
+                <div className="font-bold">{c.name}</div>
+                <div className="text-muted-foreground/70 mt-0.5 text-xs font-semibold">
+                  {t(c.trigger)} · {t(`type.${c.type}`)}
+                </div>
+
+                <div className="mt-3 flex items-center gap-1">
+                  {c.channels.map((ch) => {
+                    const Icon = CHANNEL_ICON[ch];
+                    return (
+                      <span
+                        key={ch}
+                        className="bg-muted text-muted-foreground grid size-6 place-items-center rounded-md"
+                      >
+                        <Icon className="size-3" />
+                      </span>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 flex items-center gap-5">
+                  <div>
+                    <div className="font-bold">{c.sent.toLocaleString()}</div>
+                    <div className="text-muted-foreground/70 text-xs font-semibold">
+                      {t("col.sent")}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-bold">{c.open}%</div>
+                    <div className="text-muted-foreground/70 text-xs font-semibold">
+                      {t("col.open")}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-primary font-extrabold">{c.click}%</div>
+                    <div className="text-muted-foreground/70 text-xs font-semibold">
+                      {t("col.click")}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <Badge
+                    variant="secondary"
+                    className={
+                      c.status === "active"
+                        ? "text-emerald-600"
+                        : c.status === "paused"
+                          ? "text-amber-600"
+                          : "text-muted-foreground"
+                    }
+                  >
+                    {t(`status.${c.status}`)}
+                  </Badge>
+                </div>
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>
