@@ -32,6 +32,7 @@ export function LocaleSwitcher() {
       aria-label={t("switchLocale")}
       value={locale}
       onValueChange={onValueChange}
+      className="gap-0.5 p-0.5"
       options={[
         { value: "es", label: "ES" },
         { value: "en", label: "EN" },
