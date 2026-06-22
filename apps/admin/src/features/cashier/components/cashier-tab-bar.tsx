@@ -2,9 +2,12 @@
 
 import { CupSoda, Gift, Receipt, ScanLine, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 
 import { Link, usePathname } from "@/i18n/navigation";
+
+const SPRING = { type: "spring", stiffness: 380, damping: 32 } as const;
 
 type Href =
   | "/register"
@@ -47,13 +50,20 @@ export function CashierTabBar() {
             href={tab.href}
             aria-current={active ? "page" : undefined}
             className={`relative flex w-24 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-colors ${
-              active
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:text-foreground"
+              active ? "text-primary" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon className="size-6" />
-            <span className="text-xs font-bold">{t(tab.key)}</span>
+            {active ? (
+              <motion.span
+                layoutId="cashierTabPill"
+                transition={SPRING}
+                className="bg-primary/10 absolute inset-0 rounded-2xl"
+              />
+            ) : null}
+            <Icon className="relative z-10 size-6" />
+            <span className="relative z-10 text-xs font-bold">
+              {t(tab.key)}
+            </span>
           </Link>
         );
       })}

@@ -11,9 +11,12 @@ import {
   ResponsiveModalTitle,
 } from "@loyalty/ui";
 import {
+  AlertTriangle,
   ArrowLeft,
   Cake,
   Check,
+  Delete,
+  Gift,
   Minus,
   Phone,
   Plus,
@@ -30,17 +33,27 @@ import {
   DAILY_CAP,
   STAMPS_TODAY,
   foundCustomer as CUST,
+  manager,
   memberDetail,
   products,
   recentMoves,
+  redeemReward as RR,
 } from "../data";
 
-type Step = "identify" | "phone" | "found" | "success";
+type Step =
+  | "identify"
+  | "phone"
+  | "found"
+  | "success"
+  | "redeem-scan"
+  | "redeem-detail"
+  | "redeem-success";
 
 /**
- * Escanear tab — the core earn loop. Identify a socio (scan QR / phone), see
- * their detail, mark the purchased products (search + most-used quick-add) and
- * confirm. Redeem validation is a follow-up. Design-first/hardcoded.
+ * Escanear tab — identify a socio (scan QR / phone), see their detail, mark the
+ * purchased products (search + most-used quick-add) and confirm the earn; or
+ * validate a redemption (scan code → reward detail → manager-PIN override →
+ * success). Design-first/hardcoded.
  */
 export function ScanView() {
   const t = useTranslations("Cashier");
@@ -53,6 +66,21 @@ export function ScanView() {
   const [capOpen, setCapOpen] = useState(false);
   const [notFoundOpen, setNotFoundOpen] = useState(false);
   const [lastStamps, setLastStamps] = useState(0);
+  const [mgrOpen, setMgrOpen] = useState(false);
+  const [mgrPin, setMgrPin] = useState("");
+
+  const enoughToRedeem = CUST.stamps >= RR.cost;
+  const pressMgr = (n: string) => {
+    const pin = (mgrPin + n).slice(0, 4);
+    setMgrPin(pin);
+    if (pin.length === 4) {
+      setTimeout(() => {
+        setMgrOpen(false);
+        setMgrPin("");
+        setStep("redeem-success");
+      }, 200);
+    }
+  };
 
   const total = useMemo(
     () => products.reduce((s, p) => s + (cart[p.id] ?? 0) * p.earns, 0),
@@ -78,6 +106,8 @@ export function ScanView() {
     setCart({});
     setPhone("");
     setQuery("");
+    setMgrOpen(false);
+    setMgrPin("");
   };
   const confirm = () => {
     if (STAMPS_TODAY + total > DAILY_CAP) {
@@ -122,6 +152,14 @@ export function ScanView() {
             >
               <Phone className="size-5" />
               {t("enterPhone")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep("redeem-scan")}
+              className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 mt-2.5 flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl border text-base font-bold"
+            >
+              <Gift className="size-5" />
+              {t("validateRedeem")}
             </button>
           </div>
 
@@ -247,7 +285,7 @@ export function ScanView() {
             <button
               type="button"
               onClick={reset}
-              className="text-muted-foreground mt-3 flex items-center gap-1.5 text-sm font-bold"
+              className="border-border bg-card text-muted-foreground hover:text-foreground mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-bold"
             >
               <X className="size-4" />
               {t("cancelIdentify")}
@@ -355,12 +393,9 @@ export function ScanView() {
 
           {/* sticky confirm */}
           <div className="bg-card border-border fixed inset-x-0 bottom-[4.5rem] z-20 border-t px-4 py-3 sm:px-6">
-            <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 lg:max-w-4xl">
-              <div className="flex items-baseline gap-2">
-                <span className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
-                  {t("willAward")}
-                </span>
-                <span className="font-display text-primary text-2xl font-semibold">
+            <div className="mx-auto flex max-w-2xl items-center gap-4 lg:max-w-4xl">
+              <div className="flex flex-none items-baseline gap-1.5">
+                <span className="font-display text-primary text-3xl font-semibold">
                   +{total}
                 </span>
                 <span className="text-muted-foreground text-sm font-bold">
@@ -372,10 +407,10 @@ export function ScanView() {
                 size="lg"
                 onClick={confirm}
                 disabled={total === 0 || capReached}
-                className="h-13 gap-2 rounded-2xl text-base font-extrabold whitespace-nowrap sm:px-8"
+                className="h-13 flex-1 gap-2 rounded-2xl text-base font-extrabold"
               >
                 <Check className="size-5" />
-                {t("confirmEarn", { count: total })}
+                {t("confirm")}
               </Button>
             </div>
           </div>
@@ -429,6 +464,177 @@ export function ScanView() {
           </Button>
         </div>
       )}
+
+      {/* ---- REDEEM: scan code ---- */}
+      {step === "redeem-scan" && (
+        <div className="bg-card border-border mx-auto max-w-md rounded-3xl border p-6 shadow-sm">
+          <button
+            type="button"
+            onClick={reset}
+            className="text-muted-foreground mb-3.5 flex items-center gap-1 text-sm font-bold"
+          >
+            <ArrowLeft className="size-4" />
+            {t("back")}
+          </button>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
+            {t("scanRedeemTitle")}
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {t("scanRedeemHint")}
+          </p>
+          <ScanFrame />
+          <Button
+            variant="gradient"
+            size="lg"
+            onClick={() => setStep("redeem-detail")}
+            className="h-14 w-full rounded-2xl text-base font-extrabold"
+          >
+            {t("scanRedeemCode")}
+          </Button>
+        </div>
+      )}
+
+      {/* ---- REDEEM: reward detail ---- */}
+      {step === "redeem-detail" && (
+        <div className="bg-card border-border mx-auto max-w-md rounded-3xl border p-6 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setStep("redeem-scan")}
+            className="text-muted-foreground mb-3.5 flex items-center gap-1 text-sm font-bold"
+          >
+            <ArrowLeft className="size-4" />
+            {t("back")}
+          </button>
+          <span className="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold tracking-wide">
+            <Check className="size-4" />
+            {t("codeValid")}
+          </span>
+          <div className="mt-4 flex items-center gap-4">
+            <span className="bg-muted grid size-18 flex-none place-items-center rounded-2xl text-4xl">
+              {RR.emoji}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="font-display text-2xl leading-tight font-semibold tracking-tight">
+                {RR.name}
+              </div>
+              <div className="text-muted-foreground mt-1 text-sm">{RR.desc}</div>
+            </div>
+          </div>
+          <div className="bg-muted mt-5 flex items-center justify-between rounded-2xl p-4">
+            <div>
+              <div className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
+                {t("cost")}
+              </div>
+              <div className="text-xl font-extrabold">
+                {RR.cost} {t("stampMany")}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
+                {t("memberBalance")}
+              </div>
+              <div
+                className={`text-xl font-extrabold ${enoughToRedeem ? "text-foreground" : "text-rose-500"}`}
+              >
+                {CUST.stamps} {t("stampMany")}
+              </div>
+            </div>
+          </div>
+          {enoughToRedeem ? (
+            <Button
+              variant="gradient"
+              size="lg"
+              onClick={() => {
+                setMgrPin("");
+                setMgrOpen(true);
+              }}
+              className="mt-5 h-14 w-full rounded-2xl text-base font-extrabold"
+            >
+              {t("confirmRedeem")}
+            </Button>
+          ) : (
+            <>
+              <div className="mt-5 flex items-center gap-2.5 rounded-2xl bg-rose-500/10 px-4 py-3.5 text-sm font-bold text-rose-500">
+                <AlertTriangle className="size-4" />
+                {t("insufficientShort", { count: RR.cost - CUST.stamps })}
+              </div>
+              <Button
+                variant="gradient"
+                size="lg"
+                disabled
+                className="mt-3 h-14 w-full rounded-2xl text-base font-extrabold"
+              >
+                {t("confirmRedeem")}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ---- REDEEM: success ---- */}
+      {step === "redeem-success" && (
+        <div className="flex flex-col items-center gap-3.5 py-10 text-center">
+          <div className="from-primary to-primary/80 grid size-24 place-items-center rounded-3xl bg-gradient-to-br text-white shadow-xl">
+            <Check className="size-12" strokeWidth={3} />
+          </div>
+          <div className="font-display text-3xl font-semibold tracking-tight">
+            {t("redeemValidated")}
+          </div>
+          <div className="text-muted-foreground text-base">
+            {t("handReward")}{" "}
+            <strong className="text-foreground">{RR.name}</strong>{" "}
+            {t("toCustomer", { name: CUST.name })}
+          </div>
+          <div className="bg-card border-border rounded-2xl border p-3.5 px-5 text-sm">
+            <span className="text-muted-foreground/70 font-bold">
+              {t("remainingBalance")}
+            </span>{" "}
+            <strong>
+              {Math.max(0, CUST.stamps - RR.cost)} {t("stampMany")}
+            </strong>{" "}
+            · {t("approvedBy", { name: manager.name })}
+          </div>
+          <Button
+            variant="gradient"
+            size="lg"
+            onClick={reset}
+            className="mt-3 h-14 w-full max-w-xs rounded-2xl text-base font-extrabold"
+          >
+            {t("done")}
+          </Button>
+        </div>
+      )}
+
+      {/* manager PIN override */}
+      <ResponsiveModal open={mgrOpen} onOpenChange={setMgrOpen}>
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
+          <div className="flex flex-col px-6 pt-2 pb-6">
+            <div className="text-center">
+              <div className="text-xs font-extrabold tracking-wider text-amber-600">
+                {t("approvalRequired")}
+              </div>
+              <ResponsiveModalTitle className="font-display mt-0.5 text-2xl font-semibold">
+                {t("supervisorPin")}
+              </ResponsiveModalTitle>
+              <ResponsiveModalDescription className="text-muted-foreground mt-1 text-sm">
+                {t("supervisorPinHint")}
+              </ResponsiveModalDescription>
+            </div>
+            <div className="flex justify-center gap-3.5 py-4">
+              {[0, 1, 2, 3].map((i) => (
+                <span
+                  key={i}
+                  className={`size-4 rounded-full border-2 ${i < mgrPin.length ? "bg-primary border-primary" : "border-border"}`}
+                />
+              ))}
+            </div>
+            <Keypad
+              onPress={pressMgr}
+              onBack={() => setMgrPin((p) => p.slice(0, -1))}
+            />
+          </div>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
       {/* member detail */}
       <ResponsiveModal open={detailOpen} onOpenChange={setDetailOpen}>
@@ -535,6 +741,49 @@ function StateModal({
         </div>
       </ResponsiveModalContent>
     </ResponsiveModal>
+  );
+}
+
+function Keypad({
+  onPress,
+  onBack,
+}: {
+  onPress: (n: string) => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-2.5">
+      {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((n) => (
+        <KeyBtn key={n} onClick={() => onPress(n)}>
+          {n}
+        </KeyBtn>
+      ))}
+      <span />
+      <KeyBtn onClick={() => onPress("0")}>0</KeyBtn>
+      <KeyBtn ghost onClick={onBack}>
+        <Delete className="size-5" />
+      </KeyBtn>
+    </div>
+  );
+}
+
+function KeyBtn({
+  ghost,
+  onClick,
+  children,
+}: {
+  ghost?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`font-display grid h-14 place-items-center rounded-2xl text-2xl font-semibold transition-transform active:scale-95 ${ghost ? "text-muted-foreground" : "border-border bg-card text-foreground border"}`}
+    >
+      {children}
+    </button>
   );
 }
 

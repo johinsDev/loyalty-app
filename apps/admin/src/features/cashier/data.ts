@@ -24,15 +24,19 @@ export type MemberPurchase = {
   date: string;
   items: string;
   stamps: string;
+  /** Line items for the detail receipt. */
+  lines: string[];
+  cashier: string;
+  store: string;
 };
 
 /** The identified socio's recent purchases (also pulled for any customer). */
 export const memberPurchases: MemberPurchase[] = [
-  { id: "h1", date: "Hoy · 14:32", items: "Milk Tea, Matcha Latte", stamps: "+2" },
-  { id: "h2", date: "Ayer · 18:10", items: "Strawberry Matcha", stamps: "+2" },
-  { id: "h3", date: "12 jun · 09:48", items: "Frappé", stamps: "+1" },
-  { id: "h4", date: "8 jun · 16:22", items: "Canje · Topping gratis", stamps: "−4" },
-  { id: "h5", date: "3 jun · 11:05", items: "Premium del mes, Refresco", stamps: "+3" },
+  { id: "h1", date: "Hoy · 14:32", items: "Milk Tea, Matcha Latte", stamps: "+2", lines: ["1× Milk Tea", "1× Matcha Latte"], cashier: "Lucía F.", store: "T4 Centro" },
+  { id: "h2", date: "Ayer · 18:10", items: "Strawberry Matcha", stamps: "+2", lines: ["1× Strawberry Matcha"], cashier: "Bruno T.", store: "T4 Centro" },
+  { id: "h3", date: "12 jun · 09:48", items: "Frappé", stamps: "+1", lines: ["1× Frappé"], cashier: "Lucía F.", store: "T4 Norte" },
+  { id: "h4", date: "8 jun · 16:22", items: "Canje · Topping gratis", stamps: "−4", lines: ["Canje · Topping gratis"], cashier: "Lucía F.", store: "T4 Centro" },
+  { id: "h5", date: "3 jun · 11:05", items: "Premium del mes, Refresco", stamps: "+3", lines: ["1× Premium del mes", "1× Refresco"], cashier: "Mateo R.", store: "T4 Centro" },
 ];
 
 export type RecentMove = {
@@ -63,7 +67,38 @@ export const DAILY_CAP = 150;
 export const STAMPS_TODAY = 84;
 
 export const cashier = { name: "Lucía Fernández", initials: "LF" };
+export const manager = { name: "D. Rojas" };
+
+export type TeaAvatar = {
+  id: string;
+  emoji: string;
+  /** [from, to] for the avatar's diagonal gradient. */
+  gradient: readonly [string, string];
+};
+
+/** Predefined tea avatars the cashier can pick (admin can extend later). */
+export const teaAvatars: readonly TeaAvatar[] = [
+  { id: "matcha", emoji: "🍵", gradient: ["#b9f3e4", "#4fd1b5"] },
+  { id: "boba", emoji: "🧋", gradient: ["#d9c9ff", "#9d7bff"] },
+  { id: "strawberry", emoji: "🍓", gradient: ["#ffd6e7", "#ff8fb8"] },
+  { id: "peach", emoji: "🍑", gradient: ["#ffe0c2", "#ffb05f"] },
+  { id: "leaf", emoji: "🍃", gradient: ["#d6f5c9", "#8fd96f"] },
+  { id: "blossom", emoji: "🌸", gradient: ["#ffd0ad", "#ff9d6e"] },
+  { id: "teapot", emoji: "🫖", gradient: ["#c9d8ff", "#7e9bff"] },
+  { id: "honey", emoji: "🍯", gradient: ["#fff0c2", "#ffce4f"] },
+];
+
+export const AVATAR_ACCEPT = ["image/png", "image/jpeg", "image/webp"] as const;
+export const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 export const store = { name: "T4 Centro", shift: "Turno mañana · 08:00–16:00" };
+
+/** The reward a member is redeeming (decoded from their single-use code). */
+export const redeemReward = {
+  emoji: "🧋",
+  name: "Bebida mediana gratis",
+  desc: "Cualquier bebida clásica, tamaño mediano.",
+  cost: 6,
+};
 
 export const products: Product[] = [
   { id: "p1", emoji: "🧋", name: "Milk Tea", earns: 1, category: "Tés", description: "Té negro con leche y perlas de tapioca." },
@@ -94,28 +129,68 @@ export const memberDetail = {
   visits: 23,
 };
 
-export type CashierPromo = { emoji: string; name: string; detail: string };
+export type CashierPromo = {
+  emoji: string;
+  name: string;
+  detail: string;
+  description: string;
+};
 export type CashierReward = {
   emoji: string;
   name: string;
   cost: number;
+  description: string;
   locked?: boolean;
 };
 
 /** What's live for this customer — the cashier sees it to honor promos + canjes. */
 export const activePromos: CashierPromo[] = [
-  { emoji: "🔥", name: "2x1 en frappés", detail: "Todos los lunes · todo el día" },
-  { emoji: "⭐", name: "Doble puntos", detail: "Compras > $30 · esta semana" },
+  {
+    emoji: "🔥",
+    name: "2x1 en frappés",
+    detail: "Todos los lunes · todo el día",
+    description:
+      "Llevá dos frappés y pagá uno. Aplicá el descuento en el POS; el sistema solo otorga los sellos.",
+  },
+  {
+    emoji: "⭐",
+    name: "Doble puntos",
+    detail: "Compras > $30 · esta semana",
+    description:
+      "Las compras mayores a $30 acumulan el doble de puntos. Cargá el monto al sumar.",
+  },
 ];
 
 export const claimableRewards: CashierReward[] = [
-  { emoji: "🧋", name: "Bebida mediana gratis", cost: 6 },
-  { emoji: "✨", name: "Topping gratis", cost: 4 },
+  {
+    emoji: "🧋",
+    name: "Bebida mediana gratis",
+    cost: 6,
+    description: "Cualquier bebida clásica, tamaño mediano.",
+  },
+  {
+    emoji: "✨",
+    name: "Topping gratis",
+    cost: 4,
+    description: "Un topping a elección en cualquier bebida.",
+  },
 ];
 
 export const lockedRewards: CashierReward[] = [
-  { emoji: "🎂", name: "Postre del mes", cost: 12, locked: true },
-  { emoji: "🎁", name: "Combo para dos", cost: 18, locked: true },
+  {
+    emoji: "🎂",
+    name: "Postre del mes",
+    cost: 12,
+    locked: true,
+    description: "Postre especial de la carta del mes.",
+  },
+  {
+    emoji: "🎁",
+    name: "Combo para dos",
+    cost: 18,
+    locked: true,
+    description: "Dos bebidas medianas + un snack para compartir.",
+  },
 ];
 
 export const recentMoves: RecentMove[] = [

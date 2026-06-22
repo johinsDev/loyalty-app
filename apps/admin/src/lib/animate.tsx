@@ -13,7 +13,7 @@ type FadeUpOptions = { step?: number; duration?: number; base?: number };
  */
 export function useFadeUp(options: FadeUpOptions = {}) {
   const reduced = useReducedMotion();
-  const { step = 55, duration = 0.42, base = 0 } = options;
+  const { step = 60, duration = 0.5, base = 40 } = options;
   return (index: number): CSSProperties | undefined =>
     reduced
       ? undefined
