@@ -219,8 +219,9 @@ export function RewardsView() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogCancel size="sm">{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
+              size="sm"
               onClick={onDelete}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
