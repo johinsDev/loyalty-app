@@ -171,7 +171,54 @@
   },
   "Customers": {
     "title": "Customers",
-    "placeholder": "Customer list (placeholder)."
+    "subtitle": "Your member base and their loyalty activity.",
+    "export": "Export",
+    "addCustomer": "Add customer",
+    "searchPlaceholder": "Search by name or phone…",
+    "empty": "No customers found.",
+    "showing": "Showing {from}–{to} of {total}",
+    "pageOf": "{page} of {pages}",
+    "prev": "Previous",
+    "next": "Next",
+    "backToList": "Back to customers",
+    "impersonate": "Impersonate",
+    "edit": "Edit",
+    "visitsCount": "{count} visits",
+    "stampsBalance": "Stamps",
+    "stampsRemaining": "{n} to go for the next reward",
+    "pointsBalance": "Points",
+    "lifetimeSpend": "Lifetime spend",
+    "birthday": "Birthday",
+    "email": "Email",
+    "joined": "Member since",
+    "purchaseHistory": "Purchase history",
+    "redemptionHistory": "Redemptions",
+    "kpi": {
+      "total": "Total customers",
+      "active30": "Active (30 d)",
+      "newMonth": "New this month",
+      "avgLtv": "Avg LTV"
+    },
+    "status": {
+      "all": "All",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "tier": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "diamond": "Diamond"
+    },
+    "col": {
+      "customer": "Customer",
+      "tier": "Tier",
+      "points": "Points",
+      "visits": "Visits",
+      "spent": "Spent",
+      "lastVisit": "Last visit",
+      "status": "Status"
+    }
   },
   "Shortlinks": {
     "title": "Short links",

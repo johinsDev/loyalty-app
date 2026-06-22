@@ -18,6 +18,7 @@ export const routing = defineRouting({
     "/register/purchases": { es: "/caja/compras", en: "/register/purchases" },
     "/register/profile": { es: "/caja/perfil", en: "/register/profile" },
     "/customers": { es: "/clientes", en: "/customers" },
+    "/customers/[id]": { es: "/clientes/[id]", en: "/customers/[id]" },
     "/purchases": { es: "/compras", en: "/purchases" },
     "/rewards": { es: "/premios", en: "/rewards" },
     "/promotions": { es: "/promociones", en: "/promotions" },

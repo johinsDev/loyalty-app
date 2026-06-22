@@ -171,7 +171,54 @@
   },
   "Customers": {
     "title": "Clientes",
-    "placeholder": "Listado de clientes (placeholder)."
+    "subtitle": "Tu base de socios y su actividad de lealtad.",
+    "export": "Exportar",
+    "addCustomer": "Agregar cliente",
+    "searchPlaceholder": "Buscar por nombre o teléfono…",
+    "empty": "No se encontraron clientes.",
+    "showing": "Mostrando {from}–{to} de {total}",
+    "pageOf": "{page} de {pages}",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "backToList": "Volver a clientes",
+    "impersonate": "Impersonar",
+    "edit": "Editar",
+    "visitsCount": "{count} visitas",
+    "stampsBalance": "Sellos",
+    "stampsRemaining": "Faltan {n} para el próximo premio",
+    "pointsBalance": "Puntos",
+    "lifetimeSpend": "Gasto total",
+    "birthday": "Cumpleaños",
+    "email": "Correo",
+    "joined": "Cliente desde",
+    "purchaseHistory": "Historial de compras",
+    "redemptionHistory": "Canjes",
+    "kpi": {
+      "total": "Total clientes",
+      "active30": "Activos (30 d)",
+      "newMonth": "Nuevos este mes",
+      "avgLtv": "LTV promedio"
+    },
+    "status": {
+      "all": "Todos",
+      "active": "Activo",
+      "inactive": "Inactivo"
+    },
+    "tier": {
+      "bronze": "Bronce",
+      "silver": "Plata",
+      "gold": "Oro",
+      "diamond": "Diamante"
+    },
+    "col": {
+      "customer": "Cliente",
+      "tier": "Tier",
+      "points": "Puntos",
+      "visits": "Visitas",
+      "spent": "Gastado",
+      "lastVisit": "Última visita",
+      "status": "Estado"
+    }
   },
   "Shortlinks": {
     "title": "Enlaces cortos",
