@@ -28,6 +28,8 @@ export const routing = defineRouting({
     "/promotions": { es: "/promociones", en: "/promotions" },
     "/promotions/[id]": { es: "/promociones/[id]", en: "/promotions/[id]" },
     "/campaigns": { es: "/campanas", en: "/campaigns" },
+    "/campaigns/new": { es: "/campanas/nueva", en: "/campaigns/new" },
+    "/campaigns/[id]": { es: "/campanas/[id]", en: "/campaigns/[id]" },
     "/campaigns/templates": { es: "/campanas/plantillas", en: "/campaigns/templates" },
     "/notifications": { es: "/notificaciones", en: "/notifications" },
     "/banners": { es: "/banners", en: "/banners" },

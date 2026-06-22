@@ -1,11 +1,11 @@
 import { setRequestLocale } from "next-intl/server";
 
-import { ComingSoon } from "@/components/coming-soon";
+import { CampaignsView } from "@/features/campaigns/components/campaigns-view";
 
 type Props = { params: Promise<{ locale: string }> };
 
-export default async function Page({ params }: Props) {
+export default async function CampaignsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <ComingSoon titleKey="campaigns" />;
+  return <CampaignsView />;
 }
