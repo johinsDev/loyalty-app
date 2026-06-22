@@ -6,12 +6,15 @@ import {
   Input,
   InputPhone,
   Label,
-  NativeSelect,
-  NativeSelectOption,
   ResponsiveModal,
   ResponsiveModalContent,
   ResponsiveModalDescription,
   ResponsiveModalTitle,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Switch,
   Textarea,
 } from "@loyalty/ui";
@@ -172,18 +175,21 @@ export function CustomerWizard({ id }: { id?: string }) {
       ) : step === "loyalty" ? (
         <div className="space-y-4">
           <Field label={t("fieldTier")}>
-            <NativeSelect
-              size="lg"
+            <Select
               value={draft.tier}
-              onChange={(e) => set("tier", e.target.value as Tier)}
-              className="w-full"
+              onValueChange={(v) => set("tier", v as Tier)}
             >
-              {TIERS.map((tr) => (
-                <NativeSelectOption key={tr} value={tr}>
-                  {t(`tier.${tr}`)}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
+              <SelectTrigger className="h-14 w-full rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIERS.map((tr) => (
+                  <SelectItem key={tr} value={tr}>
+                    {t(`tier.${tr}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label={t("initialStamps")} hint={t("optional")}>

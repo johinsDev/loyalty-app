@@ -178,11 +178,39 @@ function Wheel({
   onScroll: (el: HTMLDivElement) => void;
   children: React.ReactNode;
 }) {
+  // Mouse devices can't flick a touch-scroll wheel, so add click-drag scrolling
+  // (mouse only — touch keeps native scrolling, the trackpad keeps the wheel).
+  const drag = useRef({ active: false, startY: 0, startTop: 0 });
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "mouse") return;
+    const el = refEl.current;
+    if (!el) return;
+    drag.current = { active: true, startY: e.clientY, startTop: el.scrollTop };
+    el.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag.current.active || !refEl.current) return;
+    refEl.current.scrollTop =
+      drag.current.startTop - (e.clientY - drag.current.startY);
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag.current.active) return;
+    drag.current.active = false;
+    refEl.current?.releasePointerCapture(e.pointerId);
+  };
+
   return (
     <div
       ref={refEl}
       onScroll={(event) => onScroll(event.currentTarget)}
-      className="snap-y snap-mandatory overflow-y-scroll [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      className="snap-y snap-mandatory cursor-grab overflow-y-scroll active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       style={{
         flex,
         paddingBlock: PAD,
