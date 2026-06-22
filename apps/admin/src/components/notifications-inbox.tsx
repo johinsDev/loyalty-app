@@ -60,7 +60,7 @@ export function NotificationsInbox() {
           <span className="bg-primary absolute top-1.5 right-1.5 size-2 rounded-full" />
         ) : null}
       </PopoverTrigger>
-      <PopoverContent align="end" side="top" className="w-96 rounded-xl p-0">
+      <PopoverContent align="center" side="top" className="w-96 rounded-xl p-0">
         <div className="border-border flex items-center gap-5 border-b px-4">
           <UnderlineTab active={tab === "inbox"} onClick={() => setTab("inbox")}>
             {t("inbox")}
