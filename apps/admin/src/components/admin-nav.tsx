@@ -335,16 +335,12 @@ function UserMenu({ name }: { name: string }) {
             <Settings className="size-4" />
             {t("settingsLink")}
           </button>
-          <div className="space-y-1.5 px-2.5 py-1.5">
-            <span className="text-muted-foreground text-xs font-semibold">
-              {t("theme")}
-            </span>
+          <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+            <span className="text-sm font-medium">{t("theme")}</span>
             <ThemeToggle />
           </div>
-          <div className="space-y-1.5 px-2.5 py-1.5">
-            <span className="text-muted-foreground text-xs font-semibold">
-              {t("language")}
-            </span>
+          <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+            <span className="text-sm font-medium">{t("language")}</span>
             <LocaleSwitcher />
           </div>
           <MenuLink icon={LifeBuoy} label={t("help")} />

@@ -49,7 +49,9 @@ export function SegmentedControl<T extends string>({
             aria-checked={active}
             onClick={() => onValueChange(option.value)}
             className={cn(
-              "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors",
+              "flex items-center gap-1.5 rounded-full py-1.5 text-sm font-semibold transition-colors",
+              // Icon-only chips get square padding; labelled chips stay wide.
+              option.label ? "px-4" : "px-2.5",
               active
                 ? "bg-card text-primary shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
