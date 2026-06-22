@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 
 import { AdminNav } from "@/components/admin-nav";
+import { CommandPalette } from "@/components/command-palette";
 import { StoreSwitcher } from "@/components/store-switcher";
 import { useRouter } from "@/i18n/navigation";
 
@@ -28,19 +29,34 @@ export function AdminShell({
   const t = useTranslations("Admin");
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   return (
     <div className="bg-card flex h-screen overflow-hidden">
+      <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+
       {/* Desktop sidebar */}
       <aside className="border-border hidden w-64 flex-none border-r lg:block">
-        <AdminNav role={role} name={name} />
+        <AdminNav
+          role={role}
+          name={name}
+          onOpenSearch={() => setSearchOpen(true)}
+        />
       </aside>
 
       {/* Tablet/mobile drawer */}
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="w-72 p-0">
           <SheetTitle className="sr-only">{t("menu")}</SheetTitle>
-          <AdminNav role={role} name={name} onNavigate={() => setOpen(false)} />
+          <AdminNav
+            role={role}
+            name={name}
+            onNavigate={() => setOpen(false)}
+            onOpenSearch={() => {
+              setOpen(false);
+              setSearchOpen(true);
+            }}
+          />
         </SheetContent>
       </Sheet>
 

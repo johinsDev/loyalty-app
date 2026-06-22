@@ -165,6 +165,8 @@ apps/storybook/storybook-static/
 !.claude/skills/ui-motion/**
 !.claude/skills/responsive-modal
 !.claude/skills/responsive-modal/**
+!.claude/skills/admin-filters
+!.claude/skills/admin-filters/**
 
 # scripts/ holds two kinds of files:
 #   1. ad-hoc dev seeds (NOT tracked) — run locally with

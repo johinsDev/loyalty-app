@@ -151,10 +151,12 @@ export function AdminNav({
   role,
   name,
   onNavigate,
+  onOpenSearch,
 }: {
   role: Role;
   name: string;
   onNavigate?: () => void;
+  onOpenSearch?: () => void;
 }) {
   const t = useTranslations("Nav");
   const tRoles = useTranslations("Roles");
@@ -177,14 +179,16 @@ export function AdminNav({
       </div>
 
       {/* Search */}
-      <div className="relative px-3 py-2">
-        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-6 size-4 -translate-y-1/2" />
-        <input
-          readOnly
-          placeholder={t("search")}
-          className="border-border bg-muted/50 placeholder:text-muted-foreground h-9 w-full rounded-lg border pr-12 pl-9 text-sm outline-none"
-        />
-        <Kbd className="absolute top-1/2 right-6 -translate-y-1/2">⌘K</Kbd>
+      <div className="px-3 py-2">
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          className="border-border bg-muted/50 text-muted-foreground hover:text-foreground relative flex h-9 w-full items-center rounded-lg border pr-12 pl-9 text-sm"
+        >
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <span>{t("search")}</span>
+          <Kbd className="absolute top-1/2 right-3 -translate-y-1/2">⌘K</Kbd>
+        </button>
       </div>
 
       {/* Nav */}
