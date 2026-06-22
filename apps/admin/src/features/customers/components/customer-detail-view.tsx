@@ -31,7 +31,6 @@ import { useFadeUp } from "@/lib/animate";
 import { Link, useRouter } from "@/i18n/navigation";
 
 import { type CustomerDetail, tierColor } from "../data";
-import { CustomerFormModal } from "./customer-form-modal";
 
 /**
  * Customer detail — header (identity + tier + edit/impersonate seams), a balance
@@ -43,7 +42,6 @@ export function CustomerDetailView({ customer: c }: { customer: CustomerDetail }
   const t = useTranslations("Customers");
   const router = useRouter();
   const fade = useFadeUp({ step: 50 });
-  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const pct = Math.round((c.stamps / c.stampsTarget) * 100);
   let i = 0;
@@ -104,7 +102,12 @@ export function CustomerDetailView({ customer: c }: { customer: CustomerDetail }
           </Button>
           <Button
             className="h-10 gap-2 rounded-xl font-semibold"
-            onClick={() => setEditOpen(true)}
+            onClick={() =>
+              router.push({
+                pathname: "/customers/[id]/edit",
+                params: { id: c.id },
+              })
+            }
           >
             <Pencil className="size-4" />
             {t("edit")}
@@ -229,12 +232,6 @@ export function CustomerDetailView({ customer: c }: { customer: CustomerDetail }
         </section>
       </div>
 
-      <CustomerFormModal
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        customer={c}
-      />
-
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -244,8 +241,9 @@ export function CustomerDetailView({ customer: c }: { customer: CustomerDetail }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogCancel size="sm">{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
+              size="sm"
               onClick={onDelete}
               className="bg-destructive text-white hover:bg-destructive/90"
             >

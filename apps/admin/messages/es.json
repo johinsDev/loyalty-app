@@ -237,7 +237,38 @@
     "delete": "Eliminar",
     "deleteTitle": "¿Eliminar cliente?",
     "deleteDescription": "Se eliminará a {name} y su historial de lealtad. Esta acción no se puede deshacer.",
-    "deleteConfirm": "Sí, eliminar"
+    "deleteConfirm": "Sí, eliminar",
+    "newTitle": "Nuevo cliente",
+    "editTitle": "Editar cliente",
+    "namePlaceholder": "Nombre del cliente",
+    "optional": "opcional",
+    "fieldNickname": "Apodo",
+    "fieldNicknamePlaceholder": "Mafe",
+    "tierFilter": "Tier",
+    "statusFilter": "Estado",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "initialStamps": "Sellos iniciales",
+    "initialPoints": "Puntos iniciales",
+    "channelsLabel": "Canales de notificación",
+    "channelsHint": "Por dónde contactarlo",
+    "marketingLabel": "Acepta marketing",
+    "marketingHint": "Promos y campañas (puede darse de baja).",
+    "notes": "Notas",
+    "notesPlaceholder": "Preferencias, alergias, etc.",
+    "reviewTitle": "Revisar cliente",
+    "wizard": {
+      "basics": "Datos",
+      "loyalty": "Lealtad",
+      "preferences": "Preferencias",
+      "review": "Revisar"
+    },
+    "channel": {
+      "push": "Push",
+      "email": "Correo",
+      "sms": "SMS",
+      "whatsapp": "WhatsApp"
+    }
   },
   "Shortlinks": {
     "title": "Enlaces cortos",

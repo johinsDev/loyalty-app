@@ -237,7 +237,38 @@
     "delete": "Delete",
     "deleteTitle": "Delete customer?",
     "deleteDescription": "This removes {name} and their loyalty history. This cannot be undone.",
-    "deleteConfirm": "Yes, delete"
+    "deleteConfirm": "Yes, delete",
+    "newTitle": "New customer",
+    "editTitle": "Edit customer",
+    "namePlaceholder": "Customer name",
+    "optional": "optional",
+    "fieldNickname": "Nickname",
+    "fieldNicknamePlaceholder": "Mafe",
+    "tierFilter": "Tier",
+    "statusFilter": "Status",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "initialStamps": "Initial stamps",
+    "initialPoints": "Initial points",
+    "channelsLabel": "Notification channels",
+    "channelsHint": "How to reach them",
+    "marketingLabel": "Marketing opt-in",
+    "marketingHint": "Promos and campaigns (can opt out).",
+    "notes": "Notes",
+    "notesPlaceholder": "Preferences, allergies, etc.",
+    "reviewTitle": "Review customer",
+    "wizard": {
+      "basics": "Details",
+      "loyalty": "Loyalty",
+      "preferences": "Preferences",
+      "review": "Review"
+    },
+    "channel": {
+      "push": "Push",
+      "email": "Email",
+      "sms": "SMS",
+      "whatsapp": "WhatsApp"
+    }
   },
   "Shortlinks": {
     "title": "Short links",

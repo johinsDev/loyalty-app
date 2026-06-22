@@ -17,10 +17,13 @@ import {
   Download,
   Plus,
   Search,
+  Users,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
+import { EmptyState } from "@/components/empty-state";
+import { type FilterOption, FilterMultiSelect } from "@/components/filters";
 import { useFadeUp } from "@/lib/animate";
 import { useRouter } from "@/i18n/navigation";
 
@@ -28,19 +31,20 @@ import {
   type Customer,
   customerKpis,
   customers,
+  type Status,
   type Tier,
   tierColor,
 } from "../data";
-import { CustomerFormModal } from "./customer-form-modal";
 
 const PAGE_SIZE = 8;
-const STATUSES = ["all", "active", "inactive"] as const;
+const STATUSES: Status[] = ["active", "inactive"];
 const TIERS: Tier[] = ["bronze", "silver", "gold", "diamond"];
 
 /**
- * Clientes — KPI row + a polished data table (search, status/tier filter chips,
- * export, add, pagination). Rows open the customer detail. Design-first /
- * hardcoded (../data); the seam is the tRPC `clientes.list` query later.
+ * Clientes — KPI row + a polished data table (search, status/tier select
+ * filters, export, add, pagination). Rows open the customer detail; add/edit go
+ * to the customer wizard. Design-first / hardcoded (../data); the seam is the
+ * tRPC `clientes.list` query later.
  */
 export function CustomersView() {
   const t = useTranslations("Customers");
@@ -48,21 +52,37 @@ export function CustomersView() {
   const fade = useFadeUp({ step: 40 });
 
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<(typeof STATUSES)[number]>("all");
-  const [tier, setTier] = useState<Tier | null>(null);
+  const [statuses, setStatuses] = useState<Status[]>([...STATUSES]);
+  const [tiers, setTiers] = useState<Tier[]>([...TIERS]);
   const [page, setPage] = useState(0);
-  const [addOpen, setAddOpen] = useState(false);
+
+  const statusOptions: FilterOption<Status>[] = [
+    { value: "active", label: t("status.active"), dot: "#1f9d68" },
+    { value: "inactive", label: t("status.inactive"), dot: "#9aa1ab" },
+  ];
+  const tierOptions: FilterOption<Tier>[] = TIERS.map((tr) => ({
+    value: tr,
+    label: t(`tier.${tr}`),
+  }));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return customers.filter((c) => {
-      if (status !== "all" && c.status !== status) return false;
-      if (tier && c.tier !== tier) return false;
+      if (!statuses.includes(c.status)) return false;
+      if (!tiers.includes(c.tier)) return false;
       if (q && !c.name.toLowerCase().includes(q) && !c.phone.includes(q))
         return false;
       return true;
     });
-  }, [query, status, tier]);
+  }, [query, statuses, tiers]);
+
+  const clearFilters = () => {
+    reset(() => {
+      setQuery("");
+      setStatuses([...STATUSES]);
+      setTiers([...TIERS]);
+    });
+  };
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const current = Math.min(page, pages - 1);
@@ -96,7 +116,7 @@ export function CustomersView() {
           </Button>
           <Button
             className="h-10 gap-2 rounded-xl font-semibold"
-            onClick={() => setAddOpen(true)}
+            onClick={() => router.push("/customers/new")}
           >
             <Plus className="size-4" />
             {t("addCustomer")}
@@ -142,33 +162,37 @@ export function CustomersView() {
               className="border-border bg-muted/40 placeholder:text-muted-foreground h-10 w-full rounded-xl border pr-3 pl-9 text-sm outline-none"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {STATUSES.map((s) => (
-              <Chip
-                key={s}
-                active={status === s}
-                onClick={() => reset(() => setStatus(s))}
-              >
-                {t(`status.${s}`)}
-              </Chip>
-            ))}
-            <span className="bg-border mx-1 h-5 w-px" />
-            {TIERS.map((tr) => (
-              <Chip
-                key={tr}
-                active={tier === tr}
-                onClick={() => reset(() => setTier(tier === tr ? null : tr))}
-              >
-                {t(`tier.${tr}`)}
-              </Chip>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterMultiSelect
+              label={t("statusFilter")}
+              options={statusOptions}
+              selected={statuses}
+              onChange={(v) => reset(() => setStatuses(v))}
+            />
+            <FilterMultiSelect
+              label={t("tierFilter")}
+              options={tierOptions}
+              selected={tiers}
+              onChange={(v) => reset(() => setTiers(v))}
+            />
           </div>
         </div>
 
         {rows.length === 0 ? (
-          <p className="text-muted-foreground py-16 text-center text-sm">
-            {t("empty")}
-          </p>
+          <EmptyState
+            icon={Users}
+            title={t("empty")}
+            hint={t("emptyHint")}
+            action={
+              <Button
+                variant="outline"
+                className="rounded-xl"
+                onClick={clearFilters}
+              >
+                {t("clearFilters")}
+              </Button>
+            }
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -226,8 +250,6 @@ export function CustomersView() {
           </div>
         </div>
       </div>
-
-      <CustomerFormModal open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }
@@ -289,29 +311,5 @@ function Row({
         </Badge>
       </TableCell>
     </TableRow>
-  );
-}
-
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`h-8 rounded-full px-3 text-xs font-bold transition-colors ${
-        active
-          ? "bg-primary text-primary-foreground"
-          : "bg-muted text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
   );
 }

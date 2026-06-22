@@ -107,3 +107,58 @@ export function getCustomer(id: string): CustomerDetail {
     redemptions,
   };
 }
+
+export type Channel = "push" | "email" | "sms" | "whatsapp";
+export const CHANNELS: Channel[] = ["push", "email", "sms", "whatsapp"];
+
+export type BirthDate = { day: number; month: number; year: number };
+
+// Full editable customer draft used by the create/edit wizard. Richer than the
+// list row: identity + loyalty starting balance + notification preferences. Seam:
+// the Phase A customer + loyaltyCard + opt-out model.
+export type CustomerDraft = {
+  name: string;
+  nickname: string;
+  phone: string;
+  email: string;
+  birthday: BirthDate;
+  tier: Tier;
+  initialStamps: number;
+  initialPoints: number;
+  channels: Channel[];
+  marketingOptIn: boolean;
+  notes: string;
+};
+
+export const emptyCustomerDraft: CustomerDraft = {
+  name: "",
+  nickname: "",
+  phone: "",
+  email: "",
+  birthday: { day: 1, month: 1, year: 2000 },
+  tier: "bronze",
+  initialStamps: 0,
+  initialPoints: 0,
+  channels: ["push", "email"],
+  marketingOptIn: true,
+  notes: "",
+};
+
+/** Resolve a customer into an editable draft. Hardcoded — unknown ids fall back
+ * to the first customer so deep links never 404 in the design build. */
+export function getCustomerDraft(id: string): CustomerDraft {
+  const base = customers.find((c) => c.id === id) ?? customers[0]!;
+  return {
+    name: base.name,
+    nickname: "",
+    phone: base.phone,
+    email: `${base.initials.toLowerCase()}@example.com`,
+    birthday: { day: 14, month: 3, year: 1996 },
+    tier: base.tier,
+    initialStamps: base.stamps,
+    initialPoints: base.points,
+    channels: ["push", "email", "whatsapp"],
+    marketingOptIn: true,
+    notes: "",
+  };
+}
