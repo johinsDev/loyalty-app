@@ -1190,5 +1190,147 @@
         }
       }
     }
+  },
+  "Purchases": {
+    "title": "Compras",
+    "subtitle": "Feed de transacciones de tus clientes.",
+    "searchPlaceholder": "Buscar por cliente…",
+    "statusFilter": "Tienda",
+    "empty": "No se encontraron compras.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "export": "Exportar",
+    "kpi": {
+      "total": "Compras",
+      "revenue": "Ingresos",
+      "avgTicket": "Ticket promedio"
+    },
+    "col": {
+      "customer": "Cliente",
+      "detail": "Detalle",
+      "amount": "Monto",
+      "points": "Puntos",
+      "store": "Tienda",
+      "date": "Fecha"
+    },
+    "receipt": "Recibo",
+    "items": "Items",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "close": "Cerrar",
+    "viewReceipt": "Ver recibo"
+  },
+  "Stores": {
+    "title": "Tiendas",
+    "subtitle": "Tus locales y su información.",
+    "add": "Agregar tienda",
+    "searchPlaceholder": "Buscar tienda…",
+    "statusFilter": "Estado",
+    "empty": "No se encontraron tiendas.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "deleteConfirm": "Sí, eliminar",
+    "deleteTitle": "¿Eliminar tienda?",
+    "deleteDescription": "Se eliminará “{name}”. Esta acción no se puede deshacer.",
+    "deleted": "“{name}” eliminada",
+    "undo": "Deshacer",
+    "restored": "“{name}” restaurada",
+    "col": {
+      "store": "Tienda",
+      "address": "Dirección",
+      "members": "Equipo",
+      "status": "Estado"
+    },
+    "membersCount": "{n} miembros",
+    "status": {
+      "active": "Activa",
+      "inactive": "Inactiva"
+    },
+    "newTitle": "Nueva tienda",
+    "editTitle": "Editar tienda",
+    "save": "Crear tienda",
+    "saveChanges": "Guardar cambios",
+    "created": "Tienda “{name}” creada",
+    "updated": "“{name}” actualizada",
+    "fieldName": "Nombre",
+    "namePlaceholder": "T4 Centro",
+    "fieldAddress": "Dirección",
+    "fieldPhone": "Teléfono",
+    "fieldHours": "Horario",
+    "hoursPlaceholder": "10:00–21:00"
+  },
+  "Employees": {
+    "title": "Empleados",
+    "subtitle": "Quién opera la caja y administra.",
+    "invite": "Invitar",
+    "invitePlaceholder": "correo@ejemplo.com",
+    "searchPlaceholder": "Buscar empleado…",
+    "roleFilter": "Rol",
+    "statusFilter": "Estado",
+    "empty": "No se encontraron empleados.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "remove": "Quitar",
+    "resend": "Reenviar",
+    "inviteSent": "Invitación enviada",
+    "resent": "Invitación reenviada",
+    "removed": "{name} eliminado",
+    "col": {
+      "employee": "Empleado",
+      "email": "Correo",
+      "role": "Rol",
+      "stamps": "Sellos dados",
+      "redemptions": "Canjes",
+      "status": "Estado"
+    },
+    "role": {
+      "owner": "Dueño",
+      "manager": "Gerente",
+      "staff": "Cajero"
+    },
+    "status": {
+      "active": "Activo",
+      "invited": "Invitado"
+    }
+  },
+  "Analytics": {
+    "title": "Analítica",
+    "subtitle": "Crecimiento, retención y embudo.",
+    "ytd": "YTD",
+    "nav": {
+      "overview": "Resumen",
+      "cohorts": "Cohortes",
+      "funnel": "Embudo"
+    },
+    "growthTitle": "Crecimiento de clientes",
+    "growthSubtitle": "Nuevos socios por mes",
+    "tierTitle": "Distribución por tier",
+    "tierSubtitle": "Mix de la base",
+    "revenueTitle": "Ingresos por lealtad",
+    "revenueSubtitle": "Atribuidos al programa",
+    "engagementTitle": "Engagement de notificaciones",
+    "engagementSubtitle": "Apertura vs clic",
+    "open": "Apertura",
+    "click": "Clic",
+    "cohortsTitle": "Retención por cohorte",
+    "cohortsSubtitle": "% que vuelve por semana",
+    "cohort": "Cohorte",
+    "funnelTitle": "Embudo de campaña",
+    "funnelSubtitle": "De envío a canje",
+    "stage": {
+      "reached": "Alcanzados",
+      "opened": "Abrieron",
+      "visited": "Visitaron",
+      "redeemed": "Canjearon"
+    },
+    "tier": {
+      "bronze": "Bronce",
+      "silver": "Plata",
+      "gold": "Oro",
+      "diamond": "Diamante"
+    }
   }
 }

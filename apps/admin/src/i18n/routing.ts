@@ -26,6 +26,7 @@ export const routing = defineRouting({
     "/rewards/new": { es: "/premios/nuevo", en: "/rewards/new" },
     "/rewards/[id]": { es: "/premios/[id]", en: "/rewards/[id]" },
     "/promotions": { es: "/promociones", en: "/promotions" },
+    "/promotions/new": { es: "/promociones/nueva", en: "/promotions/new" },
     "/promotions/[id]": { es: "/promociones/[id]", en: "/promotions/[id]" },
     "/campaigns": { es: "/campanas", en: "/campaigns" },
     "/campaigns/new": { es: "/campanas/nueva", en: "/campaigns/new" },

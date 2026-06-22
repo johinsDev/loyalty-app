@@ -1190,5 +1190,147 @@
         }
       }
     }
+  },
+  "Purchases": {
+    "title": "Purchases",
+    "subtitle": "Your customers transaction feed.",
+    "searchPlaceholder": "Search by customer…",
+    "statusFilter": "Store",
+    "empty": "No purchases found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "export": "Export",
+    "kpi": {
+      "total": "Purchases",
+      "revenue": "Revenue",
+      "avgTicket": "Avg ticket"
+    },
+    "col": {
+      "customer": "Customer",
+      "detail": "Detail",
+      "amount": "Amount",
+      "points": "Points",
+      "store": "Store",
+      "date": "Date"
+    },
+    "receipt": "Receipt",
+    "items": "Items",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "close": "Close",
+    "viewReceipt": "View receipt"
+  },
+  "Stores": {
+    "title": "Stores",
+    "subtitle": "Your locations and their info.",
+    "add": "Add store",
+    "searchPlaceholder": "Search store…",
+    "statusFilter": "Status",
+    "empty": "No stores found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "deleteConfirm": "Yes, delete",
+    "deleteTitle": "Delete store?",
+    "deleteDescription": "This removes “{name}”. This cannot be undone.",
+    "deleted": "“{name}” deleted",
+    "undo": "Undo",
+    "restored": "“{name}” restored",
+    "col": {
+      "store": "Store",
+      "address": "Address",
+      "members": "Team",
+      "status": "Status"
+    },
+    "membersCount": "{n} members",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "newTitle": "New store",
+    "editTitle": "Edit store",
+    "save": "Create store",
+    "saveChanges": "Save changes",
+    "created": "Store “{name}” created",
+    "updated": "“{name}” updated",
+    "fieldName": "Name",
+    "namePlaceholder": "T4 Downtown",
+    "fieldAddress": "Address",
+    "fieldPhone": "Phone",
+    "fieldHours": "Hours",
+    "hoursPlaceholder": "10:00–21:00"
+  },
+  "Employees": {
+    "title": "Employees",
+    "subtitle": "Who runs the register and admins.",
+    "invite": "Invite",
+    "invitePlaceholder": "email@example.com",
+    "searchPlaceholder": "Search employee…",
+    "roleFilter": "Role",
+    "statusFilter": "Status",
+    "empty": "No employees found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "remove": "Remove",
+    "resend": "Resend",
+    "inviteSent": "Invitation sent",
+    "resent": "Invitation resent",
+    "removed": "{name} removed",
+    "col": {
+      "employee": "Employee",
+      "email": "Email",
+      "role": "Role",
+      "stamps": "Stamps given",
+      "redemptions": "Redemptions",
+      "status": "Status"
+    },
+    "role": {
+      "owner": "Owner",
+      "manager": "Manager",
+      "staff": "Staff"
+    },
+    "status": {
+      "active": "Active",
+      "invited": "Invited"
+    }
+  },
+  "Analytics": {
+    "title": "Analytics",
+    "subtitle": "Growth, retention and funnel.",
+    "ytd": "YTD",
+    "nav": {
+      "overview": "Overview",
+      "cohorts": "Cohorts",
+      "funnel": "Funnel"
+    },
+    "growthTitle": "Customer growth",
+    "growthSubtitle": "New members per month",
+    "tierTitle": "Tier distribution",
+    "tierSubtitle": "Base mix",
+    "revenueTitle": "Loyalty revenue",
+    "revenueSubtitle": "Attributed to the program",
+    "engagementTitle": "Notification engagement",
+    "engagementSubtitle": "Open vs click",
+    "open": "Open",
+    "click": "Click",
+    "cohortsTitle": "Cohort retention",
+    "cohortsSubtitle": "% returning per week",
+    "cohort": "Cohort",
+    "funnelTitle": "Campaign funnel",
+    "funnelSubtitle": "From send to redeem",
+    "stage": {
+      "reached": "Reached",
+      "opened": "Opened",
+      "visited": "Visited",
+      "redeemed": "Redeemed"
+    },
+    "tier": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "diamond": "Diamond"
+    }
   }
 }
