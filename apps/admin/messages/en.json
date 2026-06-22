@@ -20,7 +20,22 @@
     "notifications": "Notifications",
     "devTools": "Dev tools",
     "promotions": "Promotions",
-    "shortlinks": "Short links"
+    "shortlinks": "Short links",
+    "purchases": "Purchases",
+    "campaigns": "Campaigns",
+    "banners": "Banners",
+    "employees": "Employees",
+    "analytics": "Analytics",
+    "settings": "Settings",
+    "devGroup": "DEV",
+    "search": "Search…",
+    "products": "Products",
+    "stores": "Stores",
+    "groupMain": "MAIN",
+    "groupCatalog": "CATALOG",
+    "groupMarketing": "MARKETING",
+    "groupAnalysis": "ANALYSIS",
+    "groupOps": "OPERATIONS"
   },
   "Notifications": {
     "title": "Notifications",
@@ -405,5 +420,29 @@
     "avatarUpload": "Upload photo",
     "avatarErrorType": "Invalid format. Use PNG, JPG or WEBP.",
     "avatarErrorSize": "The image is over {mb} MB."
+  },
+  "Admin": {
+    "greeting": "Hi, {name}",
+    "storesMembers": "{stores} stores · {members} members",
+    "cashierMode": "Cashier mode",
+    "notifications": "Notifications",
+    "account": "Account",
+    "language": "Language",
+    "theme": "Theme",
+    "impersonate": "Impersonate customer",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
+    "comingSoon": "This section is on the way. We're building it.",
+    "store": {
+      "allStores": "All stores",
+      "t4Centro": "T4 Centro",
+      "t4Norte": "T4 Norte"
+    }
+  },
+  "Roles": {
+    "customer": "Customer",
+    "staff": "Staff",
+    "manager": "Manager",
+    "owner": "Owner"
   }
 }

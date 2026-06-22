@@ -20,7 +20,22 @@
     "notifications": "Notificaciones",
     "devTools": "Herramientas dev",
     "promotions": "Promociones",
-    "shortlinks": "Enlaces"
+    "shortlinks": "Enlaces",
+    "purchases": "Compras",
+    "campaigns": "Campañas",
+    "banners": "Banners",
+    "employees": "Empleados",
+    "analytics": "Analytics",
+    "settings": "Ajustes",
+    "devGroup": "DEV",
+    "search": "Buscar…",
+    "products": "Productos",
+    "stores": "Tiendas",
+    "groupMain": "PRINCIPAL",
+    "groupCatalog": "CATÁLOGO",
+    "groupMarketing": "MARKETING",
+    "groupAnalysis": "ANÁLISIS",
+    "groupOps": "OPERACIÓN"
   },
   "Notifications": {
     "title": "Notificaciones",
@@ -405,5 +420,29 @@
     "avatarUpload": "Subir foto",
     "avatarErrorType": "Formato no válido. Usá PNG, JPG o WEBP.",
     "avatarErrorSize": "La imagen supera {mb} MB."
+  },
+  "Admin": {
+    "greeting": "Hola, {name}",
+    "storesMembers": "{stores} tiendas · {members} socios",
+    "cashierMode": "Modo caja",
+    "notifications": "Notificaciones",
+    "account": "Cuenta",
+    "language": "Idioma",
+    "theme": "Tema",
+    "impersonate": "Impersonar cliente",
+    "signOut": "Cerrar sesión",
+    "signingOut": "Cerrando…",
+    "comingSoon": "Esta sección está en camino. La estamos construyendo.",
+    "store": {
+      "allStores": "Todas las tiendas",
+      "t4Centro": "T4 Centro",
+      "t4Norte": "T4 Norte"
+    }
+  },
+  "Roles": {
+    "customer": "Cliente",
+    "staff": "Cajero",
+    "manager": "Gerente",
+    "owner": "Dueño"
   }
 }
