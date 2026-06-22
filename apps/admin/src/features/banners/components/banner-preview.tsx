@@ -16,7 +16,7 @@ export function BannerPreview({ draft }: { draft: BannerDraft }) {
     <div className="mx-auto w-full max-w-xs">
       <div
         className="relative overflow-hidden rounded-3xl p-5 text-white shadow-xl"
-        style={{ background: gradientCss(g) }}
+        style={{ background: draft.color ?? gradientCss(g) }}
       >
         <span className="absolute -top-10 -right-6 size-32 rounded-full bg-white/10" />
         <div className="relative">

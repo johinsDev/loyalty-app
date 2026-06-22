@@ -401,7 +401,8 @@
       "cost": "Cost",
       "redeemed": "Redemptions",
       "status": "Status"
-    }
+    },
+    "bgColor": "Background color"
   },
   "WhatsAppOutbox": {
     "title": "WhatsApp Outbox",
@@ -1108,7 +1109,8 @@
     "triggerBirthday": "Birthday",
     "triggerInactivity": "Inactivity",
     "triggerManual": "Manual",
-    "datePlaceholder": "Pick a date"
+    "datePlaceholder": "Pick a date",
+    "fieldTime": "Time"
   },
   "Banners": {
     "title": "Banners",
@@ -1183,7 +1185,9 @@
       "status": "Status",
       "range": "Active",
       "clicks": "Clicks"
-    }
+    },
+    "bgColor": "Background color",
+    "colorMode": "Custom color"
   },
   "Settings": {
     "title": "Settings",
@@ -1262,7 +1266,8 @@
       "skip": "Skip",
       "next": "Next",
       "start": "Start",
-      "previewTitle": "Preview"
+      "previewTitle": "Preview",
+      "bg": "Background color"
     },
     "team": {
       "title": "Team & roles",
@@ -1279,7 +1284,12 @@
         "owner": "Owner",
         "manager": "Manager",
         "staff": "Staff"
-      }
+      },
+      "statusActive": "Active",
+      "statusInvited": "Invited",
+      "statusCol": "Status",
+      "resend": "Resend",
+      "resent": "Invitation resent"
     },
     "integrations": {
       "title": "Integrations",

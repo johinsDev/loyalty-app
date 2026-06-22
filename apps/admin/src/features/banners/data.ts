@@ -51,6 +51,8 @@ export type BannerDraft = {
   type: BannerType;
   promo: string;
   gradient: string;
+  // Custom background color. null = use the gradient preset.
+  color: string | null;
   emoji: string;
   start: Date | null;
   end: Date | null;
@@ -63,6 +65,7 @@ export const emptyBannerDraft: BannerDraft = {
   type: "promo",
   promo: "promo2x1",
   gradient: "mint",
+  color: null,
   emoji: "🧋",
   start: null,
   end: null,
@@ -75,6 +78,7 @@ const SAMPLE: BannerDraft = {
   type: "promo",
   promo: "promo2x1",
   gradient: "mint",
+  color: null,
   emoji: "🧋",
   start: null,
   end: null,

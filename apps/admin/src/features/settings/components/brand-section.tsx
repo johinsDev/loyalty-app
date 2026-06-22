@@ -1,6 +1,6 @@
 "use client";
 
-import { Input, Label } from "@loyalty/ui";
+import { ColorPicker, Input, Label } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -69,25 +69,11 @@ export function BrandSection() {
           </Field>
 
           <Field label={t("brand.color")}>
-            <div className="flex flex-wrap gap-3">
-              {BRAND_COLORS.map((c) => {
-                const on = c === color;
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setColor(c)}
-                    aria-label={c}
-                    style={{ background: c, color: c }}
-                    className={`size-8 rounded-full transition-transform ${
-                      on
-                        ? "ring-offset-card scale-110 ring-2 ring-current ring-offset-2"
-                        : "hover:scale-105"
-                    }`}
-                  />
-                );
-              })}
-            </div>
+            <ColorPicker
+              value={color}
+              onValueChange={setColor}
+              swatches={BRAND_COLORS}
+            />
           </Field>
         </div>
 

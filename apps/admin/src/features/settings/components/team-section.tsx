@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Badge,
   Button,
   Input,
   Label,
@@ -23,6 +24,10 @@ import { toast } from "sonner";
 
 import { type Member, ROLES, type Role, team } from "../data";
 
+type MemberStatus = "active" | "invited";
+// Existing members carry a status locally; the data seed has no such field yet.
+type EditableMember = Member & { status: MemberStatus };
+
 function initials(name: string) {
   return name
     .split(" ")
@@ -39,7 +44,9 @@ function initials(name: string) {
  */
 export function TeamSection() {
   const t = useTranslations("Settings");
-  const [members, setMembers] = useState<Member[]>(team);
+  const [members, setMembers] = useState<EditableMember[]>(() =>
+    team.map((m) => ({ ...m, status: "active" })),
+  );
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Role>("staff");
 
@@ -53,6 +60,7 @@ export function TeamSection() {
         name: email.split("@")[0] ?? email,
         email,
         role: inviteRole,
+        status: "invited",
       },
     ]);
     toast.success(t("team.invite"));
@@ -67,6 +75,8 @@ export function TeamSection() {
     setMembers((prev) => prev.filter((m) => m.id !== id));
     toast.success(t("team.remove"));
   };
+
+  const resend = () => toast(t("team.resent"));
 
   return (
     <section className="space-y-5">
@@ -116,6 +126,7 @@ export function TeamSection() {
             <TableHead>{t("team.col.member")}</TableHead>
             <TableHead>{t("team.col.email")}</TableHead>
             <TableHead>{t("team.col.role")}</TableHead>
+            <TableHead>{t("team.statusCol")}</TableHead>
             <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
@@ -151,15 +162,36 @@ export function TeamSection() {
                 </Select>
               </TableCell>
               <TableCell>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => remove(m.id)}
-                  className="text-muted-foreground hover:text-destructive size-8"
-                  aria-label={t("team.remove")}
+                <Badge
+                  variant="outline"
+                  className={
+                    m.status === "active"
+                      ? "text-emerald-600"
+                      : "text-amber-600"
+                  }
                 >
-                  <Trash2 className="size-4" />
-                </Button>
+                  {m.status === "active"
+                    ? t("team.statusActive")
+                    : t("team.statusInvited")}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center justify-end gap-2">
+                  {m.status === "invited" ? (
+                    <Button variant="outline" size="sm" onClick={resend}>
+                      {t("team.resend")}
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => remove(m.id)}
+                    className="text-muted-foreground hover:text-destructive size-8"
+                    aria-label={t("team.remove")}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}

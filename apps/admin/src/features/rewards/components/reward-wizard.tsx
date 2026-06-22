@@ -1,6 +1,12 @@
 "use client";
 
-import { Input, Label, SegmentedControl, Textarea } from "@loyalty/ui";
+import {
+  ColorPicker,
+  Input,
+  Label,
+  RichTextEditor,
+  SegmentedControl,
+} from "@loyalty/ui";
 import { Coins, Stamp } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -98,12 +104,15 @@ export function RewardWizard({ id }: { id?: string }) {
             </div>
           </Field>
           <Field label={t("fieldDescription")}>
-            <Textarea
+            <RichTextEditor
               value={draft.description}
-              onChange={(e) => set("description", e.target.value)}
-              placeholder={t("fieldDescriptionPlaceholder")}
-              rows={3}
-              className="rounded-xl"
+              onValueChange={(html) => set("description", html)}
+            />
+          </Field>
+          <Field label={t("bgColor")}>
+            <ColorPicker
+              value={draft.color}
+              onValueChange={(c) => set("color", c)}
             />
           </Field>
         </div>
@@ -167,7 +176,10 @@ function RewardPreview({
   t: ReturnType<typeof useTranslations>;
 }) {
   return (
-    <div className="from-primary to-primary/80 rounded-3xl bg-gradient-to-br p-5 text-white shadow-lg">
+    <div
+      className="rounded-3xl p-5 text-white shadow-lg"
+      style={{ background: draft.color }}
+    >
       <div className="grid size-14 place-items-center rounded-2xl bg-white/15 text-3xl">
         {draft.emoji}
       </div>
@@ -175,9 +187,10 @@ function RewardPreview({
         {draft.name || t("namePlaceholder")}
       </div>
       {draft.description ? (
-        <p className="mt-1 line-clamp-2 text-sm font-semibold text-white/85">
-          {draft.description}
-        </p>
+        <div
+          className="prose prose-sm prose-invert mt-1 line-clamp-2 text-white/85"
+          dangerouslySetInnerHTML={{ __html: draft.description }}
+        />
       ) : null}
       <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-sm font-extrabold">
         {draft.costType === "stamps" ? (
