@@ -179,8 +179,10 @@ export function CustomerWizard({ id }: { id?: string }) {
               value={draft.tier}
               onValueChange={(v) => set("tier", v as Tier)}
             >
-              <SelectTrigger className="h-14 w-full rounded-xl">
-                <SelectValue />
+              <SelectTrigger className="h-14 w-full rounded-xl text-base md:text-sm">
+                <SelectValue>
+                  {(value) => t(`tier.${value as Tier}`)}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {TIERS.map((tr) => (
