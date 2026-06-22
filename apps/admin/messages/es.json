@@ -24,12 +24,18 @@
     "purchases": "Compras",
     "campaigns": "Campañas",
     "banners": "Banners",
-    "menu": "Menú",
     "employees": "Empleados",
     "analytics": "Analytics",
     "settings": "Ajustes",
     "devGroup": "DEV",
-    "search": "Buscar…"
+    "search": "Buscar…",
+    "products": "Productos",
+    "stores": "Tiendas",
+    "groupMain": "PRINCIPAL",
+    "groupCatalog": "CATÁLOGO",
+    "groupMarketing": "MARKETING",
+    "groupAnalysis": "ANÁLISIS",
+    "groupOps": "OPERACIÓN"
   },
   "Notifications": {
     "title": "Notificaciones",
@@ -432,5 +438,11 @@
       "t4Centro": "T4 Centro",
       "t4Norte": "T4 Norte"
     }
+  },
+  "Roles": {
+    "customer": "Cliente",
+    "staff": "Cajero",
+    "manager": "Gerente",
+    "owner": "Dueño"
   }
 }
