@@ -6,6 +6,7 @@ import {
   Input,
   InputPhone,
   Label,
+  NumberInput,
   ResponsiveModal,
   ResponsiveModalContent,
   ResponsiveModalDescription,
@@ -199,22 +200,16 @@ export function CustomerWizard({ id }: { id?: string }) {
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label={t("initialStamps")} hint={t("optional")}>
-              <Input
-                type="number"
-                value={String(draft.initialStamps)}
-                onChange={(e) =>
-                  set("initialStamps", Number(e.target.value) || 0)
-                }
+              <NumberInput
+                value={draft.initialStamps}
+                onValueChange={(v) => set("initialStamps", v ?? 0)}
                 className="h-10"
               />
             </Field>
             <Field label={t("initialPoints")} hint={t("optional")}>
-              <Input
-                type="number"
-                value={String(draft.initialPoints)}
-                onChange={(e) =>
-                  set("initialPoints", Number(e.target.value) || 0)
-                }
+              <NumberInput
+                value={draft.initialPoints}
+                onValueChange={(v) => set("initialPoints", v ?? 0)}
                 className="h-10"
               />
             </Field>

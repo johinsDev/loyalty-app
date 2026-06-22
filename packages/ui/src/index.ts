@@ -45,6 +45,7 @@ export * from "./components/ui/date-wheel-picker";
 export * from "./components/ui/mode-segmented";
 export * from "./components/ui/mode-toggle";
 export * from "./components/ui/native-select";
+export * from "./components/ui/number-input";
 export * from "./components/ui/segmented-control";
 export * from "./components/ui/navigation-menu";
 export * from "./components/ui/pagination";

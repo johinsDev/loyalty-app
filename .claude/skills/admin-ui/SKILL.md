@@ -20,6 +20,7 @@ In **apps/admin**, single-line controls must be **h-10 (40px)**:
 | `InputPhone` | `size="sm"` (height is baked into its inner input+trigger; className can't reach them) |
 | `Select` (`SelectTrigger`) | `size="lg"` — **not** `className="h-10"`. The trigger's `data-[size=default]:h-8` beats a plain `h-10` by CSS specificity, so use the size variant. |
 | `NativeSelect` | `size="lg"` (same reason; prefer the styled `Select` though — see below) |
+| `NumberInput` / `CurrencyInput` | `className="h-10"`. Use these (react-number-format: digits-only, grouped thousands, no spinner, emits a real `number`) for any numeric/price field — never `<Input type="number">`. `CurrencyInput` derives the symbol from `currency`+`locale`. Stories: `Components/NumberInput`. |
 
 \* `Textarea` is multi-line — the 40px rule is for single-line controls; give it a
 sensible `min-h-*` instead.
