@@ -758,5 +758,107 @@
     "newProduct": "Nuevo producto",
     "newReward": "Nueva recompensa",
     "addCustomer": "Agregar cliente"
+  },
+  "Campaigns": {
+    "title": "Campañas",
+    "subtitle": "Automatiza mensajes y mide su impacto.",
+    "add": "Nueva campaña",
+    "quickPush": "Push rápido",
+    "quickPushSent": "Push rápido enviado",
+    "searchPlaceholder": "Buscar campaña…",
+    "statusFilter": "Estado",
+    "typeFilter": "Tipo",
+    "empty": "No se encontraron campañas.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "newTitle": "Nueva campaña",
+    "editTitle": "Editar campaña",
+    "saveChanges": "Guardar cambios",
+    "launch": "Lanzar campaña",
+    "created": "Campaña “{name}” creada",
+    "updated": "“{name}” actualizada",
+    "kpi": {
+      "sent": "Enviados",
+      "avgOpen": "Apertura prom.",
+      "avgClick": "Clic prom.",
+      "active": "Activas"
+    },
+    "col": {
+      "campaign": "Campaña",
+      "channels": "Canales",
+      "sent": "Enviados",
+      "open": "Apertura",
+      "click": "Clic",
+      "status": "Estado"
+    },
+    "status": {
+      "active": "Activa",
+      "paused": "Pausada",
+      "draft": "Borrador"
+    },
+    "type": {
+      "automated": "Automática",
+      "manual": "Manual"
+    },
+    "channel": {
+      "push": "Push",
+      "email": "Correo",
+      "sms": "SMS",
+      "whatsapp": "WhatsApp"
+    },
+    "channelsLabel": "Canales",
+    "channelsHint": "Por dónde se envía el mensaje.",
+    "segment": {
+      "all": "Todos los socios",
+      "vip": "VIP",
+      "atRisk": "En riesgo",
+      "new": "Nuevos",
+      "inactive": "Inactivos"
+    },
+    "step": {
+      "content": "Contenido",
+      "channels": "Canales",
+      "segment": "Segmento",
+      "schedule": "Programación",
+      "review": "Revisar"
+    },
+    "fieldName": "Nombre interno",
+    "fieldNamePlaceholder": "Promo 2×1 entre semana",
+    "fieldTitle": "Título",
+    "fieldTitlePlaceholder": "🧋 2×1 toda la semana",
+    "fieldBody": "Mensaje",
+    "fieldBodyPlaceholder": "Escribe el cuerpo del mensaje…",
+    "fieldCta": "Botón / CTA",
+    "fieldCtaPlaceholder": "Ver promo",
+    "optional": "opcional",
+    "fieldSegment": "Segmento",
+    "segmentHint": "A quién enviar",
+    "segmentReach": "Alcance estimado: {n} socios",
+    "scheduleMode": "Programación",
+    "modeEvent": "Evento",
+    "modeRecurring": "Periódica",
+    "modeDate": "Fecha",
+    "fieldEvent": "Evento disparador",
+    "fieldFrequency": "Frecuencia",
+    "fieldDate": "Fecha de envío",
+    "event": {
+      "signup": "Al registrarse",
+      "birthday": "En su cumpleaños",
+      "inactivity": "Tras inactividad",
+      "firstPurchase": "Primera compra"
+    },
+    "frequency": {
+      "daily": "Diaria",
+      "weekly": "Semanal",
+      "monthly": "Mensual"
+    },
+    "reviewTitle": "Revisar campaña",
+    "previewEmpty": "Selecciona un canal para ver la vista previa.",
+    "previewTitlePlaceholder": "Título del mensaje",
+    "previewBodyPlaceholder": "Aquí va el cuerpo del mensaje de tu campaña.",
+    "triggerSignup": "Al registrarse",
+    "triggerBirthday": "Cumpleaños",
+    "triggerInactivity": "Inactividad",
+    "triggerManual": "Manual"
   }
 }

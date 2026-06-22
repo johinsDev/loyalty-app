@@ -758,5 +758,107 @@
     "newProduct": "New product",
     "newReward": "New reward",
     "addCustomer": "Add customer"
+  },
+  "Campaigns": {
+    "title": "Campaigns",
+    "subtitle": "Automate messages and measure their impact.",
+    "add": "New campaign",
+    "quickPush": "Quick push",
+    "quickPushSent": "Quick push sent",
+    "searchPlaceholder": "Search campaign…",
+    "statusFilter": "Status",
+    "typeFilter": "Type",
+    "empty": "No campaigns found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "newTitle": "New campaign",
+    "editTitle": "Edit campaign",
+    "saveChanges": "Save changes",
+    "launch": "Launch campaign",
+    "created": "Campaign “{name}” created",
+    "updated": "“{name}” updated",
+    "kpi": {
+      "sent": "Sent",
+      "avgOpen": "Avg open",
+      "avgClick": "Avg click",
+      "active": "Active"
+    },
+    "col": {
+      "campaign": "Campaign",
+      "channels": "Channels",
+      "sent": "Sent",
+      "open": "Open",
+      "click": "Click",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "paused": "Paused",
+      "draft": "Draft"
+    },
+    "type": {
+      "automated": "Automated",
+      "manual": "Manual"
+    },
+    "channel": {
+      "push": "Push",
+      "email": "Email",
+      "sms": "SMS",
+      "whatsapp": "WhatsApp"
+    },
+    "channelsLabel": "Channels",
+    "channelsHint": "Where the message is sent.",
+    "segment": {
+      "all": "All members",
+      "vip": "VIP",
+      "atRisk": "At risk",
+      "new": "New",
+      "inactive": "Inactive"
+    },
+    "step": {
+      "content": "Content",
+      "channels": "Channels",
+      "segment": "Segment",
+      "schedule": "Schedule",
+      "review": "Review"
+    },
+    "fieldName": "Internal name",
+    "fieldNamePlaceholder": "Weekday 2-for-1 promo",
+    "fieldTitle": "Title",
+    "fieldTitlePlaceholder": "🧋 2-for-1 all week",
+    "fieldBody": "Message",
+    "fieldBodyPlaceholder": "Write the message body…",
+    "fieldCta": "Button / CTA",
+    "fieldCtaPlaceholder": "See promo",
+    "optional": "optional",
+    "fieldSegment": "Segment",
+    "segmentHint": "Who to send to",
+    "segmentReach": "Estimated reach: {n} members",
+    "scheduleMode": "Schedule",
+    "modeEvent": "Event",
+    "modeRecurring": "Recurring",
+    "modeDate": "Date",
+    "fieldEvent": "Trigger event",
+    "fieldFrequency": "Frequency",
+    "fieldDate": "Send date",
+    "event": {
+      "signup": "On signup",
+      "birthday": "On birthday",
+      "inactivity": "After inactivity",
+      "firstPurchase": "First purchase"
+    },
+    "frequency": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly"
+    },
+    "reviewTitle": "Review campaign",
+    "previewEmpty": "Select a channel to see the preview.",
+    "previewTitlePlaceholder": "Message title",
+    "previewBodyPlaceholder": "Your campaign message body goes here.",
+    "triggerSignup": "On signup",
+    "triggerBirthday": "Birthday",
+    "triggerInactivity": "Inactivity",
+    "triggerManual": "Manual"
   }
 }
