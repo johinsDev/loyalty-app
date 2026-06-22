@@ -532,6 +532,7 @@
     "promoLive": "Promo 2×1 publicada y notificada a socios.",
     "fraudReplay": "Fraude: mismo código de canje usado 3×.",
     "campaignSent": "Campaña Win-back enviada a 128 socios.",
-    "capReached": "Caja T4 Norte alcanzó el tope diario de sellos."
+    "capReached": "Caja T4 Norte alcanzó el tope diario de sellos.",
+    "settings": "Ajustes de notificaciones"
   }
 }

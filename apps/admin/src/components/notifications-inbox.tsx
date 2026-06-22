@@ -6,6 +6,7 @@ import {
   Bell,
   CheckCircle2,
   type LucideIcon,
+  Settings,
   Sparkles,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -36,10 +37,11 @@ const TONE: Record<Note["tone"], string> = {
 };
 
 /**
- * Notifications inbox — a Vercel-style bell popover with an Inbox / Archive
- * toggle, a list of ops/marketing alerts, and "Archive all". Lives in the
- * sidebar footer. Hardcoded for now. Uses a plain state toggle (not the Tabs
- * primitive) to stay layout-robust inside the narrow popover.
+ * Notifications inbox — a Vercel-style bell popover: wider panel, underlined
+ * tabs (Inbox / Archive) with a settings gear, circular tone icons, airy rows
+ * with a right-aligned timestamp + unread dot, and "Archive all". Lives in the
+ * sidebar footer. Hardcoded for now; a plain state toggle keeps the layout
+ * robust inside the popover.
  */
 export function NotificationsInbox() {
   const t = useTranslations("Inbox");
@@ -58,40 +60,50 @@ export function NotificationsInbox() {
           <span className="bg-primary absolute top-1.5 right-1.5 size-2 rounded-full" />
         ) : null}
       </PopoverTrigger>
-      <PopoverContent align="end" side="top" className="w-80 rounded-xl p-0">
-        <div className="border-border flex items-center gap-1 border-b px-3 py-2">
-          <TabButton active={tab === "inbox"} onClick={() => setTab("inbox")}>
+      <PopoverContent align="end" side="top" className="w-96 rounded-xl p-0">
+        <div className="border-border flex items-center gap-5 border-b px-4">
+          <UnderlineTab active={tab === "inbox"} onClick={() => setTab("inbox")}>
             {t("inbox")}
             {unread > 0 ? (
-              <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-[0.625rem] font-bold">
+              <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[0.625rem] font-bold">
                 {unread}
               </span>
             ) : null}
-          </TabButton>
-          <TabButton active={tab === "archive"} onClick={() => setTab("archive")}>
+          </UnderlineTab>
+          <UnderlineTab
+            active={tab === "archive"}
+            onClick={() => setTab("archive")}
+          >
             {t("archive")}
-          </TabButton>
+          </UnderlineTab>
+          <button
+            type="button"
+            aria-label={t("settings")}
+            className="text-muted-foreground hover:text-foreground ml-auto grid size-7 place-items-center rounded-md"
+          >
+            <Settings className="size-4" />
+          </button>
         </div>
 
         {tab === "inbox" ? (
           items.length === 0 ? (
-            <p className="text-muted-foreground py-10 text-center text-sm">
+            <p className="text-muted-foreground py-12 text-center text-sm">
               {t("empty")}
             </p>
           ) : (
             <>
-              <ul className="divide-border max-h-80 divide-y overflow-y-auto">
+              <ul className="divide-border max-h-96 divide-y overflow-y-auto">
                 {items.map((n) => (
-                  <li key={n.id} className="flex items-start gap-3 px-3 py-3">
+                  <li key={n.id} className="flex items-start gap-3 px-4 py-3.5">
                     <span
-                      className={`grid size-8 flex-none place-items-center rounded-lg ${TONE[n.tone]}`}
+                      className={`grid size-8 flex-none place-items-center rounded-full ${TONE[n.tone]}`}
                     >
                       <n.icon className="size-4" />
                     </span>
-                    <p className="min-w-0 flex-1 text-sm leading-snug">
+                    <p className="min-w-0 flex-1 text-sm leading-relaxed">
                       {t(n.textKey)}
                     </p>
-                    <span className="text-muted-foreground/70 flex flex-none items-center gap-1.5 text-xs font-semibold whitespace-nowrap">
+                    <span className="text-muted-foreground/70 mt-0.5 flex flex-none items-center gap-1.5 text-xs font-semibold whitespace-nowrap">
                       {n.unread ? (
                         <span className="bg-primary size-1.5 rounded-full" />
                       ) : null}
@@ -103,14 +115,14 @@ export function NotificationsInbox() {
               <button
                 type="button"
                 onClick={() => setItems([])}
-                className="border-border text-muted-foreground hover:text-foreground w-full border-t py-2.5 text-center text-sm font-semibold"
+                className="border-border text-muted-foreground hover:text-foreground w-full border-t py-3 text-center text-sm font-semibold"
               >
                 {t("archiveAll")}
               </button>
             </>
           )
         ) : (
-          <p className="text-muted-foreground py-10 text-center text-sm">
+          <p className="text-muted-foreground py-12 text-center text-sm">
             {t("archiveEmpty")}
           </p>
         )}
@@ -119,7 +131,7 @@ export function NotificationsInbox() {
   );
 }
 
-function TabButton({
+function UnderlineTab({
   active,
   onClick,
   children,
@@ -132,10 +144,10 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
+      className={`relative -mb-px flex items-center gap-1.5 border-b-2 py-3 text-sm font-semibold transition-colors ${
         active
-          ? "bg-muted text-foreground"
-          : "text-muted-foreground hover:text-foreground"
+          ? "border-foreground text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground"
       }`}
     >
       {children}

@@ -532,6 +532,7 @@
     "promoLive": "2×1 promo published and pushed to members.",
     "fraudReplay": "Fraud: same redemption code used 3×.",
     "campaignSent": "Win-back campaign sent to 128 members.",
-    "capReached": "T4 Norte register hit the daily stamp cap."
+    "capReached": "T4 Norte register hit the daily stamp cap.",
+    "settings": "Notification settings"
   }
 }
