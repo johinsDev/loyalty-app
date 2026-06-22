@@ -99,6 +99,7 @@ export function ProductEditor({ id }: { id?: string }) {
   const [library, setLibrary] = useState<OptionPreset[]>(optionLibrary);
   const fileRef = useRef<HTMLInputElement>(null);
   const [mediaDrag, setMediaDrag] = useState<number | null>(null);
+  const [mediaOver, setMediaOver] = useState<number | null>(null);
   const [sectionsOpen, setSectionsOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [sectionQuery, setSectionQuery] = useState("");
@@ -245,7 +246,14 @@ export function ProductEditor({ id }: { id?: string }) {
                   key={m.id}
                   draggable
                   onDragStart={() => setMediaDrag(idx)}
-                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnd={() => {
+                    setMediaDrag(null);
+                    setMediaOver(null);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (mediaOver !== idx) setMediaOver(idx);
+                  }}
                   onDrop={() => {
                     if (mediaDrag !== null && mediaDrag !== idx) {
                       const next = [...draft.media];
@@ -254,12 +262,21 @@ export function ProductEditor({ id }: { id?: string }) {
                       set("media", next);
                     }
                     setMediaDrag(null);
+                    setMediaOver(null);
                   }}
-                  className="bg-muted/50 group relative grid aspect-square cursor-grab place-items-center rounded-2xl text-3xl"
+                  className={`group relative grid aspect-square cursor-grab place-items-center rounded-2xl text-3xl ring-inset transition-all active:cursor-grabbing ${
+                    mediaDrag === idx
+                      ? "opacity-40"
+                      : mediaOver === idx && mediaDrag !== null
+                        ? "bg-primary/10 ring-primary ring-2"
+                        : idx === 0
+                          ? "bg-muted/50 ring-primary/50 ring-2"
+                          : "bg-muted/50 ring-border ring-1"
+                  }`}
                 >
                   {m.emoji}
                   {idx === 0 ? (
-                    <span className="bg-primary text-primary-foreground absolute top-1 left-1 rounded-full px-1.5 py-0.5 text-[0.625rem] font-bold">
+                    <span className="bg-primary text-primary-foreground absolute top-1 left-1 rounded-full px-1.5 py-0.5 text-[0.625rem] font-bold shadow-sm">
                       {t("mainImage")}
                     </span>
                   ) : null}
