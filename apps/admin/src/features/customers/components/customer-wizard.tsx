@@ -135,6 +135,7 @@ export function CustomerWizard({ id }: { id?: string }) {
                 value={draft.name}
                 onChange={(e) => set("name", e.target.value)}
                 placeholder={t("fieldNamePlaceholder")}
+                className="h-10"
                 autoFocus
               />
             </Field>
@@ -143,11 +144,13 @@ export function CustomerWizard({ id }: { id?: string }) {
                 value={draft.nickname}
                 onChange={(e) => set("nickname", e.target.value)}
                 placeholder={t("fieldNicknamePlaceholder")}
+                className="h-10"
               />
             </Field>
           </div>
           <Field label={t("fieldPhone")}>
             <InputPhone
+              size="sm"
               value={draft.phone}
               onChange={(v) => set("phone", v.e164)}
             />
@@ -158,13 +161,14 @@ export function CustomerWizard({ id }: { id?: string }) {
               value={draft.email}
               onChange={(e) => set("email", e.target.value)}
               placeholder="cliente@correo.com"
+              className="h-10"
             />
           </Field>
           <Field label={t("birthday")}>
             <button
               type="button"
               onClick={() => setBdayOpen(true)}
-              className="border-input bg-input/30 hover:bg-input/50 flex h-14 w-full items-center gap-2.5 rounded-xl border px-4 text-left text-sm transition-colors"
+              className="border-input bg-input/30 hover:bg-input/50 flex h-10 w-full items-center gap-2.5 rounded-xl border px-4 text-left text-sm transition-colors"
             >
               <CalendarDays className="text-muted-foreground size-4" />
               {draft.birthday.day} {monthLabels[draft.birthday.month - 1]}{" "}
@@ -179,7 +183,7 @@ export function CustomerWizard({ id }: { id?: string }) {
               value={draft.tier}
               onValueChange={(v) => set("tier", v as Tier)}
             >
-              <SelectTrigger className="h-14 w-full rounded-xl text-base md:text-sm">
+              <SelectTrigger className="h-10 w-full rounded-xl text-sm">
                 <SelectValue>
                   {(value) => t(`tier.${value as Tier}`)}
                 </SelectValue>
@@ -201,6 +205,7 @@ export function CustomerWizard({ id }: { id?: string }) {
                 onChange={(e) =>
                   set("initialStamps", Number(e.target.value) || 0)
                 }
+                className="h-10"
               />
             </Field>
             <Field label={t("initialPoints")} hint={t("optional")}>
@@ -210,6 +215,7 @@ export function CustomerWizard({ id }: { id?: string }) {
                 onChange={(e) =>
                   set("initialPoints", Number(e.target.value) || 0)
                 }
+                className="h-10"
               />
             </Field>
           </div>

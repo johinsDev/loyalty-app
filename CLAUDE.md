@@ -155,6 +155,7 @@ Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, 
 - **Sensitive env vars in Vercel.** Marked Sensitive = not returned by `vercel pull`, not readable to builds running outside Vercel. Keep build-time vars (DATABASE_URL etc.) as Plain Text.
 - **The web app's service worker is disabled in dev** so HMR works. Build + start (or check on a preview deploy) to exercise PWA behavior.
 - **Toast is `sonner`, not `Toast`.** Base UI doesn't ship a Toast primitive; we use `sonner` instead. There's a `<Toaster />` you mount once and `toast(...)` to call from anywhere.
+- **Form-control height differs by app.** `@loyalty/ui` controls (`Input`, `InputPhone`, `Textarea`, `Select`/`NativeSelect`) default to **h-14 (56px)** for the touch-first customer PWA. In **apps/admin**, single-line controls must be **h-10 (40px)** — pass `className="h-10"` (Input/Textarea/SelectTrigger override h-14 via tailwind-merge) or `size="sm"` (InputPhone). Admin forms read denser; the customer app keeps 56px.
 - **Next 16 renders dynamic by default.** Pages under `app/[locale]/` are server-rendered on demand unless you opt into `cacheComponents: true` + `"use cache"` directives. This is fine for an auth-aware app — most pages need to be dynamic anyway.
 
 ---

@@ -53,7 +53,7 @@ function countryLabel(code: CountryCode, locale?: string): string {
 export interface InputPhoneProps
   extends Omit<
     React.ComponentProps<"input">,
-    "value" | "defaultValue" | "onChange" | "type"
+    "value" | "defaultValue" | "onChange" | "type" | "size"
   > {
   /** Controlled value as E.164 (`+573122186181`). */
   value?: string;
@@ -70,6 +70,8 @@ export interface InputPhoneProps
   countries?: readonly CountryCode[];
   /** BCP-47 locale for country names (`Intl.DisplayNames`). Defaults to `es`. */
   locale?: string;
+  /** Control height: `default` = h-14 (customer/touch), `sm` = h-10 (admin). */
+  size?: "default" | "sm";
 }
 
 /**
@@ -89,6 +91,7 @@ export function InputPhone({
   locale,
   className,
   disabled,
+  size = "default",
   ...inputProps
 }: InputPhoneProps) {
   // Seed once from the initial prop (E.164 → country + national digits).
@@ -183,7 +186,7 @@ export function InputPhone({
             data-slot="input-phone-country"
             aria-expanded={open}
             onClick={() => setOpen(true)}
-            className={TRIGGER_CLASSNAME}
+            className={cn(TRIGGER_CLASSNAME, size === "sm" && "h-10")}
           >
             <Flag className="size-5 shrink-0 rounded-[2px]" />
             <span className="inline-block w-12 text-left tabular-nums text-muted-foreground">
@@ -287,7 +290,7 @@ export function InputPhone({
           type="button"
           disabled={disabled}
           data-slot="input-phone-country"
-          className={TRIGGER_CLASSNAME}
+          className={cn(TRIGGER_CLASSNAME, size === "sm" && "h-10")}
         >
           <Flag className="size-5 shrink-0 rounded-[2px]" />
           <span className="inline-block w-12 text-left tabular-nums text-muted-foreground">
@@ -337,7 +340,7 @@ export function InputPhone({
         disabled={disabled}
         value={display}
         onChange={handleInput}
-        className={INPUT_CLASSNAME}
+        className={cn(INPUT_CLASSNAME, size === "sm" && "h-10")}
       />
     </div>
   );
