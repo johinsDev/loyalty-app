@@ -2,13 +2,16 @@
 
 import type { Role } from "@loyalty/auth/server";
 import {
+  Kbd,
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarHeader,
+  SidebarInput,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
@@ -24,6 +27,7 @@ import {
   type LucideIcon,
   Megaphone,
   Receipt,
+  Search,
   Send,
   Settings,
   Sparkles,
@@ -54,16 +58,18 @@ type Item = {
   icon: LucideIcon;
   /** Lowest role that may see this entry. */
   min: "staff" | "manager" | "owner";
+  /** Optional count badge (hardcoded seam until the data lands). */
+  badge?: string;
 };
 
 // Main nav — the full CRM. Role-gated: staff sees the day-to-day, manager adds
 // growth/config, owner adds dev tooling.
 const ITEMS: Item[] = [
   { href: "/dashboard", key: "dashboard", icon: LayoutDashboard, min: "staff" },
-  { href: "/customers", key: "customers", icon: Users, min: "staff" },
+  { href: "/customers", key: "customers", icon: Users, min: "staff", badge: "12.8K" },
   { href: "/purchases", key: "purchases", icon: Receipt, min: "staff" },
   { href: "/rewards", key: "rewards", icon: Gift, min: "manager" },
-  { href: "/promotions", key: "promotions", icon: Sparkles, min: "manager" },
+  { href: "/promotions", key: "promotions", icon: Sparkles, min: "manager", badge: "4" },
   { href: "/campaigns", key: "campaigns", icon: Send, min: "manager" },
   { href: "/notifications", key: "notifications", icon: Bell, min: "manager" },
   { href: "/banners", key: "banners", icon: ImageIcon, min: "manager" },
@@ -113,6 +119,18 @@ export function AdminSidebar({ role }: { role: Role }) {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+
+        {/* Global search — opens the command palette (seam). Hidden when the
+            sidebar is collapsed to icons. */}
+        <div className="relative px-1 group-data-[collapsible=icon]:hidden">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <SidebarInput
+            placeholder={t("search")}
+            className="h-9 pr-12 pl-9"
+            readOnly
+          />
+          <Kbd className="absolute top-1/2 right-3 -translate-y-1/2">⌘K</Kbd>
+        </div>
       </SidebarHeader>
 
       <SidebarContent>
@@ -130,6 +148,9 @@ export function AdminSidebar({ role }: { role: Role }) {
                     <Icon />
                     <span>{t(it.key)}</span>
                   </SidebarMenuButton>
+                  {it.badge ? (
+                    <SidebarMenuBadge>{it.badge}</SidebarMenuBadge>
+                  ) : null}
                 </SidebarMenuItem>
               );
             })}

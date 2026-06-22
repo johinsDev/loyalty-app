@@ -28,7 +28,8 @@
     "employees": "Empleados",
     "analytics": "Analytics",
     "settings": "Ajustes",
-    "devGroup": "DEV"
+    "devGroup": "DEV",
+    "search": "Buscar…"
   },
   "Notifications": {
     "title": "Notificaciones",
