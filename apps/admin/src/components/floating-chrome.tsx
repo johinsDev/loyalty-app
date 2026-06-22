@@ -4,9 +4,25 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePathname } from "@/i18n/navigation";
 
-// The cashier segment owns its own header and puts theme + language in the
-// Perfil tab, so the floating corner controls must not overlap it there.
-const HIDDEN_ON = ["/register"];
+// Screens with their own chrome own the theme + language controls (the cashier
+// Perfil tab; the admin topbar user menu), so the floating corner must not
+// overlap them. It stays for chrome-less screens (sign-in, dev tools).
+const HIDDEN_ON = [
+  "/register",
+  "/dashboard",
+  "/customers",
+  "/purchases",
+  "/products",
+  "/rewards",
+  "/promotions",
+  "/campaigns",
+  "/notifications",
+  "/banners",
+  "/analytics",
+  "/stores",
+  "/employees",
+  "/settings",
+];
 
 /**
  * Floating theme + language controls shown top-right across the admin, except
