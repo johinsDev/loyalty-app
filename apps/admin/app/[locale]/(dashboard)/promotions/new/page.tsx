@@ -1,11 +1,11 @@
 import { setRequestLocale } from "next-intl/server";
 
-import { TemplatesView } from "@/features/templates/components/templates-view";
+import { PromoWizard } from "@/features/promotions/components/promo-wizard";
 
 type Props = { params: Promise<{ locale: string }> };
 
-export default async function Page({ params }: Props) {
+export default async function NewPromotionPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <TemplatesView />;
+  return <PromoWizard />;
 }

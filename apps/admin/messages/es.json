@@ -55,7 +55,7 @@
     "typeNewUser": "Bienvenida (transaccional)",
     "typePromo": "Promoción (marketing)",
     "recipientsLabel": "Destinatarios",
-    "searchPlaceholder": "Buscar por nombre, teléfono o email…",
+    "searchPlaceholder": "Buscar notificación…",
     "loading": "Cargando clientes…",
     "noCustomers": "No hay clientes para mostrar.",
     "unnamedCustomer": "Sin nombre",
@@ -64,7 +64,49 @@
     "sendButton": "Enviar",
     "sending": "Enviando…",
     "enqueued": "Encolado para {count} clientes.",
-    "sendFailed": "No se pudo enviar la notificación."
+    "sendFailed": "No se pudo enviar la notificación.",
+    "tab": {
+      "feed": "Bandeja",
+      "quick": "Push rápido",
+      "engagement": "Engagement"
+    },
+    "feedFilter": "Tipo",
+    "filter": {
+      "all": "Todas",
+      "promo": "Promos",
+      "system": "Sistema"
+    },
+    "emptyFeed": "Sin notificaciones.",
+    "col": {
+      "message": "Mensaje",
+      "channel": "Canal",
+      "audience": "Audiencia",
+      "date": "Fecha",
+      "status": "Estado"
+    },
+    "st": {
+      "sent": "Enviada",
+      "scheduled": "Programada",
+      "failed": "Falló"
+    },
+    "quickTitle": "Push rápido",
+    "quickDesc": "Envía un mensaje ahora.",
+    "audience": "Audiencia",
+    "audienceOpt": {
+      "all": "Todos",
+      "active": "Activos",
+      "atRisk": "En riesgo"
+    },
+    "qtitle": "Título",
+    "qtitlePlaceholder": "🧋 ¡Promo de hoy!",
+    "qbody": "Mensaje",
+    "qbodyPlaceholder": "Escribe el mensaje…",
+    "send": "Enviar push",
+    "sent": "Push enviado",
+    "engTitle": "Engagement de la semana",
+    "engSent": "Enviadas",
+    "engOpen": "Apertura",
+    "engClick": "Clic"
   },
   "Auth": {
     "signInTitle": "Iniciar sesión",
@@ -487,15 +529,94 @@
   },
   "Promotions": {
     "title": "Promociones",
-    "new": "Nueva promo",
-    "empty": "Aún no hay promociones. Crea la primera.",
-    "untitled": "Borrador sin título",
-    "colName": "Nombre",
-    "colStatus": "Estado",
-    "colUpdated": "Actualizado",
-    "statusDraft": "Borrador",
-    "statusPublished": "Publicada",
-    "forbidden": "Necesitas el rol de manager para gestionar promociones."
+    "subtitle": "Impulsa ventas con reglas configurables.",
+    "add": "Nueva promoción",
+    "searchPlaceholder": "Buscar promoción…",
+    "statusFilter": "Estado",
+    "typeFilter": "Tipo",
+    "empty": "No se encontraron promociones.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "deleteConfirm": "Sí, eliminar",
+    "deleteTitle": "¿Eliminar promoción?",
+    "deleteDescription": "Se eliminará “{name}”. Esta acción no se puede deshacer.",
+    "deleted": "“{name}” eliminada",
+    "undo": "Deshacer",
+    "restored": "“{name}” restaurada",
+    "col": {
+      "promo": "Promoción",
+      "type": "Tipo",
+      "reach": "Alcance",
+      "status": "Estado"
+    },
+    "status": {
+      "active": "Activa",
+      "scheduled": "Programada",
+      "ended": "Finalizada",
+      "draft": "Borrador"
+    },
+    "newTitle": "Nueva promoción",
+    "editTitle": "Editar promoción",
+    "publish": "Publicar promoción",
+    "saveChanges": "Guardar cambios",
+    "created": "Promoción “{name}” creada",
+    "updated": "“{name}” actualizada",
+    "step": {
+      "basics": "Datos",
+      "reward": "Recompensa",
+      "conditions": "Condiciones",
+      "notify": "Notificación",
+      "review": "Revisar"
+    },
+    "fieldName": "Nombre",
+    "fieldNamePlaceholder": "2×1 entre semana",
+    "fieldDesc": "Descripción",
+    "fieldDescPlaceholder": "Describe la promo…",
+    "fieldCode": "Código interno",
+    "codePlaceholder": "PROMO2X1",
+    "optional": "opcional",
+    "rewardType": "Tipo de recompensa",
+    "type": {
+      "percent": "% de descuento",
+      "fixed": "Monto fijo",
+      "free": "Producto gratis",
+      "points": "Doble puntos"
+    },
+    "value": "Valor",
+    "freeProduct": "Producto",
+    "start": "Inicio",
+    "end": "Fin",
+    "datePlaceholder": "Elegí una fecha",
+    "activeDays": "Días activos",
+    "hours": "Horario",
+    "tier": "Tier mínimo",
+    "allTiers": "Todos",
+    "day": {
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mié",
+      "thu": "Jue",
+      "fri": "Vie",
+      "sat": "Sáb",
+      "sun": "Dom"
+    },
+    "tierOpt": {
+      "bronze": "Bronce",
+      "silver": "Plata",
+      "gold": "Oro",
+      "diamond": "Diamante"
+    },
+    "notifyToggle": "Notificar a socios al publicar",
+    "notifyHint": "Envía un push cuando la promo entre en vigor.",
+    "reviewTitle": "Revisar promoción",
+    "previewTitle": "Vista previa",
+    "previewNamePlaceholder": "Nombre de la promo",
+    "estReach": "Alcance estimado",
+    "estRevenue": "Ingreso estimado",
+    "reachValue": "{n} socios"
   },
   "Cashier": {
     "registerAt": "Caja · {store}",
@@ -1332,5 +1453,26 @@
       "gold": "Oro",
       "diamond": "Diamante"
     }
+  },
+  "Templates": {
+    "title": "Plantillas de campañas",
+    "subtitle": "Arranca campañas con plantillas listas.",
+    "searchPlaceholder": "Buscar plantilla…",
+    "categoryFilter": "Categoría",
+    "empty": "No se encontraron plantillas.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "use": "Usar plantilla",
+    "duplicate": "Duplicar",
+    "used": "Plantilla aplicada",
+    "duplicated": "Plantilla duplicada",
+    "cat": {
+      "welcome": "Bienvenida",
+      "winback": "Recuperación",
+      "birthday": "Cumpleaños",
+      "promo": "Promoción",
+      "seasonal": "Temporada"
+    },
+    "channelsLabel": "Canales"
   }
 }

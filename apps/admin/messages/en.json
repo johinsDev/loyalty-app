@@ -55,7 +55,7 @@
     "typeNewUser": "Welcome (transactional)",
     "typePromo": "Promo (marketing)",
     "recipientsLabel": "Recipients",
-    "searchPlaceholder": "Search by name, phone or email…",
+    "searchPlaceholder": "Search notification…",
     "loading": "Loading customers…",
     "noCustomers": "No customers to show.",
     "unnamedCustomer": "Unnamed",
@@ -64,7 +64,49 @@
     "sendButton": "Send",
     "sending": "Sending…",
     "enqueued": "Enqueued for {count} customers.",
-    "sendFailed": "Could not send the notification."
+    "sendFailed": "Could not send the notification.",
+    "tab": {
+      "feed": "Inbox",
+      "quick": "Quick push",
+      "engagement": "Engagement"
+    },
+    "feedFilter": "Type",
+    "filter": {
+      "all": "All",
+      "promo": "Promos",
+      "system": "System"
+    },
+    "emptyFeed": "No notifications.",
+    "col": {
+      "message": "Message",
+      "channel": "Channel",
+      "audience": "Audience",
+      "date": "Date",
+      "status": "Status"
+    },
+    "st": {
+      "sent": "Sent",
+      "scheduled": "Scheduled",
+      "failed": "Failed"
+    },
+    "quickTitle": "Quick push",
+    "quickDesc": "Send a message now.",
+    "audience": "Audience",
+    "audienceOpt": {
+      "all": "All",
+      "active": "Active",
+      "atRisk": "At risk"
+    },
+    "qtitle": "Title",
+    "qtitlePlaceholder": "🧋 Today’s promo!",
+    "qbody": "Message",
+    "qbodyPlaceholder": "Write the message…",
+    "send": "Send push",
+    "sent": "Push sent",
+    "engTitle": "Engagement this week",
+    "engSent": "Sent",
+    "engOpen": "Open",
+    "engClick": "Click"
   },
   "Auth": {
     "signInTitle": "Sign in",
@@ -487,15 +529,94 @@
   },
   "Promotions": {
     "title": "Promotions",
-    "new": "New promo",
-    "empty": "No promotions yet. Create your first one.",
-    "untitled": "Untitled draft",
-    "colName": "Name",
-    "colStatus": "Status",
-    "colUpdated": "Updated",
-    "statusDraft": "Draft",
-    "statusPublished": "Published",
-    "forbidden": "You need the manager role to manage promotions."
+    "subtitle": "Drive sales with configurable rules.",
+    "add": "New promotion",
+    "searchPlaceholder": "Search promotion…",
+    "statusFilter": "Status",
+    "typeFilter": "Type",
+    "empty": "No promotions found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "deleteConfirm": "Yes, delete",
+    "deleteTitle": "Delete promotion?",
+    "deleteDescription": "This removes “{name}”. This cannot be undone.",
+    "deleted": "“{name}” deleted",
+    "undo": "Undo",
+    "restored": "“{name}” restored",
+    "col": {
+      "promo": "Promotion",
+      "type": "Type",
+      "reach": "Reach",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "scheduled": "Scheduled",
+      "ended": "Ended",
+      "draft": "Draft"
+    },
+    "newTitle": "New promotion",
+    "editTitle": "Edit promotion",
+    "publish": "Publish promotion",
+    "saveChanges": "Save changes",
+    "created": "Promotion “{name}” created",
+    "updated": "“{name}” updated",
+    "step": {
+      "basics": "Details",
+      "reward": "Reward",
+      "conditions": "Conditions",
+      "notify": "Notification",
+      "review": "Review"
+    },
+    "fieldName": "Name",
+    "fieldNamePlaceholder": "Weekday 2-for-1",
+    "fieldDesc": "Description",
+    "fieldDescPlaceholder": "Describe the promo…",
+    "fieldCode": "Internal code",
+    "codePlaceholder": "PROMO2X1",
+    "optional": "optional",
+    "rewardType": "Reward type",
+    "type": {
+      "percent": "% discount",
+      "fixed": "Fixed amount",
+      "free": "Free product",
+      "points": "Double points"
+    },
+    "value": "Value",
+    "freeProduct": "Product",
+    "start": "Start",
+    "end": "End",
+    "datePlaceholder": "Pick a date",
+    "activeDays": "Active days",
+    "hours": "Hours",
+    "tier": "Min tier",
+    "allTiers": "All",
+    "day": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "tierOpt": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "diamond": "Diamond"
+    },
+    "notifyToggle": "Notify members on publish",
+    "notifyHint": "Send a push when the promo goes live.",
+    "reviewTitle": "Review promotion",
+    "previewTitle": "Preview",
+    "previewNamePlaceholder": "Promo name",
+    "estReach": "Estimated reach",
+    "estRevenue": "Estimated revenue",
+    "reachValue": "{n} members"
   },
   "Cashier": {
     "registerAt": "Register · {store}",
@@ -1332,5 +1453,26 @@
       "gold": "Gold",
       "diamond": "Diamond"
     }
+  },
+  "Templates": {
+    "title": "Campaign templates",
+    "subtitle": "Kick off campaigns with ready-made templates.",
+    "searchPlaceholder": "Search template…",
+    "categoryFilter": "Category",
+    "empty": "No templates found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "use": "Use template",
+    "duplicate": "Duplicate",
+    "used": "Template applied",
+    "duplicated": "Template duplicated",
+    "cat": {
+      "welcome": "Welcome",
+      "winback": "Win-back",
+      "birthday": "Birthday",
+      "promo": "Promotion",
+      "seasonal": "Seasonal"
+    },
+    "channelsLabel": "Channels"
   }
 }
