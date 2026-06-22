@@ -848,7 +848,12 @@
       "newCategory": "New category",
       "editCategory": "Edit category",
       "deleted": "“{name}” deleted"
-    }
+    },
+    "currency": "Currency",
+    "searchSection": "Search section…",
+    "createSection": "Create section",
+    "newSectionPlaceholder": "Section name",
+    "done": "Done"
   },
   "Command": {
     "title": "Search",

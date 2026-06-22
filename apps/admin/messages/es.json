@@ -848,7 +848,12 @@
       "newCategory": "Nueva categoría",
       "editCategory": "Editar categoría",
       "deleted": "“{name}” eliminada"
-    }
+    },
+    "currency": "Moneda",
+    "searchSection": "Buscar sección…",
+    "createSection": "Crear sección",
+    "newSectionPlaceholder": "Nombre de la sección",
+    "done": "Listo"
   },
   "Command": {
     "title": "Buscar",

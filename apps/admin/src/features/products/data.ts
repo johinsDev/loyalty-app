@@ -98,6 +98,7 @@ export type ProductDraft = {
   description: string; // HTML (rich text)
   media: ProductMedia[];
   videoUrl: string;
+  currency: string;
   price: number | null;
   promoPrice: number | null;
   showPrice: boolean;
@@ -130,11 +131,14 @@ export const AGE_RANGES = ["all", "kids", "teens", "adults"] as const;
 export const GENDERS = ["unisex", "female", "male"] as const;
 export const PRODUCT_EMOJIS = ["🧋", "🍵", "🥭", "🍈", "🧡", "🍓", "🫐", "🍮", "⚫", "🧁"];
 
+export const CURRENCIES = ["USD", "COP", "MXN", "EUR"] as const;
+
 export const emptyProductDraft: ProductDraft = {
   name: "",
   description: "",
   media: [],
   videoUrl: "",
+  currency: "USD",
   price: null,
   promoPrice: null,
   showPrice: true,
