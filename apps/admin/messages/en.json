@@ -244,7 +244,16 @@
       "points": "{n} pts",
       "stampsLabel": "Stamps",
       "pointsLabel": "Points"
-    }
+    },
+    "searchPlaceholder": "Search reward…",
+    "empty": "No rewards found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "active": "Active",
+    "allCostTypes": "All cost types",
+    "statusFilter": "Status",
+    "undo": "Undo",
+    "restored": "“{name}” restored"
   },
   "WhatsAppOutbox": {
     "title": "WhatsApp Outbox",
@@ -631,6 +640,24 @@
       "fruitTea": "Fruit Tea",
       "specialty": "Specialty",
       "topping": "Topping"
-    }
+    },
+    "active": "Active",
+    "categoryFilter": "Category",
+    "statusFilter": "Status",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "undo": "Undo",
+    "restored": "“{name}” restored"
+  },
+  "Command": {
+    "title": "Search",
+    "description": "Find a section or run an action.",
+    "placeholder": "Search section or action…",
+    "empty": "No results.",
+    "navGroup": "Go to",
+    "actionsGroup": "Actions",
+    "newProduct": "New product",
+    "newReward": "New reward",
+    "addCustomer": "Add customer"
   }
 }

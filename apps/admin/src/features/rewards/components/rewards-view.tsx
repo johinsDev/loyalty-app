@@ -12,31 +12,75 @@ import {
   Badge,
   Button,
 } from "@loyalty/ui";
-import { Coins, Pencil, Plus, Stamp, Trash2 } from "lucide-react";
+import { Coins, Gift, Pencil, Plus, Search, Stamp, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { EmptyState } from "@/components/empty-state";
+import {
+  type FilterOption,
+  FilterMultiSelect,
+  FilterSelect,
+} from "@/components/filters";
 import { useFadeUp } from "@/lib/animate";
 import { useRouter } from "@/i18n/navigation";
 
-import { type Reward, rewards } from "../data";
+import { type CostType, type Reward, rewards } from "../data";
+
+type StatusKey = "active" | "inactive";
+const STATUSES: StatusKey[] = ["active", "inactive"];
 
 /**
- * Recompensas — a card grid of rewards (cost in sellos / puntos, redeemed
- * count). Add/edit open the reward wizard; delete confirms via an AlertDialog.
- * Design-first / hardcoded (../data).
+ * Recompensas — searchable card grid filtered by cost type (single-select) and
+ * status (multi-select). Add/edit open the reward wizard; delete confirms via an
+ * AlertDialog then offers undo. Design-first / hardcoded (../data).
  */
 export function RewardsView() {
   const t = useTranslations("Rewards");
   const router = useRouter();
   const fade = useFadeUp({ step: 30 });
+
+  const [query, setQuery] = useState("");
+  const [costType, setCostType] = useState<CostType | null>(null);
+  const [statuses, setStatuses] = useState<StatusKey[]>([...STATUSES]);
   const [toDelete, setToDelete] = useState<Reward | null>(null);
+
+  const costOptions: FilterOption<CostType>[] = [
+    { value: "stamps", label: t("cost.stampsLabel") },
+    { value: "points", label: t("cost.pointsLabel") },
+  ];
+  const statusOptions: FilterOption<StatusKey>[] = [
+    { value: "active", label: t("active"), dot: "#1f9d68" },
+    { value: "inactive", label: t("inactive"), dot: "#9aa1ab" },
+  ];
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return rewards.filter((r) => {
+      if (costType && r.costType !== costType) return false;
+      if (!statuses.includes(r.active ? "active" : "inactive")) return false;
+      if (q && !r.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [query, costType, statuses]);
+
+  const clearFilters = () => {
+    setQuery("");
+    setCostType(null);
+    setStatuses([...STATUSES]);
+  };
 
   const onDelete = () => {
     if (!toDelete) return;
-    toast.success(t("deleted", { name: toDelete.name }));
+    const name = toDelete.name;
     setToDelete(null);
+    toast.success(t("deleted", { name }), {
+      action: {
+        label: t("undo"),
+        onClick: () => toast(t("restored", { name })),
+      },
+    });
   };
 
   let i = 0;
@@ -61,69 +105,107 @@ export function RewardsView() {
         </Button>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {rewards.map((r) => (
-          <div
-            key={r.id}
-            style={fade(i++)}
-            className="bg-card border-border flex flex-col rounded-3xl border p-5 shadow-sm"
-          >
-            <div className="flex items-start gap-3">
-              <span className="bg-primary/10 grid size-12 flex-none place-items-center rounded-2xl text-2xl">
-                {r.emoji}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-bold">{r.name}</div>
-                <span className="text-primary mt-0.5 inline-flex items-center gap-1 text-sm font-extrabold">
-                  {r.costType === "stamps" ? (
-                    <Stamp className="size-3.5" />
-                  ) : (
-                    <Coins className="size-3.5" />
-                  )}
-                  {r.cost === 0
-                    ? t("free")
-                    : t(`cost.${r.costType}`, { n: r.cost })}
-                </span>
-              </div>
-              {!r.active ? (
-                <Badge variant="secondary" className="text-muted-foreground">
-                  {t("inactive")}
-                </Badge>
-              ) : null}
-            </div>
-
-            <p className="text-muted-foreground/70 mt-3 text-xs font-semibold">
-              {t("redeemedCount", { n: r.redeemed })}
-            </p>
-
-            <div className="border-border mt-3 flex items-center gap-1 border-t pt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 flex-1 gap-1.5 rounded-lg"
-                onClick={() =>
-                  router.push({
-                    pathname: "/rewards/[id]",
-                    params: { id: r.id },
-                  })
-                }
-              >
-                <Pencil className="size-3.5" />
-                {t("edit")}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label={t("delete")}
-                className="text-destructive hover:bg-destructive/10 size-9 rounded-lg"
-                onClick={() => setToDelete(r)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
+      {/* Toolbar */}
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-52 flex-1">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            className="border-border bg-card placeholder:text-muted-foreground h-10 w-full rounded-xl border pr-3 pl-9 text-sm outline-none"
+          />
+        </div>
+        <FilterSelect
+          allLabel={t("allCostTypes")}
+          value={costType}
+          onValueChange={setCostType}
+          options={costOptions}
+        />
+        <FilterMultiSelect
+          label={t("statusFilter")}
+          options={statusOptions}
+          selected={statuses}
+          onChange={setStatuses}
+        />
       </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={Gift}
+          title={t("empty")}
+          hint={t("emptyHint")}
+          action={
+            <Button variant="outline" className="rounded-xl" onClick={clearFilters}>
+              {t("clearFilters")}
+            </Button>
+          }
+        />
+      ) : (
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((r) => (
+            <div
+              key={r.id}
+              style={fade(i++)}
+              className="bg-card border-border flex flex-col rounded-3xl border p-5 shadow-sm"
+            >
+              <div className="flex items-start gap-3">
+                <span className="bg-primary/10 grid size-12 flex-none place-items-center rounded-2xl text-2xl">
+                  {r.emoji}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-bold">{r.name}</div>
+                  <span className="text-primary mt-0.5 inline-flex items-center gap-1 text-sm font-extrabold">
+                    {r.costType === "stamps" ? (
+                      <Stamp className="size-3.5" />
+                    ) : (
+                      <Coins className="size-3.5" />
+                    )}
+                    {r.cost === 0
+                      ? t("free")
+                      : t(`cost.${r.costType}`, { n: r.cost })}
+                  </span>
+                </div>
+                {!r.active ? (
+                  <Badge variant="secondary" className="text-muted-foreground">
+                    {t("inactive")}
+                  </Badge>
+                ) : null}
+              </div>
+
+              <p className="text-muted-foreground/70 mt-3 text-xs font-semibold">
+                {t("redeemedCount", { n: r.redeemed })}
+              </p>
+
+              <div className="border-border mt-3 flex items-center gap-1 border-t pt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 flex-1 gap-1.5 rounded-lg"
+                  onClick={() =>
+                    router.push({
+                      pathname: "/rewards/[id]",
+                      params: { id: r.id },
+                    })
+                  }
+                >
+                  <Pencil className="size-3.5" />
+                  {t("edit")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label={t("delete")}
+                  className="text-destructive hover:bg-destructive/10 size-9 rounded-lg"
+                  onClick={() => setToDelete(r)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <AlertDialog
         open={toDelete !== null}

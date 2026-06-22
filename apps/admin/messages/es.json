@@ -244,7 +244,16 @@
       "points": "{n} pts",
       "stampsLabel": "Sellos",
       "pointsLabel": "Puntos"
-    }
+    },
+    "searchPlaceholder": "Buscar recompensa…",
+    "empty": "No se encontraron recompensas.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "active": "Activa",
+    "allCostTypes": "Todos los costos",
+    "statusFilter": "Estado",
+    "undo": "Deshacer",
+    "restored": "“{name}” restaurada"
   },
   "WhatsAppOutbox": {
     "title": "WhatsApp Outbox",
@@ -631,6 +640,24 @@
       "fruitTea": "Fruit Tea",
       "specialty": "Especialidad",
       "topping": "Topping"
-    }
+    },
+    "active": "Activo",
+    "categoryFilter": "Categoría",
+    "statusFilter": "Estado",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "undo": "Deshacer",
+    "restored": "“{name}” restaurado"
+  },
+  "Command": {
+    "title": "Buscar",
+    "description": "Busca una sección o ejecuta una acción.",
+    "placeholder": "Buscar sección o acción…",
+    "empty": "Sin resultados.",
+    "navGroup": "Ir a",
+    "actionsGroup": "Acciones",
+    "newProduct": "Nuevo producto",
+    "newReward": "Nueva recompensa",
+    "addCustomer": "Agregar cliente"
   }
 }

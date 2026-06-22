@@ -12,20 +12,25 @@ import {
   Badge,
   Button,
 } from "@loyalty/ui";
-import { Pencil, Plus, Search, Stamp, Trash2 } from "lucide-react";
+import { Package, Pencil, Plus, Search, Stamp, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { EmptyState } from "@/components/empty-state";
+import { type FilterOption, FilterMultiSelect } from "@/components/filters";
 import { useFadeUp } from "@/lib/animate";
 import { useRouter } from "@/i18n/navigation";
 
 import { type Category, categories, type Product, products } from "../data";
 
+type StatusKey = "active" | "inactive";
+const STATUSES: StatusKey[] = ["active", "inactive"];
+
 /**
- * Productos — searchable, category-filtered card grid. Add/edit open the
- * product wizard (/products/new, /products/[id]); delete confirms via an
- * AlertDialog. Design-first / hardcoded (../data).
+ * Productos — searchable, category/status multi-select-filtered card grid. Add
+ * and edit open the product wizard; delete confirms via an AlertDialog then
+ * offers undo. Design-first / hardcoded (../data).
  */
 export function ProductsView() {
   const t = useTranslations("Products");
@@ -33,22 +38,45 @@ export function ProductsView() {
   const fade = useFadeUp({ step: 30 });
 
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<Category | null>(null);
+  const [cats, setCats] = useState<Category[]>([...categories]);
+  const [statuses, setStatuses] = useState<StatusKey[]>([...STATUSES]);
   const [toDelete, setToDelete] = useState<Product | null>(null);
+
+  const catOptions: FilterOption<Category>[] = categories.map((c) => ({
+    value: c,
+    label: t(`category.${c}`),
+  }));
+  const statusOptions: FilterOption<StatusKey>[] = [
+    { value: "active", label: t("active"), dot: "#1f9d68" },
+    { value: "inactive", label: t("inactive"), dot: "#9aa1ab" },
+  ];
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return products.filter((p) => {
-      if (category && p.category !== category) return false;
+      if (!cats.includes(p.category)) return false;
+      if (!statuses.includes(p.active ? "active" : "inactive")) return false;
       if (q && !p.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [query, category]);
+  }, [query, cats, statuses]);
+
+  const clearFilters = () => {
+    setQuery("");
+    setCats([...categories]);
+    setStatuses([...STATUSES]);
+  };
 
   const onDelete = () => {
     if (!toDelete) return;
-    toast.success(t("deleted", { name: toDelete.name }));
+    const name = toDelete.name;
     setToDelete(null);
+    toast.success(t("deleted", { name }), {
+      action: {
+        label: t("undo"),
+        onClick: () => toast(t("restored", { name })),
+      },
+    });
   };
 
   let i = 0;
@@ -74,7 +102,7 @@ export function ProductsView() {
       </div>
 
       {/* Toolbar */}
-      <div className="mt-5 flex flex-wrap items-center gap-3">
+      <div className="mt-5 flex flex-wrap items-center gap-2">
         <div className="relative min-w-52 flex-1">
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <input
@@ -84,34 +112,39 @@ export function ProductsView() {
             className="border-border bg-card placeholder:text-muted-foreground h-10 w-full rounded-xl border pr-3 pl-9 text-sm outline-none"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Chip active={category === null} onClick={() => setCategory(null)}>
-            {t("allCategories")}
-          </Chip>
-          {categories.map((c) => (
-            <Chip
-              key={c}
-              active={category === c}
-              onClick={() => setCategory(category === c ? null : c)}
-            >
-              {t(`category.${c}`)}
-            </Chip>
-          ))}
-        </div>
+        <FilterMultiSelect
+          label={t("categoryFilter")}
+          options={catOptions}
+          selected={cats}
+          onChange={setCats}
+        />
+        <FilterMultiSelect
+          label={t("statusFilter")}
+          options={statusOptions}
+          selected={statuses}
+          onChange={setStatuses}
+        />
       </div>
 
       {/* Grid */}
       {filtered.length === 0 ? (
-        <p className="text-muted-foreground py-16 text-center text-sm">
-          {t("empty")}
-        </p>
+        <EmptyState
+          icon={Package}
+          title={t("empty")}
+          hint={t("emptyHint")}
+          action={
+            <Button variant="outline" className="rounded-xl" onClick={clearFilters}>
+              {t("clearFilters")}
+            </Button>
+          }
+        />
       ) : (
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((p) => (
             <div
               key={p.id}
               style={fade(i++)}
-              className="bg-card border-border group flex flex-col rounded-3xl border p-4 shadow-sm"
+              className="bg-card border-border flex flex-col rounded-3xl border p-4 shadow-sm"
             >
               <div className="bg-muted/50 relative grid aspect-square place-items-center rounded-2xl text-6xl">
                 {p.emoji}
@@ -203,29 +236,5 @@ export function ProductsView() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`h-8 rounded-full px-3 text-xs font-bold transition-colors ${
-        active
-          ? "bg-primary text-primary-foreground"
-          : "bg-card text-muted-foreground hover:text-foreground border-border border"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
