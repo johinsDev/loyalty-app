@@ -1,17 +1,30 @@
 "use client";
 
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@loyalty/ui";
+import {
+  Area,
+  AreaChart as RAreaChart,
+  Bar,
+  BarChart as RBarChart,
+  Cell,
+  Pie,
+  PieChart,
+} from "recharts";
+
 import type { EngagementSlice } from "../data";
 
-// Lightweight SVG/CSS chart primitives — no charting lib. They take normalized
-// 0–100 series and render to the brand tokens, matching the t4-admin design.
+// Charts on recharts via the @loyalty/ui ChartContainer (shadcn) — brand-themed,
+// responsive, with tooltips. Wrappers keep simple series/slice props so the
+// dashboard view stays declarative.
 
-function pointsFor(series: number[], w: number, h: number) {
-  const max = Math.max(...series, 1);
-  const step = w / (series.length - 1);
-  return series.map((v, i) => [i * step, h - (v / max) * h] as const);
-}
+const toData = (series: number[]) => series.map((v, i) => ({ i, v }));
 
-/** Tiny inline trend line for KPI cards. */
+/** Tiny inline trend line for KPI cards (no axes/tooltip). */
 export function Sparkline({
   series,
   trend = "up",
@@ -19,84 +32,81 @@ export function Sparkline({
   series: number[];
   trend?: "up" | "down";
 }) {
-  const w = 88;
-  const h = 32;
-  const pts = pointsFor(series, w, h);
-  const d = pts.map((p) => p.join(",")).join(" ");
-  const color = trend === "down" ? "#e0467c" : "var(--primary)";
+  const color = trend === "down" ? "#e0467c" : "var(--color-primary)";
+  const config = { v: { label: "", color } } satisfies ChartConfig;
   return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      className="h-8 w-22"
-      fill="none"
-      preserveAspectRatio="none"
-      aria-hidden
-    >
-      <polyline
-        points={d}
-        stroke={color}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <ChartContainer config={config} className="aspect-auto h-8 w-22">
+      <RAreaChart data={toData(series)} margin={{ top: 2, bottom: 2 }}>
+        <defs>
+          <linearGradient id="spark" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+            <stop offset="100%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area
+          dataKey="v"
+          type="monotone"
+          stroke={color}
+          strokeWidth={2}
+          fill="url(#spark)"
+          dot={false}
+          isAnimationActive={false}
+        />
+      </RAreaChart>
+    </ChartContainer>
   );
 }
 
-/** Filled area chart for the larger trend cards. */
+/** Filled area chart for the larger trend cards, with a tooltip. */
 export function AreaChart({
   series,
-  color = "var(--primary)",
+  color = "var(--color-primary)",
 }: {
   series: number[];
   color?: string;
 }) {
-  const w = 600;
-  const h = 200;
-  const pts = pointsFor(series, w, h);
-  const line = pts.map((p) => p.join(",")).join(" ");
-  const area = `0,${h} ${line} ${w},${h}`;
+  const config = { v: { label: "", color } } satisfies ChartConfig;
   const id = `area-${color.replace(/[^a-z]/gi, "")}`;
   return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      className="h-full w-full"
-      preserveAspectRatio="none"
-      aria-hidden
-    >
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={area} fill={`url(#${id})`} />
-      <polyline
-        points={line}
-        fill="none"
-        stroke={color}
-        strokeWidth={3}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
+    <ChartContainer config={config} className="aspect-auto size-full">
+      <RAreaChart data={toData(series)} margin={{ top: 6, bottom: 0 }}>
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.22} />
+            <stop offset="100%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+        <Area
+          dataKey="v"
+          type="monotone"
+          stroke={color}
+          strokeWidth={3}
+          fill={`url(#${id})`}
+          dot={false}
+        />
+      </RAreaChart>
+    </ChartContainer>
   );
 }
 
-/** Vertical bars (daily active users). */
+/** Vertical bars (daily active users), with a tooltip. */
 export function Bars({ series }: { series: number[] }) {
-  const max = Math.max(...series, 1);
+  const config = {
+    v: { label: "", color: "var(--color-primary)" },
+  } satisfies ChartConfig;
   return (
-    <div className="flex h-full items-end gap-1">
-      {series.map((v, i) => (
-        <span
-          key={i}
-          className="bg-primary/55 min-w-0 flex-1 rounded-t-sm"
-          style={{ height: `${(v / max) * 100}%` }}
+    <ChartContainer config={config} className="aspect-auto size-full">
+      <RBarChart data={toData(series)} margin={{ top: 6, bottom: 0 }}>
+        <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+        <Bar
+          dataKey="v"
+          fill="var(--color-primary)"
+          fillOpacity={0.55}
+          radius={[3, 3, 0, 0]}
         />
-      ))}
-    </div>
+      </RBarChart>
+    </ChartContainer>
   );
 }
 
@@ -110,32 +120,30 @@ export function Donut({
   center: string;
   centerSub: string;
 }) {
-  const r = 42;
-  const c = 2 * Math.PI * r;
-  let offset = 0;
+  const config = Object.fromEntries(
+    slices.map((s) => [s.key, { label: s.key, color: s.color }]),
+  ) satisfies ChartConfig;
+  const data = slices.map((s) => ({ name: s.key, value: s.pct, fill: s.color }));
   return (
     <div className="relative size-40 flex-none">
-      <svg viewBox="0 0 100 100" className="size-full -rotate-90" aria-hidden>
-        {slices.map((s) => {
-          const len = (s.pct / 100) * c;
-          const el = (
-            <circle
-              key={s.key}
-              cx="50"
-              cy="50"
-              r={r}
-              fill="none"
-              stroke={s.color}
-              strokeWidth={12}
-              strokeDasharray={`${len} ${c - len}`}
-              strokeDashoffset={-offset}
-            />
-          );
-          offset += len;
-          return el;
-        })}
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
+      <ChartContainer config={config} className="aspect-square size-full">
+        <PieChart>
+          <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            innerRadius="62%"
+            outerRadius="100%"
+            strokeWidth={2}
+          >
+            {data.map((d) => (
+              <Cell key={d.name} fill={d.fill} />
+            ))}
+          </Pie>
+        </PieChart>
+      </ChartContainer>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-display text-2xl font-semibold">{center}</span>
         <span className="text-muted-foreground text-xs">{centerSub}</span>
       </div>
