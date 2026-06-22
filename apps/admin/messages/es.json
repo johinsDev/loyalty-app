@@ -861,5 +861,73 @@
     "triggerInactivity": "Inactividad",
     "triggerManual": "Manual",
     "datePlaceholder": "Elegí una fecha"
+  },
+  "Banners": {
+    "title": "Banners",
+    "subtitle": "Destacados en el inicio de la app del cliente.",
+    "add": "Nuevo banner",
+    "searchPlaceholder": "Buscar banner…",
+    "statusFilter": "Estado",
+    "typeFilter": "Tipo",
+    "empty": "No se encontraron banners.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "deleteConfirm": "Sí, eliminar",
+    "deleteTitle": "¿Eliminar banner?",
+    "deleteDescription": "Se eliminará “{name}”. Esta acción no se puede deshacer.",
+    "deleted": "“{name}” eliminado",
+    "undo": "Deshacer",
+    "restored": "“{name}” restaurado",
+    "clicksCount": "{n} clics",
+    "newTitle": "Nuevo banner",
+    "editTitle": "Editar banner",
+    "saveChanges": "Guardar cambios",
+    "publish": "Publicar banner",
+    "created": "Banner “{name}” creado",
+    "updated": "“{name}” actualizado",
+    "step": {
+      "content": "Contenido",
+      "design": "Diseño",
+      "target": "Destino",
+      "schedule": "Programación",
+      "review": "Revisar"
+    },
+    "fieldTitle": "Título",
+    "fieldTitlePlaceholder": "2×1 entre semana",
+    "fieldSubtitle": "Subtítulo",
+    "fieldSubtitlePlaceholder": "Una línea para enganchar…",
+    "optional": "opcional",
+    "fieldCta": "Botón / CTA",
+    "fieldCtaPlaceholder": "Ver promo",
+    "fieldGradient": "Fondo",
+    "fieldIcon": "Ícono",
+    "fieldType": "Tipo",
+    "typeHint": "Hacia dónde lleva",
+    "type": {
+      "promo": "Promo",
+      "standalone": "Independiente"
+    },
+    "fieldPromo": "Promo vinculada",
+    "standaloneHint": "Banner informativo, sin enlace a una promo.",
+    "promo": {
+      "promo2x1": "2×1 entre semana",
+      "doublePoints": "Doble puntos finde",
+      "freeTopping": "Topping gratis"
+    },
+    "fieldStart": "Inicio",
+    "fieldEnd": "Fin",
+    "datePlaceholder": "Elegí una fecha",
+    "noEnd": "Sin fin",
+    "reviewTitle": "Revisar banner",
+    "status": {
+      "active": "Activo",
+      "scheduled": "Programado",
+      "expired": "Expirado",
+      "draft": "Borrador"
+    },
+    "previewTitlePlaceholder": "Título del banner"
   }
 }

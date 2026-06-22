@@ -1,11 +1,11 @@
 import { setRequestLocale } from "next-intl/server";
 
-import { BannersView } from "@/features/banners/components/banners-view";
+import { BannerWizard } from "@/features/banners/components/banner-wizard";
 
 type Props = { params: Promise<{ locale: string }> };
 
-export default async function BannersPage({ params }: Props) {
+export default async function NewBannerPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <BannersView />;
+  return <BannerWizard />;
 }
