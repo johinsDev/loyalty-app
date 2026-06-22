@@ -98,6 +98,7 @@ export function ProductEditor({ id }: { id?: string }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [library, setLibrary] = useState<OptionPreset[]>(optionLibrary);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [mediaDrag, setMediaDrag] = useState<number | null>(null);
   const [sectionsOpen, setSectionsOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [sectionQuery, setSectionQuery] = useState("");
@@ -239,12 +240,29 @@ export function ProductEditor({ id }: { id?: string }) {
 
           <Block title={t("secMedia")} divided>
             <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-              {draft.media.map((m) => (
+              {draft.media.map((m, idx) => (
                 <div
                   key={m.id}
-                  className="bg-muted/50 group relative grid aspect-square place-items-center rounded-2xl text-3xl"
+                  draggable
+                  onDragStart={() => setMediaDrag(idx)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => {
+                    if (mediaDrag !== null && mediaDrag !== idx) {
+                      const next = [...draft.media];
+                      const [item] = next.splice(mediaDrag, 1);
+                      if (item) next.splice(idx, 0, item);
+                      set("media", next);
+                    }
+                    setMediaDrag(null);
+                  }}
+                  className="bg-muted/50 group relative grid aspect-square cursor-grab place-items-center rounded-2xl text-3xl"
                 >
                   {m.emoji}
+                  {idx === 0 ? (
+                    <span className="bg-primary text-primary-foreground absolute top-1 left-1 rounded-full px-1.5 py-0.5 text-[0.625rem] font-bold">
+                      {t("mainImage")}
+                    </span>
+                  ) : null}
                   <button
                     type="button"
                     aria-label={t("delete")}
@@ -430,6 +448,7 @@ export function ProductEditor({ id }: { id?: string }) {
               <table className="w-full text-sm">
                 <thead className="bg-muted/40 text-muted-foreground text-xs font-bold">
                   <tr>
+                    <th className="px-3 py-2 text-left">{t("col.image")}</th>
                     <th className="px-3 py-2 text-left">{t("col.variant")}</th>
                     <th className="px-3 py-2 text-left">{t("col.vprice")}</th>
                     <th className="px-3 py-2 text-left">{t("col.sku")}</th>
@@ -439,6 +458,48 @@ export function ProductEditor({ id }: { id?: string }) {
                 <tbody className="divide-border divide-y">
                   {draft.variants.map((v, idx) => (
                     <tr key={v.id}>
+                      <td className="px-3 py-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                variant="outline"
+                                aria-label={t("col.image")}
+                                className="grid size-9 place-items-center rounded-lg p-0 text-lg"
+                              >
+                                {v.image ? (
+                                  (draft.media.find((m) => m.id === v.image)?.emoji ?? "🖼️")
+                                ) : (
+                                  <ImagePlus className="text-muted-foreground size-4" />
+                                )}
+                              </Button>
+                            }
+                          />
+                          <DropdownMenuContent align="start" className="rounded-xl">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                const next = [...draft.variants];
+                                next[idx] = { ...v, image: null };
+                                set("variants", next);
+                              }}
+                            >
+                              {t("noImage")}
+                            </DropdownMenuItem>
+                            {draft.media.map((m) => (
+                              <DropdownMenuItem
+                                key={m.id}
+                                onClick={() => {
+                                  const next = [...draft.variants];
+                                  next[idx] = { ...v, image: m.id };
+                                  set("variants", next);
+                                }}
+                              >
+                                <span className="text-lg">{m.emoji}</span>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
                       <td className="px-3 py-2 font-bold">{v.combo.join(" / ")}</td>
                       <td className="px-3 py-2">
                         <CurrencyInput

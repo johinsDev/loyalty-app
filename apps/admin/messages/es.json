@@ -728,7 +728,8 @@
       "variant": "Variante",
       "vprice": "Precio",
       "sku": "SKU",
-      "stock": "Stock"
+      "stock": "Stock",
+      "image": "Imagen"
     },
     "variantsCount": "{n} variantes",
     "editCategories": "Editar categorías",
@@ -870,7 +871,9 @@
     "previewNamePlaceholder": "Nombre del producto",
     "priceFrom": "desde {price}",
     "noPrice": "Sin precio",
-    "categoriesN": "{n} categorías"
+    "categoriesN": "{n} categorías",
+    "mainImage": "Principal",
+    "noImage": "Sin imagen"
   },
   "Command": {
     "title": "Buscar",

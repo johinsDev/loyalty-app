@@ -97,6 +97,7 @@ export type Variant = {
   price: number;
   sku: string;
   stock: number | null; // null = infinite
+  image: string | null; // media id, or null = use the main image
 };
 
 export type ProductMedia = { id: string; emoji: string };
@@ -193,7 +194,7 @@ export function buildVariants(
     const key = combo.join(" / ");
     const prev = existing.find((e) => e.combo.join(" / ") === key);
     return (
-      prev ?? { id: `v_${key}`, combo, price: 0, sku: "", stock: null }
+      prev ?? { id: `v_${key}`, combo, price: 0, sku: "", stock: null, image: null }
     );
   });
 }
