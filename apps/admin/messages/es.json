@@ -859,6 +859,7 @@
     "triggerSignup": "Al registrarse",
     "triggerBirthday": "Cumpleaños",
     "triggerInactivity": "Inactividad",
-    "triggerManual": "Manual"
+    "triggerManual": "Manual",
+    "datePlaceholder": "Elegí una fecha"
   }
 }

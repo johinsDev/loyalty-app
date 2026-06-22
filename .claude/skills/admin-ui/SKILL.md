@@ -58,9 +58,12 @@ footer. Step state is local (design-first); the server-driven draft (see the
 `wizard` skill + PromoWizard) is the seam. References: `CustomerWizard`,
 `ProductWizard`, `RewardWizard`.
 
-- Birthdays / dates: a field button that opens `DateWheelPicker` inside a
-  `ResponsiveModal` (don't inline the wheel — it crowds the step). The wheel
-  supports mouse click-drag, not just trackpad/touch.
+- Dates: use the shadcn-style **`DatePicker`** (`@loyalty/ui` — Button trigger +
+  `Calendar` in a `Popover`) for any calendar date (scheduling, send dates). Pass
+  `formatLabel={(d) => formatDate(d, { locale })}` from `@loyalty/date` for the
+  localized label. **`DateWheelPicker`** is only for birthdays / date-of-birth
+  (year scrolling) — open it inside a `ResponsiveModal` (don't inline the wheel);
+  it supports mouse click-drag, not just trackpad/touch. Never `<input type="date">`.
 
 ## List screens
 

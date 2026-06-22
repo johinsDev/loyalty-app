@@ -1,6 +1,8 @@
 "use client";
 
+import { formatDate } from "@loyalty/date";
 import {
+  DatePicker,
   Input,
   Label,
   SegmentedControl,
@@ -21,7 +23,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -59,6 +61,7 @@ const SCHEDULE_ICON = { event: Zap, recurring: Repeat, date: CalendarClock };
  */
 export function CampaignWizard({ id }: { id?: string }) {
   const t = useTranslations("Campaigns");
+  const locale = useLocale();
   const router = useRouter();
   const [draft, setDraft] = useState<CampaignDraft>(
     id ? getCampaignDraft(id) : emptyCampaignDraft,
@@ -258,11 +261,11 @@ export function CampaignWizard({ id }: { id?: string }) {
             </Field>
           ) : (
             <Field label={t("fieldDate")}>
-              <Input
-                type="date"
-                value={draft.date}
-                onChange={(e) => set("date", e.target.value)}
-                className="h-10"
+              <DatePicker
+                value={draft.date ?? undefined}
+                onValueChange={(d) => set("date", d ?? null)}
+                placeholder={t("datePlaceholder")}
+                formatLabel={(d) => formatDate(d, { locale })}
               />
             </Field>
           )}
@@ -293,7 +296,9 @@ export function CampaignWizard({ id }: { id?: string }) {
                   ? t(`event.${draft.event}`)
                   : draft.scheduleMode === "recurring"
                     ? t(`frequency.${draft.frequency}`)
-                    : draft.date || t("modeDate")
+                    : draft.date
+                      ? formatDate(draft.date, { locale })
+                      : t("modeDate")
               }
             />
           </dl>

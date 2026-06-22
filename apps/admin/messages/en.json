@@ -859,6 +859,7 @@
     "triggerSignup": "On signup",
     "triggerBirthday": "Birthday",
     "triggerInactivity": "Inactivity",
-    "triggerManual": "Manual"
+    "triggerManual": "Manual",
+    "datePlaceholder": "Pick a date"
   }
 }

@@ -48,7 +48,7 @@ export type CampaignDraft = {
   scheduleMode: "event" | "recurring" | "date";
   event: string;
   frequency: string;
-  date: string;
+  date: Date | null;
 };
 
 export const emptyCampaignDraft: CampaignDraft = {
@@ -61,7 +61,7 @@ export const emptyCampaignDraft: CampaignDraft = {
   scheduleMode: "event",
   event: "signup",
   frequency: "weekly",
-  date: "",
+  date: null,
 };
 
 const SAMPLE: CampaignDraft = {
@@ -74,7 +74,7 @@ const SAMPLE: CampaignDraft = {
   scheduleMode: "recurring",
   event: "signup",
   frequency: "weekly",
-  date: "",
+  date: null,
 };
 
 /** Resolve a campaign into an editable draft. Hardcoded — unknown ids fall back
