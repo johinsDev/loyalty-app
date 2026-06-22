@@ -128,13 +128,13 @@ export function DashboardView() {
           </div>
         </ChartCard>
         <ChartCard title={t("engagementTitle")} beta style={fade(i++)}>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <Donut
               slices={engagementMix}
               center="82"
               centerSub={t("scoreOf100Short")}
             />
-            <ul className="flex-1 space-y-2 text-sm">
+            <ul className="min-w-40 flex-1 space-y-2 text-sm">
               {engagementMix.map((s) => (
                 <li key={s.key} className="flex items-center gap-2">
                   <span
@@ -481,7 +481,7 @@ function ChartCard({
   return (
     <div
       style={style}
-      className={`bg-card border-border rounded-3xl border p-5 shadow-sm ${className}`}
+      className={`bg-card border-border min-w-0 rounded-3xl border p-5 shadow-sm ${className}`}
     >
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>

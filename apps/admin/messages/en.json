@@ -511,7 +511,10 @@
     "help": "Help",
     "docs": "Docs",
     "platformStatus": "Status",
-    "allNormal": "All normal"
+    "allNormal": "All normal",
+    "storeSearch": "Find store…",
+    "storeEmpty": "No stores.",
+    "createStore": "Create store"
   },
   "Roles": {
     "customer": "Customer",

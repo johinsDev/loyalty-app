@@ -1,24 +1,14 @@
 "use client";
 
 import type { Role } from "@loyalty/auth/server";
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Sheet,
-  SheetContent,
-  SheetTitle,
-} from "@loyalty/ui";
-import { Check, ChevronsUpDown, Menu, QrCode, Store } from "lucide-react";
+import { Button, Sheet, SheetContent, SheetTitle } from "@loyalty/ui";
+import { Menu, QrCode } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 
 import { AdminNav } from "@/components/admin-nav";
+import { StoreSwitcher } from "@/components/store-switcher";
 import { useRouter } from "@/i18n/navigation";
-
-const STORES = ["allStores", "t4Centro", "t4Norte"] as const;
 
 /**
  * Admin shell — a fixed sidebar on desktop (lg+) and a drawer on tablet/mobile
@@ -38,7 +28,6 @@ export function AdminShell({
   const t = useTranslations("Admin");
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [store, setStore] = useState<(typeof STORES)[number]>("allStores");
 
   return (
     <div className="bg-card flex h-screen overflow-hidden">
@@ -76,29 +65,7 @@ export function AdminShell({
             </div>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="outline"
-                  className="hidden h-10 gap-2 rounded-xl sm:flex"
-                >
-                  <Store className="size-4" />
-                  <span className="max-w-32 truncate">{t(`store.${store}`)}</span>
-                  <ChevronsUpDown className="size-4 opacity-60" />
-                </Button>
-              }
-            />
-            <DropdownMenuContent align="end" className="min-w-48 rounded-xl">
-              {STORES.map((s) => (
-                <DropdownMenuItem key={s} onClick={() => setStore(s)}>
-                  <Store />
-                  {t(`store.${s}`)}
-                  {store === s ? <Check className="ml-auto size-4" /> : null}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <StoreSwitcher />
 
           <Button
             type="button"
