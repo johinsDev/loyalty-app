@@ -1,11 +1,11 @@
 import { setRequestLocale } from "next-intl/server";
 
-import { ComingSoon } from "@/components/coming-soon";
+import { SettingsView } from "@/features/settings/components/settings-view";
 
 type Props = { params: Promise<{ locale: string }> };
 
-export default async function Page({ params }: Props) {
+export default async function SettingsIntegrationsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <ComingSoon titleKey="integrations" />;
+  return <SettingsView section="integrations" />;
 }
