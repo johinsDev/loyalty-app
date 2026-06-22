@@ -12,44 +12,40 @@ import {
   Badge,
   Button,
 } from "@loyalty/ui";
-import { Coins, Gift, Pencil, Plus, Search, Stamp, Trash2 } from "lucide-react";
+import { Package, Pencil, Plus, Search, Stamp, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/empty-state";
-import {
-  type FilterOption,
-  FilterMultiSelect,
-  FilterSelect,
-} from "@/components/filters";
+import { type FilterOption, FilterMultiSelect } from "@/components/filters";
 import { useFadeUp } from "@/lib/animate";
 import { useRouter } from "@/i18n/navigation";
 
-import { type CostType, type Reward, rewards } from "../data";
+import { type Category, categories, type Product, products } from "../data";
 
 type StatusKey = "active" | "inactive";
 const STATUSES: StatusKey[] = ["active", "inactive"];
 
 /**
- * Recompensas — searchable card grid filtered by cost type (single-select) and
- * status (multi-select). Add/edit open the reward wizard; delete confirms via an
- * AlertDialog then offers undo. Design-first / hardcoded (../data).
+ * Productos — searchable, category/status multi-select-filtered card grid. Add
+ * and edit open the product wizard; delete confirms via an AlertDialog then
+ * offers undo. Design-first / hardcoded (../data).
  */
-export function RewardsView() {
-  const t = useTranslations("Rewards");
+export function ProductsView() {
+  const t = useTranslations("Products");
   const router = useRouter();
   const fade = useFadeUp({ step: 30 });
 
   const [query, setQuery] = useState("");
-  const [costType, setCostType] = useState<CostType | null>(null);
+  const [cats, setCats] = useState<Category[]>([...categories]);
   const [statuses, setStatuses] = useState<StatusKey[]>([...STATUSES]);
-  const [toDelete, setToDelete] = useState<Reward | null>(null);
+  const [toDelete, setToDelete] = useState<Product | null>(null);
 
-  const costOptions: FilterOption<CostType>[] = [
-    { value: "stamps", label: t("cost.stampsLabel") },
-    { value: "points", label: t("cost.pointsLabel") },
-  ];
+  const catOptions: FilterOption<Category>[] = categories.map((c) => ({
+    value: c,
+    label: t(`category.${c}`),
+  }));
   const statusOptions: FilterOption<StatusKey>[] = [
     { value: "active", label: t("active"), dot: "#1f9d68" },
     { value: "inactive", label: t("inactive"), dot: "#9aa1ab" },
@@ -57,17 +53,17 @@ export function RewardsView() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return rewards.filter((r) => {
-      if (costType && r.costType !== costType) return false;
-      if (!statuses.includes(r.active ? "active" : "inactive")) return false;
-      if (q && !r.name.toLowerCase().includes(q)) return false;
+    return products.filter((p) => {
+      if (!cats.includes(p.category)) return false;
+      if (!statuses.includes(p.active ? "active" : "inactive")) return false;
+      if (q && !p.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [query, costType, statuses]);
+  }, [query, cats, statuses]);
 
   const clearFilters = () => {
     setQuery("");
-    setCostType(null);
+    setCats([...categories]);
     setStatuses([...STATUSES]);
   };
 
@@ -98,7 +94,7 @@ export function RewardsView() {
         </div>
         <Button
           className="h-10 gap-2 rounded-xl font-semibold"
-          onClick={() => router.push("/rewards/new")}
+          onClick={() => router.push("/products/new")}
         >
           <Plus className="size-4" />
           {t("add")}
@@ -116,11 +112,11 @@ export function RewardsView() {
             className="border-border bg-card placeholder:text-muted-foreground h-10 w-full rounded-xl border pr-3 pl-9 text-sm outline-none"
           />
         </div>
-        <FilterSelect
-          allLabel={t("allCostTypes")}
-          value={costType}
-          onValueChange={setCostType}
-          options={costOptions}
+        <FilterMultiSelect
+          label={t("categoryFilter")}
+          options={catOptions}
+          selected={cats}
+          onChange={setCats}
         />
         <FilterMultiSelect
           label={t("statusFilter")}
@@ -130,9 +126,10 @@ export function RewardsView() {
         />
       </div>
 
+      {/* Grid */}
       {filtered.length === 0 ? (
         <EmptyState
-          icon={Gift}
+          icon={Package}
           title={t("empty")}
           hint={t("emptyHint")}
           action={
@@ -142,41 +139,50 @@ export function RewardsView() {
           }
         />
       ) : (
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((r) => (
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map((p) => (
             <div
-              key={r.id}
+              key={p.id}
               style={fade(i++)}
-              className="bg-card border-border flex flex-col rounded-3xl border p-5 shadow-sm"
+              className="bg-card border-border flex flex-col rounded-3xl border p-4 shadow-sm"
             >
-              <div className="flex items-start gap-3">
-                <span className="bg-primary/10 grid size-12 flex-none place-items-center rounded-2xl text-2xl">
-                  {r.emoji}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-bold">{r.name}</div>
-                  <span className="text-primary mt-0.5 inline-flex items-center gap-1 text-sm font-extrabold">
-                    {r.costType === "stamps" ? (
-                      <Stamp className="size-3.5" />
-                    ) : (
-                      <Coins className="size-3.5" />
-                    )}
-                    {r.cost === 0
-                      ? t("free")
-                      : t(`cost.${r.costType}`, { n: r.cost })}
-                  </span>
-                </div>
-                {!r.active ? (
-                  <Badge variant="secondary" className="text-muted-foreground">
+              <div className="bg-muted/50 relative grid aspect-square place-items-center rounded-2xl text-6xl">
+                {p.emoji}
+                {!p.active ? (
+                  <Badge
+                    variant="secondary"
+                    className="text-muted-foreground absolute top-2 left-2"
+                  >
                     {t("inactive")}
                   </Badge>
                 ) : null}
               </div>
-
-              <p className="text-muted-foreground/70 mt-3 text-xs font-semibold">
-                {t("redeemedCount", { n: r.redeemed })}
-              </p>
-
+              <div className="mt-3 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate font-bold">{p.name}</div>
+                  <div className="text-muted-foreground/70 text-xs font-semibold">
+                    {t(`category.${p.category}`)}
+                  </div>
+                </div>
+                <span className="font-bold">{p.price}</span>
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                {p.earnsStamp ? (
+                  <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold">
+                    <Stamp className="size-3" />
+                    {t("earnsStamp")}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground/70 text-xs font-semibold">
+                    {t("noStamp")}
+                  </span>
+                )}
+                {p.points > 0 ? (
+                  <span className="text-muted-foreground/70 text-xs font-bold">
+                    +{p.points} pts
+                  </span>
+                ) : null}
+              </div>
               <div className="border-border mt-3 flex items-center gap-1 border-t pt-3">
                 <Button
                   variant="outline"
@@ -184,8 +190,8 @@ export function RewardsView() {
                   className="h-9 flex-1 gap-1.5 rounded-lg"
                   onClick={() =>
                     router.push({
-                      pathname: "/rewards/[id]",
-                      params: { id: r.id },
+                      pathname: "/products/[id]",
+                      params: { id: p.id },
                     })
                   }
                 >
@@ -197,7 +203,7 @@ export function RewardsView() {
                   size="icon"
                   aria-label={t("delete")}
                   className="text-destructive hover:bg-destructive/10 size-9 rounded-lg"
-                  onClick={() => setToDelete(r)}
+                  onClick={() => setToDelete(p)}
                 >
                   <Trash2 className="size-4" />
                 </Button>
