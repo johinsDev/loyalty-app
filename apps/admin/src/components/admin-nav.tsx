@@ -183,7 +183,7 @@ export function AdminNav({
         <button
           type="button"
           onClick={onOpenSearch}
-          className="border-border bg-muted/50 text-muted-foreground hover:text-foreground relative flex h-9 w-full items-center rounded-lg border pr-12 pl-9 text-sm"
+          className="border-border bg-muted/50 text-muted-foreground hover:text-foreground relative flex h-10 w-full items-center rounded-lg border pr-12 pl-9 text-sm"
         >
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <span>{t("search")}</span>
