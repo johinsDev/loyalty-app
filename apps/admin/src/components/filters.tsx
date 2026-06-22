@@ -179,20 +179,25 @@ export function FilterMultiSelect<T extends string>({
         : [...selected, v],
     );
 
-  const dots = options.filter((o) => selected.includes(o.value) && o.dot);
+  // Show every option's dot always (dim the unselected) so the trigger width
+  // stays constant — selecting/clearing must not make the button jump.
+  const dotted = options.filter((o) => o.dot);
 
   return (
     <Popover>
       <PopoverTrigger
         render={
           <Button variant="outline" className="h-10 gap-2 rounded-xl">
-            {dots.length ? (
+            {dotted.length ? (
               <span className="flex -space-x-1">
-                {dots.slice(0, 3).map((o) => (
+                {dotted.slice(0, 3).map((o) => (
                   <span
                     key={o.value}
-                    className="border-card size-2.5 rounded-full border"
-                    style={{ background: o.dot }}
+                    className="border-card size-2.5 rounded-full border transition-opacity"
+                    style={{
+                      background: o.dot,
+                      opacity: selected.includes(o.value) ? 1 : 0.3,
+                    }}
                   />
                 ))}
               </span>
