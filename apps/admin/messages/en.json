@@ -218,7 +218,26 @@
       "spent": "Spent",
       "lastVisit": "Last visit",
       "status": "Status"
-    }
+    },
+    "create": "Create customer",
+    "saveChanges": "Save changes",
+    "cancel": "Cancel",
+    "formAddTitle": "New customer",
+    "formEditTitle": "Edit customer",
+    "formSubtitle": "Basic customer details.",
+    "fieldName": "Name",
+    "fieldNamePlaceholder": "Maria Gonzalez",
+    "fieldPhone": "Phone",
+    "fieldBirthday": "Birthday",
+    "fieldBirthdayPlaceholder": "Mar 14",
+    "fieldTier": "Tier",
+    "created": "Customer {name} created",
+    "updated": "{name} updated",
+    "deleted": "{name} deleted",
+    "delete": "Delete",
+    "deleteTitle": "Delete customer?",
+    "deleteDescription": "This removes {name} and their loyalty history. This cannot be undone.",
+    "deleteConfirm": "Yes, delete"
   },
   "Shortlinks": {
     "title": "Short links",

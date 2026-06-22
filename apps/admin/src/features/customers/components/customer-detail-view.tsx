@@ -1,6 +1,17 @@
 "use client";
 
-import { Badge, Button } from "@loyalty/ui";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Badge,
+  Button,
+} from "@loyalty/ui";
 import {
   ArrowLeft,
   Cake,
@@ -9,14 +20,18 @@ import {
   Mail,
   Pencil,
   Stamp,
+  Trash2,
   UserRoundCheck,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { useFadeUp } from "@/lib/animate";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 
 import { type CustomerDetail, tierColor } from "../data";
+import { CustomerFormModal } from "./customer-form-modal";
 
 /**
  * Customer detail — header (identity + tier + edit/impersonate seams), a balance
@@ -26,9 +41,18 @@ import { type CustomerDetail, tierColor } from "../data";
  */
 export function CustomerDetailView({ customer: c }: { customer: CustomerDetail }) {
   const t = useTranslations("Customers");
+  const router = useRouter();
   const fade = useFadeUp({ step: 50 });
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const pct = Math.round((c.stamps / c.stampsTarget) * 100);
   let i = 0;
+
+  const onDelete = () => {
+    setDeleteOpen(false);
+    toast.success(t("deleted", { name: c.name }));
+    router.push("/customers");
+  };
 
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-6 lg:px-8">
@@ -78,9 +102,21 @@ export function CustomerDetailView({ customer: c }: { customer: CustomerDetail }
             <UserRoundCheck className="size-4" />
             {t("impersonate")}
           </Button>
-          <Button className="h-10 gap-2 rounded-xl font-semibold">
+          <Button
+            className="h-10 gap-2 rounded-xl font-semibold"
+            onClick={() => setEditOpen(true)}
+          >
             <Pencil className="size-4" />
             {t("edit")}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={t("delete")}
+            className="text-destructive hover:bg-destructive/10 size-10 rounded-xl"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 className="size-4" />
           </Button>
         </div>
       </section>
@@ -192,6 +228,32 @@ export function CustomerDetailView({ customer: c }: { customer: CustomerDetail }
           </ul>
         </section>
       </div>
+
+      <CustomerFormModal
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        customer={c}
+      />
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("deleteDescription", { name: c.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onDelete}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {t("deleteConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

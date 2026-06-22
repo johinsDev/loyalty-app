@@ -218,7 +218,26 @@
       "spent": "Gastado",
       "lastVisit": "Última visita",
       "status": "Estado"
-    }
+    },
+    "create": "Crear cliente",
+    "saveChanges": "Guardar cambios",
+    "cancel": "Cancelar",
+    "formAddTitle": "Nuevo cliente",
+    "formEditTitle": "Editar cliente",
+    "formSubtitle": "Datos básicos del cliente.",
+    "fieldName": "Nombre",
+    "fieldNamePlaceholder": "María González",
+    "fieldPhone": "Teléfono",
+    "fieldBirthday": "Cumpleaños",
+    "fieldBirthdayPlaceholder": "14 mar",
+    "fieldTier": "Tier",
+    "created": "Cliente {name} creado",
+    "updated": "{name} actualizado",
+    "deleted": "{name} eliminado",
+    "delete": "Eliminar",
+    "deleteTitle": "¿Eliminar cliente?",
+    "deleteDescription": "Se eliminará a {name} y su historial de lealtad. Esta acción no se puede deshacer.",
+    "deleteConfirm": "Sí, eliminar"
   },
   "Shortlinks": {
     "title": "Enlaces cortos",

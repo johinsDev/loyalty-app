@@ -31,6 +31,7 @@ import {
   type Tier,
   tierColor,
 } from "../data";
+import { CustomerFormModal } from "./customer-form-modal";
 
 const PAGE_SIZE = 8;
 const STATUSES = ["all", "active", "inactive"] as const;
@@ -50,6 +51,7 @@ export function CustomersView() {
   const [status, setStatus] = useState<(typeof STATUSES)[number]>("all");
   const [tier, setTier] = useState<Tier | null>(null);
   const [page, setPage] = useState(0);
+  const [addOpen, setAddOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -92,7 +94,10 @@ export function CustomersView() {
             <Download className="size-4" />
             {t("export")}
           </Button>
-          <Button className="h-10 gap-2 rounded-xl font-semibold">
+          <Button
+            className="h-10 gap-2 rounded-xl font-semibold"
+            onClick={() => setAddOpen(true)}
+          >
             <Plus className="size-4" />
             {t("addCustomer")}
           </Button>
@@ -221,6 +226,8 @@ export function CustomersView() {
           </div>
         </div>
       </div>
+
+      <CustomerFormModal open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }
