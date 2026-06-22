@@ -35,7 +35,15 @@
     "groupCatalog": "CATALOG",
     "groupMarketing": "MARKETING",
     "groupAnalysis": "ANALYSIS",
-    "groupOps": "OPERATIONS"
+    "groupOps": "OPERATIONS",
+    "campaignsList": "Campaigns",
+    "templates": "Templates",
+    "overview": "Overview",
+    "cohorts": "Cohorts",
+    "funnel": "Funnel",
+    "brand": "Brand",
+    "team": "Team",
+    "integrations": "Integrations"
   },
   "Notifications": {
     "title": "Notifications",
@@ -498,12 +506,33 @@
       "allStores": "All stores",
       "t4Centro": "T4 Centro",
       "t4Norte": "T4 Norte"
-    }
+    },
+    "settingsLink": "Settings",
+    "help": "Help",
+    "docs": "Docs",
+    "platformStatus": "Status",
+    "allNormal": "All normal",
+    "storeSearch": "Find store…",
+    "storeEmpty": "No stores.",
+    "createStore": "Create store"
   },
   "Roles": {
     "customer": "Customer",
     "staff": "Staff",
     "manager": "Manager",
     "owner": "Owner"
+  },
+  "Inbox": {
+    "title": "Notifications",
+    "inbox": "Inbox",
+    "archive": "Archive",
+    "empty": "No notifications.",
+    "archiveEmpty": "Nothing archived.",
+    "archiveAll": "Archive all",
+    "promoLive": "2×1 promo published and pushed to members.",
+    "fraudReplay": "Fraud: same redemption code used 3×.",
+    "campaignSent": "Win-back campaign sent to 128 members.",
+    "capReached": "T4 Norte register hit the daily stamp cap.",
+    "settings": "Notification settings"
   }
 }

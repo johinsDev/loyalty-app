@@ -35,7 +35,15 @@
     "groupCatalog": "CATÁLOGO",
     "groupMarketing": "MARKETING",
     "groupAnalysis": "ANÁLISIS",
-    "groupOps": "OPERACIÓN"
+    "groupOps": "OPERACIÓN",
+    "campaignsList": "Campañas",
+    "templates": "Plantillas",
+    "overview": "Resumen",
+    "cohorts": "Cohortes",
+    "funnel": "Embudo",
+    "brand": "Marca",
+    "team": "Equipo",
+    "integrations": "Integraciones"
   },
   "Notifications": {
     "title": "Notificaciones",
@@ -498,12 +506,33 @@
       "allStores": "Todas las tiendas",
       "t4Centro": "T4 Centro",
       "t4Norte": "T4 Norte"
-    }
+    },
+    "settingsLink": "Ajustes",
+    "help": "Ayuda",
+    "docs": "Documentación",
+    "platformStatus": "Estado",
+    "allNormal": "Todo normal",
+    "storeSearch": "Buscar tienda…",
+    "storeEmpty": "Sin tiendas.",
+    "createStore": "Crear tienda"
   },
   "Roles": {
     "customer": "Cliente",
     "staff": "Cajero",
     "manager": "Gerente",
     "owner": "Dueño"
+  },
+  "Inbox": {
+    "title": "Notificaciones",
+    "inbox": "Bandeja",
+    "archive": "Archivadas",
+    "empty": "Sin notificaciones.",
+    "archiveEmpty": "Nada archivado.",
+    "archiveAll": "Archivar todo",
+    "promoLive": "Promo 2×1 publicada y notificada a socios.",
+    "fraudReplay": "Fraude: mismo código de canje usado 3×.",
+    "campaignSent": "Campaña Win-back enviada a 128 socios.",
+    "capReached": "Caja T4 Norte alcanzó el tope diario de sellos.",
+    "settings": "Ajustes de notificaciones"
   }
 }

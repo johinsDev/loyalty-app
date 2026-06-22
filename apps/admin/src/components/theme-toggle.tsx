@@ -1,22 +1,15 @@
 "use client";
 
-import { ModeToggle } from "@loyalty/ui";
+import { ModeSegmentedSystem } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
 
 /**
- * App wrapper that localises the shared `ModeToggle` from `@loyalty/ui`
- * (which stays i18n-agnostic). Mirrors `LocaleSwitcher`.
+ * App wrapper that localises the shared `ModeSegmentedSystem` from `@loyalty/ui`
+ * (System / Light / Dark as an icon-only segmented control, Vercel-style).
+ * Mirrors the customer app's `ThemeToggle` — i18n lives here, next-themes stays
+ * in the UI package.
  */
 export function ThemeToggle() {
   const t = useTranslations("Theme");
-  return (
-    <ModeToggle
-      labels={{
-        light: t("light"),
-        dark: t("dark"),
-        system: t("system"),
-        toggle: t("toggleTheme"),
-      }}
-    />
-  );
+  return <ModeSegmentedSystem aria-label={t("toggleTheme")} />;
 }
