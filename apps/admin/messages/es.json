@@ -5,7 +5,8 @@
   },
   "Common": {
     "switchLocale": "Cambiar idioma",
-    "refresh": "Refrescar"
+    "refresh": "Refrescar",
+    "viewToggle": "Cambiar vista"
   },
   "Theme": {
     "light": "Claro",
@@ -352,7 +353,13 @@
     "allCostTypes": "Todos los costos",
     "statusFilter": "Estado",
     "undo": "Deshacer",
-    "restored": "“{name}” restaurada"
+    "restored": "“{name}” restaurada",
+    "col": {
+      "reward": "Recompensa",
+      "cost": "Costo",
+      "redeemed": "Canjes",
+      "status": "Estado"
+    }
   },
   "WhatsAppOutbox": {
     "title": "WhatsApp Outbox",
@@ -928,6 +935,13 @@
       "expired": "Expirado",
       "draft": "Borrador"
     },
-    "previewTitlePlaceholder": "Título del banner"
+    "previewTitlePlaceholder": "Título del banner",
+    "col": {
+      "banner": "Banner",
+      "type": "Tipo",
+      "status": "Estado",
+      "range": "Vigencia",
+      "clicks": "Clics"
+    }
   }
 }

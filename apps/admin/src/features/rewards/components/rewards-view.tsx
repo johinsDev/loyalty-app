@@ -11,6 +11,12 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@loyalty/ui";
 import { Coins, Gift, Pencil, Plus, Search, Stamp, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -23,6 +29,7 @@ import {
   FilterMultiSelect,
   FilterSelect,
 } from "@/components/filters";
+import { type ViewMode, ViewToggle } from "@/components/view-toggle";
 import { useFadeUp } from "@/lib/animate";
 import { useRouter } from "@/i18n/navigation";
 
@@ -38,12 +45,14 @@ const STATUSES: StatusKey[] = ["active", "inactive"];
  */
 export function RewardsView() {
   const t = useTranslations("Rewards");
+  const tCommon = useTranslations("Common");
   const router = useRouter();
   const fade = useFadeUp({ step: 30 });
 
   const [query, setQuery] = useState("");
   const [costType, setCostType] = useState<CostType | null>(null);
   const [statuses, setStatuses] = useState<StatusKey[]>([...STATUSES]);
+  const [view, setView] = useState<ViewMode>("grid");
   const [toDelete, setToDelete] = useState<Reward | null>(null);
 
   const costOptions: FilterOption<CostType>[] = [
@@ -128,6 +137,11 @@ export function RewardsView() {
           selected={statuses}
           onChange={setStatuses}
         />
+        <ViewToggle
+          value={view}
+          onValueChange={setView}
+          ariaLabel={tCommon("viewToggle")}
+        />
       </div>
 
       {filtered.length === 0 ? (
@@ -141,7 +155,7 @@ export function RewardsView() {
             </Button>
           }
         />
-      ) : (
+      ) : view === "grid" ? (
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((r) => (
             <div
@@ -204,6 +218,78 @@ export function RewardsView() {
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="bg-card border-border mt-5 overflow-hidden rounded-3xl border shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t("col.reward")}</TableHead>
+                <TableHead>{t("col.cost")}</TableHead>
+                <TableHead className="text-right">{t("col.redeemed")}</TableHead>
+                <TableHead>{t("col.status")}</TableHead>
+                <TableHead className="w-24" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((r) => (
+                <TableRow
+                  key={r.id}
+                  className="cursor-pointer"
+                  onClick={() =>
+                    router.push({ pathname: "/rewards/[id]", params: { id: r.id } })
+                  }
+                >
+                  <TableCell>
+                    <div className="flex items-center gap-2.5">
+                      <span className="bg-primary/10 grid size-9 flex-none place-items-center rounded-xl text-lg">
+                        {r.emoji}
+                      </span>
+                      <span className="font-bold">{r.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-primary font-extrabold">
+                    {r.cost === 0 ? t("free") : t(`cost.${r.costType}`, { n: r.cost })}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-right font-semibold">
+                    {r.redeemed}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="secondary"
+                      className={r.active ? "text-emerald-600" : "text-muted-foreground"}
+                    >
+                      {t(r.active ? "active" : "inactive")}
+                    </Badge>
+                  </TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label={t("edit")}
+                        className="size-8 rounded-lg"
+                        onClick={() =>
+                          router.push({ pathname: "/rewards/[id]", params: { id: r.id } })
+                        }
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label={t("delete")}
+                        className="text-destructive hover:bg-destructive/10 size-8 rounded-lg"
+                        onClick={() => setToDelete(r)}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 

@@ -5,7 +5,8 @@
   },
   "Common": {
     "switchLocale": "Switch language",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "viewToggle": "Switch view"
   },
   "Theme": {
     "light": "Light",
@@ -352,7 +353,13 @@
     "allCostTypes": "All cost types",
     "statusFilter": "Status",
     "undo": "Undo",
-    "restored": "“{name}” restored"
+    "restored": "“{name}” restored",
+    "col": {
+      "reward": "Reward",
+      "cost": "Cost",
+      "redeemed": "Redemptions",
+      "status": "Status"
+    }
   },
   "WhatsAppOutbox": {
     "title": "WhatsApp Outbox",
@@ -928,6 +935,13 @@
       "expired": "Expired",
       "draft": "Draft"
     },
-    "previewTitlePlaceholder": "Banner title"
+    "previewTitlePlaceholder": "Banner title",
+    "col": {
+      "banner": "Banner",
+      "type": "Type",
+      "status": "Status",
+      "range": "Active",
+      "clicks": "Clicks"
+    }
   }
 }

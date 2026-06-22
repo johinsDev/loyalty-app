@@ -24,6 +24,7 @@ import { useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/empty-state";
 import { type FilterOption, FilterMultiSelect } from "@/components/filters";
+import { type ViewMode, ViewToggle } from "@/components/view-toggle";
 import { useFadeUp } from "@/lib/animate";
 import { useRouter } from "@/i18n/navigation";
 
@@ -48,12 +49,14 @@ const TIERS: Tier[] = ["bronze", "silver", "gold", "diamond"];
  */
 export function CustomersView() {
   const t = useTranslations("Customers");
+  const tCommon = useTranslations("Common");
   const router = useRouter();
   const fade = useFadeUp({ step: 40 });
 
   const [query, setQuery] = useState("");
   const [statuses, setStatuses] = useState<Status[]>([...STATUSES]);
   const [tiers, setTiers] = useState<Tier[]>([...TIERS]);
+  const [view, setView] = useState<ViewMode>("list");
   const [page, setPage] = useState(0);
 
   const statusOptions: FilterOption<Status>[] = [
@@ -175,6 +178,11 @@ export function CustomersView() {
               selected={tiers}
               onChange={(v) => reset(() => setTiers(v))}
             />
+            <ViewToggle
+              value={view}
+              onValueChange={setView}
+              ariaLabel={tCommon("viewToggle")}
+            />
           </div>
         </div>
 
@@ -193,7 +201,7 @@ export function CustomersView() {
               </Button>
             }
           />
-        ) : (
+        ) : view === "list" ? (
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -212,6 +220,73 @@ export function CustomersView() {
               ))}
             </TableBody>
           </Table>
+        ) : (
+          <div className="mt-5 grid grid-cols-1 gap-3 px-4 pb-4 sm:grid-cols-2 lg:grid-cols-3">
+            {rows.map((c) => (
+              <div
+                key={c.id}
+                style={fade(i++)}
+                className="bg-card border-border cursor-pointer rounded-3xl border p-5 shadow-sm"
+                onClick={() =>
+                  router.push({
+                    pathname: "/customers/[id]",
+                    params: { id: c.id },
+                  })
+                }
+              >
+                <div className="flex items-start gap-3">
+                  <span className="bg-primary/10 text-primary grid size-11 flex-none place-items-center rounded-full text-sm font-bold">
+                    {c.initials}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-bold">{c.name}</div>
+                    <div className="text-muted-foreground/70 truncate text-xs font-semibold">
+                      {c.phone}
+                    </div>
+                  </div>
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${tierColor[c.tier]}`}
+                  >
+                    {t(`tier.${c.tier}`)}
+                  </span>
+                </div>
+
+                <div className="border-border mt-4 grid grid-cols-3 gap-2 border-t pt-4">
+                  <div>
+                    <div className="font-bold">{c.points.toLocaleString()}</div>
+                    <div className="text-muted-foreground/70 text-xs font-semibold">
+                      {t("col.points")}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-bold">{c.visits}</div>
+                    <div className="text-muted-foreground/70 text-xs font-semibold">
+                      {t("col.visits")}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-bold">{c.spent}</div>
+                    <div className="text-muted-foreground/70 text-xs font-semibold">
+                      {t("col.spent")}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <Badge
+                    variant="secondary"
+                    className={
+                      c.status === "active"
+                        ? "text-emerald-600"
+                        : "text-muted-foreground"
+                    }
+                  >
+                    {t(`status.${c.status}`)}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {/* Pagination */}

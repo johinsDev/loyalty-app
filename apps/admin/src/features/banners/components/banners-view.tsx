@@ -11,6 +11,12 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@loyalty/ui";
 import { Image as ImageIcon, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -19,6 +25,7 @@ import { toast } from "sonner";
 
 import { EmptyState } from "@/components/empty-state";
 import { type FilterOption, FilterMultiSelect } from "@/components/filters";
+import { type ViewMode, ViewToggle } from "@/components/view-toggle";
 import { useFadeUp } from "@/lib/animate";
 import { useRouter } from "@/i18n/navigation";
 
@@ -53,12 +60,14 @@ const STATUS_TEXT: Record<Status, string> = {
  */
 export function BannersView() {
   const t = useTranslations("Banners");
+  const tCommon = useTranslations("Common");
   const router = useRouter();
   const fade = useFadeUp({ step: 30 });
 
   const [query, setQuery] = useState("");
   const [statuses, setStatuses] = useState<Status[]>([...STATUSES]);
   const [types, setTypes] = useState<BannerType[]>([...TYPES]);
+  const [view, setView] = useState<ViewMode>("grid");
   const [toDelete, setToDelete] = useState<Banner | null>(null);
 
   const statusOptions: FilterOption<Status>[] = STATUSES.map((s) => ({
@@ -140,6 +149,11 @@ export function BannersView() {
           selected={types}
           onChange={setTypes}
         />
+        <ViewToggle
+          value={view}
+          onValueChange={setView}
+          ariaLabel={tCommon("viewToggle")}
+        />
       </div>
 
       {filtered.length === 0 ? (
@@ -153,7 +167,7 @@ export function BannersView() {
             </Button>
           }
         />
-      ) : (
+      ) : view === "grid" ? (
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((b) => {
             const g = GRADIENTS.find((x) => x.key === b.gradient) ?? GRADIENTS[0]!;
@@ -215,6 +229,99 @@ export function BannersView() {
               </div>
             );
           })}
+        </div>
+      ) : (
+        <div className="bg-card border-border mt-5 overflow-hidden rounded-3xl border shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t("col.banner")}</TableHead>
+                <TableHead>{t("col.type")}</TableHead>
+                <TableHead>{t("col.status")}</TableHead>
+                <TableHead>{t("col.range")}</TableHead>
+                <TableHead className="text-right">{t("col.clicks")}</TableHead>
+                <TableHead className="w-24" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((b) => {
+                const g =
+                  GRADIENTS.find((x) => x.key === b.gradient) ?? GRADIENTS[0]!;
+                return (
+                  <TableRow
+                    key={b.id}
+                    className="cursor-pointer"
+                    onClick={() =>
+                      router.push({
+                        pathname: "/banners/[id]",
+                        params: { id: b.id },
+                      })
+                    }
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className="grid size-9 flex-none place-items-center rounded-xl text-lg text-white"
+                          style={{ background: gradientCss(g) }}
+                        >
+                          {b.emoji}
+                        </span>
+                        <span className="font-bold">{b.title}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground font-semibold">
+                      {t(`type.${b.type}`)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="secondary"
+                        className={`gap-1.5 ${STATUS_TEXT[b.status]}`}
+                      >
+                        <span
+                          className="size-1.5 rounded-full"
+                          style={{ background: STATUS_DOT[b.status] }}
+                        />
+                        {t(`status.${b.status}`)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground font-semibold">
+                      {b.range}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-right font-semibold">
+                      {b.clicks.toLocaleString()}
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          aria-label={t("edit")}
+                          className="size-8 rounded-lg"
+                          onClick={() =>
+                            router.push({
+                              pathname: "/banners/[id]",
+                              params: { id: b.id },
+                            })
+                          }
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          aria-label={t("delete")}
+                          className="text-destructive hover:bg-destructive/10 size-8 rounded-lg"
+                          onClick={() => setToDelete(b)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       )}
 
