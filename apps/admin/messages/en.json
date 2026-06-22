@@ -861,5 +861,73 @@
     "triggerInactivity": "Inactivity",
     "triggerManual": "Manual",
     "datePlaceholder": "Pick a date"
+  },
+  "Banners": {
+    "title": "Banners",
+    "subtitle": "Featured cards on the customer app home.",
+    "add": "New banner",
+    "searchPlaceholder": "Search banner…",
+    "statusFilter": "Status",
+    "typeFilter": "Type",
+    "empty": "No banners found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "deleteConfirm": "Yes, delete",
+    "deleteTitle": "Delete banner?",
+    "deleteDescription": "This removes “{name}”. This cannot be undone.",
+    "deleted": "“{name}” deleted",
+    "undo": "Undo",
+    "restored": "“{name}” restored",
+    "clicksCount": "{n} clicks",
+    "newTitle": "New banner",
+    "editTitle": "Edit banner",
+    "saveChanges": "Save changes",
+    "publish": "Publish banner",
+    "created": "Banner “{name}” created",
+    "updated": "“{name}” updated",
+    "step": {
+      "content": "Content",
+      "design": "Design",
+      "target": "Target",
+      "schedule": "Schedule",
+      "review": "Review"
+    },
+    "fieldTitle": "Title",
+    "fieldTitlePlaceholder": "Weekday 2-for-1",
+    "fieldSubtitle": "Subtitle",
+    "fieldSubtitlePlaceholder": "One catchy line…",
+    "optional": "optional",
+    "fieldCta": "Button / CTA",
+    "fieldCtaPlaceholder": "See promo",
+    "fieldGradient": "Background",
+    "fieldIcon": "Icon",
+    "fieldType": "Type",
+    "typeHint": "Where it leads",
+    "type": {
+      "promo": "Promo",
+      "standalone": "Standalone"
+    },
+    "fieldPromo": "Linked promo",
+    "standaloneHint": "Informational banner, no promo link.",
+    "promo": {
+      "promo2x1": "Weekday 2-for-1",
+      "doublePoints": "Weekend double points",
+      "freeTopping": "Free topping"
+    },
+    "fieldStart": "Start",
+    "fieldEnd": "End",
+    "datePlaceholder": "Pick a date",
+    "noEnd": "No end",
+    "reviewTitle": "Review banner",
+    "status": {
+      "active": "Active",
+      "scheduled": "Scheduled",
+      "expired": "Expired",
+      "draft": "Draft"
+    },
+    "previewTitlePlaceholder": "Banner title"
   }
 }
