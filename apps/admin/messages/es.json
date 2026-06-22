@@ -268,7 +268,9 @@
       "email": "Correo",
       "sms": "SMS",
       "whatsapp": "WhatsApp"
-    }
+    },
+    "birthdayHint": "Desliza para elegir la fecha.",
+    "done": "Listo"
   },
   "Shortlinks": {
     "title": "Enlaces cortos",

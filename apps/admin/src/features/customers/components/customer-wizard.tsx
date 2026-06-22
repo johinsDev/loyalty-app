@@ -1,17 +1,23 @@
 "use client";
 
 import {
+  Button,
   DateWheelPicker,
   Input,
   InputPhone,
   Label,
   NativeSelect,
   NativeSelectOption,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalTitle,
   Switch,
   Textarea,
 } from "@loyalty/ui";
 import {
   Bell,
+  CalendarDays,
   Coins,
   Mail,
   MessageCircle,
@@ -60,6 +66,7 @@ export function CustomerWizard({ id }: { id?: string }) {
     id ? getCustomerDraft(id) : emptyCustomerDraft,
   );
   const [stepIndex, setStepIndex] = useState(0);
+  const [bdayOpen, setBdayOpen] = useState(false);
 
   const monthLabels = useMemo(
     () =>
@@ -125,7 +132,6 @@ export function CustomerWizard({ id }: { id?: string }) {
                 value={draft.name}
                 onChange={(e) => set("name", e.target.value)}
                 placeholder={t("fieldNamePlaceholder")}
-                className="h-11 rounded-xl"
                 autoFocus
               />
             </Field>
@@ -134,7 +140,6 @@ export function CustomerWizard({ id }: { id?: string }) {
                 value={draft.nickname}
                 onChange={(e) => set("nickname", e.target.value)}
                 placeholder={t("fieldNicknamePlaceholder")}
-                className="h-11 rounded-xl"
               />
             </Field>
           </div>
@@ -150,25 +155,28 @@ export function CustomerWizard({ id }: { id?: string }) {
               value={draft.email}
               onChange={(e) => set("email", e.target.value)}
               placeholder="cliente@correo.com"
-              className="h-11 rounded-xl"
             />
           </Field>
           <Field label={t("birthday")}>
-            <DateWheelPicker
-              value={draft.birthday}
-              onValueChange={(v) => set("birthday", v)}
-              monthLabels={monthLabels}
-              maxYear={new Date().getFullYear()}
-            />
+            <button
+              type="button"
+              onClick={() => setBdayOpen(true)}
+              className="border-input bg-input/30 hover:bg-input/50 flex h-14 w-full items-center gap-2.5 rounded-xl border px-4 text-left text-sm transition-colors"
+            >
+              <CalendarDays className="text-muted-foreground size-4" />
+              {draft.birthday.day} {monthLabels[draft.birthday.month - 1]}{" "}
+              {draft.birthday.year}
+            </button>
           </Field>
         </div>
       ) : step === "loyalty" ? (
         <div className="space-y-4">
           <Field label={t("fieldTier")}>
             <NativeSelect
+              size="lg"
               value={draft.tier}
               onChange={(e) => set("tier", e.target.value as Tier)}
-              className="h-11 rounded-xl"
+              className="w-full"
             >
               {TIERS.map((tr) => (
                 <NativeSelectOption key={tr} value={tr}>
@@ -185,7 +193,6 @@ export function CustomerWizard({ id }: { id?: string }) {
                 onChange={(e) =>
                   set("initialStamps", Number(e.target.value) || 0)
                 }
-                className="h-11 rounded-xl"
               />
             </Field>
             <Field label={t("initialPoints")} hint={t("optional")}>
@@ -195,7 +202,6 @@ export function CustomerWizard({ id }: { id?: string }) {
                 onChange={(e) =>
                   set("initialPoints", Number(e.target.value) || 0)
                 }
-                className="h-11 rounded-xl"
               />
             </Field>
           </div>
@@ -242,8 +248,8 @@ export function CustomerWizard({ id }: { id?: string }) {
               value={draft.notes}
               onChange={(e) => set("notes", e.target.value)}
               placeholder={t("notesPlaceholder")}
-              rows={3}
-              className="rounded-xl"
+              rows={5}
+              className="min-h-36 rounded-xl"
             />
           </Field>
         </div>
@@ -276,6 +282,32 @@ export function CustomerWizard({ id }: { id?: string }) {
           </dl>
         </div>
       )}
+
+      <ResponsiveModal open={bdayOpen} onOpenChange={setBdayOpen}>
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
+          <div className="px-6 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
+              {t("birthday")}
+            </ResponsiveModalTitle>
+            <ResponsiveModalDescription className="text-muted-foreground mt-1 text-sm">
+              {t("birthdayHint")}
+            </ResponsiveModalDescription>
+            <DateWheelPicker
+              className="mt-4"
+              value={draft.birthday}
+              onValueChange={(v) => set("birthday", v)}
+              monthLabels={monthLabels}
+              maxYear={new Date().getFullYear()}
+            />
+            <Button
+              onClick={() => setBdayOpen(false)}
+              className="mt-4 h-12 w-full rounded-xl font-semibold"
+            >
+              {t("done")}
+            </Button>
+          </div>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </WizardShell>
   );
 }
