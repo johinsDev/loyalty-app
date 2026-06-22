@@ -1063,5 +1063,132 @@
       "range": "Vigencia",
       "clicks": "Clics"
     }
+  },
+  "Settings": {
+    "title": "Ajustes",
+    "subtitle": "Configura tu marca, lealtad y equipo.",
+    "save": "Guardar cambios",
+    "saved": "Cambios guardados",
+    "nav": {
+      "brand": "Marca y tienda",
+      "hours": "Horarios y ubicación",
+      "loyalty": "Reglas de lealtad",
+      "onboarding": "Onboarding",
+      "team": "Equipo y roles",
+      "integrations": "Integraciones"
+    },
+    "brand": {
+      "title": "Marca y tienda",
+      "desc": "Nombre, logo y color de tu tienda.",
+      "name": "Nombre",
+      "namePlaceholder": "T4 Lovers",
+      "tagline": "Eslogan",
+      "taglinePlaceholder": "Bubble tea & más",
+      "logo": "Logo",
+      "logoHint": "Arrastra o elige un ícono",
+      "color": "Color de marca",
+      "preview": "Vista previa"
+    },
+    "hours": {
+      "title": "Horarios y ubicación",
+      "desc": "Cuándo y dónde atiendes.",
+      "open": "Abre",
+      "close": "Cierra",
+      "closed": "Cerrado",
+      "locationTitle": "Ubicación",
+      "address": "Dirección",
+      "addressPlaceholder": "Cra 13 #85-32",
+      "city": "Ciudad",
+      "cityPlaceholder": "Bogotá",
+      "maps": "Link de Google Maps",
+      "day": {
+        "mon": "Lunes",
+        "tue": "Martes",
+        "wed": "Miércoles",
+        "thu": "Jueves",
+        "fri": "Viernes",
+        "sat": "Sábado",
+        "sun": "Domingo"
+      }
+    },
+    "loyalty": {
+      "title": "Reglas de lealtad",
+      "desc": "Cómo ganan y canjean tus clientes.",
+      "mode": "Modelo",
+      "stampsPerReward": "Sellos por premio",
+      "stampsPerRewardHint": "Cuántos sellos para un premio",
+      "pointsPerCurrency": "Puntos por $",
+      "pointsPerCurrencyHint": "Puntos por unidad gastada",
+      "expiryDays": "Vencimiento (días)",
+      "expiryHint": "0 = nunca vence",
+      "modeOpt": {
+        "stamps": "Sellos",
+        "points": "Puntos",
+        "both": "Ambos"
+      }
+    },
+    "onboarding": {
+      "title": "Onboarding del cliente",
+      "desc": "Los slides que ve al abrir la app.",
+      "addSlide": "Agregar slide",
+      "icon": "Ícono",
+      "slideTitle": "Título",
+      "titlePlaceholder": "Bienvenido",
+      "slideBody": "Texto",
+      "bodyPlaceholder": "Describe el beneficio…",
+      "remove": "Quitar",
+      "slideN": "Slide {n}",
+      "skip": "Saltar",
+      "next": "Siguiente",
+      "start": "Empezar",
+      "previewTitle": "Vista previa"
+    },
+    "team": {
+      "title": "Equipo y roles",
+      "desc": "Quién puede administrar la tienda.",
+      "invite": "Invitar",
+      "invitePlaceholder": "correo@ejemplo.com",
+      "col": {
+        "member": "Miembro",
+        "email": "Correo",
+        "role": "Rol"
+      },
+      "remove": "Quitar",
+      "role": {
+        "owner": "Dueño",
+        "manager": "Gerente",
+        "staff": "Cajero"
+      }
+    },
+    "integrations": {
+      "title": "Integraciones",
+      "desc": "Conecta tus herramientas.",
+      "connect": "Conectar",
+      "disconnect": "Desconectar",
+      "connected": "Conectado",
+      "notConnected": "No conectado",
+      "int": {
+        "whatsapp": {
+          "name": "WhatsApp",
+          "desc": "Envía promos y recibos por WhatsApp."
+        },
+        "instagram": {
+          "name": "Instagram",
+          "desc": "Destaca productos en tu perfil."
+        },
+        "google": {
+          "name": "Google",
+          "desc": "Aparece en Google Shopping y Maps."
+        },
+        "resend": {
+          "name": "Resend",
+          "desc": "Correos transaccionales y campañas."
+        },
+        "posthog": {
+          "name": "PostHog",
+          "desc": "Analítica de producto y eventos."
+        }
+      }
+    }
   }
 }
