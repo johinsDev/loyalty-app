@@ -42,7 +42,7 @@ import { type ReactNode, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { WizardShell } from "@/components/wizard-shell";
-import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 
 import {
   AGE_RANGES,
@@ -61,6 +61,7 @@ import {
   type ProductType,
   type StockMode,
 } from "../data";
+import { CategoriesManager } from "./categories-view";
 
 const slugify = (s: string) =>
   s
@@ -98,6 +99,7 @@ export function ProductEditor({ id }: { id?: string }) {
   const [library, setLibrary] = useState<OptionPreset[]>(optionLibrary);
   const fileRef = useRef<HTMLInputElement>(null);
   const [sectionsOpen, setSectionsOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [sectionQuery, setSectionQuery] = useState("");
   const [newSection, setNewSection] = useState("");
   const [sections, setSections] = useState(() =>
@@ -620,13 +622,14 @@ export function ProductEditor({ id }: { id?: string }) {
                 );
               })}
             </div>
-            <Link
-              href="/products/categories"
+            <button
+              type="button"
+              onClick={() => setCategoriesOpen(true)}
               className="text-primary inline-flex items-center gap-1.5 text-sm font-bold"
             >
               <FolderTree className="size-4" />
               {t("manageCategories")}
-            </Link>
+            </button>
           </Block>
 
           <Block title={t("secFeatured")} divided>
@@ -800,6 +803,27 @@ export function ProductEditor({ id }: { id?: string }) {
           </dl>
         </Block>
       )}
+
+      {/* Categories manager — in a modal so the product draft isn't lost */}
+      <ResponsiveModal open={categoriesOpen} onOpenChange={setCategoriesOpen}>
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-2xl">
+          <div className="flex flex-col px-6 pt-2 pb-6">
+            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
+              {t("cat.title")}
+            </ResponsiveModalTitle>
+            <ResponsiveModalDescription className="text-muted-foreground mt-1 mb-4 text-sm">
+              {t("cat.subtitle")}
+            </ResponsiveModalDescription>
+            <CategoriesManager />
+            <Button
+              className="mt-4 h-10 w-full rounded-xl font-semibold"
+              onClick={() => setCategoriesOpen(false)}
+            >
+              {t("done")}
+            </Button>
+          </div>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
       {/* Featured-sections picker — searchable + create new */}
       <ResponsiveModal open={sectionsOpen} onOpenChange={setSectionsOpen}>

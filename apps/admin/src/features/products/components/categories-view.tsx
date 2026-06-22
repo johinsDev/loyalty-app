@@ -11,10 +11,6 @@ import {
   AlertDialogTitle,
   Button,
   Input,
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalDescription,
-  ResponsiveModalTitle,
 } from "@loyalty/ui";
 import {
   ArrowLeft,
@@ -32,343 +28,248 @@ import { toast } from "sonner";
 
 import { Link } from "@/i18n/navigation";
 
-import { type Category, categories, type Subcategory } from "../data";
+import { type Category, categories as seed, type Subcategory } from "../data";
 
-/** Move an item from one index to another in a fresh copy of the array. */
 function move<T>(list: T[], from: number, to: number): T[] {
-  if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) {
-    return list;
-  }
-  const next = [...list];
-  const [item] = next.splice(from, 1);
+  const copy = [...list];
+  const [item] = copy.splice(from, 1);
   if (item === undefined) return list;
-  next.splice(to, 0, item);
-  return next;
+  copy.splice(to, 0, item);
+  return copy;
 }
 
-let idSeq = 0;
-function freshId(prefix: string): string {
-  idSeq += 1;
-  return `${prefix}_${Date.now().toString(36)}_${idSeq}`;
-}
+const freshId = (prefix: string) =>
+  `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
 
-type Editing = { id: string; name: string; subs: Subcategory[] } | null;
+type Editing = { id: string | null; name: string; subs: Subcategory[] } | null;
 
 /**
- * Categorías — a reorderable tree of categories → subcategories with
- * create/edit/delete. Design-first: state is seeded from a clone of the
- * hardcoded catalog (../data) and all mutations stay local.
+ * Categories manager — a reorderable category → subcategory tree with inline
+ * create/edit (no nested modal, so it works both on its page and inside a modal)
+ * and delete confirmation. Design-first: mutations are local. Used by the page
+ * {@link CategoriesView} and by a modal in the product editor (so editing
+ * categories never navigates away and loses the product draft).
  */
-export function CategoriesView() {
+export function CategoriesManager() {
   const t = useTranslations("Products");
-
-  const [list, setList] = useState<Category[]>(() =>
-    categories.map((c) => ({ ...c, subcategories: [...c.subcategories] })),
+  const [cats, setCats] = useState<Category[]>(() =>
+    seed.map((c) => ({ ...c, subcategories: [...c.subcategories] })),
   );
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
-  // Category-level drag
-  const [dragCat, setDragCat] = useState<number | null>(null);
-
-  // Create / edit modal
-  const [modalOpen, setModalOpen] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
-  const [draftName, setDraftName] = useState("");
-  const [draftSubs, setDraftSubs] = useState<Subcategory[]>([]);
-
-  // Delete confirmation
   const [toDelete, setToDelete] = useState<Category | null>(null);
 
-  const toggleExpanded = (id: string) => {
+  const toggleExpand = (id: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
 
-  const openCreate = () => {
-    setEditing(null);
-    setDraftName("");
-    setDraftSubs([]);
-    setModalOpen(true);
-  };
+  const startCreate = () => setEditing({ id: null, name: "", subs: [] });
+  const startEdit = (c: Category) =>
+    setEditing({
+      id: c.id,
+      name: c.name,
+      subs: c.subcategories.map((s) => ({ ...s })),
+    });
 
-  const openEdit = (cat: Category) => {
-    setEditing({ id: cat.id, name: cat.name, subs: [...cat.subcategories] });
-    setDraftName(cat.name);
-    setDraftSubs(cat.subcategories.map((s) => ({ ...s })));
-    setModalOpen(true);
-  };
-
-  const onSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    const name = draftName.trim();
-    if (!name) return;
-    const subcategories = draftSubs
-      .map((s) => ({ ...s, name: s.name.trim() }))
-      .filter((s) => s.name);
-
-    if (editing) {
-      setList((prev) =>
+  const saveEditing = () => {
+    if (!editing || !editing.name.trim()) return;
+    const subs = editing.subs.filter((s) => s.name.trim());
+    if (editing.id) {
+      setCats((prev) =>
         prev.map((c) =>
-          c.id === editing.id ? { ...c, name, subcategories } : c,
+          c.id === editing.id
+            ? { ...c, name: editing.name.trim(), subcategories: subs }
+            : c,
         ),
       );
     } else {
-      setList((prev) => [...prev, { id: freshId("c"), name, subcategories }]);
+      setCats((prev) => [
+        ...prev,
+        { id: freshId("c"), name: editing.name.trim(), subcategories: subs },
+      ]);
     }
-    setModalOpen(false);
-    toast.success(t("cat.save"));
+    setEditing(null);
   };
 
-  const onConfirmDelete = () => {
+  const onDelete = () => {
     if (!toDelete) return;
-    const name = toDelete.name;
-    setList((prev) => prev.filter((c) => c.id !== toDelete.id));
+    setCats((prev) => prev.filter((c) => c.id !== toDelete.id));
+    toast.success(t("cat.deleted", { name: toDelete.name }));
     setToDelete(null);
-    toast.success(t("cat.deleted", { name }));
   };
-
-  const deleteSubcategory = (catId: string, subId: string) => {
-    setList((prev) =>
-      prev.map((c) =>
-        c.id === catId
-          ? {
-              ...c,
-              subcategories: c.subcategories.filter((s) => s.id !== subId),
-            }
-          : c,
-      ),
-    );
-  };
-
-  const reorderSub = (catId: string, from: number, to: number) => {
-    setList((prev) =>
-      prev.map((c) =>
-        c.id === catId
-          ? { ...c, subcategories: move(c.subcategories, from, to) }
-          : c,
-      ),
-    );
-  };
-
-  // Draft-modal subcategory helpers
-  const addDraftSub = () =>
-    setDraftSubs((prev) => [...prev, { id: freshId("s"), name: "" }]);
-  const removeDraftSub = (id: string) =>
-    setDraftSubs((prev) => prev.filter((s) => s.id !== id));
-  const updateDraftSub = (id: string, name: string) =>
-    setDraftSubs((prev) => prev.map((s) => (s.id === id ? { ...s, name } : s)));
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 py-6 lg:px-8">
-      <Link
-        href="/products"
-        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm font-semibold transition-colors"
-      >
-        <ArrowLeft className="size-4" />
-        {t("cat.back")}
-      </Link>
-
-      <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
-            {t("cat.title")}
-          </h1>
-          <p className="text-muted-foreground/80 mt-0.5 text-sm font-semibold">
-            {t("cat.subtitle")}
-          </p>
-        </div>
-        <Button className="h-10 gap-2 rounded-xl font-semibold" onClick={openCreate}>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-muted-foreground text-sm font-semibold">
+          {t("cat.reorderHint")}
+        </p>
+        <Button
+          className="h-10 gap-2 rounded-xl font-semibold"
+          onClick={startCreate}
+        >
           <Plus className="size-4" />
           {t("cat.create")}
         </Button>
       </div>
 
-      {list.length === 0 ? (
-        <p className="text-muted-foreground mt-10 text-center text-sm font-semibold">
+      {/* Inline create/edit form */}
+      {editing ? (
+        <div className="border-border bg-muted/30 space-y-3 rounded-2xl border p-4">
+          <div className="font-display font-semibold tracking-tight">
+            {editing.id ? t("cat.editCategory") : t("cat.newCategory")}
+          </div>
+          <Input
+            value={editing.name}
+            onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+            placeholder={t("cat.namePlaceholder")}
+            className="h-10"
+            autoFocus
+          />
+          <div className="space-y-2">
+            {editing.subs.map((s, i) => (
+              <div key={s.id} className="flex items-center gap-2">
+                <Input
+                  value={s.name}
+                  onChange={(e) => {
+                    const subs = [...editing.subs];
+                    subs[i] = { ...s, name: e.target.value };
+                    setEditing({ ...editing, subs });
+                  }}
+                  placeholder={t("cat.subPlaceholder")}
+                  className="h-10 flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label={t("cat.delete")}
+                  className="text-destructive hover:bg-destructive/10 size-10 flex-none rounded-xl"
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      subs: editing.subs.filter((x) => x.id !== s.id),
+                    })
+                  }
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              variant="outline"
+              className="h-10 gap-1.5 rounded-xl"
+              onClick={() =>
+                setEditing({
+                  ...editing,
+                  subs: [...editing.subs, { id: freshId("s"), name: "" }],
+                })
+              }
+            >
+              <Plus className="size-4" />
+              {t("cat.addSub")}
+            </Button>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              className="h-10 rounded-xl"
+              onClick={() => setEditing(null)}
+            >
+              {t("cat.cancel")}
+            </Button>
+            <Button
+              className="h-10 rounded-xl font-semibold"
+              onClick={saveEditing}
+            >
+              {t("cat.save")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {cats.length === 0 ? (
+        <p className="text-muted-foreground py-10 text-center text-sm">
           {t("cat.empty")}
         </p>
       ) : (
-        <>
-          <p className="text-muted-foreground/70 mt-5 text-xs font-semibold">
-            {t("cat.reorderHint")}
-          </p>
-          <div className="bg-card border-border divide-y divide-border mt-2 rounded-3xl border">
-            {list.map((cat, index) => {
-              const isOpen = expanded.has(cat.id);
-              const subCount = cat.subcategories.length;
-              return (
-                <div key={cat.id}>
-                  <div
-                    draggable
-                    onDragStart={() => setDragCat(index)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => {
-                      if (dragCat !== null) setList((prev) => move(prev, dragCat, index));
-                      setDragCat(null);
-                    }}
-                    onDragEnd={() => setDragCat(null)}
-                    className="flex items-center gap-2 p-3"
+        <div className="border-border divide-border bg-card divide-y overflow-hidden rounded-2xl border">
+          {cats.map((c, idx) => (
+            <div key={c.id}>
+              <div
+                draggable
+                onDragStart={() => setDragIndex(idx)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  if (dragIndex !== null && dragIndex !== idx) {
+                    setCats((prev) => move(prev, dragIndex, idx));
+                  }
+                  setDragIndex(null);
+                }}
+                className="flex items-center gap-2 px-3 py-2.5"
+              >
+                <GripVertical className="text-muted-foreground size-4 flex-none cursor-grab" />
+                {c.subcategories.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand(c.id)}
+                    className="text-muted-foreground hover:text-foreground"
                   >
-                    <GripVertical className="text-muted-foreground size-4 cursor-grab" />
-                    <button
-                      type="button"
-                      aria-label={cat.name}
-                      onClick={() => toggleExpanded(cat.id)}
-                      className="hover:bg-muted/60 grid size-7 place-items-center rounded-lg"
-                    >
-                      {isOpen ? (
-                        <ChevronDown className="size-4" />
-                      ) : (
-                        <ChevronRight className="size-4" />
-                      )}
-                    </button>
-                    <div className="min-w-0 flex-1">
-                      <span className="font-bold">{cat.name}</span>
-                      {subCount > 0 ? (
-                        <span className="text-muted-foreground/70 ml-2 text-xs font-semibold">
-                          {subCount} subcategorías
-                        </span>
-                      ) : null}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      aria-label={t("cat.edit")}
-                      className="size-9 rounded-lg"
-                      onClick={() => openEdit(cat)}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      aria-label={t("cat.delete")}
-                      className="text-destructive hover:bg-destructive/10 size-9 rounded-lg"
-                      onClick={() => setToDelete(cat)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-
-                  {isOpen && subCount > 0 ? (
-                    <div className="border-border divide-y divide-border border-t pl-12">
-                      {cat.subcategories.map((sub, subIndex) => (
-                        <div
-                          key={sub.id}
-                          draggable
-                          onDragStart={(e) => {
-                            e.stopPropagation();
-                            e.dataTransfer.setData("text/sub", String(subIndex));
-                          }}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            const from = Number(e.dataTransfer.getData("text/sub"));
-                            if (!Number.isNaN(from)) reorderSub(cat.id, from, subIndex);
-                          }}
-                          className="flex items-center gap-2 py-2 pr-3"
-                        >
-                          <GripVertical className="text-muted-foreground size-4 cursor-grab" />
-                          <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                            {sub.name}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            aria-label={t("cat.delete")}
-                            className="text-destructive hover:bg-destructive/10 size-9 rounded-lg"
-                            onClick={() => deleteSubcategory(cat.id, sub.id)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {/* Create / edit category */}
-      <ResponsiveModal open={modalOpen} onOpenChange={setModalOpen}>
-        <ResponsiveModalContent>
-          <form onSubmit={onSubmit} className="flex min-h-0 flex-col">
-            <div className="flex flex-col gap-1 p-4 text-center sm:text-left">
-              <ResponsiveModalTitle>
-                {t(editing ? "cat.editCategory" : "cat.newCategory")}
-              </ResponsiveModalTitle>
-              <ResponsiveModalDescription>
-                {t("cat.subtitle")}
-              </ResponsiveModalDescription>
-            </div>
-
-            <div className="flex flex-col gap-3 overflow-y-auto px-4 pb-2">
-              <Input
-                autoFocus
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                placeholder={t("cat.namePlaceholder")}
-                className="h-10"
-              />
-
-              <div className="flex flex-col gap-2">
-                {draftSubs.map((sub) => (
-                  <div key={sub.id} className="flex items-center gap-2">
-                    <Input
-                      value={sub.name}
-                      onChange={(e) => updateDraftSub(sub.id, e.target.value)}
-                      placeholder={t("cat.subPlaceholder")}
-                      className="h-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      aria-label={t("cat.delete")}
-                      className="text-destructive hover:bg-destructive/10 size-9 shrink-0 rounded-lg"
-                      onClick={() => removeDraftSub(sub.id)}
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                ))}
+                    {expanded.has(c.id) ? (
+                      <ChevronDown className="size-4" />
+                    ) : (
+                      <ChevronRight className="size-4" />
+                    )}
+                  </button>
+                ) : (
+                  <span className="size-4" />
+                )}
+                <span className="flex-1 font-bold">{c.name}</span>
+                {c.subcategories.length > 0 ? (
+                  <span className="text-muted-foreground/70 text-xs font-semibold">
+                    {c.subcategories.length}
+                  </span>
+                ) : null}
                 <Button
-                  type="button"
                   variant="outline"
-                  className="h-10 justify-start gap-1.5 rounded-lg"
-                  onClick={addDraftSub}
+                  size="icon"
+                  aria-label={t("cat.edit")}
+                  className="size-8 rounded-lg"
+                  onClick={() => startEdit(c)}
                 >
-                  <Plus className="size-4" />
-                  {t("cat.addSub")}
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label={t("cat.delete")}
+                  className="text-destructive hover:bg-destructive/10 size-8 rounded-lg"
+                  onClick={() => setToDelete(c)}
+                >
+                  <Trash2 className="size-3.5" />
                 </Button>
               </div>
+              {expanded.has(c.id) ? (
+                <div className="bg-muted/20 divide-border divide-y border-t">
+                  {c.subcategories.map((s) => (
+                    <div
+                      key={s.id}
+                      className="flex items-center gap-2 py-2 pr-3 pl-12 text-sm"
+                    >
+                      <span className="flex-1 font-semibold">{s.name}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
+          ))}
+        </div>
+      )}
 
-            <div className="mt-auto flex flex-col gap-2 p-4 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10"
-                onClick={() => setModalOpen(false)}
-              >
-                {t("cat.cancel")}
-              </Button>
-              <Button type="submit" className="h-10">
-                {t("cat.save")}
-              </Button>
-            </div>
-          </form>
-        </ResponsiveModalContent>
-      </ResponsiveModal>
-
-      {/* Delete confirmation */}
       <AlertDialog
         open={toDelete !== null}
         onOpenChange={(o) => !o && setToDelete(null)}
@@ -385,14 +286,40 @@ export function CategoriesView() {
               {t("cat.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={onConfirmDelete}
-              className="h-10 px-4 bg-destructive text-white hover:bg-destructive/90"
+              onClick={onDelete}
+              className="bg-destructive h-10 px-4 text-white hover:bg-destructive/90"
             >
               {t("cat.deleteConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+/** Full-page categories screen (linked from the products list). The editor uses
+ * the manager inside a modal instead, to preserve the in-progress draft. */
+export function CategoriesView() {
+  const t = useTranslations("Products");
+  return (
+    <div className="mx-auto w-full max-w-3xl px-5 py-6 lg:px-8">
+      <Link
+        href="/products"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm font-semibold"
+      >
+        <ArrowLeft className="size-4" />
+        {t("cat.back")}
+      </Link>
+      <div className="mt-4 mb-5">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
+          {t("cat.title")}
+        </h1>
+        <p className="text-muted-foreground/80 mt-0.5 text-sm font-semibold">
+          {t("cat.subtitle")}
+        </p>
+      </div>
+      <CategoriesManager />
     </div>
   );
 }
