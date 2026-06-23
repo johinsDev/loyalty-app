@@ -22,14 +22,14 @@ type CustomerHit = {
   email: string | null;
 };
 
-type WalletView = inferRouterOutputs<AppRouter>["sellos"]["walletForCustomer"];
+type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
 
 type Step = "identify" | "found" | "purchase-success" | "scan" | "claim-success";
 
 /** QR prefix the customer app renders for a single-use reward claim token. */
 const CLAIM_PREFIX = "T4R|";
 
-/** A REWARD_PENDING conflict thrown by `sellos.recordPurchase`. */
+/** A REWARD_PENDING conflict thrown by `stamps.recordPurchase`. */
 function isRewardPending(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const e = err as { message?: string; data?: { code?: string } };
@@ -38,9 +38,9 @@ function isRewardPending(err: unknown): boolean {
 
 /**
  * Escanear tab — wired to the real ledger backend. Search a socio
- * (`clientes.search`), load their wallet (`sellos.walletForCustomer`), and
- * either record a purchase by price (`sellos.recordPurchase`) or scan their
- * reward QR to claim it (`sellos.claim`). When a purchase is blocked by an
+ * (`customers.search`), load their wallet (`stamps.walletForCustomer`), and
+ * either record a purchase by price (`stamps.recordPurchase`) or scan their
+ * reward QR to claim it (`stamps.claim`). When a purchase is blocked by an
  * unclaimed reward (REWARD_PENDING) we flip straight to the scanner.
  */
 export function ScanView() {
@@ -56,23 +56,23 @@ export function ScanView() {
 
   const debouncedQuery = useDebounce(query.trim(), { wait: 250 });
   const search = useQuery(
-    trpc.clientes.search.queryOptions(
+    trpc.customers.search.queryOptions(
       { query: debouncedQuery, limit: 10 },
       { enabled: debouncedQuery.length >= 1 },
     ),
   );
 
   const walletQuery = useQuery(
-    trpc.sellos.walletForCustomer.queryOptions(
+    trpc.stamps.walletForCustomer.queryOptions(
       { customerId: selected?.id ?? "" },
       { enabled: false },
     ),
   );
 
   const recordPurchase = useMutation(
-    trpc.sellos.recordPurchase.mutationOptions(),
+    trpc.stamps.recordPurchase.mutationOptions(),
   );
-  const claim = useMutation(trpc.sellos.claim.mutationOptions());
+  const claim = useMutation(trpc.stamps.claim.mutationOptions());
 
   const reset = () => {
     setStep("identify");

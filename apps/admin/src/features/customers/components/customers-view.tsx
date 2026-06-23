@@ -45,7 +45,7 @@ const TIERS: Tier[] = ["bronze", "silver", "gold", "diamond"];
  * Clientes — KPI row + a polished data table (search, status/tier select
  * filters, export, add, pagination). Rows open the customer detail; add/edit go
  * to the customer wizard. Design-first / hardcoded (../data); the seam is the
- * tRPC `clientes.list` query later.
+ * tRPC `customers.search` query later.
  */
 export function CustomersView() {
   const t = useTranslations("Customers");

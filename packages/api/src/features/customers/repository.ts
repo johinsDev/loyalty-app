@@ -11,7 +11,7 @@ export interface CustomerSearchItem {
 
 /** Drizzle access for customer lookups (the cashier picker). Only layer that
  *  touches the db; org-scoped. */
-export class ClientesRepository {
+export class CustomersRepository {
   constructor(private readonly db: typeof Db) {}
 
   async search(

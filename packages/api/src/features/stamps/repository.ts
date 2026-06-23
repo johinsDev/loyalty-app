@@ -46,12 +46,12 @@ function toView(card: LoyaltyCardRow | null): WalletView {
 }
 
 /**
- * Drizzle access for sellos: purchases, the wallet (`loyalty_card`) lifecycle,
+ * Drizzle access for stamps: purchases, the wallet (`loyalty_card`) lifecycle,
  * and the stamp ledger. Only layer that touches the db. The earn + claim flows
  * run in transactions so a purchase + stamp + wallet bump (and completion) are
  * atomic.
  */
-export class SellosRepository {
+export class StampsRepository {
   constructor(private readonly db: typeof Db) {}
 
   /** The card to show the customer: the active one, else the latest completed

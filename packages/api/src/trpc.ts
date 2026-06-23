@@ -237,7 +237,7 @@ const withBaseline = t.middleware(async ({ ctx, next, type }) => {
  * (default `ipOrUser`; pass a fn for phone-keyed OTP-style limits).
  *
  * @example
- *   .use(rateLimit({ name: "sellos.add", limit: 20, window: "1m", by: "user" }))
+ *   .use(rateLimit({ name: "stamps.add", limit: 20, window: "1m", by: "user" }))
  *   .use(rateLimit({ name: "otp", limit: 5, window: "30m",
  *                    by: (_, i) => `phone:${(i as { phoneNumber?: string }).phoneNumber}` }))
  */

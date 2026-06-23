@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { signClaimToken } from "../claim-token";
-import type { ClaimResult, RecordResult, SellosRepository } from "../repository";
-import { SellosService } from "../service";
+import type { ClaimResult, RecordResult, StampsRepository } from "../repository";
+import { StampsService } from "../service";
 import type { WalletView } from "../schemas";
 
 const SECRET = "test-secret-min-32-chars-pad-pad-pad-pad";
@@ -22,7 +22,7 @@ function view(over: Partial<WalletView> = {}): WalletView {
   };
 }
 
-/** In-memory stand-in for `SellosRepository` — canned results per test. */
+/** In-memory stand-in for `StampsRepository` — canned results per test. */
 class FakeRepo {
   recordResult: RecordResult = {
     kind: "recorded",
@@ -48,7 +48,7 @@ class FakeRepo {
 function build(repo: FakeRepo) {
   const realtime = { publish: vi.fn(async () => undefined) };
   const enqueue = vi.fn(async () => undefined);
-  const service = new SellosService(repo as unknown as SellosRepository, {
+  const service = new StampsService(repo as unknown as StampsRepository, {
     realtime,
     signSecret: SECRET,
     enqueue,
@@ -56,7 +56,7 @@ function build(repo: FakeRepo) {
   return { service, realtime, enqueue };
 }
 
-describe("SellosService.recordPurchase", () => {
+describe("StampsService.recordPurchase", () => {
   let repo: FakeRepo;
   beforeEach(() => {
     repo = new FakeRepo();
@@ -138,7 +138,7 @@ describe("SellosService.recordPurchase", () => {
   });
 });
 
-describe("SellosService claim", () => {
+describe("StampsService claim", () => {
   let repo: FakeRepo;
   beforeEach(() => {
     repo = new FakeRepo();

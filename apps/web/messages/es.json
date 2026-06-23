@@ -54,7 +54,8 @@
     "stampRewardTitle": "Tu premio",
     "stampDetailEmpty": "Te faltan {count} sellos para tu bebida gratis 🧋",
     "stampDetailReward": "Completa tu tarjeta y reclama una bebida gratis 🧋",
-    "stampPointsEarned": "+{points} pts ganados"
+    "stampPointsEarned": "+{points} pts ganados",
+    "rewardReady": "¡Premio listo! Mostrá tu código en caja 🎁"
   },
   "Promos": {
     "title": "Promos",

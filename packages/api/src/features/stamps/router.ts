@@ -7,14 +7,14 @@ import {
   router,
   staffProcedure,
 } from "../../trpc";
-import { SellosRepository } from "./repository";
+import { StampsRepository } from "./repository";
 import {
   claimInputSchema,
   customerIdInputSchema,
   historyInputSchema,
   recordPurchaseInputSchema,
 } from "./schemas";
-import { SellosService } from "./service";
+import { StampsService } from "./service";
 
 /** The single principal org (single-tenant pilot). */
 const orgId = async (): Promise<string> =>
@@ -23,19 +23,19 @@ const orgId = async (): Promise<string> =>
 function buildService(ctx: {
   db: typeof Db;
   realtime?: RealtimeBinding;
-}): SellosService {
-  return new SellosService(new SellosRepository(ctx.db), {
+}): StampsService {
+  return new StampsService(new StampsRepository(ctx.db), {
     realtime: ctx.realtime,
     signSecret: process.env.REALTIME_AUTH_SECRET ?? "",
   });
 }
 
-export const sellosRouter = router({
+export const stampsRouter = router({
   // ---- Cashier (staff) ------------------------------------------------
   recordPurchase: staffProcedure
     .use(
       rateLimit({
-        name: "sellos.recordPurchase",
+        name: "stamps.recordPurchase",
         limit: 60,
         window: "1m",
         by: "user",
@@ -54,7 +54,7 @@ export const sellosRouter = router({
 
   claim: staffProcedure
     .use(
-      rateLimit({ name: "sellos.claim", limit: 30, window: "1m", by: "user" }),
+      rateLimit({ name: "stamps.claim", limit: 30, window: "1m", by: "user" }),
     )
     .input(claimInputSchema)
     .mutation(async ({ ctx, input }) =>

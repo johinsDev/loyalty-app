@@ -48,11 +48,11 @@ export function QrDrawer() {
   // while the drawer is open). Otherwise it's the plain identify code.
   const trpc = useTRPC();
   const wallet = useQuery({
-    ...trpc.sellos.myWallet.queryOptions(),
+    ...trpc.stamps.myWallet.queryOptions(),
     enabled: open && Boolean(session?.user),
   });
   const pending = wallet.data?.rewardPending ?? false;
-  const issueClaim = useMutation(trpc.sellos.issueClaimToken.mutationOptions());
+  const issueClaim = useMutation(trpc.stamps.issueClaimToken.mutationOptions());
   const [claimToken, setClaimToken] = useState<string | null>(null);
 
   useEffect(() => {

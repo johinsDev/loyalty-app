@@ -1,15 +1,15 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { z } from "zod";
 
-import { ClientesRepository } from "../features/clientes/repository";
+import { CustomersRepository } from "../features/customers/repository";
 import { router, staffProcedure } from "../trpc";
 
 const orgId = async (): Promise<string> =>
   (await getPrimaryOrganizationId()) ?? "";
 
-const repo = (db: typeof Db) => new ClientesRepository(db);
+const repo = (db: typeof Db) => new CustomersRepository(db);
 
-export const clientesRouter = router({
+export const customersRouter = router({
   /** Cashier customer picker — search by name / phone / email, org-scoped. */
   search: staffProcedure
     .input(

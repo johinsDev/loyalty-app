@@ -37,10 +37,10 @@ export function StampEarnedListener({ customerId, partykitHost }: Props) {
   const [celebrating, setCelebrating] = useState(false);
 
   const refresh = () => {
-    void queryClient.invalidateQueries(trpc.sellos.myWallet.queryFilter());
-    void queryClient.invalidateQueries(trpc.sellos.myHistory.queryFilter());
+    void queryClient.invalidateQueries(trpc.stamps.myWallet.queryFilter());
+    void queryClient.invalidateQueries(trpc.stamps.myHistory.queryFilter());
     void queryClient.invalidateQueries(
-      trpc.sellos.myCompletedWallets.queryFilter(),
+      trpc.stamps.myCompletedWallets.queryFilter(),
     );
   };
 

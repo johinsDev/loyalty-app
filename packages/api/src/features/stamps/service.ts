@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 
 import type { RealtimeBinding } from "../../trpc";
 import { signClaimToken, verifyClaimToken } from "./claim-token";
-import type { SellosRepository } from "./repository";
+import type { StampsRepository } from "./repository";
 import type {
   CompletedWalletItem,
   HistoryInput,
@@ -30,7 +30,7 @@ const defaultEnqueue: Enqueue = async (payload) => {
   await tasks.trigger("send-notification", payload);
 };
 
-export interface SellosServiceOptions {
+export interface StampsServiceOptions {
   /** Bound by the router from `ctx.realtime` (FakeRealtime in dev/preview). */
   realtime?: RealtimeBinding;
   /** HS256 secret for claim tokens (`REALTIME_AUTH_SECRET`). */
@@ -40,16 +40,16 @@ export interface SellosServiceOptions {
 }
 
 /**
- * Sellos business logic: record a purchase (→ stamp → wallet bump → completion),
+ * Stamps business logic: record a purchase (→ stamp → wallet bump → completion),
  * read the customer's wallet / history / completed wallets, and the reward claim
  * (issue the signed QR token + confirm the scan). Side effects are best-effort:
  * realtime fires inline (instant card animation); WhatsApp + in-app go through
  * the Trigger.dev `send-notification` job. Neither failure rolls back the write.
  */
-export class SellosService {
+export class StampsService {
   constructor(
-    private readonly repo: SellosRepository,
-    private readonly opts: SellosServiceOptions,
+    private readonly repo: StampsRepository,
+    private readonly opts: StampsServiceOptions,
   ) {}
 
   async recordPurchase(
