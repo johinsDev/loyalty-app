@@ -169,6 +169,8 @@ apps/storybook/storybook-static/
 !.claude/skills/admin-filters/**
 !.claude/skills/admin-ui
 !.claude/skills/admin-ui/**
+!.claude/skills/nextjs-data-fetching-patterns
+!.claude/skills/nextjs-data-fetching-patterns/**
 
 # scripts/ holds two kinds of files:
 #   1. ad-hoc dev seeds (NOT tracked) — run locally with
