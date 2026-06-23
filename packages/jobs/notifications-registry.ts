@@ -109,7 +109,7 @@ export class FirstPurchaseNotification
     return {
       type: "first-purchase",
       title: "¡Tu primera compra! 🎉",
-      body: "Sumaste tu primer sello. Te faltan 9 para tu bebida gratis. 🧋",
+      body: "Sumaste tu primer sello. Seguí sumando para tu bebida gratis. 🧋",
       data: { stamps: 1 },
     };
   }
@@ -189,7 +189,7 @@ export class StampEarnedNotification
 
   constructor(
     private readonly currentStamps: number,
-    private readonly walletSize: number,
+    private readonly stampsGoal: number,
     private readonly completed: boolean,
   ) {
     super();
@@ -205,12 +205,12 @@ export class StampEarnedNotification
 
   #body(): string {
     if (this.completed) {
-      return "Tenés un premio para reclamar. Mostrá tu código en la caja.";
+      return "¡Tu bebida gratis te espera! Mostrá tu código en la caja para reclamarla.";
     }
-    const remaining = Math.max(0, this.walletSize - this.currentStamps);
-    return `Llevás ${this.currentStamps}/${this.walletSize}. Te ${
+    const remaining = Math.max(0, this.stampsGoal - this.currentStamps);
+    return `Llevás ${this.currentStamps}/${this.stampsGoal}. Te ${
       remaining === 1 ? "falta 1 sello" : `faltan ${remaining} sellos`
-    } para tu premio.`;
+    } para tu bebida gratis.`;
   }
 
   toWhatsApp() {
@@ -224,7 +224,7 @@ export class StampEarnedNotification
       body: this.#body(),
       data: {
         currentStamps: this.currentStamps,
-        walletSize: this.walletSize,
+        stampsGoal: this.stampsGoal,
         completed: this.completed,
       },
     };
@@ -276,10 +276,10 @@ export function createNotification(
     case "stamp-earned": {
       const currentStamps =
         typeof payload?.currentStamps === "number" ? payload.currentStamps : 0;
-      const walletSize =
-        typeof payload?.walletSize === "number" ? payload.walletSize : 10;
+      const stampsGoal =
+        typeof payload?.stampsGoal === "number" ? payload.stampsGoal : 9;
       const completed = payload?.completed === true;
-      return new StampEarnedNotification(currentStamps, walletSize, completed);
+      return new StampEarnedNotification(currentStamps, stampsGoal, completed);
     }
     case "reward-claimed":
       return new RewardClaimedNotification();

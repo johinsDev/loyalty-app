@@ -15,6 +15,7 @@ function view(over: Partial<WalletView> = {}): WalletView {
     id: "w1",
     currentStamps: 1,
     walletSize: 10,
+    stampsGoal: 9,
     status: "active",
     sequence: 1,
     rewardPending: false,

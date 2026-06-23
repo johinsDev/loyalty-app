@@ -82,6 +82,7 @@ export class StampsService {
           walletId: result.wallet.id,
           currentStamps: result.wallet.currentStamps,
           walletSize: result.wallet.walletSize,
+          stampsGoal: result.wallet.stampsGoal,
           completed: result.completed,
         },
       });
@@ -91,7 +92,7 @@ export class StampsService {
         notificationKey: firstEver ? "first-purchase" : "stamp-earned",
         payload: {
           currentStamps: result.wallet.currentStamps,
-          walletSize: result.wallet.walletSize,
+          stampsGoal: result.wallet.stampsGoal,
           completed: result.completed,
         },
       });

@@ -51,8 +51,10 @@ export function StampsCard() {
   if (!w || !history) return <StampsCardSkeleton />;
 
   const filled = w.currentStamps;
+  // The card has `walletSize` spots: `stampsGoal` stamps + the last (free reward).
   const total = w.walletSize;
-  const remaining = Math.max(0, total - filled);
+  const goal = w.stampsGoal;
+  const remaining = Math.max(0, goal - filled);
   const stamps = Array.from({ length: total }, (_, i) => i + 1);
 
   // The purchases that filled THIS wallet, oldest → newest, so position i maps
@@ -97,7 +99,7 @@ export function StampsCard() {
           {t("stampsTitle")}
         </span>
         <span className="bg-primary/10 text-primary rounded-full px-3 py-1 text-xs font-extrabold whitespace-nowrap">
-          {t("stampsCount", { filled, total })}
+          {t("stampsCount", { filled, total: goal })}
         </span>
       </div>
       <p className="text-primary mb-4 text-sm font-semibold">
@@ -161,7 +163,7 @@ export function StampsCard() {
         <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
           <StampDetail
             selected={selected}
-            total={total}
+            total={goal}
             rewardPending={w.rewardPending}
             onClaim={claimNow}
             purchase={

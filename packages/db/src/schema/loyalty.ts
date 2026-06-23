@@ -35,12 +35,16 @@ export const customer = sqliteTable(
   }),
 );
 
-// How many stamps fill a wallet. Hardcoded for the pilot (no per-org config yet).
+// Buy-9-get-the-10th-free. The card shows WALLET_SIZE spots: STAMPS_PER_REWARD
+// paid stamps + 1 free reward (the last spot). The card completes at
+// STAMPS_PER_REWARD stamps; the final spot is the bebida gratis you claim.
+// Hardcoded for the pilot (no per-org config yet).
 export const WALLET_SIZE = 10;
+export const STAMPS_PER_REWARD = WALLET_SIZE - 1;
 
 // A wallet (loyalty card). A customer fills it one stamp at a time; at
-// WALLET_SIZE it becomes `completed` (a reward is pending to claim) and a fresh
-// `active` wallet is opened. `status`: active | completed | claimed.
+// STAMPS_PER_REWARD it becomes `completed` (the free drink is pending to claim)
+// and a fresh `active` wallet is opened. `status`: active | completed | claimed.
 export const loyaltyCard = sqliteTable("loyalty_card", {
   id: text("id")
     .primaryKey()

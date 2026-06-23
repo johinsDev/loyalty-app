@@ -4,6 +4,7 @@ import {
   type LoyaltyCardRow,
   purchase,
   stamp,
+  STAMPS_PER_REWARD,
   WALLET_SIZE,
 } from "@loyalty/db/schema";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
@@ -30,6 +31,7 @@ function toView(card: LoyaltyCardRow | null): WalletView {
       id: null,
       currentStamps: 0,
       walletSize: WALLET_SIZE,
+      stampsGoal: STAMPS_PER_REWARD,
       status: "active",
       sequence: 1,
       rewardPending: false,
@@ -39,6 +41,7 @@ function toView(card: LoyaltyCardRow | null): WalletView {
     id: card.id,
     currentStamps: card.currentStamps,
     walletSize: WALLET_SIZE,
+    stampsGoal: STAMPS_PER_REWARD,
     status: card.status as WalletStatus,
     sequence: card.sequence,
     rewardPending: card.status === "completed",
@@ -203,7 +206,7 @@ export class StampsRepository {
       });
 
       const newStamps = active.currentStamps + 1;
-      const completed = newStamps >= WALLET_SIZE;
+      const completed = newStamps >= STAMPS_PER_REWARD;
       const updated = await tx
         .update(loyaltyCard)
         .set({

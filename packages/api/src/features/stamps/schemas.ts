@@ -1,7 +1,7 @@
-import { WALLET_SIZE } from "@loyalty/db/schema";
+import { STAMPS_PER_REWARD, WALLET_SIZE } from "@loyalty/db/schema";
 import { z } from "zod";
 
-export { WALLET_SIZE };
+export { STAMPS_PER_REWARD, WALLET_SIZE };
 
 // Customer ids mirror Better Auth `user.id` (not necessarily a UUID), so all
 // customer-id inputs are validated as a non-empty string.
@@ -28,11 +28,14 @@ export const claimInputSchema = z.object({
 export type WalletStatus = "active" | "completed" | "claimed";
 
 /** The customer's current card, shaped for the FE. `id` is null before any
- *  purchase exists. `rewardPending` = a completed card is waiting to be claimed. */
+ *  purchase exists. `walletSize` = total spots on the card (incl. the free one);
+ *  `stampsGoal` = paid stamps that complete it (the last spot is the free drink);
+ *  `rewardPending` = a completed card is waiting to be claimed. */
 export interface WalletView {
   id: string | null;
   currentStamps: number;
   walletSize: number;
+  stampsGoal: number;
   status: WalletStatus;
   sequence: number;
   rewardPending: boolean;
