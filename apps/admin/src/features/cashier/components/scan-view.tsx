@@ -54,6 +54,7 @@ export function ScanView() {
   const [selected, setSelected] = useState<CustomerHit | null>(null);
   const [wallet, setWallet] = useState<WalletView | null>(null);
   const [priceCop, setPriceCop] = useState<number | undefined>(undefined);
+  const [pastedCode, setPastedCode] = useState("");
 
   const debouncedQuery = useDebounce(query.trim(), { wait: 250 });
   const search = useQuery(
@@ -361,6 +362,29 @@ export function ScanView() {
               {t("validating")}
             </div>
           ) : null}
+
+          {/* Camera-free fallback for local testing: paste the customer's code. */}
+          <div className="border-border mt-4 border-t pt-4">
+            <label className="text-muted-foreground/70 mb-1.5 block text-[0.6875rem] font-extrabold tracking-wider">
+              {t("pasteCodeLabel")}
+            </label>
+            <div className="flex gap-2">
+              <input
+                value={pastedCode}
+                onChange={(e) => setPastedCode(e.target.value)}
+                placeholder={t("pasteCodePlaceholder")}
+                className="border-border bg-muted placeholder:text-muted-foreground/70 h-10 w-full rounded-2xl border px-3.5 text-sm font-semibold outline-none"
+              />
+              <Button
+                size="lg"
+                disabled={pastedCode.trim().length === 0 || claim.isPending}
+                onClick={() => void onScanResult(pastedCode.trim())}
+                className="h-10 flex-none rounded-2xl px-4 font-extrabold"
+              >
+                {t("pasteCodeCta")}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

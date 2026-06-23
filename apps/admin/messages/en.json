@@ -800,7 +800,10 @@
     "avatarHint": "Pick an avatar or upload a photo.",
     "avatarUpload": "Upload photo",
     "avatarErrorType": "Invalid format. Use PNG, JPG or WEBP.",
-    "avatarErrorSize": "The image is over {mb} MB."
+    "avatarErrorSize": "The image is over {mb} MB.",
+    "pasteCodeLabel": "Or paste the customer code",
+    "pasteCodePlaceholder": "T4R|…",
+    "pasteCodeCta": "Claim"
   },
   "Admin": {
     "greeting": "Hi, {name}",

@@ -800,7 +800,10 @@
     "avatarHint": "Elegí un avatar o subí una foto.",
     "avatarUpload": "Subir foto",
     "avatarErrorType": "Formato no válido. Usá PNG, JPG o WEBP.",
-    "avatarErrorSize": "La imagen supera {mb} MB."
+    "avatarErrorSize": "La imagen supera {mb} MB.",
+    "pasteCodeLabel": "O pegá el código del cliente",
+    "pasteCodePlaceholder": "T4R|…",
+    "pasteCodeCta": "Reclamar"
   },
   "Admin": {
     "greeting": "Hola, {name}",

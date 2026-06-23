@@ -87,7 +87,9 @@ export function QrDrawer() {
 
   const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText(member.number);
+      // When a reward is pending, the manual code IS the signed claim token
+      // (so a cashier can claim without scanning); otherwise the member number.
+      await navigator.clipboard.writeText(pending ? qrValue : member.number);
       toast.success(t("copied"));
     } catch {
       toast.error(t("copyFailed"));
