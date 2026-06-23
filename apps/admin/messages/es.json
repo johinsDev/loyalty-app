@@ -654,6 +654,7 @@
     "rewardPendingTitle": "Tiene un premio por reclamar",
     "rewardPendingHint": "El socio completó su tarjeta. Escaneá el QR de su app para entregar el premio.",
     "scanQr": "Escanear QR",
+    "scanRewardCode": "Escanear premio",
     "aimCameraReward": "Apuntá la cámara al QR de premio del socio",
     "cameraError": "No pudimos acceder a la cámara. Habilitá el permiso en el navegador.",
     "validating": "Validando…",

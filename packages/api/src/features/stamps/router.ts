@@ -7,6 +7,7 @@ import {
   router,
   staffProcedure,
 } from "../../trpc";
+import { buildStreaksService } from "../streaks";
 import { StampsRepository } from "./repository";
 import {
   claimInputSchema,
@@ -42,9 +43,21 @@ export const stampsRouter = router({
       }),
     )
     .input(recordPurchaseInputSchema)
-    .mutation(async ({ ctx, input }) =>
-      buildService(ctx).recordPurchase(await orgId(), ctx.session.user.id, input),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const org = await orgId();
+      // Stamps blocks (throws REWARD_PENDING) before any streak side effect, so
+      // a single purchase advances both tracks only when it actually records.
+      const wallet = await buildService(ctx).recordPurchase(
+        org,
+        ctx.session.user.id,
+        input,
+      );
+      // Best-effort, idempotent per day; never fails the purchase response.
+      await buildStreaksService(ctx)
+        .advanceForPurchase(org, input.customerId)
+        .catch(() => {});
+      return wallet;
+    }),
 
   walletForCustomer: staffProcedure
     .input(customerIdInputSchema)

@@ -167,6 +167,45 @@ export const redemption = sqliteTable("redemption", {
     .$defaultFn(() => new Date()),
 });
 
+// A streak: consecutive OPEN days with at least one purchase. Mirrors
+// loyaltyCard's lifecycle (`status`: active | completed | claimed, `sequence` =
+// the Nth streak). Closed days are skipped (neither advance nor break). At
+// `goalDays` it becomes `completed` (a reward is pending to claim) and the streak
+// is paused until claimed; the next purchase after the claim starts a new streak.
+// `lastPurchaseDay`/`lastReminderDay` are local `YYYY-MM-DD` dates in the store
+// timezone (see the streaks feature's streak-calendar).
+export const streak = sqliteTable("streak", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  customerId: text("customer_id")
+    .notNull()
+    .references(() => customer.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  currentCount: integer("current_count").notNull().default(0),
+  // Snapshot of the goal at creation, so changing the global goal later doesn't
+  // retroactively complete/break in-flight streaks.
+  goalDays: integer("goal_days").notNull(),
+  status: text("status").notNull().default("active"),
+  sequence: integer("sequence").notNull().default(1),
+  lastPurchaseDay: text("last_purchase_day"),
+  lastReminderDay: text("last_reminder_day"),
+  startedAt: integer("started_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+  claimedAt: integer("claimed_at", { mode: "timestamp" }),
+  claimedByUserId: text("claimed_by_user_id").references(() => user.id),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 export const customerRelations = relations(customer, ({ one, many }) => ({
   organization: one(organization, {
     fields: [customer.organizationId],
@@ -174,6 +213,22 @@ export const customerRelations = relations(customer, ({ one, many }) => ({
   }),
   cards: many(loyaltyCard),
   purchases: many(purchase),
+  streaks: many(streak),
+}));
+
+export const streakRelations = relations(streak, ({ one }) => ({
+  customer: one(customer, {
+    fields: [streak.customerId],
+    references: [customer.id],
+  }),
+  organization: one(organization, {
+    fields: [streak.organizationId],
+    references: [organization.id],
+  }),
+  claimedBy: one(user, {
+    fields: [streak.claimedByUserId],
+    references: [user.id],
+  }),
 }));
 
 export const loyaltyCardRelations = relations(loyaltyCard, ({ one, many }) => ({
@@ -258,3 +313,5 @@ export type PurchaseRow = typeof purchase.$inferSelect;
 export type PurchaseInsert = typeof purchase.$inferInsert;
 export type StampRow = typeof stamp.$inferSelect;
 export type StampInsert = typeof stamp.$inferInsert;
+export type StreakRow = typeof streak.$inferSelect;
+export type StreakInsert = typeof streak.$inferInsert;

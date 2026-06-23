@@ -1,0 +1,20 @@
+CREATE TABLE `streak` (
+	`id` text PRIMARY KEY NOT NULL,
+	`customer_id` text NOT NULL,
+	`organization_id` text NOT NULL,
+	`current_count` integer DEFAULT 0 NOT NULL,
+	`goal_days` integer NOT NULL,
+	`status` text DEFAULT 'active' NOT NULL,
+	`sequence` integer DEFAULT 1 NOT NULL,
+	`last_purchase_day` text,
+	`last_reminder_day` text,
+	`started_at` integer NOT NULL,
+	`completed_at` integer,
+	`claimed_at` integer,
+	`claimed_by_user_id` text,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL,
+	FOREIGN KEY (`customer_id`) REFERENCES `customer`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`organization_id`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`claimed_by_user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action
+);

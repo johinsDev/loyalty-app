@@ -43,16 +43,30 @@ export function QrDrawer() {
   const reward = attachableRewards.find((r) => r.id === rewardId) ?? null;
   const customerId = session?.user?.id ?? "guest";
 
-  // When the customer has a completed wallet, the QR carries a signed,
-  // single-use claim token the cashier scans to deliver the reward (rotated
-  // while the drawer is open). Otherwise it's the plain identify code.
+  // When the customer has a pending reward, the QR carries a signed, single-use
+  // claim token the cashier scans to deliver it (rotated while the drawer is
+  // open). The reward kind (stamp wallet vs streak) is set when the drawer is
+  // opened from a banner/card; otherwise it's the plain identify code.
   const trpc = useTRPC();
+  const claimKind = useQrDrawer((s) => s.claimKind);
+  const streakMode = claimKind === "streak";
+
   const wallet = useQuery({
     ...trpc.stamps.myWallet.queryOptions(),
-    enabled: open && Boolean(session?.user),
+    enabled: open && !streakMode && Boolean(session?.user),
   });
-  const pending = wallet.data?.rewardPending ?? false;
+  const streak = useQuery({
+    ...trpc.streaks.myStreak.queryOptions(),
+    enabled: open && streakMode && Boolean(session?.user),
+  });
+  const pending = streakMode
+    ? (streak.data?.rewardPending ?? false)
+    : (wallet.data?.rewardPending ?? false);
+
   const issueClaim = useMutation(trpc.stamps.issueClaimToken.mutationOptions());
+  const issueStreakClaim = useMutation(
+    trpc.streaks.issueClaimToken.mutationOptions(),
+  );
   const [claimToken, setClaimToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,7 +76,7 @@ export function QrDrawer() {
     }
     let active = true;
     const issue = () => {
-      issueClaim
+      (streakMode ? issueStreakClaim : issueClaim)
         .mutateAsync()
         .then((r) => {
           if (active) setClaimToken(r.token);
@@ -78,11 +92,11 @@ export function QrDrawer() {
       window.clearInterval(id);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, pending]);
+  }, [open, pending, streakMode]);
 
   const qrValue =
     pending && claimToken
-      ? `T4R|${claimToken}`
+      ? `${streakMode ? "T4S" : "T4R"}|${claimToken}`
       : `T4|${customerId}${reward ? `|r:${reward.id}` : ""}`;
 
   const copyCode = async () => {

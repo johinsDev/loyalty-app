@@ -257,6 +257,125 @@ export class RewardClaimedNotification
   }
 }
 
+/**
+ * Streak completed — the big moment. Realtime fires inline in the streaks
+ * service for the instant celebration; this job carries WhatsApp + the in-app
+ * feed + push, all nudging "no olvides reclamar".
+ */
+export class StreakCompletedNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(private readonly currentCount: number) {
+    super();
+  }
+
+  // Realtime is fired inline by the streaks service (`streak.completed`) for the
+  // instant celebration; this job carries the durable channels.
+  via(): ChannelName[] {
+    return ["whatsapp", "database", "push"];
+  }
+
+  #title(): string {
+    return `¡Completaste tu racha de ${this.currentCount} días! 🔥`;
+  }
+
+  #body(): string {
+    return "Ganaste un premio. No olvides reclamarlo: mostrá tu código en la caja. 🧋";
+  }
+
+  toWhatsApp() {
+    return { body: `${this.#title()}\n${this.#body()}` };
+  }
+
+  toPush() {
+    return {
+      title: this.#title(),
+      body: "Ganaste un premio. ¡No olvides reclamarlo!",
+      data: { kind: "streak-completed" },
+    };
+  }
+
+  toDatabase() {
+    return {
+      type: "streak-completed",
+      title: this.#title(),
+      body: this.#body(),
+      data: { currentCount: this.currentCount },
+    };
+  }
+}
+
+/** Streak reward claimed — transactional confirmation. */
+export class StreakRewardClaimedNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  // Realtime is fired inline by the streaks service (`streak.reward.claimed`).
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  toWhatsApp() {
+    return {
+      body: "¡Reclamaste el premio de tu racha! 🔥 Empezá una nueva hoy mismo.",
+    };
+  }
+
+  toDatabase() {
+    return {
+      type: "streak-reward-claimed",
+      title: "¡Premio de racha reclamado! 🔥",
+      body: "Disfrutalo. Empezá una nueva racha hoy.",
+    };
+  }
+}
+
+/**
+ * Streak at risk — the "you're about to lose your streak" nudge fired a few
+ * hours before close. WhatsApp + in-app feed only.
+ */
+export class StreakAtRiskNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(
+    private readonly currentCount: number,
+    private readonly hoursLeft: number,
+  ) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  #body(): string {
+    const hrs =
+      this.hoursLeft === 1 ? "queda 1 hora" : `quedan ${this.hoursLeft} horas`;
+    return `Te ${hrs} para no perder tu racha de ${this.currentCount} días. ¡Pasá por tu T4! 🔥`;
+  }
+
+  toWhatsApp() {
+    return { body: `¡No cortes la racha! 🔥\n${this.#body()}` };
+  }
+
+  toDatabase() {
+    return {
+      type: "streak-at-risk",
+      title: "¡No cortes la racha! 🔥",
+      body: this.#body(),
+      data: { currentCount: this.currentCount, hoursLeft: this.hoursLeft },
+    };
+  }
+}
+
 /** Builds a notification from its key + the admin-supplied payload. */
 export function createNotification(
   key: NotificationKey,
@@ -283,5 +402,19 @@ export function createNotification(
     }
     case "reward-claimed":
       return new RewardClaimedNotification();
+    case "streak-completed": {
+      const currentCount =
+        typeof payload?.currentCount === "number" ? payload.currentCount : 0;
+      return new StreakCompletedNotification(currentCount);
+    }
+    case "streak-reward-claimed":
+      return new StreakRewardClaimedNotification();
+    case "streak-at-risk": {
+      const currentCount =
+        typeof payload?.currentCount === "number" ? payload.currentCount : 0;
+      const hoursLeft =
+        typeof payload?.hoursLeft === "number" ? payload.hoursLeft : 0;
+      return new StreakAtRiskNotification(currentCount, hoursLeft);
+    }
   }
 }
