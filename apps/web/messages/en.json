@@ -55,7 +55,13 @@
     "stampDetailEmpty": "{count} more stamps for your free drink 🧋",
     "stampDetailReward": "Complete your card and claim a free drink 🧋",
     "stampPointsEarned": "+{points} pts earned",
-    "rewardReady": "Reward ready! Show your code at the register 🎁"
+    "rewardReady": "Reward ready! Show your code at the register 🎁",
+    "rewardClaimTitle": "You have a free drink! 🎁",
+    "rewardClaimBody": "You completed your card. Claim your drink by showing your code at the register.",
+    "rewardClaimCta": "Claim — show my code",
+    "rewardBannerText": "Claim your free drink and keep enjoying! 🎁",
+    "rewardBannerCta": "Claim",
+    "dismiss": "Dismiss"
   },
   "Promos": {
     "title": "Promos",

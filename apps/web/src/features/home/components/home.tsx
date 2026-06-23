@@ -11,6 +11,7 @@ import { PointsCard } from "./points-card";
 import { PromosCarousel } from "./promos-carousel";
 import { RecentVisits } from "./recent-visits";
 import { RewardCard } from "./reward-card";
+import { RewardReadyBanner } from "./reward-ready-banner";
 import { ScanCta } from "./scan-cta";
 import { StampEarnedListener } from "./stamp-earned-listener";
 import { StampsCard } from "./stamps-card";
@@ -37,6 +38,8 @@ export async function Home() {
           <FadeUp index={0}>
             <GreetingHeader />
           </FadeUp>
+
+          <RewardReadyBanner />
 
           {/* Wallet models — points ring (design mock) + the real stamp card. */}
           <FadeUp index={1} className="mt-5 grid gap-4 lg:grid-cols-2">

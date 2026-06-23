@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Button,
   ResponsiveModal,
   ResponsiveModalContent,
   ResponsiveModalDescription,
@@ -77,11 +78,15 @@ export function StampsCard() {
 
   const onStampClick = (n: number, isReward: boolean, isFilled: boolean) => {
     if (isReward) {
-      if (w.rewardPending) setQrOpen(true);
-      else setSelected({ kind: "reward" });
+      setSelected({ kind: "reward" });
       return;
     }
     setSelected(isFilled ? { kind: "filled", n } : { kind: "empty", n });
+  };
+
+  const claimNow = () => {
+    setSelected(null);
+    setQrOpen(true);
   };
 
   return (
@@ -157,6 +162,8 @@ export function StampsCard() {
           <StampDetail
             selected={selected}
             total={total}
+            rewardPending={w.rewardPending}
+            onClaim={claimNow}
             purchase={
               selected?.kind === "filled" ? walletPurchases[selected.n - 1] : undefined
             }
@@ -172,12 +179,16 @@ export function StampsCard() {
 function StampDetail({
   selected,
   total,
+  rewardPending,
+  onClaim,
   purchase,
   money,
   formatDate,
 }: {
   selected: Selected | null;
   total: number;
+  rewardPending: boolean;
+  onClaim: () => void;
   purchase: { priceCents: number; createdAt: Date } | undefined;
   money: (cents: number) => string;
   formatDate: (d: Date) => string;
@@ -190,14 +201,21 @@ function StampDetail({
       <>
         <ResponsiveModalHeader className="text-left">
           <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
-            {t("stampRewardTitle")}
+            {rewardPending ? t("rewardClaimTitle") : t("stampRewardTitle")}
           </ResponsiveModalTitle>
         </ResponsiveModalHeader>
-        <div className="px-4 pb-6">
+        <div className="space-y-4 px-4 pb-6">
           <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-br from-amber-300 to-amber-400 p-5 text-white shadow-md shadow-amber-400/40">
             <Gift className="size-9 flex-none" />
-            <p className="text-sm font-semibold">{t("stampDetailReward")}</p>
+            <p className="text-sm font-semibold">
+              {rewardPending ? t("rewardClaimBody") : t("stampDetailReward")}
+            </p>
           </div>
+          {rewardPending ? (
+            <Button onClick={onClaim} className="h-12 w-full rounded-2xl font-semibold">
+              {t("rewardClaimCta")}
+            </Button>
+          ) : null}
         </div>
       </>
     );
