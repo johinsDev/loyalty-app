@@ -62,7 +62,8 @@ describe("StampsService.recordPurchase", () => {
     repo = new FakeRepo();
   });
 
-  it("records a stamp and fires realtime + a stamp-earned notification", async () => {
+  it("fires a first-purchase notification on the very first stamp", async () => {
+    // Default FakeRepo result = wallet seq 1, currentStamps 1 → first ever.
     const { service, realtime, enqueue } = build(repo);
     const wallet = await service.recordPurchase(ORG, STAFF, {
       customerId: CUSTOMER,
@@ -76,9 +77,27 @@ describe("StampsService.recordPurchase", () => {
     );
     expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
-        notificationKey: "stamp-earned",
+        notificationKey: "first-purchase",
         customerIds: [CUSTOMER],
       }),
+    );
+  });
+
+  it("fires a stamp-earned notification on a subsequent stamp", async () => {
+    repo.recordResult = {
+      kind: "recorded",
+      wallet: view({ currentStamps: 2 }),
+      purchaseId: "p2",
+      completed: false,
+    };
+    const { service, enqueue } = build(repo);
+    await service.recordPurchase(ORG, STAFF, {
+      customerId: CUSTOMER,
+      priceCents: 1500,
+      idempotencyKey: "idem-87654321",
+    });
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ notificationKey: "stamp-earned" }),
     );
   });
 

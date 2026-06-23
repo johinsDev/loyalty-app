@@ -7,7 +7,7 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from "@loyalty/ui";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { CupSoda, Gift } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -16,6 +16,8 @@ import { useQrDrawer } from "@/features/qr/hooks/use-qr-drawer";
 import { useTRPC } from "@/lib/trpc/client";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 
+import { StampsCardSkeleton } from "./stamps-card-skeleton";
+
 type Selected =
   | { kind: "filled"; n: number }
   | { kind: "empty"; n: number }
@@ -23,9 +25,11 @@ type Selected =
 
 /**
  * Stamp wallet — a 5×2 grid where every Nth stamp is a free drink. Reads the
- * customer's real wallet (`stamps.myWallet`) + history (`stamps.myHistory`) via
- * `useSuspenseQuery` (the parent `<Suspense>` shows `<StampsCardSkeleton />`; the
- * realtime listener invalidates both so a new stamp pops in live). Tapping a
+ * customer's real wallet (`stamps.myWallet`) + history (`stamps.myHistory`) with
+ * a client `useQuery` (so the cookie is sent — these are per-user + protected,
+ * and the cross-origin Worker can't authenticate an SSR fetch). Shows
+ * `<StampsCardSkeleton />` while loading; the realtime listener invalidates both
+ * so a new stamp pops in live. Tapping a
  * filled stamp reveals the real purchase that earned it; an empty one shows how
  * many are left; the reward stamp opens the QR drawer to claim when the card is
  * full, else shows the prize.
@@ -38,10 +42,12 @@ export function StampsCard() {
   const reduced = useReducedMotion();
   const [selected, setSelected] = useState<Selected | null>(null);
 
-  const { data: w } = useSuspenseQuery(trpc.stamps.myWallet.queryOptions());
-  const { data: history } = useSuspenseQuery(
+  const { data: w } = useQuery(trpc.stamps.myWallet.queryOptions());
+  const { data: history } = useQuery(
     trpc.stamps.myHistory.queryOptions({ page: 1, pageSize: 20 }),
   );
+
+  if (!w || !history) return <StampsCardSkeleton />;
 
   const filled = w.currentStamps;
   const total = w.walletSize;

@@ -1,15 +1,9 @@
 import { SidebarInset, SidebarProvider } from "@loyalty/ui";
 import { getTranslations } from "next-intl/server";
-import { Suspense } from "react";
 
 import { env } from "@/env";
 import { FadeUp } from "@/lib/animate";
 import { getSession } from "@/lib/auth-guard";
-import {
-  getQueryClient,
-  getServerTrpc,
-  HydrateClient,
-} from "@/lib/trpc/server-prefetch";
 
 import { AppSidebar } from "./app-sidebar";
 import { GreetingHeader } from "./greeting-header";
@@ -20,7 +14,6 @@ import { RewardCard } from "./reward-card";
 import { ScanCta } from "./scan-cta";
 import { StampEarnedListener } from "./stamp-earned-listener";
 import { StampsCard } from "./stamps-card";
-import { StampsCardSkeleton } from "./stamps-card-skeleton";
 import { StreakCard } from "./streak-card";
 import { Usuals } from "./usuals";
 
@@ -36,15 +29,6 @@ export async function Home() {
   const session = await getSession();
   const customerId = session?.user?.id ?? null;
 
-  // Stream the real stamp wallet into the hydrated cache; <StampsCard /> reads
-  // it with useSuspenseQuery and the listener invalidates it live.
-  const queryClient = getQueryClient();
-  const trpc = await getServerTrpc();
-  void queryClient.prefetchQuery(trpc.stamps.myWallet.queryOptions());
-  void queryClient.prefetchQuery(
-    trpc.stamps.myHistory.queryOptions({ page: 1, pageSize: 20 }),
-  );
-
   return (
     <SidebarProvider style={{ "--sidebar-width": "18rem" } as React.CSSProperties}>
       <AppSidebar />
@@ -57,11 +41,7 @@ export async function Home() {
           {/* Wallet models — points ring (design mock) + the real stamp card. */}
           <FadeUp index={1} className="mt-5 grid gap-4 lg:grid-cols-2">
             <PointsCard />
-            <HydrateClient>
-              <Suspense fallback={<StampsCardSkeleton />}>
-                <StampsCard />
-              </Suspense>
-            </HydrateClient>
+            <StampsCard />
           </FadeUp>
 
           <FadeUp index={2} className="mt-4">

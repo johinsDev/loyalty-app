@@ -12,7 +12,7 @@ import type {
   WalletView,
 } from "./schemas";
 
-type NotificationKey = "stamp-earned" | "reward-claimed";
+type NotificationKey = "stamp-earned" | "reward-claimed" | "first-purchase";
 
 type EnqueuePayload = {
   customerIds: string[];
@@ -70,6 +70,12 @@ export class StampsService {
     }
 
     if (result.kind === "recorded") {
+      // The very first stamp of the very first wallet = the customer's first
+      // purchase ever → send the celebratory first-purchase notification (in-app
+      // feed + realtime + push) instead of the generic stamp-earned.
+      const firstEver =
+        result.wallet.sequence === 1 && result.wallet.currentStamps === 1;
+
       await this.publish(input.customerId, {
         event: "stamp.earned",
         data: {
@@ -82,7 +88,7 @@ export class StampsService {
       await this.enqueue({
         customerIds: [input.customerId],
         organizationId,
-        notificationKey: "stamp-earned",
+        notificationKey: firstEver ? "first-purchase" : "stamp-earned",
         payload: {
           currentStamps: result.wallet.currentStamps,
           walletSize: result.wallet.walletSize,
