@@ -8,16 +8,18 @@ import {
   HydrateClient,
 } from "@/lib/trpc/server-prefetch";
 
-import { CardLive } from "./card-live";
-import { CardSkeleton } from "./card-skeleton";
+import { CompletedWallets } from "./completed-wallets";
+import { HistorySkeleton, WalletCardSkeleton } from "./card-skeleton";
+import { PurchaseHistory } from "./purchase-history";
 import { StampEarnedListener } from "./stamp-earned-listener";
+import { WalletCard } from "./wallet-card";
 
 /**
- * Loyalty card screen. Kicks off the wallet / history / completed-wallets
- * prefetches WITHOUT awaiting (`void`) so the in-flight promises stream into the
- * dehydrated state; `<CardLive />` reads them with `useSuspenseQuery`, so the
- * shell renders immediately behind `<CardSkeleton />` and fills in as the data
- * arrives. The `<StampEarnedListener />` then invalidates those queries live.
+ * Loyalty card screen. Each live section is its own island with its own
+ * `<Suspense>` boundary, so they stream + update independently rather than one
+ * giant component waiting on all three queries. The prefetches are fired with
+ * `void` (no blocking) before `HydrateClient` dehydrates the pending queries;
+ * `<StampEarnedListener />` invalidates them on realtime events.
  */
 export async function CardView() {
   const session = await getSession();
@@ -25,8 +27,6 @@ export async function CardView() {
 
   const queryClient = getQueryClient();
   const trpc = await getServerTrpc();
-  // void = stream, don't block the document. Registered before HydrateClient
-  // dehydrates, so the pending queries are serialized into the HTML.
   void queryClient.prefetchQuery(trpc.sellos.myWallet.queryOptions());
   void queryClient.prefetchQuery(
     trpc.sellos.myHistory.queryOptions({ page: 1, pageSize: 20 }),
@@ -36,8 +36,12 @@ export async function CardView() {
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-5">
       <HydrateClient>
-        <Suspense fallback={<CardSkeleton />}>
-          <CardLive />
+        <Suspense fallback={<WalletCardSkeleton />}>
+          <WalletCard />
+        </Suspense>
+        <CompletedWallets />
+        <Suspense fallback={<HistorySkeleton />}>
+          <PurchaseHistory />
         </Suspense>
       </HydrateClient>
       {customerId ? (
