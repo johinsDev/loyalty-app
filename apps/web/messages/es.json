@@ -296,7 +296,12 @@
     "purchaseStamp": "+{stamps, plural, =1 {# sello} other {# sellos}}",
     "earnedBanner": "¡Sumaste un sello! 🧋",
     "completedBanner": "¡Completaste tu tarjeta! 🎉",
-    "claimedBanner": "¡Premio reclamado! 🎉"
+    "claimedBanner": "¡Premio reclamado! 🎉",
+    "claimedTitle": "¡Premio reclamado!",
+    "claimedBody": "Disfrutá tu bebida gratis 🧋",
+    "newCardTitle": "¡Tu nueva tarjeta empezó!",
+    "newCardBody": "Seguí sumando sellos para tu próxima bebida gratis.",
+    "done": "Listo"
   },
   "Offline": {
     "title": "Sin conexión",

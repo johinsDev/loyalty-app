@@ -296,7 +296,12 @@
     "purchaseStamp": "+{stamps, plural, =1 {# stamp} other {# stamps}}",
     "earnedBanner": "You earned a stamp! 🧋",
     "completedBanner": "You completed your card! 🎉",
-    "claimedBanner": "Reward claimed! 🎉"
+    "claimedBanner": "Reward claimed! 🎉",
+    "claimedTitle": "Reward claimed!",
+    "claimedBody": "Enjoy your free drink 🧋",
+    "newCardTitle": "Your new card has started!",
+    "newCardBody": "Keep earning stamps for your next free drink.",
+    "done": "Done"
   },
   "Offline": {
     "title": "Offline",

@@ -9,6 +9,8 @@ import { useCustomerRoom } from "@/features/realtime/hooks/use-customer-room";
 import { Celebrate } from "@/lib/celebrate";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { ClaimCelebration } from "./claim-celebration";
+
 interface Props {
   customerId: string;
   partykitHost: string | undefined;
@@ -37,6 +39,7 @@ export function StampEarnedListener({ customerId, partykitHost }: Props) {
   const closeQr = useQrDrawer((s) => s.setOpen);
   const [banner, setBanner] = useState<ReactNode>(null);
   const [celebrating, setCelebrating] = useState(false);
+  const [claimed, setClaimed] = useState(false);
 
   const refresh = () => {
     void queryClient.invalidateQueries(trpc.stamps.myWallet.queryFilter());
@@ -58,20 +61,19 @@ export function StampEarnedListener({ customerId, partykitHost }: Props) {
         );
         window.setTimeout(() => setBanner(null), 3500);
       } else if (event.event === "reward.claimed") {
-        // The cashier confirmed the claim — close the QR drawer so the
-        // celebration + fresh card are visible, not hidden behind it.
+        // The cashier confirmed the claim — close the QR drawer first, let it
+        // settle for a beat, THEN open the celebration (old card flips into the
+        // fresh one). `refresh()` resets the card to 0/9 behind the modal.
         closeQr(false);
         refresh();
-        setCelebrating(true);
-        setBanner(t("claimedBanner"));
-        window.setTimeout(() => setBanner(null), 3500);
+        window.setTimeout(() => setClaimed(true), 1000);
       }
     },
   });
 
-  if (!banner && !celebrating) return null;
   return (
     <>
+      <ClaimCelebration open={claimed} onClose={() => setClaimed(false)} />
       {celebrating ? (
         <div className="pointer-events-none fixed inset-0 z-50">
           <Celebrate distance={900} onDone={() => setCelebrating(false)} />
