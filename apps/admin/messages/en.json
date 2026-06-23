@@ -654,6 +654,7 @@
     "rewardPendingTitle": "Has a reward to claim",
     "rewardPendingHint": "The member completed their card. Scan the QR in their app to hand over the reward.",
     "scanQr": "Scan QR",
+    "scanRewardCode": "Scan reward",
     "aimCameraReward": "Aim the camera at the member's reward QR",
     "cameraError": "We couldn't access the camera. Enable the permission in your browser.",
     "validating": "Validating…",

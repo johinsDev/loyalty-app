@@ -16,6 +16,8 @@ import { ScanCta } from "./scan-cta";
 import { StampEarnedListener } from "./stamp-earned-listener";
 import { StampsCard } from "./stamps-card";
 import { StreakCard } from "./streak-card";
+import { StreakListener } from "./streak-listener";
+import { StreakRewardBanner } from "./streak-reward-banner";
 import { Usuals } from "./usuals";
 
 /**
@@ -40,6 +42,7 @@ export async function Home() {
           </FadeUp>
 
           <RewardReadyBanner />
+          <StreakRewardBanner />
 
           {/* Wallet models — points ring (design mock) + the real stamp card. */}
           <FadeUp index={1} className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -80,10 +83,16 @@ export async function Home() {
         </div>
 
         {customerId ? (
-          <StampEarnedListener
-            customerId={customerId}
-            partykitHost={env.NEXT_PUBLIC_PARTYKIT_HOST}
-          />
+          <>
+            <StampEarnedListener
+              customerId={customerId}
+              partykitHost={env.NEXT_PUBLIC_PARTYKIT_HOST}
+            />
+            <StreakListener
+              customerId={customerId}
+              partykitHost={env.NEXT_PUBLIC_PARTYKIT_HOST}
+            />
+          </>
         ) : null}
       </SidebarInset>
     </SidebarProvider>

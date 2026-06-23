@@ -26,8 +26,9 @@ type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
 
 type Step = "identify" | "found" | "purchase-success" | "scan" | "claim-success";
 
-/** QR prefix the customer app renders for a single-use reward claim token. */
-const CLAIM_PREFIX = "T4R|";
+/** QR prefixes the customer app renders for single-use claim tokens. */
+const CLAIM_PREFIX = "T4R|"; // stamp wallet reward
+const STREAK_PREFIX = "T4S|"; // streak reward
 
 /** A REWARD_PENDING conflict thrown by `stamps.recordPurchase`. */
 function isRewardPending(err: unknown): boolean {
@@ -68,6 +69,8 @@ export function ScanView() {
     trpc.stamps.recordPurchase.mutationOptions(),
   );
   const claim = useMutation(trpc.stamps.claim.mutationOptions());
+  const claimStreak = useMutation(trpc.streaks.claimReward.mutationOptions());
+  const isClaiming = claim.isPending || claimStreak.isPending;
 
   const reset = () => {
     setStep("identify");
@@ -116,14 +119,20 @@ export function ScanView() {
 
   const onScanResult = useCallback(
     async (text: string) => {
-      if (!text.startsWith(CLAIM_PREFIX)) {
+      const isStreak = text.startsWith(STREAK_PREFIX);
+      const isStamp = text.startsWith(CLAIM_PREFIX);
+      if (!isStreak && !isStamp) {
         toast.error(t("notRewardCode"));
         return;
       }
-      const token = text.slice(CLAIM_PREFIX.length);
+      const token = text.slice(CLAIM_PREFIX.length); // both prefixes are 4 chars
       try {
-        const { newWallet } = await claim.mutateAsync({ token });
-        setWallet(newWallet);
+        if (isStreak) {
+          await claimStreak.mutateAsync({ token });
+        } else {
+          const { newWallet } = await claim.mutateAsync({ token });
+          setWallet(newWallet);
+        }
         setStep("claim-success");
         toast.success(t("claimValidated"));
       } catch (err) {
@@ -134,7 +143,7 @@ export function ScanView() {
         }
       }
     },
-    [claim, t],
+    [claim, claimStreak, t],
   );
 
   const customerName = (hit: CustomerHit | null) =>
@@ -231,14 +240,24 @@ export function ScanView() {
                 </span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={reset}
-              className="border-border bg-card text-muted-foreground hover:text-foreground mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-bold"
-            >
-              <X className="size-4" />
-              {t("cancelIdentify")}
-            </button>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={reset}
+                className="border-border bg-card text-muted-foreground hover:text-foreground flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border text-sm font-bold"
+              >
+                <X className="size-4" />
+                {t("cancelIdentify")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep("scan")}
+                className="border-border bg-card text-muted-foreground hover:text-foreground flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border text-sm font-bold"
+              >
+                <QrCode className="size-4" />
+                {t("scanRewardCode")}
+              </button>
+            </div>
           </div>
 
           {wallet.rewardPending ? (
@@ -357,7 +376,7 @@ export function ScanView() {
             permissionError={t("cameraError")}
             onResult={(text) => void onScanResult(text)}
           />
-          {claim.isPending ? (
+          {isClaiming ? (
             <div className="text-muted-foreground text-center text-sm font-semibold">
               {t("validating")}
             </div>
@@ -377,7 +396,7 @@ export function ScanView() {
               />
               <Button
                 size="lg"
-                disabled={pastedCode.trim().length === 0 || claim.isPending}
+                disabled={pastedCode.trim().length === 0 || isClaiming}
                 onClick={() => void onScanResult(pastedCode.trim())}
                 className="h-10 flex-none rounded-2xl px-4 font-extrabold"
               >

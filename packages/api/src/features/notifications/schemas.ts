@@ -15,6 +15,9 @@ export const notificationKeySchema = z.enum([
   "first-purchase",
   "stamp-earned",
   "reward-claimed",
+  "streak-completed",
+  "streak-reward-claimed",
+  "streak-at-risk",
 ]);
 
 export const feedFilterSchema = z.enum(["all", "unread"]);
