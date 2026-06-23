@@ -1,7 +1,9 @@
 import { SidebarInset, SidebarProvider } from "@loyalty/ui";
 import { getTranslations } from "next-intl/server";
 
+import { env } from "@/env";
 import { FadeUp } from "@/lib/animate";
+import { getSession } from "@/lib/auth-guard";
 
 import { AppSidebar } from "./app-sidebar";
 import { GreetingHeader } from "./greeting-header";
@@ -9,7 +11,9 @@ import { PointsCard } from "./points-card";
 import { PromosCarousel } from "./promos-carousel";
 import { RecentVisits } from "./recent-visits";
 import { RewardCard } from "./reward-card";
+import { RewardReadyBanner } from "./reward-ready-banner";
 import { ScanCta } from "./scan-cta";
+import { StampEarnedListener } from "./stamp-earned-listener";
 import { StampsCard } from "./stamps-card";
 import { StreakCard } from "./streak-card";
 import { Usuals } from "./usuals";
@@ -23,6 +27,8 @@ import { Usuals } from "./usuals";
  */
 export async function Home() {
   const t = await getTranslations("Home");
+  const session = await getSession();
+  const customerId = session?.user?.id ?? null;
 
   return (
     <SidebarProvider style={{ "--sidebar-width": "18rem" } as React.CSSProperties}>
@@ -33,7 +39,9 @@ export async function Home() {
             <GreetingHeader />
           </FadeUp>
 
-          {/* Wallet models — points ring + stamp card, side by side on desktop. */}
+          <RewardReadyBanner />
+
+          {/* Wallet models — points ring (design mock) + the real stamp card. */}
           <FadeUp index={1} className="mt-5 grid gap-4 lg:grid-cols-2">
             <PointsCard />
             <StampsCard />
@@ -71,6 +79,12 @@ export async function Home() {
           </FadeUp>
         </div>
 
+        {customerId ? (
+          <StampEarnedListener
+            customerId={customerId}
+            partykitHost={env.NEXT_PUBLIC_PARTYKIT_HOST}
+          />
+        ) : null}
       </SidebarInset>
     </SidebarProvider>
   );

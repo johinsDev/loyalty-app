@@ -13,6 +13,8 @@ export const notificationKeySchema = z.enum([
   "new-user",
   "promo",
   "first-purchase",
+  "stamp-earned",
+  "reward-claimed",
 ]);
 
 export const feedFilterSchema = z.enum(["all", "unread"]);

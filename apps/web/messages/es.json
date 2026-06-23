@@ -54,7 +54,14 @@
     "stampRewardTitle": "Tu premio",
     "stampDetailEmpty": "Te faltan {count} sellos para tu bebida gratis 🧋",
     "stampDetailReward": "Completa tu tarjeta y reclama una bebida gratis 🧋",
-    "stampPointsEarned": "+{points} pts ganados"
+    "stampPointsEarned": "+{points} pts ganados",
+    "rewardReady": "¡Premio listo! Mostrá tu código en caja 🎁",
+    "rewardClaimTitle": "¡Tienes una bebida gratis! 🎁",
+    "rewardClaimBody": "Completaste tu tarjeta. Reclama tu bebida mostrando tu código en la caja.",
+    "rewardClaimCta": "Reclamar — mostrar mi código",
+    "rewardBannerText": "¡Reclama tu bebida gratis y seguí disfrutando! 🎁",
+    "rewardBannerCta": "Reclamar",
+    "dismiss": "Cerrar"
   },
   "Promos": {
     "title": "Promos",
@@ -168,7 +175,9 @@
     "cost": "{count} sellos",
     "manualCode": "Ingresar código manual",
     "copied": "Código copiado",
-    "copyFailed": "No se pudo copiar"
+    "copyFailed": "No se pudo copiar",
+    "claimInstruction": "Mostrá este código en la caja para reclamar tu premio.",
+    "rewardReady": "¡Premio listo!"
   },
   "Notifications": {
     "title": "Notificaciones",
@@ -203,7 +212,9 @@
     "emptyAllTitle": "No tienes notificaciones",
     "emptyAllHint": "Aquí verás tus premios, promos y avisos.",
     "emptyUnreadTitle": "Sin notificaciones nuevas",
-    "emptyUnreadHint": "Ya revisaste todo. Te avisaremos cuando haya algo nuevo."
+    "emptyUnreadHint": "Ya revisaste todo. Te avisaremos cuando haya algo nuevo.",
+    "firstPurchaseTitle": "¡Tu primera compra! 🎉",
+    "firstPurchaseCta": "¡Empezá a sumar!"
   },
   "Profile": {
     "title": "Perfil",
@@ -273,7 +284,24 @@
   "Card": {
     "title": "Mi tarjeta",
     "description": "Sellos acumulados (placeholder)",
-    "healthClient": "Health (client)"
+    "healthClient": "Health (client)",
+    "toGo": "Te {remaining, plural, =1 {falta # sello} other {faltan # sellos}} para tu premio",
+    "claim": "Reclamar premio",
+    "completedTitle": "Tarjetas completadas",
+    "walletLabel": "Tarjeta #{n}",
+    "claimed": "Reclamada",
+    "pending": "Por reclamar",
+    "historyTitle": "Historial",
+    "emptyHistory": "Aún no hay compras.",
+    "purchaseStamp": "+{stamps, plural, =1 {# sello} other {# sellos}}",
+    "earnedBanner": "¡Sumaste un sello! 🧋",
+    "completedBanner": "¡Completaste tu tarjeta! 🎉",
+    "claimedBanner": "¡Premio reclamado! 🎉",
+    "claimedTitle": "¡Premio reclamado!",
+    "claimedBody": "Disfrutá tu bebida gratis 🧋",
+    "newCardTitle": "¡Tu nueva tarjeta empezó!",
+    "newCardBody": "Seguí sumando sellos para tu próxima bebida gratis.",
+    "done": "Listo"
   },
   "Offline": {
     "title": "Sin conexión",

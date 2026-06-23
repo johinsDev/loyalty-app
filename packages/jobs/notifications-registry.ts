@@ -109,7 +109,7 @@ export class FirstPurchaseNotification
     return {
       type: "first-purchase",
       title: "¡Tu primera compra! 🎉",
-      body: "Sumaste tu primer sello. Te faltan 9 para tu bebida gratis. 🧋",
+      body: "Sumaste tu primer sello. Seguí sumando para tu bebida gratis. 🧋",
       data: { stamps: 1 },
     };
   }
@@ -176,6 +176,87 @@ export class PromoNotification
   }
 }
 
+/**
+ * Stamp earned — transactional. Realtime fires inline in the sellos service for
+ * an instant card animation; this job carries the durable channels: WhatsApp +
+ * the in-app feed (`database`).
+ */
+export class StampEarnedNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(
+    private readonly currentStamps: number,
+    private readonly stampsGoal: number,
+    private readonly completed: boolean,
+  ) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  #title(): string {
+    return this.completed ? "¡Completaste tu tarjeta! 🎉" : "¡Sumaste un sello! 🧋";
+  }
+
+  #body(): string {
+    if (this.completed) {
+      return "¡Tu bebida gratis te espera! Mostrá tu código en la caja para reclamarla.";
+    }
+    const remaining = Math.max(0, this.stampsGoal - this.currentStamps);
+    return `Llevás ${this.currentStamps}/${this.stampsGoal}. Te ${
+      remaining === 1 ? "falta 1 sello" : `faltan ${remaining} sellos`
+    } para tu bebida gratis.`;
+  }
+
+  toWhatsApp() {
+    return { body: `${this.#title()}\n${this.#body()}` };
+  }
+
+  toDatabase() {
+    return {
+      type: "stamp-earned",
+      title: this.#title(),
+      body: this.#body(),
+      data: {
+        currentStamps: this.currentStamps,
+        stampsGoal: this.stampsGoal,
+        completed: this.completed,
+      },
+    };
+  }
+}
+
+/** Reward claimed — transactional confirmation (WhatsApp + in-app feed). */
+export class RewardClaimedNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  toWhatsApp() {
+    return {
+      body: "¡Reclamaste tu premio! 🎉 Gracias por ser parte de T4. Tu nueva tarjeta ya empezó.",
+    };
+  }
+
+  toDatabase() {
+    return {
+      type: "reward-claimed",
+      title: "¡Premio reclamado! 🎉",
+      body: "Disfrutá tu premio. Tu nueva tarjeta ya empezó a sumar.",
+    };
+  }
+}
+
 /** Builds a notification from its key + the admin-supplied payload. */
 export function createNotification(
   key: NotificationKey,
@@ -192,5 +273,15 @@ export function createNotification(
       const body = typeof payload?.body === "string" ? payload.body : undefined;
       return new PromoNotification(title, body);
     }
+    case "stamp-earned": {
+      const currentStamps =
+        typeof payload?.currentStamps === "number" ? payload.currentStamps : 0;
+      const stampsGoal =
+        typeof payload?.stampsGoal === "number" ? payload.stampsGoal : 9;
+      const completed = payload?.completed === true;
+      return new StampEarnedNotification(currentStamps, stampsGoal, completed);
+    }
+    case "reward-claimed":
+      return new RewardClaimedNotification();
   }
 }

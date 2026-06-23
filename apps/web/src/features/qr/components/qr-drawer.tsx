@@ -7,11 +7,14 @@ import {
   ResponsiveModalTitle,
   useIsMobile,
 } from "@loyalty/ui";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Copy, Sun, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+
+import { useTRPC } from "@/lib/trpc/client";
 
 import { type AttachableReward, attachableRewards, member } from "../data";
 import { useQrDrawer } from "../hooks/use-qr-drawer";
@@ -39,11 +42,54 @@ export function QrDrawer() {
 
   const reward = attachableRewards.find((r) => r.id === rewardId) ?? null;
   const customerId = session?.user?.id ?? "guest";
-  const qrValue = `T4|${customerId}${reward ? `|r:${reward.id}` : ""}`;
+
+  // When the customer has a completed wallet, the QR carries a signed,
+  // single-use claim token the cashier scans to deliver the reward (rotated
+  // while the drawer is open). Otherwise it's the plain identify code.
+  const trpc = useTRPC();
+  const wallet = useQuery({
+    ...trpc.stamps.myWallet.queryOptions(),
+    enabled: open && Boolean(session?.user),
+  });
+  const pending = wallet.data?.rewardPending ?? false;
+  const issueClaim = useMutation(trpc.stamps.issueClaimToken.mutationOptions());
+  const [claimToken, setClaimToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !pending) {
+      setClaimToken(null);
+      return;
+    }
+    let active = true;
+    const issue = () => {
+      issueClaim
+        .mutateAsync()
+        .then((r) => {
+          if (active) setClaimToken(r.token);
+        })
+        .catch(() => {
+          /* best-effort: the customer can reopen the drawer to retry */
+        });
+    };
+    issue();
+    const id = window.setInterval(issue, 50_000);
+    return () => {
+      active = false;
+      window.clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pending]);
+
+  const qrValue =
+    pending && claimToken
+      ? `T4R|${claimToken}`
+      : `T4|${customerId}${reward ? `|r:${reward.id}` : ""}`;
 
   const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText(member.number);
+      // When a reward is pending, the manual code IS the signed claim token
+      // (so a cashier can claim without scanning); otherwise the member number.
+      await navigator.clipboard.writeText(pending ? qrValue : member.number);
       toast.success(t("copied"));
     } catch {
       toast.error(t("copyFailed"));
@@ -117,7 +163,11 @@ export function QrDrawer() {
               bright ? "text-neutral-600" : "text-white/80"
             }`}
           >
-            {reward ? t("instructionWithReward") : t("instruction")}
+            {pending
+              ? t("claimInstruction")
+              : reward
+                ? t("instructionWithReward")
+                : t("instruction")}
           </p>
 
           <div className="mt-7">

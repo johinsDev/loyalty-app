@@ -54,7 +54,14 @@
     "stampRewardTitle": "Your reward",
     "stampDetailEmpty": "{count} more stamps for your free drink 🧋",
     "stampDetailReward": "Complete your card and claim a free drink 🧋",
-    "stampPointsEarned": "+{points} pts earned"
+    "stampPointsEarned": "+{points} pts earned",
+    "rewardReady": "Reward ready! Show your code at the register 🎁",
+    "rewardClaimTitle": "You have a free drink! 🎁",
+    "rewardClaimBody": "You completed your card. Claim your drink by showing your code at the register.",
+    "rewardClaimCta": "Claim — show my code",
+    "rewardBannerText": "Claim your free drink and keep enjoying! 🎁",
+    "rewardBannerCta": "Claim",
+    "dismiss": "Dismiss"
   },
   "Promos": {
     "title": "Promos",
@@ -168,7 +175,9 @@
     "cost": "{count} stamps",
     "manualCode": "Enter code manually",
     "copied": "Code copied",
-    "copyFailed": "Couldn't copy"
+    "copyFailed": "Couldn't copy",
+    "claimInstruction": "Show this code at the register to claim your reward.",
+    "rewardReady": "Reward ready!"
   },
   "Notifications": {
     "title": "Notifications",
@@ -203,7 +212,9 @@
     "emptyAllTitle": "No notifications",
     "emptyAllHint": "Your rewards, promos and notices will show here.",
     "emptyUnreadTitle": "No new notifications",
-    "emptyUnreadHint": "You're all caught up. We'll let you know when there's something new."
+    "emptyUnreadHint": "You're all caught up. We'll let you know when there's something new.",
+    "firstPurchaseTitle": "Your first purchase! 🎉",
+    "firstPurchaseCta": "Start earning!"
   },
   "Profile": {
     "title": "Profile",
@@ -273,7 +284,24 @@
   "Card": {
     "title": "My card",
     "description": "Stamps earned (placeholder)",
-    "healthClient": "Health (client)"
+    "healthClient": "Health (client)",
+    "toGo": "{remaining, plural, =1 {# stamp} other {# stamps}} to go for your reward",
+    "claim": "Claim reward",
+    "completedTitle": "Completed cards",
+    "walletLabel": "Card #{n}",
+    "claimed": "Claimed",
+    "pending": "To claim",
+    "historyTitle": "History",
+    "emptyHistory": "No purchases yet.",
+    "purchaseStamp": "+{stamps, plural, =1 {# stamp} other {# stamps}}",
+    "earnedBanner": "You earned a stamp! 🧋",
+    "completedBanner": "You completed your card! 🎉",
+    "claimedBanner": "Reward claimed! 🎉",
+    "claimedTitle": "Reward claimed!",
+    "claimedBody": "Enjoy your free drink 🧋",
+    "newCardTitle": "Your new card has started!",
+    "newCardBody": "Keep earning stamps for your next free drink.",
+    "done": "Done"
   },
   "Offline": {
     "title": "Offline",

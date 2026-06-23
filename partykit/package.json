@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./src/server.ts",
   "scripts": {
-    "dev": "partykit dev",
+    "dev": "partykit dev --var REALTIME_AUTH_SECRET=\"$REALTIME_AUTH_SECRET\"",
     "deploy": "partykit deploy",
     "lint": "oxlint src",
     "typecheck": "tsc --noEmit",

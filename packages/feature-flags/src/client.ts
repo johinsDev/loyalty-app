@@ -80,11 +80,16 @@ function makePostHogFlags(
         throw new MissingDependencyError("posthog", "posthog-js");
       }
       const ph = mod.default;
-      ph.init(config.apiKey, {
-        api_host: config.host ?? "https://us.i.posthog.com",
-        capture_pageview: false,
-        persistence: "localStorage+cookie",
-      });
+      // Guard: analytics + feature-flags share the one posthog-js singleton.
+      // Init only if nobody initialised it yet — a second init() is a no-op that
+      // logs a warning. onFeatureFlags() below works on the singleton regardless.
+      if (!(ph as { __loaded?: boolean }).__loaded) {
+        ph.init(config.apiKey, {
+          api_host: config.host ?? "https://us.i.posthog.com",
+          capture_pageview: false,
+          persistence: "localStorage+cookie",
+        });
+      }
       client = ph;
       unsubscribeFromPostHog = ph.onFeatureFlags(() => {
         loaded = true;
