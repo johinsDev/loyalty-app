@@ -212,7 +212,9 @@
     "emptyAllTitle": "No tienes notificaciones",
     "emptyAllHint": "Aquí verás tus premios, promos y avisos.",
     "emptyUnreadTitle": "Sin notificaciones nuevas",
-    "emptyUnreadHint": "Ya revisaste todo. Te avisaremos cuando haya algo nuevo."
+    "emptyUnreadHint": "Ya revisaste todo. Te avisaremos cuando haya algo nuevo.",
+    "firstPurchaseTitle": "¡Tu primera compra! 🎉",
+    "firstPurchaseCta": "¡Empezá a sumar!"
   },
   "Profile": {
     "title": "Perfil",

@@ -212,7 +212,9 @@
     "emptyAllTitle": "No notifications",
     "emptyAllHint": "Your rewards, promos and notices will show here.",
     "emptyUnreadTitle": "No new notifications",
-    "emptyUnreadHint": "You're all caught up. We'll let you know when there's something new."
+    "emptyUnreadHint": "You're all caught up. We'll let you know when there's something new.",
+    "firstPurchaseTitle": "Your first purchase! 🎉",
+    "firstPurchaseCta": "Start earning!"
   },
   "Profile": {
     "title": "Profile",
