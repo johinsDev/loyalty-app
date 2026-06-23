@@ -404,7 +404,9 @@
     },
     "bgColor": "Color de fondo",
     "fieldBg": "Fondo",
-    "iconCustom": "Personalizado"
+    "iconCustom": "Personalizado",
+    "imgUpload": "Arrastra una imagen o haz clic",
+    "imgRemove": "Quitar"
   },
   "WhatsAppOutbox": {
     "title": "WhatsApp Outbox",
@@ -622,7 +624,9 @@
     "reachValue": "{n} socios",
     "fieldBg": "Fondo",
     "hoursFrom": "Desde",
-    "hoursTo": "Hasta"
+    "hoursTo": "Hasta",
+    "imgUpload": "Arrastra una imagen o haz clic",
+    "imgRemove": "Quitar"
   },
   "Cashier": {
     "registerAt": "Caja · {store}",
@@ -1193,7 +1197,9 @@
     },
     "bgColor": "Color de fondo",
     "colorMode": "Color personalizado",
-    "iconCustom": "Personalizado"
+    "iconCustom": "Personalizado",
+    "imgUpload": "Arrastra una imagen o haz clic",
+    "imgRemove": "Quitar"
   },
   "Settings": {
     "title": "Ajustes",
@@ -1275,7 +1281,9 @@
       "previewTitle": "Vista previa",
       "bg": "Color de fondo",
       "iconCustom": "Personalizado",
-      "customColor": "Color personalizado"
+      "customColor": "Color personalizado",
+      "imgUpload": "Arrastra una imagen o haz clic",
+      "imgRemove": "Quitar"
     },
     "team": {
       "title": "Equipo y roles",

@@ -3,6 +3,7 @@
 import {
   BackgroundPicker,
   Button,
+  IconGlyph,
   IconPicker,
   Input,
   RichTextEditor,
@@ -90,6 +91,8 @@ export function OnboardingSection() {
                 onValueChange={(emoji) => update(slide.id, { emoji })}
                 emojis={SLIDE_EMOJIS}
                 customLabel={t("onboarding.iconCustom")}
+                uploadLabel={t("onboarding.imgUpload")}
+                removeLabel={t("onboarding.imgRemove")}
               />
               <Input
                 value={slide.title}
@@ -109,6 +112,8 @@ export function OnboardingSection() {
                   value={slide.bg}
                   onValueChange={(bg) => update(slide.id, { bg })}
                   customLabel={t("onboarding.customColor")}
+                  uploadLabel={t("onboarding.imgUpload")}
+                  removeLabel={t("onboarding.imgRemove")}
                 />
               </div>
             </div>
@@ -128,7 +133,9 @@ export function OnboardingSection() {
           >
             <div className="flex min-h-72 flex-col">
               <div className="flex flex-1 flex-col items-center justify-center text-center">
-                <span className="text-5xl">{first?.emoji ?? "🧋"}</span>
+                <span className="grid size-16 place-items-center overflow-hidden text-5xl">
+                  <IconGlyph value={first?.emoji ?? "🧋"} />
+                </span>
                 <h3 className="font-display mt-4 font-semibold">
                   {first?.title || t("onboarding.titlePlaceholder")}
                 </h3>

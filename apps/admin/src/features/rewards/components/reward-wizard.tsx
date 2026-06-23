@@ -2,6 +2,7 @@
 
 import {
   BackgroundPicker,
+  IconGlyph,
   IconPicker,
   Input,
   Label,
@@ -92,6 +93,8 @@ export function RewardWizard({ id }: { id?: string }) {
               onValueChange={(e) => set("emoji", e)}
               emojis={REWARD_EMOJIS}
               customLabel={t("iconCustom")}
+              uploadLabel={t("imgUpload")}
+              removeLabel={t("imgRemove")}
             />
           </Field>
           <Field label={t("fieldDescription")}>
@@ -104,6 +107,8 @@ export function RewardWizard({ id }: { id?: string }) {
             <BackgroundPicker
               value={draft.bg}
               onValueChange={(bg) => set("bg", bg)}
+              uploadLabel={t("imgUpload")}
+              removeLabel={t("imgRemove")}
             />
           </Field>
         </div>
@@ -171,8 +176,8 @@ function RewardPreview({
       className="rounded-3xl p-5 text-white shadow-lg"
       style={{ background: draft.bg }}
     >
-      <div className="grid size-14 place-items-center rounded-2xl bg-white/15 text-3xl">
-        {draft.emoji}
+      <div className="grid size-14 place-items-center overflow-hidden rounded-2xl bg-white/15 text-3xl">
+        <IconGlyph value={draft.emoji} />
       </div>
       <div className="mt-3 font-display text-lg font-semibold">
         {draft.name || t("namePlaceholder")}

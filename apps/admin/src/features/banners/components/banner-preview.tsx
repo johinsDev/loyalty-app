@@ -1,5 +1,6 @@
 "use client";
 
+import { IconGlyph } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
 
 import { type BannerDraft } from "../data";
@@ -19,8 +20,8 @@ export function BannerPreview({ draft }: { draft: BannerDraft }) {
       >
         <span className="absolute -top-10 -right-6 size-32 rounded-full bg-white/10" />
         <div className="relative">
-          <span className="grid size-12 place-items-center rounded-2xl bg-white/15 text-2xl">
-            {draft.emoji}
+          <span className="grid size-12 place-items-center overflow-hidden rounded-2xl bg-white/15 text-2xl">
+            <IconGlyph value={draft.emoji} />
           </span>
           <div className="font-display mt-3 text-xl leading-tight font-semibold">
             {draft.title || t("previewTitlePlaceholder")}

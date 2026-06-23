@@ -118,6 +118,8 @@ export function BannerWizard({ id }: { id?: string }) {
               value={draft.bg}
               onValueChange={(bg) => set("bg", bg)}
               customLabel={t("colorMode")}
+              uploadLabel={t("imgUpload")}
+              removeLabel={t("imgRemove")}
             />
           </Field>
           <Field label={t("fieldIcon")}>
@@ -126,6 +128,8 @@ export function BannerWizard({ id }: { id?: string }) {
               onValueChange={(e) => set("emoji", e)}
               emojis={BANNER_EMOJIS}
               customLabel={t("iconCustom")}
+              uploadLabel={t("imgUpload")}
+              removeLabel={t("imgRemove")}
             />
           </Field>
         </div>

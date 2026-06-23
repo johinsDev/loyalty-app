@@ -115,6 +115,8 @@ export function PromoWizard({ id }: { id?: string }) {
             <BackgroundPicker
               value={draft.bg}
               onValueChange={(bg) => set("bg", bg)}
+              uploadLabel={t("imgUpload")}
+              removeLabel={t("imgRemove")}
             />
           </Field>
           <Field label={t("fieldCode")} hint={t("optional")}>

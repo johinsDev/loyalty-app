@@ -26,10 +26,10 @@ import { toast } from "sonner";
 import { EmptyState } from "@/components/empty-state";
 import { type FilterOption, FilterMultiSelect } from "@/components/filters";
 import { type ViewMode, ViewToggle } from "@/components/view-toggle";
+import { useRouter } from "@/i18n/navigation";
 import { useFadeUp } from "@/lib/animate";
 
 import { type Status, STATUSES, type Store, stores } from "../data";
-import { StoreFormModal } from "./store-form-modal";
 
 const STATUS_DOT: Record<Status, string> = {
   active: "#1f9d68",
@@ -40,24 +40,21 @@ const STATUS_TEXT: Record<Status, string> = {
   inactive: "text-muted-foreground",
 };
 
-// `null` = create mode; a `Store` = edit that store. `undefined` = closed.
-type ModalState = { mode: "create" } | { mode: "edit"; store: Store } | null;
-
 /**
  * Tiendas — locations list with search + status filter + grid/list toggle.
- * Add/edit open a ResponsiveModal (no navigation); delete confirms + offers undo.
+ * Add/edit navigate to a dedicated page; delete confirms + offers undo.
  * Design-first / hardcoded (../data); the seam is the tRPC `stores.list` query.
  */
 export function StoresView() {
   const t = useTranslations("Stores");
   const tCommon = useTranslations("Common");
+  const router = useRouter();
   const fade = useFadeUp({ step: 40 });
 
   const [query, setQuery] = useState("");
   const [statuses, setStatuses] = useState<Status[]>([...STATUSES]);
   const [view, setView] = useState<ViewMode>("grid");
   const [toDelete, setToDelete] = useState<Store | null>(null);
-  const [modal, setModal] = useState<ModalState>(null);
 
   const statusOptions: FilterOption<Status>[] = STATUSES.map((s) => ({
     value: s,
@@ -108,7 +105,7 @@ export function StoresView() {
         </div>
         <Button
           className="h-10 gap-2 rounded-xl font-semibold"
-          onClick={() => setModal({ mode: "create" })}
+          onClick={() => router.push("/stores/new")}
         >
           <Plus className="size-4" />
           {t("add")}
@@ -188,7 +185,7 @@ export function StoresView() {
                   variant="outline"
                   size="sm"
                   className="h-9 flex-1 gap-1.5 rounded-lg"
-                  onClick={() => setModal({ mode: "edit", store: s })}
+                  onClick={() => router.push({ pathname: "/stores/[id]", params: { id: s.id } })}
                 >
                   <Pencil className="size-3.5" />
                   {t("edit")}
@@ -223,7 +220,7 @@ export function StoresView() {
                 <TableRow
                   key={s.id}
                   className="cursor-pointer"
-                  onClick={() => setModal({ mode: "edit", store: s })}
+                  onClick={() => router.push({ pathname: "/stores/[id]", params: { id: s.id } })}
                 >
                   <TableCell className="font-bold">{s.name}</TableCell>
                   <TableCell className="text-muted-foreground font-semibold">
@@ -251,7 +248,7 @@ export function StoresView() {
                         size="icon"
                         aria-label={t("edit")}
                         className="size-8 rounded-lg"
-                        onClick={() => setModal({ mode: "edit", store: s })}
+                        onClick={() => router.push({ pathname: "/stores/[id]", params: { id: s.id } })}
                       >
                         <Pencil className="size-3.5" />
                       </Button>
@@ -297,12 +294,6 @@ export function StoresView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <StoreFormModal
-        open={modal !== null}
-        onOpenChange={(o) => !o && setModal(null)}
-        store={modal?.mode === "edit" ? modal.store : undefined}
-      />
     </div>
   );
 }

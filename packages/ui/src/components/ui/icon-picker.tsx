@@ -1,29 +1,73 @@
 "use client"
 
+import { Upload, X } from "lucide-react"
+
 import { cn } from "../../cn"
+import { Dropzone, DropzoneArea, DropzoneLabel } from "./dropzone"
 import { Input } from "./input"
 
 const DEFAULT_EMOJIS = ["🎁", "🧋", "🍮", "⬆️", "🎉", "🎂", "🔑", "⭐"]
 
+/** An icon value is an uploaded image (rendered as <img>) when it's a data/blob/
+ * http URL; otherwise it's an emoji rendered as text. */
+export function isImageIcon(value: string): boolean {
+  return /^(data:|blob:|https?:\/\/)/.test(value)
+}
+
+/** Render an icon value: an <img> for uploaded images, the emoji text otherwise
+ * (the parent sizes the emoji). Wrap in an `overflow-hidden` box for rounding. */
+export function IconGlyph({
+  value,
+  className,
+}: {
+  value: string
+  className?: string
+}) {
+  if (isImageIcon(value)) {
+    return (
+      <img src={value} alt="" className={cn("size-full object-cover", className)} />
+    )
+  }
+  return <>{value}</>
+}
+
 interface IconPickerProps {
   value: string
-  onValueChange: (emoji: string) => void
+  onValueChange: (value: string) => void
   /** Quick-pick emoji presets. */
   emojis?: string[]
   /** Label shown next to the free-form custom emoji field. */
   customLabel?: string
+  /** Hint shown inside the image drop area. */
+  uploadLabel?: string
+  /** Accessible label for the "remove uploaded image" button. */
+  removeLabel?: string
   className?: string
 }
 
-/** Emoji icon picker: a quick-pick grid plus a free-form field for any custom
- * emoji. The selected value rings in the grid when it matches a preset. */
+/** Icon picker: a quick-pick emoji grid, a free-form custom emoji field, and a
+ * drag-and-drop area to upload a custom image. */
 function IconPicker({
   value,
   onValueChange,
   emojis = DEFAULT_EMOJIS,
   customLabel,
+  uploadLabel = "Drag an image or click",
+  removeLabel = "Remove",
   className,
 }: IconPickerProps) {
+  const isImage = isImageIcon(value)
+
+  const onDrop = (files: File[]) => {
+    const file = files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.addEventListener("load", () =>
+      onValueChange(String(reader.result))
+    )
+    reader.readAsDataURL(file)
+  }
+
   return (
     <div className={cn("space-y-2.5", className)}>
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
@@ -43,12 +87,14 @@ function IconPicker({
           </button>
         ))}
       </div>
+
       <div className="flex items-center gap-2">
         <Input
-          value={value}
+          value={isImage ? "" : value}
           onChange={(e) => onValueChange(e.target.value)}
           maxLength={8}
           aria-label={customLabel}
+          placeholder="🙂"
           className="h-10 w-16 rounded-xl text-center text-xl"
         />
         {customLabel ? (
@@ -57,6 +103,35 @@ function IconPicker({
           </span>
         ) : null}
       </div>
+
+      {isImage ? (
+        <div className="border-border flex items-center gap-2 rounded-xl border p-2">
+          <img src={value} alt="" className="size-10 rounded-lg object-cover" />
+          <span className="text-muted-foreground flex-1 truncate text-xs font-semibold">
+            {customLabel ?? uploadLabel}
+          </span>
+          <button
+            type="button"
+            onClick={() => onValueChange(emojis[0] ?? "🎁")}
+            aria-label={removeLabel}
+            className="text-muted-foreground hover:text-destructive grid size-7 place-items-center rounded-lg"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      ) : (
+        <Dropzone
+          accept={{ "image/*": [] }}
+          maxFiles={1}
+          multiple={false}
+          onDrop={onDrop}
+        >
+          <DropzoneArea className="flex-row gap-2 p-4">
+            <Upload className="text-muted-foreground size-4" />
+            <DropzoneLabel className="text-xs">{uploadLabel}</DropzoneLabel>
+          </DropzoneArea>
+        </Dropzone>
+      )}
     </div>
   )
 }

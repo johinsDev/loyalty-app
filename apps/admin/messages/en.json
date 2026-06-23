@@ -404,7 +404,9 @@
     },
     "bgColor": "Background color",
     "fieldBg": "Background",
-    "iconCustom": "Custom"
+    "iconCustom": "Custom",
+    "imgUpload": "Drag an image or click",
+    "imgRemove": "Remove"
   },
   "WhatsAppOutbox": {
     "title": "WhatsApp Outbox",
@@ -622,7 +624,9 @@
     "reachValue": "{n} members",
     "fieldBg": "Background",
     "hoursFrom": "From",
-    "hoursTo": "To"
+    "hoursTo": "To",
+    "imgUpload": "Drag an image or click",
+    "imgRemove": "Remove"
   },
   "Cashier": {
     "registerAt": "Register · {store}",
@@ -1193,7 +1197,9 @@
     },
     "bgColor": "Background color",
     "colorMode": "Custom color",
-    "iconCustom": "Custom"
+    "iconCustom": "Custom",
+    "imgUpload": "Drag an image or click",
+    "imgRemove": "Remove"
   },
   "Settings": {
     "title": "Settings",
@@ -1275,7 +1281,9 @@
       "previewTitle": "Preview",
       "bg": "Background color",
       "iconCustom": "Custom",
-      "customColor": "Custom color"
+      "customColor": "Custom color",
+      "imgUpload": "Drag an image or click",
+      "imgRemove": "Remove"
     },
     "team": {
       "title": "Team & roles",
