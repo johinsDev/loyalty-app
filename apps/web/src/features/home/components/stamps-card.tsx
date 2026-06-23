@@ -78,7 +78,13 @@ export function StampsCard() {
           animationDelay: `${i * 45}ms`,
         } as const);
 
+  // Drop focus off the trigger before a modal/drawer aria-hides the background,
+  // so assistive tech doesn't warn about focus retained under aria-hidden.
+  const blurActive = () =>
+    (document.activeElement as HTMLElement | null)?.blur();
+
   const onStampClick = (n: number, isReward: boolean, isFilled: boolean) => {
+    blurActive();
     if (isReward) {
       setSelected({ kind: "reward" });
       return;
@@ -87,6 +93,7 @@ export function StampsCard() {
   };
 
   const claimNow = () => {
+    blurActive();
     setSelected(null);
     setQrOpen(true);
   };
@@ -205,6 +212,9 @@ function StampDetail({
           <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
             {rewardPending ? t("rewardClaimTitle") : t("stampRewardTitle")}
           </ResponsiveModalTitle>
+          <ResponsiveModalDescription className="sr-only">
+            {rewardPending ? t("rewardClaimBody") : t("stampDetailReward")}
+          </ResponsiveModalDescription>
         </ResponsiveModalHeader>
         <div className="space-y-4 px-4 pb-6">
           <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-br from-amber-300 to-amber-400 p-5 text-white shadow-md shadow-amber-400/40">
@@ -230,6 +240,9 @@ function StampDetail({
           <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
             {t("stampEmptyTitle")}
           </ResponsiveModalTitle>
+          <ResponsiveModalDescription className="sr-only">
+            {t("stampDetailEmpty", { count: total - selected.n + 1 })}
+          </ResponsiveModalDescription>
         </ResponsiveModalHeader>
         <div className="px-4 pb-6">
           <div className="text-muted-foreground border-primary/30 bg-primary/5 rounded-2xl border-2 border-dashed p-5 text-sm font-semibold">

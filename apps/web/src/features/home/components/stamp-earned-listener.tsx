@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
 
+import { useQrDrawer } from "@/features/qr/hooks/use-qr-drawer";
 import { useCustomerRoom } from "@/features/realtime/hooks/use-customer-room";
 import { Celebrate } from "@/lib/celebrate";
 import { useTRPC } from "@/lib/trpc/client";
@@ -33,6 +34,7 @@ export function StampEarnedListener({ customerId, partykitHost }: Props) {
   const t = useTranslations("Card");
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const closeQr = useQrDrawer((s) => s.setOpen);
   const [banner, setBanner] = useState<ReactNode>(null);
   const [celebrating, setCelebrating] = useState(false);
 
@@ -56,6 +58,9 @@ export function StampEarnedListener({ customerId, partykitHost }: Props) {
         );
         window.setTimeout(() => setBanner(null), 3500);
       } else if (event.event === "reward.claimed") {
+        // The cashier confirmed the claim — close the QR drawer so the
+        // celebration + fresh card are visible, not hidden behind it.
+        closeQr(false);
         refresh();
         setCelebrating(true);
         setBanner(t("claimedBanner"));
