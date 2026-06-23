@@ -1,57 +1,66 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
 
 import { useCustomerRoom } from "@/features/realtime/hooks/use-customer-room";
 import { Celebrate } from "@/lib/celebrate";
+import { useTRPC } from "@/lib/trpc/client";
 
 interface Props {
   customerId: string;
   partykitHost: string | undefined;
 }
 
-interface StampEarnedEvent {
-  event: "stamp.earned";
-  data: { totalStamps: number; amount: number; cardId: string };
+interface SellosEvent {
+  event: "stamp.earned" | "reward.claimed";
+  data: {
+    walletId?: string | null;
+    currentStamps?: number;
+    walletSize?: number;
+    completed?: boolean;
+  };
   emittedAt: string;
 }
 
 /**
- * Client wrapper around the customer real-time room. When the cashier
- * publishes `stamp.earned`, this component:
- *   1. Triggers a router refresh so the (server-rendered) card data
- *      re-fetches — the user sees the new total without reloading
- *   2. Pops a transient celebration banner for ~3s
- *
- * Drop into any server-rendered page that wants to live-update on
- * loyalty events; pass the customer id from the auth context.
- *
- * If `partykitHost` is undefined (realtime not configured), the
- * component renders nothing — graceful degradation.
+ * Live updates for the card. On `stamp.earned` / `reward.claimed` it invalidates
+ * the sellos queries (so `<CardLive />` refetches the new state) and pops a
+ * transient celebration. No-op when realtime isn't configured.
  */
 export function StampEarnedListener({ customerId, partykitHost }: Props) {
-  const router = useRouter();
+  const t = useTranslations("Card");
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const [banner, setBanner] = useState<ReactNode>(null);
   const [celebrating, setCelebrating] = useState(false);
 
-  useCustomerRoom<StampEarnedEvent>({
+  const refresh = () => {
+    void queryClient.invalidateQueries(trpc.sellos.myWallet.queryFilter());
+    void queryClient.invalidateQueries(trpc.sellos.myHistory.queryFilter());
+    void queryClient.invalidateQueries(
+      trpc.sellos.myCompletedWallets.queryFilter(),
+    );
+  };
+
+  useCustomerRoom<SellosEvent>({
     customerId,
     host: partykitHost,
     onEvent: (event) => {
-      if (event.event !== "stamp.earned") return;
-      router.refresh();
-      setCelebrating(true);
-      setBanner(
-        <span>
-          ¡Sumaste{" "}
-          <strong>
-            {event.data.amount} sello{event.data.amount === 1 ? "" : "s"}
-          </strong>
-          ! Total: <strong>{event.data.totalStamps}</strong>
-        </span>,
-      );
-      window.setTimeout(() => setBanner(null), 3500);
+      if (event.event === "stamp.earned") {
+        refresh();
+        setCelebrating(true);
+        setBanner(
+          event.data.completed ? t("completedBanner") : t("earnedBanner"),
+        );
+        window.setTimeout(() => setBanner(null), 3500);
+      } else if (event.event === "reward.claimed") {
+        refresh();
+        setCelebrating(true);
+        setBanner(t("claimedBanner"));
+        window.setTimeout(() => setBanner(null), 3500);
+      }
     },
   });
 
@@ -67,7 +76,7 @@ export function StampEarnedListener({ customerId, partykitHost }: Props) {
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 shadow-lg backdrop-blur dark:text-emerald-100"
+          className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-900 shadow-lg backdrop-blur dark:text-emerald-100"
         >
           {banner}
         </div>

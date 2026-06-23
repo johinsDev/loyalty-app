@@ -168,7 +168,9 @@
     "cost": "{count} stamps",
     "manualCode": "Enter code manually",
     "copied": "Code copied",
-    "copyFailed": "Couldn't copy"
+    "copyFailed": "Couldn't copy",
+    "claimInstruction": "Show this code at the register to claim your reward.",
+    "rewardReady": "Reward ready!"
   },
   "Notifications": {
     "title": "Notifications",
@@ -273,7 +275,19 @@
   "Card": {
     "title": "My card",
     "description": "Stamps earned (placeholder)",
-    "healthClient": "Health (client)"
+    "healthClient": "Health (client)",
+    "toGo": "{remaining, plural, =1 {# stamp} other {# stamps}} to go for your reward",
+    "claim": "Claim reward",
+    "completedTitle": "Completed cards",
+    "walletLabel": "Card #{n}",
+    "claimed": "Claimed",
+    "pending": "To claim",
+    "historyTitle": "History",
+    "emptyHistory": "No purchases yet.",
+    "purchaseStamp": "+{stamps, plural, =1 {# stamp} other {# stamps}}",
+    "earnedBanner": "You earned a stamp! 🧋",
+    "completedBanner": "You completed your card! 🎉",
+    "claimedBanner": "Reward claimed! 🎉"
   },
   "Offline": {
     "title": "Offline",
