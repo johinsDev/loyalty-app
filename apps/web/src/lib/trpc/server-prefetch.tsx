@@ -1,17 +1,14 @@
 import "server-only";
 
 import type { AppRouter } from "@loyalty/api";
-import {
-  dehydrate,
-  HydrationBoundary,
-  QueryClient,
-} from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { headers } from "next/headers";
 import { cache, type ReactNode } from "react";
 import superjson from "superjson";
 
+import { makeQueryClient } from "./query-client";
 import { getTrpcUrl } from "./shared";
 
 /**
@@ -24,12 +21,7 @@ import { getTrpcUrl } from "./shared";
  * Same query-key factory as the client (`createTRPCContext`), so keys match. We
  * forward the request cookie and read `no-store` (auth-scoped data).
  */
-export const getQueryClient = cache(
-  () =>
-    new QueryClient({
-      defaultOptions: { queries: { staleTime: 30_000 } },
-    }),
-);
+export const getQueryClient = cache(makeQueryClient);
 
 /** A request-scoped server tRPC proxy producing `queryOptions()` with the same
  *  keys the client uses. Async because it reads the request cookie. */

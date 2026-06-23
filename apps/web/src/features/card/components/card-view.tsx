@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { env } from "@/env";
 import { getSession } from "@/lib/auth-guard";
 import {
@@ -7,13 +9,15 @@ import {
 } from "@/lib/trpc/server-prefetch";
 
 import { CardLive } from "./card-live";
+import { CardSkeleton } from "./card-skeleton";
 import { StampEarnedListener } from "./stamp-earned-listener";
 
 /**
- * Loyalty card screen. Prefetches the customer's wallet / history / completed
- * wallets on the server (hydrated into the client, no loading flash), then
- * `<CardLive />` reads them with `useQuery` and the `<StampEarnedListener />`
- * invalidates them live when the cashier grants a stamp or confirms a claim.
+ * Loyalty card screen. Kicks off the wallet / history / completed-wallets
+ * prefetches WITHOUT awaiting (`void`) so the in-flight promises stream into the
+ * dehydrated state; `<CardLive />` reads them with `useSuspenseQuery`, so the
+ * shell renders immediately behind `<CardSkeleton />` and fills in as the data
+ * arrives. The `<StampEarnedListener />` then invalidates those queries live.
  */
 export async function CardView() {
   const session = await getSession();
@@ -21,18 +25,20 @@ export async function CardView() {
 
   const queryClient = getQueryClient();
   const trpc = await getServerTrpc();
-  await Promise.all([
-    queryClient.prefetchQuery(trpc.sellos.myWallet.queryOptions()),
-    queryClient.prefetchQuery(
-      trpc.sellos.myHistory.queryOptions({ page: 1, pageSize: 20 }),
-    ),
-    queryClient.prefetchQuery(trpc.sellos.myCompletedWallets.queryOptions()),
-  ]);
+  // void = stream, don't block the document. Registered before HydrateClient
+  // dehydrates, so the pending queries are serialized into the HTML.
+  void queryClient.prefetchQuery(trpc.sellos.myWallet.queryOptions());
+  void queryClient.prefetchQuery(
+    trpc.sellos.myHistory.queryOptions({ page: 1, pageSize: 20 }),
+  );
+  void queryClient.prefetchQuery(trpc.sellos.myCompletedWallets.queryOptions());
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-5">
       <HydrateClient>
-        <CardLive />
+        <Suspense fallback={<CardSkeleton />}>
+          <CardLive />
+        </Suspense>
       </HydrateClient>
       {customerId ? (
         <StampEarnedListener

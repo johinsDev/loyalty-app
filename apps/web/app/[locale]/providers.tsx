@@ -2,12 +2,13 @@
 
 import { AnalyticsProvider } from "@loyalty/analytics/react";
 import { FlagsProvider } from "@loyalty/feature-flags/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { NextIntlClientProvider } from "next-intl";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { type ReactNode, useState } from "react";
 
 import { TRPCProvider } from "@/lib/trpc/client";
+import { makeQueryClient } from "@/lib/trpc/query-client";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST;
@@ -34,14 +35,7 @@ type Props = {
 };
 
 export const Providers = ({ children, locale, messages, now }: Props) => {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: { staleTime: 30_000, refetchOnWindowFocus: false },
-        },
-      }),
-  );
+  const [queryClient] = useState(makeQueryClient);
 
   return (
     <NextIntlClientProvider

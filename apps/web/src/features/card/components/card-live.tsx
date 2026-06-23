@@ -1,7 +1,6 @@
 "use client";
 
-import { Skeleton } from "@loyalty/ui";
-import { useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Check, Gift, Stamp } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 
@@ -9,9 +8,11 @@ import { useQrDrawer } from "@/features/qr/hooks/use-qr-drawer";
 import { useTRPC } from "@/lib/trpc/client";
 
 /**
- * The live loyalty card. Hydrates from the server prefetch (no loading flash),
- * then the realtime `stamp.earned` / `reward.claimed` listener invalidates these
- * queries so the stamps, history and completed wallets update without a reload.
+ * The live loyalty card. Reads the prefetched queries with `useSuspenseQuery`
+ * (data is always present — the parent `<Suspense>` shows `<CardSkeleton />`
+ * while the streamed promises resolve). The realtime `stamp.earned` /
+ * `reward.claimed` listener invalidates these queries so the stamps, history and
+ * completed wallets update without a reload.
  */
 export function CardLive() {
   const t = useTranslations("Card");
@@ -19,17 +20,15 @@ export function CardLive() {
   const trpc = useTRPC();
   const setQrOpen = useQrDrawer((s) => s.setOpen);
 
-  const wallet = useQuery(trpc.sellos.myWallet.queryOptions());
-  const history = useQuery(
+  const { data: w } = useSuspenseQuery(trpc.sellos.myWallet.queryOptions());
+  const { data: history } = useSuspenseQuery(
     trpc.sellos.myHistory.queryOptions({ page: 1, pageSize: 20 }),
   );
-  const completed = useQuery(trpc.sellos.myCompletedWallets.queryOptions());
-
-  const w = wallet.data;
-  if (!w) return <WalletSkeleton />;
+  const { data: completed } = useSuspenseQuery(
+    trpc.sellos.myCompletedWallets.queryOptions(),
+  );
 
   const remaining = Math.max(0, w.walletSize - w.currentStamps);
-  const completedCount = completed.data?.length ?? 0;
 
   return (
     <div className="space-y-4">
@@ -72,13 +71,13 @@ export function CardLive() {
       </section>
 
       {/* Completed wallets */}
-      {completedCount > 0 ? (
+      {completed.length > 0 ? (
         <section className="bg-card border-border rounded-3xl border p-5 shadow-sm">
           <h2 className="font-display text-base font-semibold tracking-tight">
             {t("completedTitle")}
           </h2>
           <ul className="mt-3 space-y-2">
-            {completed.data!.map((c) => (
+            {completed.map((c) => (
               <li
                 key={c.id}
                 className="flex items-center justify-between text-sm"
@@ -101,13 +100,13 @@ export function CardLive() {
         <h2 className="font-display text-base font-semibold tracking-tight">
           {t("historyTitle")}
         </h2>
-        {(history.data?.rows.length ?? 0) === 0 ? (
+        {history.rows.length === 0 ? (
           <p className="text-muted-foreground mt-3 text-sm">
             {t("emptyHistory")}
           </p>
         ) : (
           <ul className="divide-border mt-2 divide-y">
-            {history.data!.rows.map((p) => (
+            {history.rows.map((p) => (
               <li key={p.id} className="flex items-center justify-between py-2.5">
                 <div>
                   <p className="text-sm font-semibold">
@@ -129,15 +128,6 @@ export function CardLive() {
           </ul>
         )}
       </section>
-    </div>
-  );
-}
-
-function WalletSkeleton() {
-  return (
-    <div className="space-y-4">
-      <Skeleton className="h-56 rounded-3xl" />
-      <Skeleton className="h-32 rounded-3xl" />
     </div>
   );
 }
