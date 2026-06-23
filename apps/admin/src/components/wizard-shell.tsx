@@ -63,7 +63,7 @@ export function WizardShell({
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="bg-card border-border flex flex-col rounded-3xl border p-6 shadow-sm lg:col-span-2">
+        <div className="bg-card border-border flex min-w-0 flex-col rounded-3xl border p-6 shadow-sm lg:col-span-2">
           <div className="flex-1">{children}</div>
           <div className="border-border mt-6 flex items-center justify-between border-t pt-4">
             <Button
@@ -84,7 +84,7 @@ export function WizardShell({
           </div>
         </div>
 
-        <aside className="lg:sticky lg:top-6 lg:col-span-1 lg:self-start">
+        <aside className="min-w-0 lg:sticky lg:top-6 lg:col-span-1 lg:self-start">
           <div className="text-muted-foreground/70 mb-2 px-1 text-xs font-extrabold tracking-wider uppercase">
             {t("preview")}
           </div>

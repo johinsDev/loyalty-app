@@ -3,6 +3,7 @@
 import { Button } from "@loyalty/ui";
 import {
   Clock,
+  Globe,
   Plug,
   Sparkles,
   Stamp,
@@ -23,10 +24,12 @@ import { HoursSection } from "./hours-section";
 import { IntegrationsSection } from "./integrations-section";
 import { LoyaltySection } from "./loyalty-section";
 import { OnboardingSection } from "./onboarding-section";
+import { SeoSection } from "./seo-section";
 import { TeamSection } from "./team-section";
 
 const ICON: Record<SettingsSection, LucideIcon> = {
   brand: Store,
+  seo: Globe,
   hours: Clock,
   loyalty: Stamp,
   onboarding: Sparkles,
@@ -101,6 +104,8 @@ export function SettingsView({
         <div className="bg-card border-border rounded-3xl border p-6 shadow-sm lg:col-span-3">
           {active === "brand" ? (
             <BrandSection />
+          ) : active === "seo" ? (
+            <SeoSection />
           ) : active === "hours" ? (
             <HoursSection />
           ) : active === "loyalty" ? (

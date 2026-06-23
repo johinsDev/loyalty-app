@@ -1212,7 +1212,8 @@
       "loyalty": "Loyalty rules",
       "onboarding": "Onboarding",
       "team": "Team & roles",
-      "integrations": "Integrations"
+      "integrations": "Integrations",
+      "seo": "SEO"
     },
     "brand": {
       "title": "Brand & store",
@@ -1224,7 +1225,9 @@
       "logo": "Logo",
       "logoHint": "Drag or pick an icon",
       "color": "Brand color",
-      "preview": "Preview"
+      "preview": "Preview",
+      "imgUpload": "Drag an image or click",
+      "imgRemove": "Remove"
     },
     "hours": {
       "title": "Hours & location",
@@ -1336,6 +1339,27 @@
           "desc": "Product analytics and events."
         }
       }
+    },
+    "seo": {
+      "title": "SEO & favicon",
+      "desc": "How your app looks when shared and in search engines.",
+      "metaTitle": "Title (meta title)",
+      "metaTitlePlaceholder": "T4 Lovers — Bubble tea & more",
+      "metaDescription": "Description (meta description)",
+      "metaDescriptionPlaceholder": "One sentence describing your loyalty program...",
+      "keywords": "Keywords",
+      "keywordsPlaceholder": "Add a word and press Enter",
+      "canonical": "Canonical URL",
+      "canonicalPlaceholder": "https://t4lovers.app",
+      "favicon": "Favicon",
+      "faviconHint": "Emoji or image",
+      "ogImage": "Share image (Open Graph)",
+      "ogImageHint": "1200×630 recommended",
+      "preview": "Preview",
+      "tabPreview": "Browser tab",
+      "searchPreview": "Search result",
+      "imgUpload": "Drag an image or click",
+      "imgRemove": "Remove"
     }
   },
   "Purchases": {

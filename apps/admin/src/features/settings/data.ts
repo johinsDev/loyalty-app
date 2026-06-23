@@ -4,6 +4,7 @@
 
 export type SettingsSection =
   | "brand"
+  | "seo"
   | "hours"
   | "loyalty"
   | "onboarding"
@@ -12,6 +13,7 @@ export type SettingsSection =
 
 export const SECTIONS: SettingsSection[] = [
   "brand",
+  "seo",
   "hours",
   "loyalty",
   "onboarding",
@@ -41,6 +43,27 @@ export const BRAND_COLORS = [
   "#1f9d68",
 ];
 export const BRAND_EMOJIS = ["🧋", "🍵", "🧁", "⭐", "🫧", "🌿"];
+
+// ── SEO & favicon ─────────────────────────────────────────────────────────────
+export type Seo = {
+  metaTitle: string;
+  metaDescription: string;
+  keywords: string[];
+  /** Emoji or an uploaded image (data URL) — same value model as IconPicker. */
+  favicon: string;
+  /** "" or an uploaded image as a CSS `url(...)` background. */
+  ogImage: string;
+  canonicalUrl: string;
+};
+export const seo: Seo = {
+  metaTitle: "T4 Lovers — Bubble tea & más",
+  metaDescription:
+    "Suma sellos en cada compra y canjea bubble teas gratis, toppings y más.",
+  keywords: ["bubble tea", "lealtad", "recompensas"],
+  favicon: "🧋",
+  ogImage: "",
+  canonicalUrl: "https://t4lovers.app",
+};
 
 // ── Hours & location ────────────────────────────────────────────────────────
 export type DayHours = {
