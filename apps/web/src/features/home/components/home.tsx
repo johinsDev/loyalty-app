@@ -41,6 +41,9 @@ export async function Home() {
   const queryClient = getQueryClient();
   const trpc = await getServerTrpc();
   void queryClient.prefetchQuery(trpc.stamps.myWallet.queryOptions());
+  void queryClient.prefetchQuery(
+    trpc.stamps.myHistory.queryOptions({ page: 1, pageSize: 20 }),
+  );
 
   return (
     <SidebarProvider style={{ "--sidebar-width": "18rem" } as React.CSSProperties}>
