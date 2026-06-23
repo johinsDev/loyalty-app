@@ -1465,7 +1465,32 @@
       "searchLog": "Buscar en actividad...",
       "stampsGiven": "Sellos dados",
       "redemptions": "Canjes"
-    }
+    },
+    "add": "Nuevo empleado",
+    "auditLink": "Registro de actividad",
+    "newTitle": "Nuevo empleado",
+    "editTitle": "Editar empleado",
+    "create": "Crear",
+    "save": "Guardar cambios",
+    "reviewTitle": "Revisar",
+    "step": {
+      "profile": "Datos",
+      "access": "Acceso",
+      "review": "Revisar"
+    },
+    "field": {
+      "name": "Nombre",
+      "email": "Correo",
+      "phone": "Teléfono",
+      "role": "Rol",
+      "status": "Estado",
+      "dailyCap": "Límite diario de sellos",
+      "notes": "Notas"
+    },
+    "namePlaceholder": "Nombre completo",
+    "emailPlaceholder": "correo@ejemplo.com",
+    "notesPlaceholder": "Notas internas...",
+    "dailyCapHint": "sellos / día"
   },
   "Analytics": {
     "title": "Analítica",
@@ -1524,5 +1549,34 @@
       "seasonal": "Temporada"
     },
     "channelsLabel": "Canales"
+  },
+  "Audit": {
+    "title": "Registro de actividad",
+    "subtitle": "Toda la actividad del equipo.",
+    "back": "Empleados",
+    "searchPlaceholder": "Buscar en la actividad...",
+    "employeeFilter": "Empleado",
+    "typeFilter": "Tipo",
+    "rangeAll": "Cualquier fecha",
+    "range24h": "24 h",
+    "range7d": "7 días",
+    "range30d": "30 días",
+    "from": "Desde",
+    "to": "Hasta",
+    "colWhen": "Cuándo",
+    "colEmployee": "Empleado",
+    "colAction": "Acción",
+    "logType": {
+      "stamp": "Sello",
+      "redemption": "Canje",
+      "role": "Rol",
+      "login": "Acceso"
+    },
+    "delete": "Eliminar",
+    "deleted": "Registro eliminado",
+    "empty": "Sin resultados",
+    "emptyHint": "Ajusta los filtros para ver más.",
+    "clearFilters": "Limpiar filtros",
+    "count": "{n} registros"
   }
 }

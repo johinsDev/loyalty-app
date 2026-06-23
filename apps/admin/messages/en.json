@@ -1465,7 +1465,32 @@
       "searchLog": "Search activity...",
       "stampsGiven": "Stamps given",
       "redemptions": "Redemptions"
-    }
+    },
+    "add": "New employee",
+    "auditLink": "Activity log",
+    "newTitle": "New employee",
+    "editTitle": "Edit employee",
+    "create": "Create",
+    "save": "Save changes",
+    "reviewTitle": "Review",
+    "step": {
+      "profile": "Profile",
+      "access": "Access",
+      "review": "Review"
+    },
+    "field": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "role": "Role",
+      "status": "Status",
+      "dailyCap": "Daily stamp cap",
+      "notes": "Notes"
+    },
+    "namePlaceholder": "Full name",
+    "emailPlaceholder": "name@example.com",
+    "notesPlaceholder": "Internal notes...",
+    "dailyCapHint": "stamps / day"
   },
   "Analytics": {
     "title": "Analytics",
@@ -1524,5 +1549,34 @@
       "seasonal": "Seasonal"
     },
     "channelsLabel": "Channels"
+  },
+  "Audit": {
+    "title": "Activity log",
+    "subtitle": "All your team activity.",
+    "back": "Employees",
+    "searchPlaceholder": "Search activity...",
+    "employeeFilter": "Employee",
+    "typeFilter": "Type",
+    "rangeAll": "Any date",
+    "range24h": "24 h",
+    "range7d": "7 days",
+    "range30d": "30 days",
+    "from": "From",
+    "to": "To",
+    "colWhen": "When",
+    "colEmployee": "Employee",
+    "colAction": "Action",
+    "logType": {
+      "stamp": "Stamp",
+      "redemption": "Redemption",
+      "role": "Role",
+      "login": "Login"
+    },
+    "delete": "Delete",
+    "deleted": "Entry deleted",
+    "empty": "No results",
+    "emptyHint": "Adjust the filters to see more.",
+    "clearFilters": "Clear filters",
+    "count": "{n} entries"
   }
 }

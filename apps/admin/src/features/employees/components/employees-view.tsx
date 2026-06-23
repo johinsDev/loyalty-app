@@ -16,34 +16,35 @@ import {
   TableHeader,
   TableRow,
 } from "@loyalty/ui";
-import { Trash2, Users } from "lucide-react";
+import { Plus, ScrollText, Trash2, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/empty-state";
 import { type FilterOption, FilterMultiSelect } from "@/components/filters";
+import { useRouter } from "@/i18n/navigation";
 
 import {
   type Employee,
   ROLES,
   type Role,
   type Status,
-  audit,
   employees as seed,
 } from "../data";
-import { EmployeeDetailModal } from "./employee-detail-modal";
 
 const STATUSES: Status[] = ["active", "invited"];
 
 /**
  * Empleados — invite row + a polished team table (search, role/status filters,
- * per-row role change, resend invite, remove) plus an audit log card.
+ * per-row role change, resend invite, remove). Rows open a dedicated employee
+ * page; the audit log lives in its own view.
  * Design-first / hardcoded (../data); the seam is the Better Auth organization
  * member + invitation model later.
  */
 export function EmployeesView() {
   const t = useTranslations("Employees");
+  const router = useRouter();
 
   const [rows, setRows] = useState<Employee[]>(seed);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -52,7 +53,6 @@ export function EmployeesView() {
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<Role[]>([...ROLES]);
   const [statusFilter, setStatusFilter] = useState<Status[]>([...STATUSES]);
-  const [detail, setDetail] = useState<Employee | null>(null);
 
   const roleOptions: FilterOption<Role>[] = ROLES.map((r) => ({
     value: r,
@@ -101,7 +101,6 @@ export function EmployeesView() {
 
   const changeRole = (id: string, role: Role) => {
     setRows((prev) => prev.map((e) => (e.id === id ? { ...e, role } : e)));
-    setDetail((d) => (d && d.id === id ? { ...d, role } : d));
   };
 
   const remove = (employee: Employee) => {
@@ -117,13 +116,32 @@ export function EmployeesView() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          {t("title")}
-        </h1>
-        <p className="text-muted-foreground/80 mt-0.5 text-sm font-semibold">
-          {t("subtitle")}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
+            {t("title")}
+          </h1>
+          <p className="text-muted-foreground/80 mt-0.5 text-sm font-semibold">
+            {t("subtitle")}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="h-10 gap-2 rounded-xl"
+            onClick={() => router.push("/employees/audit")}
+          >
+            <ScrollText className="size-4" />
+            {t("auditLink")}
+          </Button>
+          <Button
+            className="h-10 gap-2 rounded-xl font-semibold"
+            onClick={() => router.push("/employees/new")}
+          >
+            <Plus className="size-4" />
+            {t("add")}
+          </Button>
+        </div>
       </div>
 
       {/* Invite row */}
@@ -215,9 +233,13 @@ export function EmployeesView() {
               {filtered.map((e) => (
                 <TableRow
                   key={e.id}
-                  onClick={() => setDetail(e)}
+                  onClick={() =>
+                    router.push({
+                      pathname: "/employees/[id]",
+                      params: { id: e.id },
+                    })
+                  }
                   className="cursor-pointer"
-                  aria-label={t("detail.viewDetail")}
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -296,35 +318,6 @@ export function EmployeesView() {
           </Table>
         )}
       </div>
-
-      {/* Audit log */}
-      <div className="bg-card border-border mt-5 rounded-3xl border p-5 shadow-sm">
-        <h2 className="font-display text-lg font-semibold tracking-tight">
-          Audit log
-        </h2>
-        <ul className="mt-4 space-y-3">
-          {audit.map((a) => (
-            <li
-              key={a.id}
-              className="text-muted-foreground flex flex-wrap items-baseline gap-x-1.5 text-sm font-medium"
-            >
-              <span className="text-foreground font-bold">{a.who}</span>
-              <span>{a.action}</span>
-              <span className="text-foreground font-semibold">{a.detail}</span>
-              <span className="text-muted-foreground/70">· {a.ago}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <EmployeeDetailModal
-        employee={detail}
-        open={detail !== null}
-        onOpenChange={(o) => {
-          if (!o) setDetail(null);
-        }}
-        onChangeRole={changeRole}
-      />
     </div>
   );
 }
