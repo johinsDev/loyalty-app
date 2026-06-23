@@ -36,9 +36,11 @@ export type PromoDraft = {
   start: Date | null;
   end: Date | null;
   days: string[];
-  hours: string;
+  hoursFrom: string;
+  hoursTo: string;
   tier: string;
   notify: boolean;
+  bg: string;
 };
 
 export const emptyPromoDraft: PromoDraft = {
@@ -51,9 +53,11 @@ export const emptyPromoDraft: PromoDraft = {
   start: null,
   end: null,
   days: [...DAYS],
-  hours: "",
+  hoursFrom: "",
+  hoursTo: "",
   tier: "all",
   notify: true,
+  bg: "linear-gradient(135deg, #1BAD9D, #0e6f64)",
 };
 
 const SAMPLE: PromoDraft = {
@@ -66,9 +70,11 @@ const SAMPLE: PromoDraft = {
   start: null,
   end: null,
   days: ["mon", "tue", "wed", "thu"],
-  hours: "14:00 – 18:00",
+  hoursFrom: "14:00",
+  hoursTo: "18:00",
   tier: "all",
   notify: true,
+  bg: "linear-gradient(135deg, #1BAD9D, #0e6f64)",
 };
 
 /** Resolve a promo into an editable draft. Hardcoded — unknown ids fall back to

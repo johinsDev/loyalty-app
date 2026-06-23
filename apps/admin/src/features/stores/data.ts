@@ -52,24 +52,28 @@ export type StoreDraft = {
   name: string;
   address: string;
   phone: string;
-  hours: string;
+  hoursFrom: string;
+  hoursTo: string;
 };
 
 export const emptyStoreDraft: StoreDraft = {
   name: "",
   address: "",
   phone: "",
-  hours: "",
+  hoursFrom: "",
+  hoursTo: "",
 };
 
 /** Resolve a store into an editable draft. Hardcoded — unknown ids fall back to
  * the first store so deep links never 404 in the design build. */
 export function getStoreDraft(id: string): StoreDraft {
   const base = stores.find((s) => s.id === id) ?? stores[0]!;
+  const [from = "", to = ""] = base.hours.split("–").map((s) => s.trim());
   return {
     name: base.name,
     address: base.address,
     phone: base.phone,
-    hours: base.hours,
+    hoursFrom: from,
+    hoursTo: to,
   };
 }

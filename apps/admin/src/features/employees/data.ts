@@ -72,6 +72,31 @@ export const employees: Employee[] = [
   },
 ];
 
+export type LogType = "stamp" | "redemption" | "role" | "login";
+export type EmployeeLog = { id: string; type: LogType; detail: string; ago: string };
+
+/**
+ * Per-employee activity feed. Design-first / hardcoded; the seam later is an
+ * org-scoped audit-log query keyed by member id.
+ */
+export function getEmployeeLogs(id: string): EmployeeLog[] {
+  const lead = id.charCodeAt(0) % 2 === 0 ? "Juan" : "María";
+  return [
+    { id: `${id}-l1`, type: "stamp", detail: `Otorgó 2 sellos a ${lead}`, ago: "hace 20 min" },
+    { id: `${id}-l2`, type: "redemption", detail: "Canjeó Bubble tea gratis", ago: "hace 1 h" },
+    { id: `${id}-l3`, type: "login", detail: "Inició sesión", ago: "hace 2 h" },
+    { id: `${id}-l4`, type: "stamp", detail: "Otorgó 1 sello a Pedro Gómez", ago: "hace 4 h" },
+    { id: `${id}-l5`, type: "role", detail: "Cambió a Gerente", ago: "ayer" },
+    { id: `${id}-l6`, type: "redemption", detail: "Canjeó Topping gratis", ago: "ayer" },
+    { id: `${id}-l7`, type: "stamp", detail: "Otorgó 3 sellos a Laura Díaz", ago: "hace 2 días" },
+    { id: `${id}-l8`, type: "login", detail: "Inició sesión", ago: "hace 3 días" },
+  ];
+}
+
+export function getActivitySeries(_id: string): number[] {
+  return [4, 8, 6, 12, 9, 15, 11];
+}
+
 export type AuditEntry = {
   id: string;
   who: string;

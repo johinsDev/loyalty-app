@@ -1,7 +1,8 @@
 "use client";
 
 import {
-  ColorPicker,
+  BackgroundPicker,
+  IconPicker,
   Input,
   Label,
   RichTextEditor,
@@ -86,22 +87,12 @@ export function RewardWizard({ id }: { id?: string }) {
             />
           </Field>
           <Field label={t("fieldIcon")}>
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
-              {REWARD_EMOJIS.map((e) => (
-                <button
-                  key={e}
-                  type="button"
-                  onClick={() => set("emoji", e)}
-                  className={`grid aspect-square place-items-center rounded-2xl text-2xl transition-colors ${
-                    draft.emoji === e
-                      ? "bg-primary/10 ring-primary ring-2"
-                      : "bg-muted/50 hover:bg-muted"
-                  }`}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
+            <IconPicker
+              value={draft.emoji}
+              onValueChange={(e) => set("emoji", e)}
+              emojis={REWARD_EMOJIS}
+              customLabel={t("iconCustom")}
+            />
           </Field>
           <Field label={t("fieldDescription")}>
             <RichTextEditor
@@ -109,10 +100,10 @@ export function RewardWizard({ id }: { id?: string }) {
               onValueChange={(html) => set("description", html)}
             />
           </Field>
-          <Field label={t("bgColor")}>
-            <ColorPicker
-              value={draft.color}
-              onValueChange={(c) => set("color", c)}
+          <Field label={t("fieldBg")}>
+            <BackgroundPicker
+              value={draft.bg}
+              onValueChange={(bg) => set("bg", bg)}
             />
           </Field>
         </div>
@@ -178,7 +169,7 @@ function RewardPreview({
   return (
     <div
       className="rounded-3xl p-5 text-white shadow-lg"
-      style={{ background: draft.color }}
+      style={{ background: draft.bg }}
     >
       <div className="grid size-14 place-items-center rounded-2xl bg-white/15 text-3xl">
         {draft.emoji}

@@ -2,10 +2,12 @@
 
 import { formatDate } from "@loyalty/date";
 import {
+  BackgroundPicker,
   DatePicker,
   Input,
   Label,
   NumberInput,
+  RichTextEditor,
   SegmentedControl,
   Select,
   SelectContent,
@@ -13,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
-  Textarea,
+  TimeInput,
 } from "@loyalty/ui";
 import { Gift, Percent, Sparkles, Tag } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -104,12 +106,15 @@ export function PromoWizard({ id }: { id?: string }) {
             />
           </Field>
           <Field label={t("fieldDesc")}>
-            <Textarea
+            <RichTextEditor
               value={draft.description}
-              onChange={(e) => set("description", e.target.value)}
-              placeholder={t("fieldDescPlaceholder")}
-              rows={4}
-              className="min-h-28 rounded-xl"
+              onValueChange={(html) => set("description", html)}
+            />
+          </Field>
+          <Field label={t("fieldBg")}>
+            <BackgroundPicker
+              value={draft.bg}
+              onValueChange={(bg) => set("bg", bg)}
             />
           </Field>
           <Field label={t("fieldCode")} hint={t("optional")}>
@@ -201,12 +206,22 @@ export function PromoWizard({ id }: { id?: string }) {
           </Field>
 
           <Field label={t("hours")} hint={t("optional")}>
-            <Input
-              value={draft.hours}
-              onChange={(e) => set("hours", e.target.value)}
-              placeholder="14:00 – 18:00"
-              className="h-10"
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t("hoursFrom")}</Label>
+                <TimeInput
+                  value={draft.hoursFrom}
+                  onChange={(v) => set("hoursFrom", v)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t("hoursTo")}</Label>
+                <TimeInput
+                  value={draft.hoursTo}
+                  onChange={(v) => set("hoursTo", v)}
+                />
+              </div>
+            </div>
           </Field>
 
           <Field label={t("tier")}>
@@ -303,7 +318,10 @@ function PromoPreview({
 }) {
   return (
     <div className="space-y-3">
-      <div className="from-primary to-primary/80 rounded-3xl bg-gradient-to-br p-5 text-white shadow-sm">
+      <div
+        className="rounded-3xl p-5 text-white shadow-sm"
+        style={{ background: draft.bg }}
+      >
         <div className="flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase opacity-80">
           <Tag className="size-3.5" />
           {t("previewTitle")}

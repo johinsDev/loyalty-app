@@ -1,13 +1,19 @@
 "use client";
 
-import { Button, ColorPicker, Input, RichTextEditor } from "@loyalty/ui";
+import {
+  BackgroundPicker,
+  Button,
+  IconPicker,
+  Input,
+  RichTextEditor,
+} from "@loyalty/ui";
 import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { type OnboardingSlide, onboardingSlides, SLIDE_EMOJIS } from "../data";
 
-const DEFAULT_SLIDE_BG = "#1BAD9D";
+const DEFAULT_SLIDE_BG = "linear-gradient(135deg, #1BAD9D, #0e6f64)";
 
 // Slides carry a per-slide background color and an HTML body (the body is now
 // edited through the rich-text editor), so we extend the seed shape locally.
@@ -79,22 +85,12 @@ export function OnboardingSection() {
                   <Trash2 className="size-4" />
                 </button>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {SLIDE_EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => update(slide.id, { emoji })}
-                    className={`grid size-9 place-items-center rounded-xl text-lg transition-colors ${
-                      slide.emoji === emoji
-                        ? "ring-primary ring-2"
-                        : "bg-muted hover:bg-muted/70"
-                    }`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
+              <IconPicker
+                value={slide.emoji}
+                onValueChange={(emoji) => update(slide.id, { emoji })}
+                emojis={SLIDE_EMOJIS}
+                customLabel={t("onboarding.iconCustom")}
+              />
               <Input
                 value={slide.title}
                 onChange={(e) => update(slide.id, { title: e.target.value })}
@@ -109,9 +105,10 @@ export function OnboardingSection() {
                 <span className="text-muted-foreground/70 text-xs font-semibold">
                   {t("onboarding.bg")}
                 </span>
-                <ColorPicker
+                <BackgroundPicker
                   value={slide.bg}
                   onValueChange={(bg) => update(slide.id, { bg })}
+                  customLabel={t("onboarding.customColor")}
                 />
               </div>
             </div>

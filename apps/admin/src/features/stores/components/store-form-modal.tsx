@@ -11,6 +11,7 @@ import {
   ResponsiveModalFooter,
   ResponsiveModalHeader,
   ResponsiveModalTitle,
+  TimeInput,
 } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useState } from "react";
@@ -100,13 +101,22 @@ export function StoreFormModal({
 
             <div className="space-y-1.5">
               <Label htmlFor="store-hours">{t("fieldHours")}</Label>
-              <Input
-                id="store-hours"
-                value={draft.hours}
-                onChange={(e) => set({ hours: e.target.value })}
-                placeholder={t("hoursPlaceholder")}
-                className="h-10"
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{t("hoursFrom")}</Label>
+                  <TimeInput
+                    value={draft.hoursFrom}
+                    onChange={(v) => set({ hoursFrom: v })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{t("hoursTo")}</Label>
+                  <TimeInput
+                    value={draft.hoursTo}
+                    onChange={(v) => set({ hoursTo: v })}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

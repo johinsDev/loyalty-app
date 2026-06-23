@@ -32,6 +32,7 @@ import {
   audit,
   employees as seed,
 } from "../data";
+import { EmployeeDetailModal } from "./employee-detail-modal";
 
 const STATUSES: Status[] = ["active", "invited"];
 
@@ -51,6 +52,7 @@ export function EmployeesView() {
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<Role[]>([...ROLES]);
   const [statusFilter, setStatusFilter] = useState<Status[]>([...STATUSES]);
+  const [detail, setDetail] = useState<Employee | null>(null);
 
   const roleOptions: FilterOption<Role>[] = ROLES.map((r) => ({
     value: r,
@@ -97,8 +99,10 @@ export function EmployeesView() {
     setInviteRole("staff");
   };
 
-  const changeRole = (id: string, role: Role) =>
+  const changeRole = (id: string, role: Role) => {
     setRows((prev) => prev.map((e) => (e.id === id ? { ...e, role } : e)));
+    setDetail((d) => (d && d.id === id ? { ...d, role } : d));
+  };
 
   const remove = (employee: Employee) => {
     setRows((prev) => prev.filter((e) => e.id !== employee.id));
@@ -209,7 +213,12 @@ export function EmployeesView() {
             </TableHeader>
             <TableBody>
               {filtered.map((e) => (
-                <TableRow key={e.id}>
+                <TableRow
+                  key={e.id}
+                  onClick={() => setDetail(e)}
+                  className="cursor-pointer"
+                  aria-label={t("detail.viewDetail")}
+                >
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <span className="bg-primary/10 text-primary grid size-9 flex-none place-items-center rounded-full text-xs font-bold">
@@ -221,7 +230,7 @@ export function EmployeesView() {
                   <TableCell className="text-muted-foreground font-semibold">
                     {e.email}
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(ev) => ev.stopPropagation()}>
                     <Select
                       value={e.role}
                       onValueChange={(v) => changeRole(e.id, v as Role)}
@@ -258,7 +267,7 @@ export function EmployeesView() {
                       {t(`status.${e.status}`)}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(ev) => ev.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1.5">
                       {e.status === "invited" ? (
                         <Button
@@ -307,6 +316,15 @@ export function EmployeesView() {
           ))}
         </ul>
       </div>
+
+      <EmployeeDetailModal
+        employee={detail}
+        open={detail !== null}
+        onOpenChange={(o) => {
+          if (!o) setDetail(null);
+        }}
+        onChangeRole={changeRole}
+      />
     </div>
   );
 }

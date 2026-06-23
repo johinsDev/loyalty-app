@@ -402,7 +402,9 @@
       "redeemed": "Canjes",
       "status": "Estado"
     },
-    "bgColor": "Color de fondo"
+    "bgColor": "Color de fondo",
+    "fieldBg": "Fondo",
+    "iconCustom": "Personalizado"
   },
   "WhatsAppOutbox": {
     "title": "WhatsApp Outbox",
@@ -617,7 +619,10 @@
     "previewNamePlaceholder": "Nombre de la promo",
     "estReach": "Alcance estimado",
     "estRevenue": "Ingreso estimado",
-    "reachValue": "{n} socios"
+    "reachValue": "{n} socios",
+    "fieldBg": "Fondo",
+    "hoursFrom": "Desde",
+    "hoursTo": "Hasta"
   },
   "Cashier": {
     "registerAt": "Caja · {store}",
@@ -1187,7 +1192,8 @@
       "clicks": "Clics"
     },
     "bgColor": "Color de fondo",
-    "colorMode": "Color personalizado"
+    "colorMode": "Color personalizado",
+    "iconCustom": "Personalizado"
   },
   "Settings": {
     "title": "Ajustes",
@@ -1267,7 +1273,9 @@
       "next": "Siguiente",
       "start": "Empezar",
       "previewTitle": "Vista previa",
-      "bg": "Color de fondo"
+      "bg": "Color de fondo",
+      "iconCustom": "Personalizado",
+      "customColor": "Color personalizado"
     },
     "team": {
       "title": "Equipo y roles",
@@ -1391,7 +1399,9 @@
     "fieldAddress": "Dirección",
     "fieldPhone": "Teléfono",
     "fieldHours": "Horario",
-    "hoursPlaceholder": "10:00–21:00"
+    "hoursPlaceholder": "10:00–21:00",
+    "hoursFrom": "Desde",
+    "hoursTo": "Hasta"
   },
   "Employees": {
     "title": "Empleados",
@@ -1425,6 +1435,28 @@
     "status": {
       "active": "Activo",
       "invited": "Invitado"
+    },
+    "detail": {
+      "activity": "Actividad",
+      "activityChart": "Actividad · 7 días",
+      "impersonate": "Impersonar",
+      "edit": "Editar",
+      "viewDetail": "Ver detalle",
+      "logFilter": "Tipo",
+      "logType": {
+        "stamp": "Sello",
+        "redemption": "Canje",
+        "role": "Rol",
+        "login": "Acceso"
+      },
+      "deleteLog": "Eliminar registro",
+      "logDeleted": "Registro eliminado",
+      "noLogs": "Sin actividad",
+      "impersonating": "Viendo como {name}",
+      "close": "Cerrar",
+      "searchLog": "Buscar en actividad...",
+      "stampsGiven": "Sellos dados",
+      "redemptions": "Canjes"
     }
   },
   "Analytics": {

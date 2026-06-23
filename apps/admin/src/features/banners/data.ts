@@ -50,9 +50,8 @@ export type BannerDraft = {
   cta: string;
   type: BannerType;
   promo: string;
-  gradient: string;
-  // Custom background color. null = use the gradient preset.
-  color: string | null;
+  // CSS background string (preset gradient css OR custom hex).
+  bg: string;
   emoji: string;
   start: Date | null;
   end: Date | null;
@@ -64,8 +63,7 @@ export const emptyBannerDraft: BannerDraft = {
   cta: "",
   type: "promo",
   promo: "promo2x1",
-  gradient: "mint",
-  color: null,
+  bg: "linear-gradient(135deg, #1BAD9D, #0e6f64)",
   emoji: "🧋",
   start: null,
   end: null,
@@ -77,8 +75,7 @@ const SAMPLE: BannerDraft = {
   cta: "Ver promo",
   type: "promo",
   promo: "promo2x1",
-  gradient: "mint",
-  color: null,
+  bg: "linear-gradient(135deg, #1BAD9D, #0e6f64)",
   emoji: "🧋",
   start: null,
   end: null,
@@ -93,7 +90,7 @@ export function getBannerDraft(id: string): BannerDraft {
     ...SAMPLE,
     title: b.title,
     type: b.type,
-    gradient: b.gradient,
+    bg: gradientCss(GRADIENTS.find((g) => g.key === b.gradient) ?? GRADIENTS[0]!),
     emoji: b.emoji,
   };
 }

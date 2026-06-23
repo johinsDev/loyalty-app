@@ -402,7 +402,9 @@
       "redeemed": "Redemptions",
       "status": "Status"
     },
-    "bgColor": "Background color"
+    "bgColor": "Background color",
+    "fieldBg": "Background",
+    "iconCustom": "Custom"
   },
   "WhatsAppOutbox": {
     "title": "WhatsApp Outbox",
@@ -617,7 +619,10 @@
     "previewNamePlaceholder": "Promo name",
     "estReach": "Estimated reach",
     "estRevenue": "Estimated revenue",
-    "reachValue": "{n} members"
+    "reachValue": "{n} members",
+    "fieldBg": "Background",
+    "hoursFrom": "From",
+    "hoursTo": "To"
   },
   "Cashier": {
     "registerAt": "Register · {store}",
@@ -1187,7 +1192,8 @@
       "clicks": "Clicks"
     },
     "bgColor": "Background color",
-    "colorMode": "Custom color"
+    "colorMode": "Custom color",
+    "iconCustom": "Custom"
   },
   "Settings": {
     "title": "Settings",
@@ -1267,7 +1273,9 @@
       "next": "Next",
       "start": "Start",
       "previewTitle": "Preview",
-      "bg": "Background color"
+      "bg": "Background color",
+      "iconCustom": "Custom",
+      "customColor": "Custom color"
     },
     "team": {
       "title": "Team & roles",
@@ -1391,7 +1399,9 @@
     "fieldAddress": "Address",
     "fieldPhone": "Phone",
     "fieldHours": "Hours",
-    "hoursPlaceholder": "10:00–21:00"
+    "hoursPlaceholder": "10:00–21:00",
+    "hoursFrom": "From",
+    "hoursTo": "To"
   },
   "Employees": {
     "title": "Employees",
@@ -1425,6 +1435,28 @@
     "status": {
       "active": "Active",
       "invited": "Invited"
+    },
+    "detail": {
+      "activity": "Activity",
+      "activityChart": "Activity · 7 days",
+      "impersonate": "Impersonate",
+      "edit": "Edit",
+      "viewDetail": "View details",
+      "logFilter": "Type",
+      "logType": {
+        "stamp": "Stamp",
+        "redemption": "Redemption",
+        "role": "Role",
+        "login": "Login"
+      },
+      "deleteLog": "Delete entry",
+      "logDeleted": "Entry deleted",
+      "noLogs": "No activity",
+      "impersonating": "Viewing as {name}",
+      "close": "Close",
+      "searchLog": "Search activity...",
+      "stampsGiven": "Stamps given",
+      "redemptions": "Redemptions"
     }
   },
   "Analytics": {

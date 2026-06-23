@@ -2,17 +2,18 @@
 
 import { formatDate } from "@loyalty/date";
 import {
-  ColorPicker,
+  BackgroundPicker,
   DatePicker,
+  IconPicker,
   Input,
   Label,
+  RichTextEditor,
   SegmentedControl,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Textarea,
 } from "@loyalty/ui";
 import { ExternalLink, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -28,8 +29,6 @@ import {
   type BannerType,
   emptyBannerDraft,
   getBannerDraft,
-  GRADIENTS,
-  gradientCss,
   PROMOS,
 } from "../data";
 import { BannerPreview } from "./banner-preview";
@@ -98,12 +97,9 @@ export function BannerWizard({ id }: { id?: string }) {
             />
           </Field>
           <Field label={t("fieldSubtitle")} hint={t("optional")}>
-            <Textarea
+            <RichTextEditor
               value={draft.subtitle}
-              onChange={(e) => set("subtitle", e.target.value)}
-              placeholder={t("fieldSubtitlePlaceholder")}
-              rows={2}
-              className="min-h-20 rounded-xl"
+              onValueChange={(html) => set("subtitle", html)}
             />
           </Field>
           <Field label={t("fieldCta")} hint={t("optional")}>
@@ -118,61 +114,19 @@ export function BannerWizard({ id }: { id?: string }) {
       ) : step === "design" ? (
         <div className="space-y-5">
           <Field label={t("fieldGradient")}>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {GRADIENTS.map((g) => (
-                <button
-                  key={g.key}
-                  type="button"
-                  onClick={() => {
-                    set("gradient", g.key);
-                    set("color", null);
-                  }}
-                  aria-label={g.key}
-                  style={{ background: gradientCss(g) }}
-                  className={`h-12 rounded-xl transition-transform ${
-                    draft.gradient === g.key && !draft.color
-                      ? "ring-foreground ring-2 ring-offset-2 ring-offset-card"
-                      : "hover:scale-105"
-                  }`}
-                />
-              ))}
-            </div>
-          </Field>
-          <Field label={t("bgColor")} hint={t("colorMode")}>
-            <div className="flex items-center gap-2">
-              <ColorPicker
-                value={draft.color ?? "#1BAD9D"}
-                onValueChange={(c) => set("color", c)}
-              />
-              {draft.color ? (
-                <button
-                  type="button"
-                  onClick={() => set("color", null)}
-                  aria-label={t("fieldGradient")}
-                  className="bg-muted/50 hover:bg-muted text-muted-foreground grid size-8 place-items-center rounded-lg text-sm font-bold"
-                >
-                  ×
-                </button>
-              ) : null}
-            </div>
+            <BackgroundPicker
+              value={draft.bg}
+              onValueChange={(bg) => set("bg", bg)}
+              customLabel={t("colorMode")}
+            />
           </Field>
           <Field label={t("fieldIcon")}>
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
-              {BANNER_EMOJIS.map((e) => (
-                <button
-                  key={e}
-                  type="button"
-                  onClick={() => set("emoji", e)}
-                  className={`grid aspect-square place-items-center rounded-2xl text-2xl transition-colors ${
-                    draft.emoji === e
-                      ? "bg-primary/10 ring-primary ring-2"
-                      : "bg-muted/50 hover:bg-muted"
-                  }`}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
+            <IconPicker
+              value={draft.emoji}
+              onValueChange={(e) => set("emoji", e)}
+              emojis={BANNER_EMOJIS}
+              customLabel={t("iconCustom")}
+            />
           </Field>
         </div>
       ) : step === "target" ? (
