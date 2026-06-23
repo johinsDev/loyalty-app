@@ -81,12 +81,17 @@ function makePostHogAnalytics(
         throw new MissingDependencyError("posthog", "posthog-js");
       }
       const ph = mod.default;
-      ph.init(config.apiKey, {
-        api_host: config.host ?? "https://us.i.posthog.com",
-        capture_pageview: false,
-        capture_pageleave: true,
-        persistence: "localStorage+cookie",
-      });
+      // Guard: analytics + feature-flags share the one posthog-js singleton.
+      // Whichever loads first calls init(); a second init() is a no-op that logs
+      // a warning, so skip it when already loaded. register() still applies.
+      if (!(ph as { __loaded?: boolean }).__loaded) {
+        ph.init(config.apiKey, {
+          api_host: config.host ?? "https://us.i.posthog.com",
+          capture_pageview: false,
+          capture_pageleave: true,
+          persistence: "localStorage+cookie",
+        });
+      }
       ph.register({ ...baseProperties });
       client = ph;
       for (const fn of queue.splice(0)) fn(ph);
