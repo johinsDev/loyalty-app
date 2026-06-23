@@ -2,7 +2,7 @@
 
 import type { AppRouter } from "@loyalty/api";
 import { Button, CurrencyInput } from "@loyalty/ui";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import { useDebounce } from "ahooks";
 import { ArrowLeft, Check, Gift, QrCode, Search, User, X } from "lucide-react";
@@ -47,6 +47,7 @@ export function ScanView() {
   const t = useTranslations("Cashier");
   const fade = useFadeUp();
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
 
   const [step, setStep] = useState<Step>("identify");
   const [query, setQuery] = useState("");
@@ -59,13 +60,6 @@ export function ScanView() {
     trpc.customers.search.queryOptions(
       { query: debouncedQuery, limit: 10 },
       { enabled: debouncedQuery.length >= 1 },
-    ),
-  );
-
-  const walletQuery = useQuery(
-    trpc.stamps.walletForCustomer.queryOptions(
-      { customerId: selected?.id ?? "" },
-      { enabled: false },
     ),
   );
 
@@ -86,7 +80,11 @@ export function ScanView() {
     setSelected(hit);
     setPriceCop(undefined);
     try {
-      const view = await walletQuery.refetch().then((r) => r.data);
+      // Fetch with the just-picked id directly — a refetch() would reuse the
+      // query's stale input (the component hasn't re-rendered yet).
+      const view = await queryClient.fetchQuery(
+        trpc.stamps.walletForCustomer.queryOptions({ customerId: hit.id }),
+      );
       setWallet(view ?? null);
       setStep("found");
     } catch (err) {
