@@ -49,6 +49,7 @@ export type CampaignDraft = {
   event: string;
   frequency: string;
   date: Date | null;
+  time: string;
 };
 
 export const emptyCampaignDraft: CampaignDraft = {
@@ -62,6 +63,7 @@ export const emptyCampaignDraft: CampaignDraft = {
   event: "signup",
   frequency: "weekly",
   date: null,
+  time: "12:00",
 };
 
 const SAMPLE: CampaignDraft = {
@@ -75,6 +77,7 @@ const SAMPLE: CampaignDraft = {
   event: "signup",
   frequency: "weekly",
   date: null,
+  time: "12:00",
 };
 
 /** Resolve a campaign into an editable draft. Hardcoded — unknown ids fall back

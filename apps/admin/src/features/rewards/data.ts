@@ -27,6 +27,7 @@ export type RewardDraft = {
   name: string;
   emoji: string;
   description: string;
+  bg: string;
   costType: CostType;
   cost: number;
 };
@@ -35,6 +36,7 @@ export const emptyRewardDraft: RewardDraft = {
   name: "",
   emoji: "🎁",
   description: "",
+  bg: "linear-gradient(135deg, #1BAD9D, #0e6f64)",
   costType: "stamps",
   cost: 10,
 };
@@ -47,6 +49,7 @@ export function getRewardDraft(id: string): RewardDraft {
     name: r.name,
     emoji: r.emoji,
     description: "Canjea este premio con tus sellos o puntos acumulados.",
+    bg: "linear-gradient(135deg, #1BAD9D, #0e6f64)",
     costType: r.costType,
     cost: r.cost,
   };

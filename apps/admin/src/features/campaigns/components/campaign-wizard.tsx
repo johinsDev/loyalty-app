@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
+  TimeInput,
 } from "@loyalty/ui";
 import {
   Bell,
@@ -260,14 +261,19 @@ export function CampaignWizard({ id }: { id?: string }) {
               </Select>
             </Field>
           ) : (
-            <Field label={t("fieldDate")}>
-              <DatePicker
-                value={draft.date ?? undefined}
-                onValueChange={(d) => set("date", d ?? null)}
-                placeholder={t("datePlaceholder")}
-                formatLabel={(d) => formatDate(d, { locale })}
-              />
-            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t("fieldDate")}>
+                <DatePicker
+                  value={draft.date ?? undefined}
+                  onValueChange={(d) => set("date", d ?? null)}
+                  placeholder={t("datePlaceholder")}
+                  formatLabel={(d) => formatDate(d, { locale })}
+                />
+              </Field>
+              <Field label={t("fieldTime")}>
+                <TimeInput value={draft.time} onChange={(v) => set("time", v)} />
+              </Field>
+            </div>
           )}
         </div>
       ) : (
@@ -297,7 +303,7 @@ export function CampaignWizard({ id }: { id?: string }) {
                   : draft.scheduleMode === "recurring"
                     ? t(`frequency.${draft.frequency}`)
                     : draft.date
-                      ? formatDate(draft.date, { locale })
+                      ? `${formatDate(draft.date, { locale })} · ${draft.time}`
                       : t("modeDate")
               }
             />

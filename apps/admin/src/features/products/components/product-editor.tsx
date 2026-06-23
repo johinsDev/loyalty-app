@@ -24,6 +24,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  type Tag,
+  TagInput,
   Textarea,
 } from "@loyalty/ui";
 import {
@@ -152,23 +154,18 @@ export function ProductEditor({ id }: { id?: string }) {
     setOptions(options);
   };
 
-  const addValue = (idx: number, value: string) => {
-    const v = value.trim();
-    if (!v) return;
-    const opt = draft.options[idx]!;
-    if (opt.values.includes(v)) return;
-    updateOption(idx, { ...opt, values: [...opt.values, v] });
-    // Keep the library in sync so the value is reusable next time.
+  // Keep the library in sync so values stay reusable next time (best-effort).
+  const syncLibrary = (name: string, values: string[]) => {
+    const optName = name.trim();
+    if (!optName) return;
     setLibrary((lib) => {
-      const i = lib.findIndex(
-        (l) => l.name.toLowerCase() === opt.name.trim().toLowerCase(),
-      );
-      if (!opt.name.trim()) return lib;
+      const i = lib.findIndex((l) => l.name.toLowerCase() === optName.toLowerCase());
       if (i === -1)
-        return [...lib, { id: `lib_${slugify(opt.name)}`, name: opt.name.trim(), values: [v] }];
-      if (lib[i]!.values.includes(v)) return lib;
+        return [...lib, { id: `lib_${slugify(optName)}`, name: optName, values: [...values] }];
+      const merged = [...new Set([...lib[i]!.values, ...values])];
+      if (merged.length === lib[i]!.values.length) return lib;
       const copy = [...lib];
-      copy[i] = { ...copy[i]!, values: [...copy[i]!.values, v] };
+      copy[i] = { ...copy[i]!, values: merged };
       return copy;
     });
   };
@@ -419,13 +416,10 @@ export function ProductEditor({ id }: { id?: string }) {
                 key={o.id}
                 option={o}
                 onChangeName={(name) => updateOption(idx, { ...o, name })}
-                onAddValue={(v) => addValue(idx, v)}
-                onRemoveValue={(v) =>
-                  updateOption(idx, {
-                    ...o,
-                    values: o.values.filter((x) => x !== v),
-                  })
-                }
+                onChangeValues={(values) => {
+                  updateOption(idx, { ...o, values });
+                  syncLibrary(o.name, values);
+                }}
                 onRemove={() =>
                   setOptions(draft.options.filter((x) => x.id !== o.id))
                 }
@@ -1042,23 +1036,17 @@ function ProductPreview({
 function OptionCard({
   option,
   onChangeName,
-  onAddValue,
-  onRemoveValue,
+  onChangeValues,
   onRemove,
   t,
 }: {
   option: ProductOption;
   onChangeName: (name: string) => void;
-  onAddValue: (value: string) => void;
-  onRemoveValue: (value: string) => void;
+  onChangeValues: (values: string[]) => void;
   onRemove: () => void;
   t: ReturnType<typeof useTranslations>;
 }) {
-  const [value, setValue] = useState("");
-  const commit = () => {
-    onAddValue(value);
-    setValue("");
-  };
+  const tags: Tag[] = option.values.map((v, i) => ({ id: String(i), text: v }));
   return (
     <div className="border-border space-y-2 rounded-2xl border p-3">
       <div className="flex items-center gap-2">
@@ -1078,46 +1066,11 @@ function OptionCard({
           <Trash2 className="size-4" />
         </Button>
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {option.values.map((v) => (
-          <span
-            key={v}
-            className="bg-muted inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
-          >
-            {v}
-            <button
-              type="button"
-              aria-label={t("delete")}
-              onClick={() => onRemoveValue(v)}
-            >
-              <X className="size-3" />
-            </button>
-          </span>
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <Input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              commit();
-            }
-          }}
-          placeholder={t("valuePlaceholder")}
-          className="h-9 flex-1"
-        />
-        <Button
-          variant="outline"
-          className="h-9 gap-1.5 rounded-lg"
-          disabled={!value.trim()}
-          onClick={commit}
-        >
-          <Plus className="size-3.5" />
-          {t("addValue")}
-        </Button>
-      </div>
+      <TagInput
+        value={tags}
+        onChange={(next) => onChangeValues(next.map((tag) => tag.text))}
+        placeholder={t("optionValuesPlaceholder")}
+      />
     </div>
   );
 }

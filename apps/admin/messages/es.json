@@ -55,7 +55,7 @@
     "typeNewUser": "Bienvenida (transaccional)",
     "typePromo": "Promoción (marketing)",
     "recipientsLabel": "Destinatarios",
-    "searchPlaceholder": "Buscar por nombre, teléfono o email…",
+    "searchPlaceholder": "Buscar notificación…",
     "loading": "Cargando clientes…",
     "noCustomers": "No hay clientes para mostrar.",
     "unnamedCustomer": "Sin nombre",
@@ -64,7 +64,49 @@
     "sendButton": "Enviar",
     "sending": "Enviando…",
     "enqueued": "Encolado para {count} clientes.",
-    "sendFailed": "No se pudo enviar la notificación."
+    "sendFailed": "No se pudo enviar la notificación.",
+    "tab": {
+      "feed": "Bandeja",
+      "quick": "Push rápido",
+      "engagement": "Engagement"
+    },
+    "feedFilter": "Tipo",
+    "filter": {
+      "all": "Todas",
+      "promo": "Promos",
+      "system": "Sistema"
+    },
+    "emptyFeed": "Sin notificaciones.",
+    "col": {
+      "message": "Mensaje",
+      "channel": "Canal",
+      "audience": "Audiencia",
+      "date": "Fecha",
+      "status": "Estado"
+    },
+    "st": {
+      "sent": "Enviada",
+      "scheduled": "Programada",
+      "failed": "Falló"
+    },
+    "quickTitle": "Push rápido",
+    "quickDesc": "Envía un mensaje ahora.",
+    "audience": "Audiencia",
+    "audienceOpt": {
+      "all": "Todos",
+      "active": "Activos",
+      "atRisk": "En riesgo"
+    },
+    "qtitle": "Título",
+    "qtitlePlaceholder": "🧋 ¡Promo de hoy!",
+    "qbody": "Mensaje",
+    "qbodyPlaceholder": "Escribe el mensaje…",
+    "send": "Enviar push",
+    "sent": "Push enviado",
+    "engTitle": "Engagement de la semana",
+    "engSent": "Enviadas",
+    "engOpen": "Apertura",
+    "engClick": "Clic"
   },
   "Auth": {
     "signInTitle": "Iniciar sesión",
@@ -359,7 +401,12 @@
       "cost": "Costo",
       "redeemed": "Canjes",
       "status": "Estado"
-    }
+    },
+    "bgColor": "Color de fondo",
+    "fieldBg": "Fondo",
+    "iconCustom": "Personalizado",
+    "imgUpload": "Arrastra una imagen o haz clic",
+    "imgRemove": "Quitar"
   },
   "WhatsAppOutbox": {
     "title": "WhatsApp Outbox",
@@ -487,15 +534,99 @@
   },
   "Promotions": {
     "title": "Promociones",
-    "new": "Nueva promo",
-    "empty": "Aún no hay promociones. Crea la primera.",
-    "untitled": "Borrador sin título",
-    "colName": "Nombre",
-    "colStatus": "Estado",
-    "colUpdated": "Actualizado",
-    "statusDraft": "Borrador",
-    "statusPublished": "Publicada",
-    "forbidden": "Necesitas el rol de manager para gestionar promociones."
+    "subtitle": "Impulsa ventas con reglas configurables.",
+    "add": "Nueva promoción",
+    "searchPlaceholder": "Buscar promoción…",
+    "statusFilter": "Estado",
+    "typeFilter": "Tipo",
+    "empty": "No se encontraron promociones.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "deleteConfirm": "Sí, eliminar",
+    "deleteTitle": "¿Eliminar promoción?",
+    "deleteDescription": "Se eliminará “{name}”. Esta acción no se puede deshacer.",
+    "deleted": "“{name}” eliminada",
+    "undo": "Deshacer",
+    "restored": "“{name}” restaurada",
+    "col": {
+      "promo": "Promoción",
+      "type": "Tipo",
+      "reach": "Alcance",
+      "status": "Estado"
+    },
+    "status": {
+      "active": "Activa",
+      "scheduled": "Programada",
+      "ended": "Finalizada",
+      "draft": "Borrador"
+    },
+    "newTitle": "Nueva promoción",
+    "editTitle": "Editar promoción",
+    "publish": "Publicar promoción",
+    "saveChanges": "Guardar cambios",
+    "created": "Promoción “{name}” creada",
+    "updated": "“{name}” actualizada",
+    "step": {
+      "basics": "Datos",
+      "reward": "Recompensa",
+      "conditions": "Condiciones",
+      "notify": "Notificación",
+      "review": "Revisar"
+    },
+    "fieldName": "Nombre",
+    "fieldNamePlaceholder": "2×1 entre semana",
+    "fieldDesc": "Descripción",
+    "fieldDescPlaceholder": "Describe la promo…",
+    "fieldCode": "Código interno",
+    "codePlaceholder": "PROMO2X1",
+    "optional": "opcional",
+    "rewardType": "Tipo de recompensa",
+    "type": {
+      "percent": "% de descuento",
+      "fixed": "Monto fijo",
+      "free": "Producto gratis",
+      "points": "Doble puntos"
+    },
+    "value": "Valor",
+    "freeProduct": "Producto",
+    "start": "Inicio",
+    "end": "Fin",
+    "datePlaceholder": "Elegí una fecha",
+    "activeDays": "Días activos",
+    "hours": "Horario",
+    "tier": "Tier mínimo",
+    "allTiers": "Todos",
+    "day": {
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mié",
+      "thu": "Jue",
+      "fri": "Vie",
+      "sat": "Sáb",
+      "sun": "Dom"
+    },
+    "tierOpt": {
+      "bronze": "Bronce",
+      "silver": "Plata",
+      "gold": "Oro",
+      "diamond": "Diamante"
+    },
+    "notifyToggle": "Notificar a socios al publicar",
+    "notifyHint": "Envía un push cuando la promo entre en vigor.",
+    "reviewTitle": "Revisar promoción",
+    "previewTitle": "Vista previa",
+    "previewNamePlaceholder": "Nombre de la promo",
+    "estReach": "Alcance estimado",
+    "estRevenue": "Ingreso estimado",
+    "reachValue": "{n} socios",
+    "fieldBg": "Fondo",
+    "hoursFrom": "Desde",
+    "hoursTo": "Hasta",
+    "imgUpload": "Arrastra una imagen o haz clic",
+    "imgRemove": "Quitar"
   },
   "Cashier": {
     "registerAt": "Caja · {store}",
@@ -987,7 +1118,8 @@
     "triggerBirthday": "Cumpleaños",
     "triggerInactivity": "Inactividad",
     "triggerManual": "Manual",
-    "datePlaceholder": "Elegí una fecha"
+    "datePlaceholder": "Elegí una fecha",
+    "fieldTime": "Hora"
   },
   "Banners": {
     "title": "Banners",
@@ -1062,7 +1194,12 @@
       "status": "Estado",
       "range": "Vigencia",
       "clicks": "Clics"
-    }
+    },
+    "bgColor": "Color de fondo",
+    "colorMode": "Color personalizado",
+    "iconCustom": "Personalizado",
+    "imgUpload": "Arrastra una imagen o haz clic",
+    "imgRemove": "Quitar"
   },
   "Settings": {
     "title": "Ajustes",
@@ -1075,7 +1212,8 @@
       "loyalty": "Reglas de lealtad",
       "onboarding": "Onboarding",
       "team": "Equipo y roles",
-      "integrations": "Integraciones"
+      "integrations": "Integraciones",
+      "seo": "SEO"
     },
     "brand": {
       "title": "Marca y tienda",
@@ -1087,7 +1225,9 @@
       "logo": "Logo",
       "logoHint": "Arrastra o elige un ícono",
       "color": "Color de marca",
-      "preview": "Vista previa"
+      "preview": "Vista previa",
+      "imgUpload": "Arrastra una imagen o haz clic",
+      "imgRemove": "Quitar"
     },
     "hours": {
       "title": "Horarios y ubicación",
@@ -1141,7 +1281,12 @@
       "skip": "Saltar",
       "next": "Siguiente",
       "start": "Empezar",
-      "previewTitle": "Vista previa"
+      "previewTitle": "Vista previa",
+      "bg": "Color de fondo",
+      "iconCustom": "Personalizado",
+      "customColor": "Color personalizado",
+      "imgUpload": "Arrastra una imagen o haz clic",
+      "imgRemove": "Quitar"
     },
     "team": {
       "title": "Equipo y roles",
@@ -1158,7 +1303,12 @@
         "owner": "Dueño",
         "manager": "Gerente",
         "staff": "Cajero"
-      }
+      },
+      "statusActive": "Activo",
+      "statusInvited": "Invitado",
+      "statusCol": "Estado",
+      "resend": "Reenviar",
+      "resent": "Invitación reenviada"
     },
     "integrations": {
       "title": "Integraciones",
@@ -1189,6 +1339,268 @@
           "desc": "Analítica de producto y eventos."
         }
       }
+    },
+    "seo": {
+      "title": "SEO y favicon",
+      "desc": "Cómo aparece tu app al compartirla y en buscadores.",
+      "metaTitle": "Título (meta title)",
+      "metaTitlePlaceholder": "T4 Lovers — Bubble tea & más",
+      "metaDescription": "Descripción (meta description)",
+      "metaDescriptionPlaceholder": "Una frase que describa tu programa de lealtad...",
+      "keywords": "Palabras clave",
+      "keywordsPlaceholder": "Agrega una palabra y Enter",
+      "canonical": "URL canónica",
+      "canonicalPlaceholder": "https://t4lovers.app",
+      "favicon": "Favicon",
+      "faviconHint": "Emoji o imagen",
+      "ogImage": "Imagen para compartir (Open Graph)",
+      "ogImageHint": "1200×630 recomendado",
+      "preview": "Vista previa",
+      "tabPreview": "Pestaña del navegador",
+      "searchPreview": "Resultado de búsqueda",
+      "imgUpload": "Arrastra una imagen o haz clic",
+      "imgRemove": "Quitar"
     }
+  },
+  "Purchases": {
+    "title": "Compras",
+    "subtitle": "Feed de transacciones de tus clientes.",
+    "searchPlaceholder": "Buscar por cliente…",
+    "statusFilter": "Tienda",
+    "empty": "No se encontraron compras.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "export": "Exportar",
+    "kpi": {
+      "total": "Compras",
+      "revenue": "Ingresos",
+      "avgTicket": "Ticket promedio"
+    },
+    "col": {
+      "customer": "Cliente",
+      "detail": "Detalle",
+      "amount": "Monto",
+      "points": "Puntos",
+      "store": "Tienda",
+      "date": "Fecha"
+    },
+    "receipt": "Recibo",
+    "items": "Items",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "close": "Cerrar",
+    "viewReceipt": "Ver recibo"
+  },
+  "Stores": {
+    "title": "Tiendas",
+    "subtitle": "Tus locales y su información.",
+    "add": "Agregar tienda",
+    "searchPlaceholder": "Buscar tienda…",
+    "statusFilter": "Estado",
+    "empty": "No se encontraron tiendas.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "deleteConfirm": "Sí, eliminar",
+    "deleteTitle": "¿Eliminar tienda?",
+    "deleteDescription": "Se eliminará “{name}”. Esta acción no se puede deshacer.",
+    "deleted": "“{name}” eliminada",
+    "undo": "Deshacer",
+    "restored": "“{name}” restaurada",
+    "col": {
+      "store": "Tienda",
+      "address": "Dirección",
+      "members": "Equipo",
+      "status": "Estado"
+    },
+    "membersCount": "{n} miembros",
+    "status": {
+      "active": "Activa",
+      "inactive": "Inactiva"
+    },
+    "newTitle": "Nueva tienda",
+    "editTitle": "Editar tienda",
+    "save": "Crear tienda",
+    "saveChanges": "Guardar cambios",
+    "created": "Tienda “{name}” creada",
+    "updated": "“{name}” actualizada",
+    "fieldName": "Nombre",
+    "namePlaceholder": "T4 Centro",
+    "fieldAddress": "Dirección",
+    "fieldPhone": "Teléfono",
+    "fieldHours": "Horario",
+    "hoursPlaceholder": "10:00–21:00",
+    "hoursFrom": "Desde",
+    "hoursTo": "Hasta"
+  },
+  "Employees": {
+    "title": "Empleados",
+    "subtitle": "Quién opera la caja y administra.",
+    "invite": "Invitar",
+    "invitePlaceholder": "correo@ejemplo.com",
+    "searchPlaceholder": "Buscar empleado…",
+    "roleFilter": "Rol",
+    "statusFilter": "Estado",
+    "empty": "No se encontraron empleados.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "remove": "Quitar",
+    "resend": "Reenviar",
+    "inviteSent": "Invitación enviada",
+    "resent": "Invitación reenviada",
+    "removed": "{name} eliminado",
+    "col": {
+      "employee": "Empleado",
+      "email": "Correo",
+      "role": "Rol",
+      "stamps": "Sellos dados",
+      "redemptions": "Canjes",
+      "status": "Estado"
+    },
+    "role": {
+      "owner": "Dueño",
+      "manager": "Gerente",
+      "staff": "Cajero"
+    },
+    "status": {
+      "active": "Activo",
+      "invited": "Invitado"
+    },
+    "detail": {
+      "activity": "Actividad",
+      "activityChart": "Actividad · 7 días",
+      "impersonate": "Impersonar",
+      "edit": "Editar",
+      "viewDetail": "Ver detalle",
+      "logFilter": "Tipo",
+      "logType": {
+        "stamp": "Sello",
+        "redemption": "Canje",
+        "role": "Rol",
+        "login": "Acceso"
+      },
+      "deleteLog": "Eliminar registro",
+      "logDeleted": "Registro eliminado",
+      "noLogs": "Sin actividad",
+      "impersonating": "Viendo como {name}",
+      "close": "Cerrar",
+      "searchLog": "Buscar en actividad...",
+      "stampsGiven": "Sellos dados",
+      "redemptions": "Canjes"
+    },
+    "add": "Nuevo empleado",
+    "auditLink": "Registro de actividad",
+    "newTitle": "Nuevo empleado",
+    "editTitle": "Editar empleado",
+    "create": "Crear",
+    "save": "Guardar cambios",
+    "reviewTitle": "Revisar",
+    "step": {
+      "profile": "Datos",
+      "access": "Acceso",
+      "review": "Revisar"
+    },
+    "field": {
+      "name": "Nombre",
+      "email": "Correo",
+      "phone": "Teléfono",
+      "role": "Rol",
+      "status": "Estado",
+      "dailyCap": "Límite diario de sellos",
+      "notes": "Notas"
+    },
+    "namePlaceholder": "Nombre completo",
+    "emailPlaceholder": "correo@ejemplo.com",
+    "notesPlaceholder": "Notas internas...",
+    "dailyCapHint": "sellos / día"
+  },
+  "Analytics": {
+    "title": "Analítica",
+    "subtitle": "Crecimiento, retención y embudo.",
+    "ytd": "YTD",
+    "nav": {
+      "overview": "Resumen",
+      "cohorts": "Cohortes",
+      "funnel": "Embudo"
+    },
+    "growthTitle": "Crecimiento de clientes",
+    "growthSubtitle": "Nuevos socios por mes",
+    "tierTitle": "Distribución por tier",
+    "tierSubtitle": "Mix de la base",
+    "revenueTitle": "Ingresos por lealtad",
+    "revenueSubtitle": "Atribuidos al programa",
+    "engagementTitle": "Engagement de notificaciones",
+    "engagementSubtitle": "Apertura vs clic",
+    "open": "Apertura",
+    "click": "Clic",
+    "cohortsTitle": "Retención por cohorte",
+    "cohortsSubtitle": "% que vuelve por semana",
+    "cohort": "Cohorte",
+    "funnelTitle": "Embudo de campaña",
+    "funnelSubtitle": "De envío a canje",
+    "stage": {
+      "reached": "Alcanzados",
+      "opened": "Abrieron",
+      "visited": "Visitaron",
+      "redeemed": "Canjearon"
+    },
+    "tier": {
+      "bronze": "Bronce",
+      "silver": "Plata",
+      "gold": "Oro",
+      "diamond": "Diamante"
+    }
+  },
+  "Templates": {
+    "title": "Plantillas de campañas",
+    "subtitle": "Arranca campañas con plantillas listas.",
+    "searchPlaceholder": "Buscar plantilla…",
+    "categoryFilter": "Categoría",
+    "empty": "No se encontraron plantillas.",
+    "emptyHint": "Ajusta la búsqueda o los filtros.",
+    "clearFilters": "Limpiar filtros",
+    "use": "Usar plantilla",
+    "duplicate": "Duplicar",
+    "used": "Plantilla aplicada",
+    "duplicated": "Plantilla duplicada",
+    "cat": {
+      "welcome": "Bienvenida",
+      "winback": "Recuperación",
+      "birthday": "Cumpleaños",
+      "promo": "Promoción",
+      "seasonal": "Temporada"
+    },
+    "channelsLabel": "Canales"
+  },
+  "Audit": {
+    "title": "Registro de actividad",
+    "subtitle": "Toda la actividad del equipo.",
+    "back": "Empleados",
+    "searchPlaceholder": "Buscar en la actividad...",
+    "employeeFilter": "Empleado",
+    "typeFilter": "Tipo",
+    "rangeAll": "Cualquier fecha",
+    "range24h": "24 h",
+    "range7d": "7 días",
+    "range30d": "30 días",
+    "from": "Desde",
+    "to": "Hasta",
+    "colWhen": "Cuándo",
+    "colEmployee": "Empleado",
+    "colAction": "Acción",
+    "logType": {
+      "stamp": "Sello",
+      "redemption": "Canje",
+      "role": "Rol",
+      "login": "Acceso"
+    },
+    "delete": "Eliminar",
+    "deleted": "Registro eliminado",
+    "empty": "Sin resultados",
+    "emptyHint": "Ajusta los filtros para ver más.",
+    "clearFilters": "Limpiar filtros",
+    "count": "{n} registros"
   }
 }

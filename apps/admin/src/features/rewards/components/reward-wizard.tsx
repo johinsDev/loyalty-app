@@ -1,6 +1,14 @@
 "use client";
 
-import { Input, Label, SegmentedControl, Textarea } from "@loyalty/ui";
+import {
+  BackgroundPicker,
+  IconGlyph,
+  IconPicker,
+  Input,
+  Label,
+  RichTextEditor,
+  SegmentedControl,
+} from "@loyalty/ui";
 import { Coins, Stamp } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -80,30 +88,27 @@ export function RewardWizard({ id }: { id?: string }) {
             />
           </Field>
           <Field label={t("fieldIcon")}>
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
-              {REWARD_EMOJIS.map((e) => (
-                <button
-                  key={e}
-                  type="button"
-                  onClick={() => set("emoji", e)}
-                  className={`grid aspect-square place-items-center rounded-2xl text-2xl transition-colors ${
-                    draft.emoji === e
-                      ? "bg-primary/10 ring-primary ring-2"
-                      : "bg-muted/50 hover:bg-muted"
-                  }`}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
+            <IconPicker
+              value={draft.emoji}
+              onValueChange={(e) => set("emoji", e)}
+              emojis={REWARD_EMOJIS}
+              customLabel={t("iconCustom")}
+              uploadLabel={t("imgUpload")}
+              removeLabel={t("imgRemove")}
+            />
           </Field>
           <Field label={t("fieldDescription")}>
-            <Textarea
+            <RichTextEditor
               value={draft.description}
-              onChange={(e) => set("description", e.target.value)}
-              placeholder={t("fieldDescriptionPlaceholder")}
-              rows={3}
-              className="rounded-xl"
+              onValueChange={(html) => set("description", html)}
+            />
+          </Field>
+          <Field label={t("fieldBg")}>
+            <BackgroundPicker
+              value={draft.bg}
+              onValueChange={(bg) => set("bg", bg)}
+              uploadLabel={t("imgUpload")}
+              removeLabel={t("imgRemove")}
             />
           </Field>
         </div>
@@ -167,17 +172,21 @@ function RewardPreview({
   t: ReturnType<typeof useTranslations>;
 }) {
   return (
-    <div className="from-primary to-primary/80 rounded-3xl bg-gradient-to-br p-5 text-white shadow-lg">
-      <div className="grid size-14 place-items-center rounded-2xl bg-white/15 text-3xl">
-        {draft.emoji}
+    <div
+      className="rounded-3xl p-5 text-white shadow-lg"
+      style={{ background: draft.bg }}
+    >
+      <div className="grid size-14 place-items-center overflow-hidden rounded-2xl bg-white/15 text-3xl">
+        <IconGlyph value={draft.emoji} />
       </div>
       <div className="mt-3 font-display text-lg font-semibold">
         {draft.name || t("namePlaceholder")}
       </div>
       {draft.description ? (
-        <p className="mt-1 line-clamp-2 text-sm font-semibold text-white/85">
-          {draft.description}
-        </p>
+        <div
+          className="prose prose-sm prose-invert mt-1 line-clamp-2 text-white/85"
+          dangerouslySetInnerHTML={{ __html: draft.description }}
+        />
       ) : null}
       <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-sm font-extrabold">
         {draft.costType === "stamps" ? (

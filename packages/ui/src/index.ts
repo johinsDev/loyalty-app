@@ -76,3 +76,11 @@ export * from "./components/ui/toggle-group";
 export * from "./components/ui/tooltip";
 
 export { useIsMobile } from "./hooks/use-mobile";
+export * from "./components/ui/address-autocomplete";
+export * from "./components/ui/background-picker";
+export * from "./components/ui/color-picker";
+export * from "./components/ui/icon-picker";
+export * from "./components/ui/number-stepper";
+export * from "./components/ui/tag-input";
+export * from "./components/ui/time-input";
+export * from "./components/ui/url-input";

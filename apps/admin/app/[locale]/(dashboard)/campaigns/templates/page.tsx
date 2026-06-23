@@ -1,11 +1,11 @@
 import { setRequestLocale } from "next-intl/server";
 
-import { ComingSoon } from "@/components/coming-soon";
+import { TemplatesView } from "@/features/templates/components/templates-view";
 
 type Props = { params: Promise<{ locale: string }> };
 
 export default async function Page({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <ComingSoon titleKey="templates" />;
+  return <TemplatesView />;
 }

@@ -55,7 +55,7 @@
     "typeNewUser": "Welcome (transactional)",
     "typePromo": "Promo (marketing)",
     "recipientsLabel": "Recipients",
-    "searchPlaceholder": "Search by name, phone or email…",
+    "searchPlaceholder": "Search notification…",
     "loading": "Loading customers…",
     "noCustomers": "No customers to show.",
     "unnamedCustomer": "Unnamed",
@@ -64,7 +64,49 @@
     "sendButton": "Send",
     "sending": "Sending…",
     "enqueued": "Enqueued for {count} customers.",
-    "sendFailed": "Could not send the notification."
+    "sendFailed": "Could not send the notification.",
+    "tab": {
+      "feed": "Inbox",
+      "quick": "Quick push",
+      "engagement": "Engagement"
+    },
+    "feedFilter": "Type",
+    "filter": {
+      "all": "All",
+      "promo": "Promos",
+      "system": "System"
+    },
+    "emptyFeed": "No notifications.",
+    "col": {
+      "message": "Message",
+      "channel": "Channel",
+      "audience": "Audience",
+      "date": "Date",
+      "status": "Status"
+    },
+    "st": {
+      "sent": "Sent",
+      "scheduled": "Scheduled",
+      "failed": "Failed"
+    },
+    "quickTitle": "Quick push",
+    "quickDesc": "Send a message now.",
+    "audience": "Audience",
+    "audienceOpt": {
+      "all": "All",
+      "active": "Active",
+      "atRisk": "At risk"
+    },
+    "qtitle": "Title",
+    "qtitlePlaceholder": "🧋 Today’s promo!",
+    "qbody": "Message",
+    "qbodyPlaceholder": "Write the message…",
+    "send": "Send push",
+    "sent": "Push sent",
+    "engTitle": "Engagement this week",
+    "engSent": "Sent",
+    "engOpen": "Open",
+    "engClick": "Click"
   },
   "Auth": {
     "signInTitle": "Sign in",
@@ -359,7 +401,12 @@
       "cost": "Cost",
       "redeemed": "Redemptions",
       "status": "Status"
-    }
+    },
+    "bgColor": "Background color",
+    "fieldBg": "Background",
+    "iconCustom": "Custom",
+    "imgUpload": "Drag an image or click",
+    "imgRemove": "Remove"
   },
   "WhatsAppOutbox": {
     "title": "WhatsApp Outbox",
@@ -487,15 +534,99 @@
   },
   "Promotions": {
     "title": "Promotions",
-    "new": "New promo",
-    "empty": "No promotions yet. Create your first one.",
-    "untitled": "Untitled draft",
-    "colName": "Name",
-    "colStatus": "Status",
-    "colUpdated": "Updated",
-    "statusDraft": "Draft",
-    "statusPublished": "Published",
-    "forbidden": "You need the manager role to manage promotions."
+    "subtitle": "Drive sales with configurable rules.",
+    "add": "New promotion",
+    "searchPlaceholder": "Search promotion…",
+    "statusFilter": "Status",
+    "typeFilter": "Type",
+    "empty": "No promotions found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "deleteConfirm": "Yes, delete",
+    "deleteTitle": "Delete promotion?",
+    "deleteDescription": "This removes “{name}”. This cannot be undone.",
+    "deleted": "“{name}” deleted",
+    "undo": "Undo",
+    "restored": "“{name}” restored",
+    "col": {
+      "promo": "Promotion",
+      "type": "Type",
+      "reach": "Reach",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "scheduled": "Scheduled",
+      "ended": "Ended",
+      "draft": "Draft"
+    },
+    "newTitle": "New promotion",
+    "editTitle": "Edit promotion",
+    "publish": "Publish promotion",
+    "saveChanges": "Save changes",
+    "created": "Promotion “{name}” created",
+    "updated": "“{name}” updated",
+    "step": {
+      "basics": "Details",
+      "reward": "Reward",
+      "conditions": "Conditions",
+      "notify": "Notification",
+      "review": "Review"
+    },
+    "fieldName": "Name",
+    "fieldNamePlaceholder": "Weekday 2-for-1",
+    "fieldDesc": "Description",
+    "fieldDescPlaceholder": "Describe the promo…",
+    "fieldCode": "Internal code",
+    "codePlaceholder": "PROMO2X1",
+    "optional": "optional",
+    "rewardType": "Reward type",
+    "type": {
+      "percent": "% discount",
+      "fixed": "Fixed amount",
+      "free": "Free product",
+      "points": "Double points"
+    },
+    "value": "Value",
+    "freeProduct": "Product",
+    "start": "Start",
+    "end": "End",
+    "datePlaceholder": "Pick a date",
+    "activeDays": "Active days",
+    "hours": "Hours",
+    "tier": "Min tier",
+    "allTiers": "All",
+    "day": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "tierOpt": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "diamond": "Diamond"
+    },
+    "notifyToggle": "Notify members on publish",
+    "notifyHint": "Send a push when the promo goes live.",
+    "reviewTitle": "Review promotion",
+    "previewTitle": "Preview",
+    "previewNamePlaceholder": "Promo name",
+    "estReach": "Estimated reach",
+    "estRevenue": "Estimated revenue",
+    "reachValue": "{n} members",
+    "fieldBg": "Background",
+    "hoursFrom": "From",
+    "hoursTo": "To",
+    "imgUpload": "Drag an image or click",
+    "imgRemove": "Remove"
   },
   "Cashier": {
     "registerAt": "Register · {store}",
@@ -987,7 +1118,8 @@
     "triggerBirthday": "Birthday",
     "triggerInactivity": "Inactivity",
     "triggerManual": "Manual",
-    "datePlaceholder": "Pick a date"
+    "datePlaceholder": "Pick a date",
+    "fieldTime": "Time"
   },
   "Banners": {
     "title": "Banners",
@@ -1062,7 +1194,12 @@
       "status": "Status",
       "range": "Active",
       "clicks": "Clicks"
-    }
+    },
+    "bgColor": "Background color",
+    "colorMode": "Custom color",
+    "iconCustom": "Custom",
+    "imgUpload": "Drag an image or click",
+    "imgRemove": "Remove"
   },
   "Settings": {
     "title": "Settings",
@@ -1075,7 +1212,8 @@
       "loyalty": "Loyalty rules",
       "onboarding": "Onboarding",
       "team": "Team & roles",
-      "integrations": "Integrations"
+      "integrations": "Integrations",
+      "seo": "SEO"
     },
     "brand": {
       "title": "Brand & store",
@@ -1087,7 +1225,9 @@
       "logo": "Logo",
       "logoHint": "Drag or pick an icon",
       "color": "Brand color",
-      "preview": "Preview"
+      "preview": "Preview",
+      "imgUpload": "Drag an image or click",
+      "imgRemove": "Remove"
     },
     "hours": {
       "title": "Hours & location",
@@ -1141,7 +1281,12 @@
       "skip": "Skip",
       "next": "Next",
       "start": "Start",
-      "previewTitle": "Preview"
+      "previewTitle": "Preview",
+      "bg": "Background color",
+      "iconCustom": "Custom",
+      "customColor": "Custom color",
+      "imgUpload": "Drag an image or click",
+      "imgRemove": "Remove"
     },
     "team": {
       "title": "Team & roles",
@@ -1158,7 +1303,12 @@
         "owner": "Owner",
         "manager": "Manager",
         "staff": "Staff"
-      }
+      },
+      "statusActive": "Active",
+      "statusInvited": "Invited",
+      "statusCol": "Status",
+      "resend": "Resend",
+      "resent": "Invitation resent"
     },
     "integrations": {
       "title": "Integrations",
@@ -1189,6 +1339,268 @@
           "desc": "Product analytics and events."
         }
       }
+    },
+    "seo": {
+      "title": "SEO & favicon",
+      "desc": "How your app looks when shared and in search engines.",
+      "metaTitle": "Title (meta title)",
+      "metaTitlePlaceholder": "T4 Lovers — Bubble tea & more",
+      "metaDescription": "Description (meta description)",
+      "metaDescriptionPlaceholder": "One sentence describing your loyalty program...",
+      "keywords": "Keywords",
+      "keywordsPlaceholder": "Add a word and press Enter",
+      "canonical": "Canonical URL",
+      "canonicalPlaceholder": "https://t4lovers.app",
+      "favicon": "Favicon",
+      "faviconHint": "Emoji or image",
+      "ogImage": "Share image (Open Graph)",
+      "ogImageHint": "1200×630 recommended",
+      "preview": "Preview",
+      "tabPreview": "Browser tab",
+      "searchPreview": "Search result",
+      "imgUpload": "Drag an image or click",
+      "imgRemove": "Remove"
     }
+  },
+  "Purchases": {
+    "title": "Purchases",
+    "subtitle": "Your customers transaction feed.",
+    "searchPlaceholder": "Search by customer…",
+    "statusFilter": "Store",
+    "empty": "No purchases found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "export": "Export",
+    "kpi": {
+      "total": "Purchases",
+      "revenue": "Revenue",
+      "avgTicket": "Avg ticket"
+    },
+    "col": {
+      "customer": "Customer",
+      "detail": "Detail",
+      "amount": "Amount",
+      "points": "Points",
+      "store": "Store",
+      "date": "Date"
+    },
+    "receipt": "Receipt",
+    "items": "Items",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "close": "Close",
+    "viewReceipt": "View receipt"
+  },
+  "Stores": {
+    "title": "Stores",
+    "subtitle": "Your locations and their info.",
+    "add": "Add store",
+    "searchPlaceholder": "Search store…",
+    "statusFilter": "Status",
+    "empty": "No stores found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "deleteConfirm": "Yes, delete",
+    "deleteTitle": "Delete store?",
+    "deleteDescription": "This removes “{name}”. This cannot be undone.",
+    "deleted": "“{name}” deleted",
+    "undo": "Undo",
+    "restored": "“{name}” restored",
+    "col": {
+      "store": "Store",
+      "address": "Address",
+      "members": "Team",
+      "status": "Status"
+    },
+    "membersCount": "{n} members",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "newTitle": "New store",
+    "editTitle": "Edit store",
+    "save": "Create store",
+    "saveChanges": "Save changes",
+    "created": "Store “{name}” created",
+    "updated": "“{name}” updated",
+    "fieldName": "Name",
+    "namePlaceholder": "T4 Downtown",
+    "fieldAddress": "Address",
+    "fieldPhone": "Phone",
+    "fieldHours": "Hours",
+    "hoursPlaceholder": "10:00–21:00",
+    "hoursFrom": "From",
+    "hoursTo": "To"
+  },
+  "Employees": {
+    "title": "Employees",
+    "subtitle": "Who runs the register and admins.",
+    "invite": "Invite",
+    "invitePlaceholder": "email@example.com",
+    "searchPlaceholder": "Search employee…",
+    "roleFilter": "Role",
+    "statusFilter": "Status",
+    "empty": "No employees found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "remove": "Remove",
+    "resend": "Resend",
+    "inviteSent": "Invitation sent",
+    "resent": "Invitation resent",
+    "removed": "{name} removed",
+    "col": {
+      "employee": "Employee",
+      "email": "Email",
+      "role": "Role",
+      "stamps": "Stamps given",
+      "redemptions": "Redemptions",
+      "status": "Status"
+    },
+    "role": {
+      "owner": "Owner",
+      "manager": "Manager",
+      "staff": "Staff"
+    },
+    "status": {
+      "active": "Active",
+      "invited": "Invited"
+    },
+    "detail": {
+      "activity": "Activity",
+      "activityChart": "Activity · 7 days",
+      "impersonate": "Impersonate",
+      "edit": "Edit",
+      "viewDetail": "View details",
+      "logFilter": "Type",
+      "logType": {
+        "stamp": "Stamp",
+        "redemption": "Redemption",
+        "role": "Role",
+        "login": "Login"
+      },
+      "deleteLog": "Delete entry",
+      "logDeleted": "Entry deleted",
+      "noLogs": "No activity",
+      "impersonating": "Viewing as {name}",
+      "close": "Close",
+      "searchLog": "Search activity...",
+      "stampsGiven": "Stamps given",
+      "redemptions": "Redemptions"
+    },
+    "add": "New employee",
+    "auditLink": "Activity log",
+    "newTitle": "New employee",
+    "editTitle": "Edit employee",
+    "create": "Create",
+    "save": "Save changes",
+    "reviewTitle": "Review",
+    "step": {
+      "profile": "Profile",
+      "access": "Access",
+      "review": "Review"
+    },
+    "field": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "role": "Role",
+      "status": "Status",
+      "dailyCap": "Daily stamp cap",
+      "notes": "Notes"
+    },
+    "namePlaceholder": "Full name",
+    "emailPlaceholder": "name@example.com",
+    "notesPlaceholder": "Internal notes...",
+    "dailyCapHint": "stamps / day"
+  },
+  "Analytics": {
+    "title": "Analytics",
+    "subtitle": "Growth, retention and funnel.",
+    "ytd": "YTD",
+    "nav": {
+      "overview": "Overview",
+      "cohorts": "Cohorts",
+      "funnel": "Funnel"
+    },
+    "growthTitle": "Customer growth",
+    "growthSubtitle": "New members per month",
+    "tierTitle": "Tier distribution",
+    "tierSubtitle": "Base mix",
+    "revenueTitle": "Loyalty revenue",
+    "revenueSubtitle": "Attributed to the program",
+    "engagementTitle": "Notification engagement",
+    "engagementSubtitle": "Open vs click",
+    "open": "Open",
+    "click": "Click",
+    "cohortsTitle": "Cohort retention",
+    "cohortsSubtitle": "% returning per week",
+    "cohort": "Cohort",
+    "funnelTitle": "Campaign funnel",
+    "funnelSubtitle": "From send to redeem",
+    "stage": {
+      "reached": "Reached",
+      "opened": "Opened",
+      "visited": "Visited",
+      "redeemed": "Redeemed"
+    },
+    "tier": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "diamond": "Diamond"
+    }
+  },
+  "Templates": {
+    "title": "Campaign templates",
+    "subtitle": "Kick off campaigns with ready-made templates.",
+    "searchPlaceholder": "Search template…",
+    "categoryFilter": "Category",
+    "empty": "No templates found.",
+    "emptyHint": "Adjust the search or filters.",
+    "clearFilters": "Clear filters",
+    "use": "Use template",
+    "duplicate": "Duplicate",
+    "used": "Template applied",
+    "duplicated": "Template duplicated",
+    "cat": {
+      "welcome": "Welcome",
+      "winback": "Win-back",
+      "birthday": "Birthday",
+      "promo": "Promotion",
+      "seasonal": "Seasonal"
+    },
+    "channelsLabel": "Channels"
+  },
+  "Audit": {
+    "title": "Activity log",
+    "subtitle": "All your team activity.",
+    "back": "Employees",
+    "searchPlaceholder": "Search activity...",
+    "employeeFilter": "Employee",
+    "typeFilter": "Type",
+    "rangeAll": "Any date",
+    "range24h": "24 h",
+    "range7d": "7 days",
+    "range30d": "30 days",
+    "from": "From",
+    "to": "To",
+    "colWhen": "When",
+    "colEmployee": "Employee",
+    "colAction": "Action",
+    "logType": {
+      "stamp": "Stamp",
+      "redemption": "Redemption",
+      "role": "Role",
+      "login": "Login"
+    },
+    "delete": "Delete",
+    "deleted": "Entry deleted",
+    "empty": "No results",
+    "emptyHint": "Adjust the filters to see more.",
+    "clearFilters": "Clear filters",
+    "count": "{n} entries"
   }
 }

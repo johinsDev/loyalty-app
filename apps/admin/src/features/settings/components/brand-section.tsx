@@ -1,6 +1,6 @@
 "use client";
 
-import { Input, Label } from "@loyalty/ui";
+import { ColorPicker, IconGlyph, IconPicker, Input, Label } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -47,47 +47,21 @@ export function BrandSection() {
           </Field>
 
           <Field label={t("brand.logo")} hint={t("brand.logoHint")}>
-            <div className="flex flex-wrap gap-2">
-              {BRAND_EMOJIS.map((emoji) => {
-                const on = emoji === logoEmoji;
-                return (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => setLogoEmoji(emoji)}
-                    className={`grid size-12 place-items-center rounded-2xl border text-2xl transition-colors ${
-                      on
-                        ? "border-primary ring-primary ring-2"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                  >
-                    {emoji}
-                  </button>
-                );
-              })}
-            </div>
+            <IconPicker
+              value={logoEmoji}
+              onValueChange={setLogoEmoji}
+              emojis={BRAND_EMOJIS}
+              uploadLabel={t("brand.imgUpload")}
+              removeLabel={t("brand.imgRemove")}
+            />
           </Field>
 
           <Field label={t("brand.color")}>
-            <div className="flex flex-wrap gap-3">
-              {BRAND_COLORS.map((c) => {
-                const on = c === color;
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setColor(c)}
-                    aria-label={c}
-                    style={{ background: c, color: c }}
-                    className={`size-8 rounded-full transition-transform ${
-                      on
-                        ? "ring-offset-card scale-110 ring-2 ring-current ring-offset-2"
-                        : "hover:scale-105"
-                    }`}
-                  />
-                );
-              })}
-            </div>
+            <ColorPicker
+              value={color}
+              onValueChange={setColor}
+              swatches={BRAND_COLORS}
+            />
           </Field>
         </div>
 
@@ -98,8 +72,8 @@ export function BrandSection() {
             className="rounded-3xl p-5 text-white"
           >
             <div className="flex items-center gap-3">
-              <span className="grid size-12 flex-none place-items-center rounded-2xl bg-white/15 text-2xl">
-                {logoEmoji}
+              <span className="grid size-12 flex-none place-items-center overflow-hidden rounded-2xl bg-white/15 text-2xl">
+                <IconGlyph value={logoEmoji} />
               </span>
               <div className="min-w-0">
                 <div className="truncate text-lg font-bold">

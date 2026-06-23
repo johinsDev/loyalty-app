@@ -1,6 +1,12 @@
 "use client";
 
-import { Input, Label, Switch } from "@loyalty/ui";
+import {
+  AddressAutocomplete,
+  Input,
+  Label,
+  Switch,
+  TimeInput,
+} from "@loyalty/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -52,18 +58,16 @@ export function HoursSection() {
                 </span>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="time"
+                  <TimeInput
                     value={d.open}
-                    onChange={(e) => update(dayKey, { open: e.target.value })}
-                    className="h-10 w-32"
+                    onChange={(open) => update(dayKey, { open })}
+                    disabled={d.closed}
                   />
                   <span className="text-muted-foreground text-sm">–</span>
-                  <Input
-                    type="time"
+                  <TimeInput
                     value={d.close}
-                    onChange={(e) => update(dayKey, { close: e.target.value })}
-                    className="h-10 w-32"
+                    onChange={(close) => update(dayKey, { close })}
+                    disabled={d.closed}
                   />
                 </div>
               )}
@@ -77,11 +81,10 @@ export function HoursSection() {
           {t("hours.locationTitle")}
         </h3>
         <Field label={t("hours.address")}>
-          <Input
+          <AddressAutocomplete
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            onValueChange={setAddress}
             placeholder={t("hours.addressPlaceholder")}
-            className="h-10"
           />
         </Field>
         <Field label={t("hours.city")}>

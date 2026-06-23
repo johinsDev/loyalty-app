@@ -1,11 +1,24 @@
 "use client";
 
-import { Button, Input, Textarea } from "@loyalty/ui";
+import {
+  BackgroundPicker,
+  Button,
+  IconGlyph,
+  IconPicker,
+  Input,
+  RichTextEditor,
+} from "@loyalty/ui";
 import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { type OnboardingSlide, onboardingSlides, SLIDE_EMOJIS } from "../data";
+
+const DEFAULT_SLIDE_BG = "linear-gradient(135deg, #1BAD9D, #0e6f64)";
+
+// Slides carry a per-slide background color and an HTML body (the body is now
+// edited through the rich-text editor), so we extend the seed shape locally.
+type EditableSlide = OnboardingSlide & { bg: string };
 
 /**
  * Onboarding slides editor with a live phone preview. Design-first: state is
@@ -14,9 +27,15 @@ import { type OnboardingSlide, onboardingSlides, SLIDE_EMOJIS } from "../data";
  */
 export function OnboardingSection() {
   const t = useTranslations("Settings");
-  const [slides, setSlides] = useState<OnboardingSlide[]>(onboardingSlides);
+  const [slides, setSlides] = useState<EditableSlide[]>(() =>
+    onboardingSlides.map((slide) => ({
+      ...slide,
+      bg: DEFAULT_SLIDE_BG,
+      body: `<p>${slide.body}</p>`,
+    })),
+  );
 
-  const update = (id: string, patch: Partial<OnboardingSlide>) =>
+  const update = (id: string, patch: Partial<EditableSlide>) =>
     setSlides((prev) =>
       prev.map((slide) => (slide.id === id ? { ...slide, ...patch } : slide)),
     );
@@ -30,6 +49,7 @@ export function OnboardingSection() {
         emoji: SLIDE_EMOJIS[0]!,
         title: "",
         body: "",
+        bg: DEFAULT_SLIDE_BG,
       },
     ]);
 
@@ -66,35 +86,36 @@ export function OnboardingSection() {
                   <Trash2 className="size-4" />
                 </button>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {SLIDE_EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => update(slide.id, { emoji })}
-                    className={`grid size-9 place-items-center rounded-xl text-lg transition-colors ${
-                      slide.emoji === emoji
-                        ? "ring-primary ring-2"
-                        : "bg-muted hover:bg-muted/70"
-                    }`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
+              <IconPicker
+                value={slide.emoji}
+                onValueChange={(emoji) => update(slide.id, { emoji })}
+                emojis={SLIDE_EMOJIS}
+                customLabel={t("onboarding.iconCustom")}
+                uploadLabel={t("onboarding.imgUpload")}
+                removeLabel={t("onboarding.imgRemove")}
+              />
               <Input
                 value={slide.title}
                 onChange={(e) => update(slide.id, { title: e.target.value })}
                 placeholder={t("onboarding.titlePlaceholder")}
                 className="h-10"
               />
-              <Textarea
+              <RichTextEditor
                 value={slide.body}
-                onChange={(e) => update(slide.id, { body: e.target.value })}
-                placeholder={t("onboarding.bodyPlaceholder")}
-                rows={3}
-                className="rounded-xl"
+                onValueChange={(body) => update(slide.id, { body })}
               />
+              <div className="space-y-1.5">
+                <span className="text-muted-foreground/70 text-xs font-semibold">
+                  {t("onboarding.bg")}
+                </span>
+                <BackgroundPicker
+                  value={slide.bg}
+                  onValueChange={(bg) => update(slide.id, { bg })}
+                  customLabel={t("onboarding.customColor")}
+                  uploadLabel={t("onboarding.imgUpload")}
+                  removeLabel={t("onboarding.imgRemove")}
+                />
+              </div>
             </div>
           ))}
           <Button variant="outline" onClick={add} className="w-full">
@@ -106,16 +127,23 @@ export function OnboardingSection() {
           <p className="text-muted-foreground/70 text-xs font-semibold tracking-wide uppercase">
             {t("onboarding.previewTitle")}
           </p>
-          <div className="border-border bg-card mx-auto w-56 rounded-3xl border-8 p-5">
+          <div
+            style={{ background: first?.bg ?? DEFAULT_SLIDE_BG }}
+            className="border-border mx-auto w-56 rounded-3xl border-8 p-5 text-white"
+          >
             <div className="flex min-h-72 flex-col">
               <div className="flex flex-1 flex-col items-center justify-center text-center">
-                <span className="text-5xl">{first?.emoji ?? "🧋"}</span>
+                <span className="grid size-16 place-items-center overflow-hidden text-5xl">
+                  <IconGlyph value={first?.emoji ?? "🧋"} />
+                </span>
                 <h3 className="font-display mt-4 font-semibold">
                   {first?.title || t("onboarding.titlePlaceholder")}
                 </h3>
-                <p className="text-muted-foreground mt-2 text-sm">
-                  {first?.body || t("onboarding.bodyPlaceholder")}
-                </p>
+                <div
+                  className="prose prose-sm prose-invert mt-2"
+                  // Body is authored as HTML via the rich-text editor.
+                  dangerouslySetInnerHTML={{ __html: first?.body ?? "" }}
+                />
               </div>
               <div className="mt-4 flex items-center justify-between">
                 <Button variant="ghost" size="sm">

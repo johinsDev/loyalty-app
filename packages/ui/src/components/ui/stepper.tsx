@@ -67,7 +67,7 @@ export function Stepper({
         const clickable = !!onSelect && (isCompleted || isCurrent)
 
         return (
-          <li key={step.key} className="flex flex-1 items-center gap-2">
+          <li key={step.key} className="flex min-w-0 flex-1 items-center gap-2">
             <button
               type="button"
               data-state={state}
@@ -95,7 +95,10 @@ export function Stepper({
               </span>
               <span
                 className={cn(
+                  // Labels are hidden on mobile except for the current step, so
+                  // the row never overflows narrow screens; all show from `sm`.
                   "truncate",
+                  !isCurrent && "hidden sm:inline",
                   state === "upcoming" && "text-muted-foreground",
                   state === "current" && "font-medium text-foreground",
                 )}
