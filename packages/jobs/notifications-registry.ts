@@ -176,6 +176,87 @@ export class PromoNotification
   }
 }
 
+/**
+ * Stamp earned — transactional. Realtime fires inline in the sellos service for
+ * an instant card animation; this job carries the durable channels: WhatsApp +
+ * the in-app feed (`database`).
+ */
+export class StampEarnedNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(
+    private readonly currentStamps: number,
+    private readonly walletSize: number,
+    private readonly completed: boolean,
+  ) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  #title(): string {
+    return this.completed ? "¡Completaste tu tarjeta! 🎉" : "¡Sumaste un sello! 🧋";
+  }
+
+  #body(): string {
+    if (this.completed) {
+      return "Tenés un premio para reclamar. Mostrá tu código en la caja.";
+    }
+    const remaining = Math.max(0, this.walletSize - this.currentStamps);
+    return `Llevás ${this.currentStamps}/${this.walletSize}. Te ${
+      remaining === 1 ? "falta 1 sello" : `faltan ${remaining} sellos`
+    } para tu premio.`;
+  }
+
+  toWhatsApp() {
+    return { body: `${this.#title()}\n${this.#body()}` };
+  }
+
+  toDatabase() {
+    return {
+      type: "stamp-earned",
+      title: this.#title(),
+      body: this.#body(),
+      data: {
+        currentStamps: this.currentStamps,
+        walletSize: this.walletSize,
+        completed: this.completed,
+      },
+    };
+  }
+}
+
+/** Reward claimed — transactional confirmation (WhatsApp + in-app feed). */
+export class RewardClaimedNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  toWhatsApp() {
+    return {
+      body: "¡Reclamaste tu premio! 🎉 Gracias por ser parte de T4. Tu nueva tarjeta ya empezó.",
+    };
+  }
+
+  toDatabase() {
+    return {
+      type: "reward-claimed",
+      title: "¡Premio reclamado! 🎉",
+      body: "Disfrutá tu premio. Tu nueva tarjeta ya empezó a sumar.",
+    };
+  }
+}
+
 /** Builds a notification from its key + the admin-supplied payload. */
 export function createNotification(
   key: NotificationKey,
@@ -192,5 +273,15 @@ export function createNotification(
       const body = typeof payload?.body === "string" ? payload.body : undefined;
       return new PromoNotification(title, body);
     }
+    case "stamp-earned": {
+      const currentStamps =
+        typeof payload?.currentStamps === "number" ? payload.currentStamps : 0;
+      const walletSize =
+        typeof payload?.walletSize === "number" ? payload.walletSize : 10;
+      const completed = payload?.completed === true;
+      return new StampEarnedNotification(currentStamps, walletSize, completed);
+    }
+    case "reward-claimed":
+      return new RewardClaimedNotification();
   }
 }

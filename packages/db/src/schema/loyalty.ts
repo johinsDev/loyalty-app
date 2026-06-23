@@ -35,6 +35,12 @@ export const customer = sqliteTable(
   }),
 );
 
+// How many stamps fill a wallet. Hardcoded for the pilot (no per-org config yet).
+export const WALLET_SIZE = 10;
+
+// A wallet (loyalty card). A customer fills it one stamp at a time; at
+// WALLET_SIZE it becomes `completed` (a reward is pending to claim) and a fresh
+// `active` wallet is opened. `status`: active | completed | claimed.
 export const loyaltyCard = sqliteTable("loyalty_card", {
   id: text("id")
     .primaryKey()
@@ -47,6 +53,11 @@ export const loyaltyCard = sqliteTable("loyalty_card", {
     .references(() => organization.id, { onDelete: "cascade" }),
   currentStamps: integer("current_stamps").notNull().default(0),
   status: text("status").notNull().default("active"),
+  // 1-based index of this wallet for the customer (the Nth card they fill).
+  sequence: integer("sequence").notNull().default(1),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+  claimedAt: integer("claimed_at", { mode: "timestamp" }),
+  claimedByUserId: text("claimed_by_user_id").references(() => user.id),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -55,7 +66,45 @@ export const loyaltyCard = sqliteTable("loyalty_card", {
     .$defaultFn(() => new Date()),
 });
 
+// A purchase recorded at the register. Belongs to a customer; grants one stamp.
+// Products/value config don't matter yet — only the price is captured.
+// `idempotencyKey` makes a double-tap / retry safe (unique per org).
+export const purchase = sqliteTable(
+  "purchase",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customer.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // The wallet this purchase filled (the stamp it granted lives there).
+    walletId: text("wallet_id")
+      .notNull()
+      .references(() => loyaltyCard.id, { onDelete: "cascade" }),
+    // The staff member who recorded it.
+    addedByUserId: text("added_by_user_id")
+      .notNull()
+      .references(() => user.id),
+    priceCents: integer("price_cents").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    idempotencyPerOrg: uniqueIndex("purchase_idempotency_per_org_uq").on(
+      t.organizationId,
+      t.idempotencyKey,
+    ),
+  }),
+);
+
 // Append-only log of every stamp granted. Source of truth for currentStamps.
+// Each stamp is granted by exactly one purchase.
 export const stamp = sqliteTable("stamp", {
   id: text("id")
     .primaryKey()
@@ -63,6 +112,9 @@ export const stamp = sqliteTable("stamp", {
   cardId: text("card_id")
     .notNull()
     .references(() => loyaltyCard.id, { onDelete: "cascade" }),
+  purchaseId: text("purchase_id")
+    .notNull()
+    .references(() => purchase.id, { onDelete: "cascade" }),
   addedByUserId: text("added_by_user_id")
     .notNull()
     .references(() => user.id),
@@ -117,6 +169,7 @@ export const customerRelations = relations(customer, ({ one, many }) => ({
     references: [organization.id],
   }),
   cards: many(loyaltyCard),
+  purchases: many(purchase),
 }));
 
 export const loyaltyCardRelations = relations(loyaltyCard, ({ one, many }) => ({
@@ -128,14 +181,42 @@ export const loyaltyCardRelations = relations(loyaltyCard, ({ one, many }) => ({
     fields: [loyaltyCard.organizationId],
     references: [organization.id],
   }),
+  claimedBy: one(user, {
+    fields: [loyaltyCard.claimedByUserId],
+    references: [user.id],
+  }),
   stamps: many(stamp),
+  purchases: many(purchase),
   redemptions: many(redemption),
+}));
+
+export const purchaseRelations = relations(purchase, ({ one }) => ({
+  customer: one(customer, {
+    fields: [purchase.customerId],
+    references: [customer.id],
+  }),
+  organization: one(organization, {
+    fields: [purchase.organizationId],
+    references: [organization.id],
+  }),
+  wallet: one(loyaltyCard, {
+    fields: [purchase.walletId],
+    references: [loyaltyCard.id],
+  }),
+  addedBy: one(user, {
+    fields: [purchase.addedByUserId],
+    references: [user.id],
+  }),
 }));
 
 export const stampRelations = relations(stamp, ({ one }) => ({
   card: one(loyaltyCard, {
     fields: [stamp.cardId],
     references: [loyaltyCard.id],
+  }),
+  purchase: one(purchase, {
+    fields: [stamp.purchaseId],
+    references: [purchase.id],
   }),
   addedBy: one(user, {
     fields: [stamp.addedByUserId],
@@ -165,3 +246,11 @@ export const redemptionRelations = relations(redemption, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+export type CustomerRow = typeof customer.$inferSelect;
+export type LoyaltyCardRow = typeof loyaltyCard.$inferSelect;
+export type LoyaltyCardInsert = typeof loyaltyCard.$inferInsert;
+export type PurchaseRow = typeof purchase.$inferSelect;
+export type PurchaseInsert = typeof purchase.$inferInsert;
+export type StampRow = typeof stamp.$inferSelect;
+export type StampInsert = typeof stamp.$inferInsert;
