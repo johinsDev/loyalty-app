@@ -31,6 +31,7 @@ export * from "./components/ui/dropzone";
 export * from "./components/ui/empty";
 export * from "./components/ui/field";
 export * from "./components/ui/hover-card";
+export * from "./components/ui/image-gallery";
 export * from "./components/ui/input";
 export * from "./components/ui/input-group";
 export * from "./components/ui/input-otp";

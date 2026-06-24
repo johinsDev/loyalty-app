@@ -1,0 +1,108 @@
+import { z } from "zod";
+
+export const listInputSchema = z.object({
+  cursor: z.string().nullish(),
+  pageSize: z.number().int().min(1).max(40).default(12),
+  categorySlug: z.string().nullish(),
+  sectionSlug: z.string().nullish(),
+  search: z.string().nullish(),
+});
+
+export const slugInputSchema = z.object({ slug: z.string().min(1) });
+
+export const placementInputSchema = z.object({
+  placement: z.enum(["menu", "home", "both"]).default("menu"),
+});
+
+export const productIdInputSchema = z.object({ productId: z.string().min(1) });
+
+/** Earn preview for a price (display-only). */
+export interface EarnPreview {
+  points: number;
+  stamp: boolean;
+}
+
+/** Compact product for cards/carousels/grid. */
+export interface MenuCard {
+  id: string;
+  slug: string;
+  name: string;
+  /** Plain-text snippet (stripped from the rich description) for the featured card. */
+  description: string | null;
+  priceCents: number;
+  currency: string;
+  imageUrl: string | null;
+  categorySlugs: string[];
+  earn: EarnPreview;
+}
+
+export interface MenuList {
+  items: MenuCard[];
+  nextCursor: string | null;
+}
+
+export interface SectionView {
+  id: string;
+  slug: string;
+  name: string;
+  kind: "carousel" | "banner" | "featured";
+  /** True when the section has more products than the carousel shows (→ "Ver todo"). */
+  hasMore: boolean;
+  banner: {
+    title: string | null;
+    subtitle: string | null;
+    imageUrl: string | null;
+    href: string | null;
+  } | null;
+  products: MenuCard[];
+}
+
+export interface DetailImage {
+  url: string;
+  alt: string | null;
+  variantId: string | null;
+}
+
+export interface DetailOption {
+  id: string;
+  name: string;
+  values: { id: string; label: string }[];
+}
+
+export interface DetailVariant {
+  id: string;
+  priceCents: number;
+  isDefault: boolean;
+  optionValueIds: string[];
+  earn: EarnPreview;
+  imageUrls: string[];
+}
+
+export interface DetailModifierGroup {
+  id: string;
+  name: string;
+  selectionType: "single" | "multi";
+  minSelect: number;
+  maxSelect: number | null;
+  required: boolean;
+  options: { id: string; name: string; priceDeltaCents: number }[];
+}
+
+/** Full product for the detail (modal + SEO page). */
+export interface ProductDetail {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  currency: string;
+  basePriceCents: number;
+  earn: EarnPreview;
+  images: DetailImage[];
+  options: DetailOption[];
+  variants: DetailVariant[];
+  modifierGroups: DetailModifierGroup[];
+  categorySlugs: string[];
+  seo: { title: string | null; description: string | null; ogImageUrl: string | null };
+}
+
+export type ListInput = z.infer<typeof listInputSchema>;

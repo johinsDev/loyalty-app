@@ -82,6 +82,7 @@
         "src/migrate.ts",
         "src/seed-owner.ts",
         "src/seed-org.ts",
+        "src/seed-menu.ts",
         "src/reset-test.ts",
         "src/backfill-customers.ts"
       ]

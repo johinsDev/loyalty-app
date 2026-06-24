@@ -1,0 +1,352 @@
+import type { db as Db } from "@loyalty/db";
+import {
+  category,
+  modifierGroup,
+  modifierOption,
+  product,
+  productCategory,
+  productFavorite,
+  productImage,
+  productOption,
+  productOptionValue,
+  productVariant,
+  section,
+  sectionProduct,
+} from "@loyalty/db/schema";
+import { and, asc, eq, gt, inArray, like, or, sql } from "drizzle-orm";
+
+import { earnFor } from "./earn";
+import type {
+  MenuCard,
+  MenuList,
+  ProductDetail,
+  SectionView,
+} from "./schemas";
+
+const SECTION_CARD_CAP = 12;
+
+/** Plain-text snippet from rich (tiptap) HTML, for cards. */
+function snippet(html: string | null, max = 90): string | null {
+  if (!html) return null;
+  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
+}
+
+type Cursor = { s: number; i: string };
+
+function encodeCursor(c: Cursor): string {
+  return Buffer.from(JSON.stringify(c)).toString("base64url");
+}
+function decodeCursor(raw: string | null | undefined): Cursor | null {
+  if (!raw) return null;
+  try {
+    const c = JSON.parse(Buffer.from(raw, "base64url").toString()) as Cursor;
+    return typeof c.s === "number" && typeof c.i === "string" ? c : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Drizzle access for the product catalog (menu). Only layer that touches the db.
+ * List uses keyset pagination (sortOrder,id) for stable infinite scroll; detail
+ * + sections use the relational query API. Earn previews are attached here via
+ * the pure `earnFor` helper (price → points/stamp).
+ */
+export class ProductsRepository {
+  constructor(private readonly db: typeof Db) {}
+
+  async listProducts(input: {
+    orgId: string;
+    cursor?: string | null;
+    pageSize: number;
+    categorySlug?: string | null;
+    sectionSlug?: string | null;
+    search?: string | null;
+  }): Promise<MenuList> {
+    const { orgId, pageSize } = input;
+    const cur = decodeCursor(input.cursor);
+
+    const conds = [
+      eq(product.organizationId, orgId),
+      eq(product.status, "active"),
+    ];
+    if (cur) {
+      // keyset: (sortOrder, id) strictly after the cursor
+      conds.push(
+        or(
+          gt(product.sortOrder, cur.s),
+          and(eq(product.sortOrder, cur.s), gt(product.id, cur.i)),
+        )!,
+      );
+    }
+    if (input.search) {
+      conds.push(like(product.name, `%${input.search}%`));
+    }
+
+    let ids: { id: string }[];
+    if (input.sectionSlug) {
+      ids = await this.db
+        .select({ id: product.id, s: product.sortOrder })
+        .from(product)
+        .innerJoin(sectionProduct, eq(sectionProduct.productId, product.id))
+        .innerJoin(section, eq(section.id, sectionProduct.sectionId))
+        .where(and(...conds, eq(section.slug, input.sectionSlug)))
+        .orderBy(asc(product.sortOrder), asc(product.id))
+        .limit(pageSize + 1);
+    } else if (input.categorySlug) {
+      ids = await this.db
+        .select({ id: product.id, s: product.sortOrder })
+        .from(product)
+        .innerJoin(productCategory, eq(productCategory.productId, product.id))
+        .innerJoin(category, eq(category.id, productCategory.categoryId))
+        .where(and(...conds, eq(category.slug, input.categorySlug)))
+        .orderBy(asc(product.sortOrder), asc(product.id))
+        .limit(pageSize + 1);
+    } else {
+      ids = await this.db
+        .select({ id: product.id, s: product.sortOrder })
+        .from(product)
+        .where(and(...conds))
+        .orderBy(asc(product.sortOrder), asc(product.id))
+        .limit(pageSize + 1);
+    }
+
+    const page = ids.slice(0, pageSize);
+    const hasMore = ids.length > pageSize;
+    const cards = await this.cardsByIds(page.map((p) => p.id));
+
+    let nextCursor: string | null = null;
+    if (hasMore && page.length > 0) {
+      const last = page[page.length - 1]! as { id: string; s: number };
+      nextCursor = encodeCursor({ s: last.s, i: last.id });
+    }
+    return { items: cards, nextCursor };
+  }
+
+  /** Compact cards for a set of product ids, preserving sortOrder,id order. */
+  private async cardsByIds(productIds: string[]): Promise<MenuCard[]> {
+    if (productIds.length === 0) return [];
+    const rows = await this.db
+      .select()
+      .from(product)
+      .where(inArray(product.id, productIds))
+      .orderBy(asc(product.sortOrder), asc(product.id));
+
+    const images = await this.db
+      .select({
+        productId: productImage.productId,
+        url: productImage.url,
+        sortOrder: productImage.sortOrder,
+      })
+      .from(productImage)
+      .where(
+        and(
+          inArray(productImage.productId, productIds),
+          sql`${productImage.variantId} is null`,
+        ),
+      )
+      .orderBy(asc(productImage.sortOrder));
+    const firstImage = new Map<string, string>();
+    for (const img of images) {
+      if (!firstImage.has(img.productId)) firstImage.set(img.productId, img.url);
+    }
+
+    const cats = await this.db
+      .select({ productId: productCategory.productId, slug: category.slug })
+      .from(productCategory)
+      .innerJoin(category, eq(category.id, productCategory.categoryId))
+      .where(inArray(productCategory.productId, productIds));
+    const catSlugs = new Map<string, string[]>();
+    for (const c of cats) {
+      const arr = catSlugs.get(c.productId) ?? [];
+      arr.push(c.slug);
+      catSlugs.set(c.productId, arr);
+    }
+
+    return rows.map((p) => ({
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      description: snippet(p.description),
+      priceCents: p.basePriceCents,
+      currency: p.currency,
+      imageUrl: firstImage.get(p.id) ?? null,
+      categorySlugs: catSlugs.get(p.id) ?? [],
+      earn: earnFor(p.basePriceCents),
+    }));
+  }
+
+  async productBySlug(orgId: string, slug: string): Promise<ProductDetail | null> {
+    const p = await this.db.query.product.findFirst({
+      where: and(eq(product.organizationId, orgId), eq(product.slug, slug)),
+      with: {
+        images: { orderBy: asc(productImage.sortOrder) },
+        options: {
+          orderBy: asc(productOption.sortOrder),
+          with: { values: { orderBy: asc(productOptionValue.sortOrder) } },
+        },
+        variants: {
+          orderBy: asc(productVariant.sortOrder),
+          with: { values: true },
+        },
+        modifierGroups: {
+          orderBy: asc(modifierGroup.sortOrder),
+          with: { options: { orderBy: asc(modifierOption.sortOrder) } },
+        },
+        categories: { with: { category: true } },
+      },
+    });
+    if (!p) return null;
+
+    const variantImages = (variantId: string) =>
+      p.images.filter((img) => img.variantId === variantId).map((img) => img.url);
+
+    return {
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      description: p.description,
+      currency: p.currency,
+      basePriceCents: p.basePriceCents,
+      earn: earnFor(p.basePriceCents),
+      images: p.images.map((img) => ({
+        url: img.url,
+        alt: img.alt,
+        variantId: img.variantId,
+      })),
+      options: p.options.map((o) => ({
+        id: o.id,
+        name: o.name,
+        values: o.values.map((v) => ({ id: v.id, label: v.label })),
+      })),
+      variants: p.variants.map((v) => ({
+        id: v.id,
+        priceCents: v.priceCents,
+        isDefault: v.isDefault,
+        optionValueIds: v.values.map((vv) => vv.optionValueId),
+        earn: earnFor(v.priceCents),
+        imageUrls: variantImages(v.id),
+      })),
+      modifierGroups: p.modifierGroups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        selectionType: g.selectionType as "single" | "multi",
+        minSelect: g.minSelect,
+        maxSelect: g.maxSelect,
+        required: g.required,
+        options: g.options.map((mo) => ({
+          id: mo.id,
+          name: mo.name,
+          priceDeltaCents: mo.priceDeltaCents,
+        })),
+      })),
+      categorySlugs: p.categories.map((pc) => pc.category.slug),
+      seo: {
+        title: p.seoTitle,
+        description: p.seoDescription,
+        ogImageUrl: p.ogImageUrl,
+      },
+    };
+  }
+
+  async sections(orgId: string, placement: string): Promise<SectionView[]> {
+    const placements =
+      placement === "both" ? ["both"] : [placement, "both"];
+    const rows = await this.db.query.section.findMany({
+      where: and(
+        eq(section.organizationId, orgId),
+        inArray(section.placement, placements),
+      ),
+      orderBy: asc(section.sortOrder),
+      with: {
+        products: {
+          orderBy: asc(sectionProduct.sortOrder),
+        },
+      },
+    });
+
+    const allProductIds = rows.flatMap((s) => s.products.map((sp) => sp.productId));
+    const cards = await this.cardsByIds([...new Set(allProductIds)]);
+    const cardById = new Map(cards.map((c) => [c.id, c]));
+
+    return rows.map((s) => ({
+      id: s.id,
+      slug: s.slug,
+      name: s.name,
+      kind: s.kind as "carousel" | "banner" | "featured",
+      hasMore: s.products.length > SECTION_CARD_CAP,
+      banner:
+        s.kind === "banner"
+          ? {
+              title: s.bannerTitle,
+              subtitle: s.bannerSubtitle,
+              imageUrl: s.bannerImageUrl,
+              href: s.bannerHref,
+            }
+          : null,
+      products: s.products
+        .map((sp) => cardById.get(sp.productId))
+        .filter((c): c is MenuCard => Boolean(c))
+        .slice(0, SECTION_CARD_CAP),
+    }));
+  }
+
+  async categories(orgId: string): Promise<{ slug: string; name: string }[]> {
+    const rows = await this.db
+      .select({ slug: category.slug, name: category.name })
+      .from(category)
+      .where(eq(category.organizationId, orgId))
+      .orderBy(asc(category.sortOrder), asc(category.name));
+    return rows;
+  }
+
+  async favoriteProductIds(orgId: string, customerId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ productId: productFavorite.productId })
+      .from(productFavorite)
+      .where(
+        and(
+          eq(productFavorite.organizationId, orgId),
+          eq(productFavorite.customerId, customerId),
+        ),
+      );
+    return rows.map((r) => r.productId);
+  }
+
+  async favoriteProducts(orgId: string, customerId: string): Promise<MenuCard[]> {
+    const ids = await this.favoriteProductIds(orgId, customerId);
+    return this.cardsByIds(ids);
+  }
+
+  /** Toggle a favorite; returns the new state (true = now favorited). */
+  async toggleFavorite(input: {
+    orgId: string;
+    customerId: string;
+    productId: string;
+  }): Promise<boolean> {
+    const existing = await this.db
+      .select({ id: productFavorite.id })
+      .from(productFavorite)
+      .where(
+        and(
+          eq(productFavorite.customerId, input.customerId),
+          eq(productFavorite.productId, input.productId),
+        ),
+      )
+      .limit(1);
+    if (existing[0]) {
+      await this.db
+        .delete(productFavorite)
+        .where(eq(productFavorite.id, existing[0].id));
+      return false;
+    }
+    await this.db.insert(productFavorite).values({
+      customerId: input.customerId,
+      organizationId: input.orgId,
+      productId: input.productId,
+    });
+    return true;
+  }
+}
