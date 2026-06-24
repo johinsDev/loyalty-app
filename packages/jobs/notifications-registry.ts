@@ -376,6 +376,159 @@ export class StreakAtRiskNotification
   }
 }
 
+/**
+ * Consolidated per-purchase recap — one notification combining whatever loyalty
+ * tracks are active (stamps and/or points), so the customer gets a single
+ * WhatsApp + feed line instead of one per track. Realtime already animated each
+ * card inline. Routine earn only — milestones (first purchase, tier-up) are
+ * their own notifications.
+ */
+export class PurchaseRecapNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(
+    private readonly stamps: { completed: boolean } | null,
+    private readonly points: { earned: number } | null,
+  ) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  #title(): string {
+    if (this.stamps?.completed) return "¡Completaste tu tarjeta! 🎉";
+    return "¡Gracias por tu compra! 🧋";
+  }
+
+  #parts(): string {
+    const parts: string[] = [];
+    if (this.stamps) parts.push(this.stamps.completed ? "tu bebida gratis te espera" : "+1 sello");
+    if (this.points) parts.push(`+${this.points.earned} puntos`);
+    return parts.join(" · ");
+  }
+
+  toWhatsApp() {
+    return { body: `${this.#title()}\n${this.#parts()}` };
+  }
+
+  toDatabase() {
+    return { type: "purchase-recap", title: this.#title(), body: this.#parts() };
+  }
+}
+
+/** New tier reached — the big moment (benefits + T&C). */
+export class TierUpNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(
+    private readonly tierName: string,
+    private readonly benefits: string[],
+    private readonly terms: string | null,
+  ) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database", "push"];
+  }
+
+  #body(): string {
+    const list = this.benefits.length
+      ? ` Tus beneficios: ${this.benefits.join(", ")}.`
+      : "";
+    return `¡Felicidades! Ahora sos nivel ${this.tierName}.${list}`;
+  }
+
+  toWhatsApp() {
+    const terms = this.terms ? `\n${this.terms}` : "";
+    return { body: `${this.#body()}${terms}` };
+  }
+
+  toPush() {
+    return {
+      title: `¡Nuevo nivel: ${this.tierName}! 🎉`,
+      body: "Tocá para ver tus beneficios.",
+      data: { kind: "tier-up" },
+    };
+  }
+
+  toDatabase() {
+    return {
+      type: "tier-up",
+      title: `¡Nuevo nivel: ${this.tierName}! 🎉`,
+      body: this.#body(),
+      data: { benefits: this.benefits, terms: this.terms },
+    };
+  }
+}
+
+/** Tier dropped (points aged out of the window). */
+export class TierDownNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(private readonly tierName: string) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  #body(): string {
+    return `Bajaste a nivel ${this.tierName}. ¡Sumá puntos para recuperarlo!`;
+  }
+
+  toWhatsApp() {
+    return { body: this.#body() };
+  }
+
+  toDatabase() {
+    return { type: "tier-down", title: `Nivel ${this.tierName}`, body: this.#body() };
+  }
+}
+
+/** Almost at the next tier. */
+export class TierNearNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(
+    private readonly nextName: string,
+    private readonly remaining: number,
+  ) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  #body(): string {
+    return `Te faltan ${this.remaining} puntos para nivel ${this.nextName}. 💪`;
+  }
+
+  toWhatsApp() {
+    return { body: this.#body() };
+  }
+
+  toDatabase() {
+    return { type: "tier-near", title: "¡Estás cerca!", body: this.#body() };
+  }
+}
+
 /** Builds a notification from its key + the admin-supplied payload. */
 export function createNotification(
   key: NotificationKey,
@@ -415,6 +568,37 @@ export function createNotification(
       const hoursLeft =
         typeof payload?.hoursLeft === "number" ? payload.hoursLeft : 0;
       return new StreakAtRiskNotification(currentCount, hoursLeft);
+    }
+    case "purchase-recap": {
+      const s = payload?.stamps as { completed?: boolean } | null | undefined;
+      const p = payload?.points as { earned?: number } | null | undefined;
+      return new PurchaseRecapNotification(
+        s ? { completed: s.completed === true } : null,
+        p && typeof p.earned === "number" ? { earned: p.earned } : null,
+      );
+    }
+    case "tier-up": {
+      const tierName =
+        typeof payload?.tierName === "string" ? payload.tierName : "";
+      const benefits = Array.isArray(payload?.benefits)
+        ? (payload.benefits as unknown[]).filter(
+            (b): b is string => typeof b === "string",
+          )
+        : [];
+      const terms = typeof payload?.terms === "string" ? payload.terms : null;
+      return new TierUpNotification(tierName, benefits, terms);
+    }
+    case "tier-down": {
+      const tierName =
+        typeof payload?.tierName === "string" ? payload.tierName : "";
+      return new TierDownNotification(tierName);
+    }
+    case "tier-near": {
+      const nextName =
+        typeof payload?.nextName === "string" ? payload.nextName : "";
+      const remaining =
+        typeof payload?.remaining === "number" ? payload.remaining : 0;
+      return new TierNearNotification(nextName, remaining);
     }
   }
 }

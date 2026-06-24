@@ -17,6 +17,7 @@
     "./features/push-tokens": "./src/features/push-tokens/index.ts",
     "./features/realtime": "./src/features/realtime/index.ts",
     "./features/streaks": "./src/features/streaks/index.ts",
+    "./features/points": "./src/features/points/index.ts",
     "./features/storage": "./src/features/storage/index.ts",
     "./features/promotions": "./src/features/promotions/index.ts",
     "./features/promotions/schemas": "./src/features/promotions/schemas.ts"

@@ -43,6 +43,13 @@
       "when": 1782249640278,
       "tag": "0005_loving_secret_warriors",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1782275193677,
+      "tag": "0006_smooth_lucky_pierre",
+      "breakpoints": true
     }
   ]
 }

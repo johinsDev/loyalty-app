@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  index,
   integer,
   sqliteTable,
   text,
@@ -231,6 +232,95 @@ export const streakRelations = relations(streak, ({ one }) => ({
   }),
 }));
 
+// Points ledger — the source of truth for a customer's spendable balance AND
+// their tier. `points` is signed: earn (+), redeem (−), adjust (±). Balance =
+// SUM(points); tier-points = SUM(earn within the rolling window). Runs alongside
+// stamps; a future `loyaltyMode` picks stamps vs points per org.
+export const pointsTransaction = sqliteTable(
+  "points_transaction",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customer.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    type: text("type").notNull(), // "earn" | "redeem" | "adjust"
+    points: integer("points").notNull(),
+    reason: text("reason"),
+    // The purchase that earned these points (null for redeem/adjust). Unique per
+    // org so a retried purchase can't double-earn.
+    purchaseId: text("purchase_id").references(() => purchase.id, {
+      onDelete: "set null",
+    }),
+    addedByUserId: text("added_by_user_id").references(() => user.id),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    byCustomer: index("points_tx_customer_idx").on(
+      t.organizationId,
+      t.customerId,
+      t.createdAt,
+    ),
+    earnPerPurchase: uniqueIndex("points_tx_purchase_uq").on(
+      t.organizationId,
+      t.purchaseId,
+    ),
+  }),
+);
+
+// Cached tier state per customer — balance + tier-points are derived from the
+// ledger, but the current tier is stored here so transitions (up/down) and the
+// "almost at next level" nudge can be detected and de-duped.
+export const pointsAccount = sqliteTable("points_account", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  customerId: text("customer_id")
+    .notNull()
+    .unique()
+    .references(() => customer.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  currentTierKey: text("current_tier_key"),
+  // The next-tier key we already sent the ~80% nudge for (dedupe, once per tier).
+  nearNotifiedTierKey: text("near_notified_tier_key"),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const pointsTransactionRelations = relations(
+  pointsTransaction,
+  ({ one }) => ({
+    customer: one(customer, {
+      fields: [pointsTransaction.customerId],
+      references: [customer.id],
+    }),
+    organization: one(organization, {
+      fields: [pointsTransaction.organizationId],
+      references: [organization.id],
+    }),
+    purchase: one(purchase, {
+      fields: [pointsTransaction.purchaseId],
+      references: [purchase.id],
+    }),
+  }),
+);
+
+export const pointsAccountRelations = relations(pointsAccount, ({ one }) => ({
+  customer: one(customer, {
+    fields: [pointsAccount.customerId],
+    references: [customer.id],
+  }),
+}));
+
 export const loyaltyCardRelations = relations(loyaltyCard, ({ one, many }) => ({
   customer: one(customer, {
     fields: [loyaltyCard.customerId],
@@ -315,3 +405,7 @@ export type StampRow = typeof stamp.$inferSelect;
 export type StampInsert = typeof stamp.$inferInsert;
 export type StreakRow = typeof streak.$inferSelect;
 export type StreakInsert = typeof streak.$inferInsert;
+export type PointsTransactionRow = typeof pointsTransaction.$inferSelect;
+export type PointsTransactionInsert = typeof pointsTransaction.$inferInsert;
+export type PointsAccountRow = typeof pointsAccount.$inferSelect;
+export type PointsAccountInsert = typeof pointsAccount.$inferInsert;

@@ -18,6 +18,10 @@ export const notificationKeySchema = z.enum([
   "streak-completed",
   "streak-reward-claimed",
   "streak-at-risk",
+  "purchase-recap",
+  "tier-up",
+  "tier-down",
+  "tier-near",
 ]);
 
 export const feedFilterSchema = z.enum(["all", "unread"]);

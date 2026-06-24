@@ -66,7 +66,7 @@ describe("StampsService.recordPurchase", () => {
   it("fires a first-purchase notification on the very first stamp", async () => {
     // Default FakeRepo result = wallet seq 1, currentStamps 1 → first ever.
     const { service, realtime, enqueue } = build(repo);
-    const wallet = await service.recordPurchase(ORG, STAFF, {
+    const { wallet } = await service.recordPurchase(ORG, STAFF, {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-12345678",
@@ -84,22 +84,26 @@ describe("StampsService.recordPurchase", () => {
     );
   });
 
-  it("fires a stamp-earned notification on a subsequent stamp", async () => {
+  it("does NOT enqueue on a routine stamp (the recap owns the per-purchase notif)", async () => {
     repo.recordResult = {
       kind: "recorded",
       wallet: view({ currentStamps: 2 }),
       purchaseId: "p2",
       completed: false,
     };
-    const { service, enqueue } = build(repo);
+    const { service, realtime, enqueue } = build(repo);
     await service.recordPurchase(ORG, STAFF, {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-87654321",
     });
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ notificationKey: "stamp-earned" }),
+    // Realtime still animates the card; the WhatsApp/feed line is consolidated
+    // with points into the purchase-recap at the router level.
+    expect(realtime.publish).toHaveBeenCalledWith(
+      `customer:${CUSTOMER}`,
+      expect.objectContaining({ event: "stamp.earned" }),
     );
+    expect(enqueue).not.toHaveBeenCalled();
   });
 
   it("flags completion when the wallet fills", async () => {
@@ -147,7 +151,7 @@ describe("StampsService.recordPurchase", () => {
       purchaseId: "p1",
     };
     const { service, realtime, enqueue } = build(repo);
-    const wallet = await service.recordPurchase(ORG, STAFF, {
+    const { wallet } = await service.recordPurchase(ORG, STAFF, {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-retry",
