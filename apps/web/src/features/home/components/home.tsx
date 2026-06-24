@@ -8,6 +8,7 @@ import { getSession } from "@/lib/auth-guard";
 import { AppSidebar } from "./app-sidebar";
 import { GreetingHeader } from "./greeting-header";
 import { PointsCard } from "./points-card";
+import { PointsListener } from "./points-listener";
 import { PromosCarousel } from "./promos-carousel";
 import { RecentVisits } from "./recent-visits";
 import { RewardCard } from "./reward-card";
@@ -89,6 +90,10 @@ export async function Home() {
               partykitHost={env.NEXT_PUBLIC_PARTYKIT_HOST}
             />
             <StreakListener
+              customerId={customerId}
+              partykitHost={env.NEXT_PUBLIC_PARTYKIT_HOST}
+            />
+            <PointsListener
               customerId={customerId}
               partykitHost={env.NEXT_PUBLIC_PARTYKIT_HOST}
             />

@@ -7,6 +7,9 @@ import {
   router,
   staffProcedure,
 } from "../../trpc";
+import { tasks } from "@trigger.dev/sdk/v3";
+
+import { buildPointsService } from "../points";
 import { buildStreaksService } from "../streaks";
 import { StampsRepository } from "./repository";
 import {
@@ -45,16 +48,35 @@ export const stampsRouter = router({
     .input(recordPurchaseInputSchema)
     .mutation(async ({ ctx, input }) => {
       const org = await orgId();
-      // Stamps blocks (throws REWARD_PENDING) before any streak side effect, so
-      // a single purchase advances both tracks only when it actually records.
-      const wallet = await buildService(ctx).recordPurchase(
+      // Stamps blocks (throws REWARD_PENDING) before any other side effect, so a
+      // single purchase advances every track only when it actually records.
+      const { wallet, purchaseId } = await buildService(ctx).recordPurchase(
         org,
         ctx.session.user.id,
         input,
       );
-      // Best-effort, idempotent per day; never fails the purchase response.
+      // Points + streak: best-effort, idempotent; never fail the purchase.
+      const points = await buildPointsService(ctx)
+        .earnForPurchase(org, input.customerId, input.priceCents, purchaseId)
+        .catch(() => ({ earned: 0, balance: 0 }));
       await buildStreaksService(ctx)
         .advanceForPurchase(org, input.customerId)
+        .catch(() => {});
+
+      // One consolidated per-purchase notification (WhatsApp + feed) combining
+      // whatever's active — avoids a separate WhatsApp per loyalty track. Realtime
+      // already animated each card inline. loyaltyMode-aware: only includes the
+      // tracks that are on (stamps always on for the pilot).
+      await tasks
+        .trigger("send-notification", {
+          customerIds: [input.customerId],
+          organizationId: org,
+          notificationKey: "purchase-recap",
+          payload: {
+            stamps: { currentStamps: wallet.currentStamps, completed: wallet.rewardPending },
+            points: points.earned > 0 ? { earned: points.earned, balance: points.balance } : null,
+          },
+        })
         .catch(() => {});
       return wallet;
     }),

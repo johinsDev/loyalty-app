@@ -56,7 +56,7 @@ export class StampsService {
     organizationId: string,
     addedByUserId: string,
     input: RecordPurchaseInput,
-  ): Promise<WalletView> {
+  ): Promise<{ wallet: WalletView; purchaseId: string }> {
     const result = await this.repo.recordPurchase({
       orgId: organizationId,
       customerId: input.customerId,
@@ -70,12 +70,7 @@ export class StampsService {
     }
 
     if (result.kind === "recorded") {
-      // The very first stamp of the very first wallet = the customer's first
-      // purchase ever → send the celebratory first-purchase notification (in-app
-      // feed + realtime + push) instead of the generic stamp-earned.
-      const firstEver =
-        result.wallet.sequence === 1 && result.wallet.currentStamps === 1;
-
+      // Realtime fires inline so the stamp card animates instantly.
       await this.publish(input.customerId, {
         event: "stamp.earned",
         data: {
@@ -86,19 +81,27 @@ export class StampsService {
           completed: result.completed,
         },
       });
-      await this.enqueue({
-        customerIds: [input.customerId],
-        organizationId,
-        notificationKey: firstEver ? "first-purchase" : "stamp-earned",
-        payload: {
-          currentStamps: result.wallet.currentStamps,
-          stampsGoal: result.wallet.stampsGoal,
-          completed: result.completed,
-        },
-      });
+
+      // The very first stamp ever → celebratory first-purchase (feed + realtime
+      // + push, no WhatsApp). The routine "+1 sello" message is consolidated with
+      // points into the per-purchase recap (enqueued by the recordPurchase
+      // orchestration in the router), so we don't enqueue stamp-earned here.
+      const firstEver =
+        result.wallet.sequence === 1 && result.wallet.currentStamps === 1;
+      if (firstEver) {
+        await this.enqueue({
+          customerIds: [input.customerId],
+          organizationId,
+          notificationKey: "first-purchase",
+          payload: {
+            currentStamps: result.wallet.currentStamps,
+            stampsGoal: result.wallet.stampsGoal,
+          },
+        });
+      }
     }
 
-    return result.wallet;
+    return { wallet: result.wallet, purchaseId: result.purchaseId };
   }
 
   walletForCustomer(
