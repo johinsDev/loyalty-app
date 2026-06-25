@@ -15,8 +15,9 @@ import {
   ResponsiveModalTitle,
   Skeleton,
 } from "@loyalty/ui";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useDebounce } from "ahooks";
-import { Check, Layers, Lock, Search } from "lucide-react";
+import { Coins, Layers, Lock, Stamp } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   parseAsBoolean,
@@ -24,47 +25,31 @@ import {
   parseAsStringLiteral,
   useQueryStates,
 } from "nuqs";
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
+import { useQrDrawer } from "@/features/qr/hooks/use-qr-drawer";
 import { useFadeUp } from "@/lib/animate";
+import { useTRPC } from "@/lib/trpc/client";
 
-import {
-  type Reward,
-  nextTier,
-  recentRedemptions,
-  rewards,
-  stampsBalance,
-  tierForReward,
-} from "../data";
-
-const FILTER_KEYS = ["all", "ready", "soon", "redeemed"] as const;
-type FilterKey = (typeof FILTER_KEYS)[number];
-
-/** Per-reward derived state shared by the list rows and the detail drawer. */
-function useRewardView(reward: Reward) {
-  const ready = stampsBalance >= reward.cost;
-  return {
-    ready,
-    have: Math.min(stampsBalance, reward.cost),
-    missing: Math.max(0, reward.cost - stampsBalance),
-    pct: ready ? 100 : Math.round((stampsBalance / reward.cost) * 100),
-  };
-}
+import { autoCurrency } from "../lib/cost";
+import { REWARD_FILTERS, type RewardCurrency, type RewardListItem } from "../types";
 
 /**
- * The interactive heart of the rewards screen: a debounced search field, the
- * todas/listas/próximas/canjeadas filter chips, the claimable + coming-up reward
- * cards (or the redemption ledger), loading skeletons, and a bottom Drawer with a
- * reward's detail — its gating tier, benefits and progress. All filter, search
- * and open-drawer state lives in the URL via nuqs, so views are shareable and
- * survive a reload. Client component.
+ * The interactive heart of the rewards screen, wired to `rewards.list`: a
+ * debounced search field, the todas/próximas/listas/canjeadas filter chips, the
+ * curated section rows (Novedades/Destacados), the full infinite catalog with a
+ * sentinel for the next page, and a ResponsiveModal reward detail that issues a
+ * signed claim QR for ready rewards. All filter/search/open state lives in the
+ * URL via nuqs, so views are shareable and survive a reload. Client component.
  */
 export function RewardsCatalog() {
   const t = useTranslations("Rewards");
   const fade = useFadeUp();
+  const trpc = useTRPC();
+  const openClaim = useQrDrawer((s) => s.openClaim);
 
   const [q, setQ] = useQueryStates({
-    f: parseAsStringLiteral(FILTER_KEYS).withDefault("all"),
+    f: parseAsStringLiteral(REWARD_FILTERS).withDefault("all"),
     search: parseAsString.withDefault(""),
     reward: parseAsString,
     // Owned by AllLevelsSheet; set here so the detail can open it.
@@ -73,59 +58,61 @@ export function RewardsCatalog() {
 
   // The input is local + debounced; the debounced value is what hits the URL.
   const [input, setInput] = useState(q.search);
-  const debounced = useDebounce(input, { wait: 350 });
+  const debounced = useDebounce(input, { wait: 300 });
   useEffect(() => {
     if (debounced !== q.search) void setQ({ search: debounced || null });
   }, [debounced, q.search, setQ]);
 
-  const [loading, setLoading] = useState(true);
+  const search = q.search.trim();
+  const listQuery = useInfiniteQuery(
+    trpc.rewards.list.infiniteQueryOptions(
+      { filter: q.f, search: search || undefined, limit: 20 },
+      { getNextPageParam: (last) => last.nextCursor ?? undefined },
+    ),
+  );
 
-  // Demo-only: exercise the skeletons on mount. Remove once the catalog is
-  // backed by the rewards API and a real loading state.
-  useEffect(() => {
-    const id = setTimeout(() => setLoading(false), 650);
-    return () => clearTimeout(id);
-  }, []);
-
-  const filters: { key: FilterKey; label: string }[] = [
+  // Redeemed rewards live in the "Canjeadas recientemente" section + its "Ver
+  // todo" history view, so there's no redeemed filter chip here.
+  const filters: { key: (typeof REWARD_FILTERS)[number]; label: string }[] = [
     { key: "all", label: t("filterAll") },
-    { key: "ready", label: t("filterReady") },
-    { key: "soon", label: t("filterSoon") },
-    { key: "redeemed", label: t("filterRedeemed") },
+    { key: "listos", label: t("filterReady") },
+    { key: "proximos", label: t("filterSoon") },
   ];
 
-  const query = q.search.trim().toLowerCase();
-
-  const visible = useMemo(() => {
-    return rewards.filter((reward) => {
-      const ready = stampsBalance >= reward.cost;
-      if (q.f === "ready" && !ready) return false;
-      if (q.f === "soon" && ready) return false;
-      if (
-        query &&
-        !`${reward.name} ${reward.description}`.toLowerCase().includes(query)
-      )
-        return false;
-      return true;
-    });
-  }, [query, q.f]);
-
-  const visibleRedemptions = useMemo(() => {
-    if (!query) return recentRedemptions;
-    return recentRedemptions.filter((item) =>
-      item.name.toLowerCase().includes(query),
-    );
-  }, [query]);
+  const items = useMemo(
+    () => listQuery.data?.pages.flatMap((p) => p.items) ?? [],
+    [listQuery.data],
+  );
+  // Curated rows come from the first page (server returns them per-filter).
+  const sections = listQuery.data?.pages[0]?.sections ?? [];
 
   const selected = q.reward
-    ? (rewards.find((reward) => reward.id === q.reward) ?? null)
+    ? (items.find((reward) => reward.id === q.reward) ?? null)
     : null;
+
+  // Infinite scroll: a sentinel at the end of the list fetches the next page.
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (
+        entries[0]?.isIntersecting &&
+        listQuery.hasNextPage &&
+        !listQuery.isFetchingNextPage
+      ) {
+        void listQuery.fetchNextPage();
+      }
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [listQuery.hasNextPage, listQuery.isFetchingNextPage, listQuery]);
 
   return (
     <div className="flex flex-col gap-4">
       <InputGroup className="bg-card h-12 rounded-full border-transparent px-1.5 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
         <InputGroupAddon>
-          <Search className="text-muted-foreground size-4" />
+          <Stamp className="text-muted-foreground size-4" />
         </InputGroupAddon>
         <InputGroupInput
           value={input}
@@ -156,55 +143,53 @@ export function RewardsCatalog() {
         })}
       </div>
 
-      {loading ? (
+      {listQuery.isPending ? (
         <CatalogSkeleton />
-      ) : q.f === "redeemed" ? (
-        visibleRedemptions.length === 0 ? (
-          <EmptyState
-            text={query ? t("emptySearch", { query: q.search.trim() }) : t("emptyRedeemed")}
-          />
-        ) : (
-          <ul className="bg-card divide-border/70 divide-y rounded-3xl px-5 shadow-lg shadow-black/5 ring-1 ring-black/5 dark:ring-white/10">
-            {visibleRedemptions.map((item, i) => (
-              <li
-                key={item.id}
-                style={fade(i)}
-                className="flex items-center justify-between gap-3 py-3.5"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="bg-primary/10 grid size-10 shrink-0 place-items-center rounded-xl text-xl">
-                    {item.emoji}
-                  </span>
-                  <div className="flex min-w-0 flex-col">
-                    <span className="text-foreground truncate text-sm font-bold">
-                      {item.name}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      {item.date}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-muted-foreground shrink-0 text-sm font-bold">
-                  {item.amount}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )
-      ) : visible.length === 0 ? (
+      ) : items.length === 0 ? (
         <EmptyState
-          text={query ? t("emptySearch", { query: q.search.trim() }) : t("emptyFilter")}
+          text={search ? t("emptySearch", { query: search }) : t("emptyFilter")}
         />
       ) : (
-        <div className="grid gap-3.5 sm:grid-cols-2">
-          {visible.map((reward, i) => (
-            <RewardCard
-              key={reward.id}
-              reward={reward}
-              onSelect={() => void setQ({ reward: reward.id })}
-              style={fade(i)}
-            />
+        <div className="flex flex-col gap-6">
+          {/* Curated rows above the full list — only on the unfiltered view. */}
+          {sections.map((section) => (
+            <section key={section.key}>
+              <h2 className="text-muted-foreground mb-2.5 px-0.5 text-xs font-bold tracking-wider uppercase">
+                {t(`section.${section.key}`)}
+              </h2>
+              <div className="grid items-stretch gap-3.5 sm:grid-cols-2">
+                {section.items.map((reward, i) => (
+                  <RewardCard
+                    key={reward.id}
+                    reward={reward}
+                    onSelect={() => void setQ({ reward: reward.id })}
+                    style={fade(i)}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
+
+          <div>
+            {sections.length > 0 ? (
+              <h2 className="text-muted-foreground mb-2.5 px-0.5 text-xs font-bold tracking-wider uppercase">
+                {t("section.todos")}
+              </h2>
+            ) : null}
+            <div className="grid items-stretch gap-3.5 sm:grid-cols-2">
+              {items.map((reward, i) => (
+                <RewardCard
+                  key={reward.id}
+                  reward={reward}
+                  onSelect={() => void setQ({ reward: reward.id })}
+                  style={fade(i)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {listQuery.isFetchingNextPage ? <CatalogSkeleton /> : null}
+          <div ref={sentinelRef} aria-hidden className="h-px" />
         </div>
       )}
 
@@ -216,6 +201,16 @@ export function RewardsCatalog() {
           {selected ? (
             <RewardDetail
               reward={selected}
+              onClaim={(currency) => {
+                // Hand the customer straight to the unified QR view, encoded to
+                // this reward's signed claim token for the cashier to scan.
+                void setQ({ reward: null });
+                openClaim({
+                  kind: "reward",
+                  rewardId: selected.id,
+                  currency,
+                });
+              }}
               onViewLevels={() => void setQ({ reward: null, levels: true })}
             />
           ) : null}
@@ -233,131 +228,250 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
+/** "9 sellos", "120 pts", or "9 sellos o 120 pts" / "… y …" per costMode. */
+function useCostLabel() {
+  const t = useTranslations("Rewards");
+  return (reward: RewardListItem) => {
+    const parts: string[] = [];
+    if (reward.stampsRequired != null)
+      parts.push(t("costStamps", { count: reward.stampsRequired }));
+    if (reward.pointsCost != null)
+      parts.push(t("costPoints", { count: reward.pointsCost }));
+    if (parts.length < 2) return parts[0] ?? "";
+    return reward.costMode === "and"
+      ? t("costAnd", { a: parts[0]!, b: parts[1]! })
+      : t("costOr", { a: parts[0]!, b: parts[1]! });
+  };
+}
+
 function RewardCard({
   reward,
   onSelect,
   style,
 }: {
-  reward: Reward;
+  reward: RewardListItem;
   onSelect: () => void;
   style?: CSSProperties;
 }) {
   const t = useTranslations("Rewards");
-  const { ready, have, missing, pct } = useRewardView(reward);
+  const costLabel = useCostLabel();
+  const ready = reward.status === "ready";
+  const redeemed = reward.status === "redeemed";
+  const locked = reward.status === "locked";
+
+  // The dominant progress (the closest-to-affordable accepted currency).
+  const progresses = [
+    reward.stamps.required != null ? reward.stamps.progress : null,
+    reward.points.required != null ? reward.points.progress : null,
+  ].filter((p): p is number => p != null);
+  const pct = ready
+    ? 100
+    : Math.round(Math.max(0, ...progresses, 0) * 100);
 
   return (
     <button
       type="button"
       onClick={onSelect}
       style={style}
-      className={`bg-card flex w-full flex-col gap-3.5 rounded-3xl p-[1.125rem] text-left shadow-lg shadow-black/5 ring-1 ring-black/5 transition-transform active:scale-[0.99] dark:ring-white/10 ${
-        ready ? "" : "opacity-65"
+      className={`bg-card flex h-full w-full flex-col gap-3.5 rounded-3xl p-[1.125rem] text-left shadow-lg shadow-black/5 ring-1 ring-black/5 transition-transform active:scale-[0.99] dark:ring-white/10 ${
+        ready || redeemed ? "" : "opacity-65"
       }`}
     >
       <div className="flex items-start gap-3">
-        <span className="from-primary/15 to-primary/5 grid size-14 shrink-0 place-items-center rounded-[1.125rem] bg-gradient-to-br text-2xl">
-          {ready ? reward.emoji : <Lock className="text-muted-foreground size-6" />}
+        <span className="from-primary/15 to-primary/5 grid size-14 shrink-0 place-items-center overflow-hidden rounded-[1.125rem] bg-gradient-to-br text-2xl">
+          {locked ? (
+            <Lock className="text-muted-foreground size-6" />
+          ) : reward.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={reward.imageUrl}
+              alt=""
+              className="size-full object-cover"
+            />
+          ) : (
+            "🎁"
+          )}
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-foreground text-[1.0625rem] leading-tight font-bold">
             {reward.name}
           </span>
-          <span className="text-muted-foreground text-[0.8125rem] leading-snug">
-            {reward.description}
-          </span>
+          {reward.description ? (
+            <span className="text-muted-foreground text-[0.8125rem] leading-snug">
+              {reward.description}
+            </span>
+          ) : null}
         </div>
+        {/* Top-right keeps only the status badge; the cost moves onto its own
+            line below the description (FIX 4). */}
         <div className="flex shrink-0 flex-col items-end gap-0.5">
-          {ready ? (
+          {redeemed ? (
+            <Badge
+              variant="secondary"
+              className="rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold tracking-wider"
+            >
+              {t("redeemedBadge")}
+            </Badge>
+          ) : ready ? (
             <Badge className="rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold tracking-wider">
               {t("ready")}
             </Badge>
           ) : null}
-          <span className="font-display text-foreground text-3xl leading-none font-semibold tracking-tight">
-            {reward.cost}
-          </span>
-          <span className="text-muted-foreground text-[0.625rem] font-bold tracking-widest">
-            {t("costUnit")}
-          </span>
         </div>
       </div>
 
-      <div className="bg-muted h-2.5 overflow-hidden rounded-full">
-        <div
-          className="from-primary to-primary/50 h-full rounded-full bg-gradient-to-r transition-all"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      {/* Cost on its own line below the description. */}
+      <span className="font-display text-foreground -mt-1 text-sm leading-tight font-semibold tracking-tight">
+        {costLabel(reward)}
+      </span>
 
-      <div className="flex items-center justify-between text-[0.8125rem] font-semibold">
-        <span className="text-muted-foreground">
-          {t("stampsProgress", { have, cost: reward.cost })}
-        </span>
-        <span className={ready ? "text-primary font-bold" : "text-muted-foreground"}>
-          {ready ? t("progressReady") : t("stampsLeft", { count: missing })}
-        </span>
-      </div>
+      {locked ? (
+        <p className="text-muted-foreground mt-auto inline-flex items-center gap-1.5 text-[0.8125rem] font-semibold">
+          <Lock className="size-3.5" />
+          {reward.allowedTiers && reward.allowedTiers.length > 0
+            ? t("exclusiveTier", { tier: reward.allowedTiers[0]! })
+            : t("lockedGeneric")}
+        </p>
+      ) : redeemed ? (
+        <p className="text-muted-foreground mt-auto text-[0.8125rem] font-semibold">
+          {t("redeemedBadge")}
+        </p>
+      ) : (
+        <div className="mt-auto flex flex-col gap-3.5">
+          <div className="bg-muted h-2.5 overflow-hidden rounded-full">
+            <div
+              className="from-primary to-primary/50 h-full rounded-full bg-gradient-to-r transition-all"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[0.8125rem] font-semibold">
+            <span className="text-muted-foreground inline-flex items-center gap-1">
+              {reward.stamps.required != null ? (
+                <>
+                  <Stamp className="size-3.5" />
+                  {t("balanceStamps", {
+                    have: reward.stamps.balance,
+                    cost: reward.stamps.required,
+                  })}
+                </>
+              ) : (
+                <>
+                  <Coins className="size-3.5" />
+                  {t("balancePoints", {
+                    have: reward.points.balance,
+                    cost: reward.points.required ?? 0,
+                  })}
+                </>
+              )}
+            </span>
+            <span className={ready ? "text-primary font-bold" : "text-muted-foreground"}>
+              {ready ? t("progressReady") : `${pct}%`}
+            </span>
+          </div>
+        </div>
+      )}
     </button>
   );
 }
 
 function RewardDetail({
   reward,
+  onClaim,
   onViewLevels,
 }: {
-  reward: Reward;
+  reward: RewardListItem;
+  onClaim: (currency: RewardCurrency | "both") => void;
   onViewLevels: () => void;
 }) {
   const t = useTranslations("Rewards");
-  const { ready, missing } = useRewardView(reward);
-  const tier = tierForReward(reward);
-  const next = nextTier();
+  const format = useCostLabel();
+  const trpc = useTRPC();
+  const ready = reward.status === "ready";
+  const redeemed = reward.status === "redeemed";
+  const locked = reward.status === "locked";
+
+  // Keep the detail fresh while open (the list item is a snapshot).
+  const { data } = useQuery(
+    trpc.rewards.detail.queryOptions({ rewardId: reward.id }),
+  );
+  const view = data ?? reward;
+
+  const auto = autoCurrency(view);
+  // Default to a currency the customer can actually afford, so the picker never
+  // starts on (or Canjear-enables) a balance they can't pay with. For an "or"
+  // reward that takes both, prefer the first affordable currency; fall back to
+  // the unambiguous `auto` only when nothing is affordable yet.
+  const preferred: RewardCurrency | "both" | null =
+    view.affordableWith[0] ?? auto;
+  // For an "or" reward that accepts both, let the user pick which to spend.
+  const [currency, setCurrency] = useState<RewardCurrency | "both" | null>(
+    preferred,
+  );
+
+  const chooseCurrencies: RewardCurrency[] = [];
+  if (view.stamps.required != null) chooseCurrencies.push("stamps");
+  if (view.points.required != null) chooseCurrencies.push("points");
+  const mustChoose = view.costMode === "or" && chooseCurrencies.length === 2;
+
+  /** Can the customer pay with the given selection right now? */
+  const canAfford = (c: RewardCurrency | "both" | null): boolean => {
+    if (c === "stamps") return view.stamps.affordable;
+    if (c === "points") return view.points.affordable;
+    // "both" (an "and"-cost reward) needs BOTH balances.
+    if (c === "both") return view.stamps.affordable && view.points.affordable;
+    return false;
+  };
+  const selectedAffordable = canAfford(currency);
 
   return (
     <div className="flex flex-col items-center px-6 pb-2 text-center">
-      <span className="from-primary/15 to-primary/5 shadow-primary/10 mt-2 grid size-24 place-items-center rounded-[1.75rem] bg-gradient-to-br text-5xl shadow-lg">
-        {ready ? reward.emoji : <Lock className="text-muted-foreground size-10" />}
+      <span className="from-primary/15 to-primary/5 shadow-primary/10 mt-2 grid size-24 place-items-center overflow-hidden rounded-[1.75rem] bg-gradient-to-br text-5xl shadow-lg">
+        {locked ? (
+          <Lock className="text-muted-foreground size-10" />
+        ) : view.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={view.imageUrl} alt="" className="size-full object-cover" />
+        ) : (
+          "🎁"
+        )}
       </span>
       <ResponsiveModalHeader className="items-center gap-2">
         <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
-          {reward.name}
+          {view.name}
         </ResponsiveModalTitle>
         <Badge
           variant="secondary"
           className="text-primary rounded-full px-3 py-1 text-sm font-bold"
         >
-          {t("costAmount", { count: reward.cost })}
+          {format(view)}
         </Badge>
-        <ResponsiveModalDescription className="text-[0.9375rem] leading-relaxed">
-          {reward.description}
-        </ResponsiveModalDescription>
+        {view.description ? (
+          <ResponsiveModalDescription className="text-[0.9375rem] leading-relaxed">
+            {view.description}
+          </ResponsiveModalDescription>
+        ) : null}
       </ResponsiveModalHeader>
 
-      {/* Gating tier — which level unlocks this reward and what it includes. */}
       <div className="bg-muted/60 mt-1 w-full rounded-2xl p-4 text-left">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-foreground text-sm font-bold">
-            {t("detailTier", { name: `${tier.emoji} ${tier.name}` })}
-          </span>
-          {next ? (
-            <span className="text-muted-foreground text-xs font-semibold whitespace-nowrap">
-              {t("detailToNext", {
-                count: Math.max(0, next.at - stampsBalance),
-                name: `${next.emoji} ${next.name}`,
-              })}
-            </span>
-          ) : null}
-        </div>
-        <ul className="flex flex-col gap-1.5">
-          {tier.benefits.map((benefit) => (
-            <li
-              key={benefit}
-              className="text-foreground flex items-center gap-2 text-sm"
-            >
-              <Check className="text-primary size-3.5 shrink-0" />
-              {benefit}
-            </li>
-          ))}
-        </ul>
+        {redeemed && view.redeemedAt ? (
+          <p className="text-foreground text-sm font-bold">
+            {t("redeemedOn", {
+              date: new Intl.DateTimeFormat(undefined, {
+                day: "numeric",
+                month: "long",
+              }).format(view.redeemedAt),
+            })}
+          </p>
+        ) : locked ? (
+          <p className="text-foreground inline-flex items-center gap-2 text-sm font-bold">
+            <Lock className="text-muted-foreground size-4" />
+            {view.allowedTiers && view.allowedTiers.length > 0
+              ? t("exclusiveTier", { tier: view.allowedTiers[0]! })
+              : t("lockedGeneric")}
+          </p>
+        ) : (
+          <ProgressRows reward={view} />
+        )}
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
           {t("conditions")}
         </p>
@@ -374,10 +488,45 @@ function RewardDetail({
 
       <ResponsiveModalFooter className="w-full gap-2 px-0">
         {ready ? (
-          <ResponsiveModalClose variant="gradient" className="w-full sm:w-auto">
-            {t("redeemFor", { count: reward.cost })}
-          </ResponsiveModalClose>
-        ) : (
+          <>
+            {mustChoose ? (
+              <div className="flex w-full gap-2">
+                {chooseCurrencies.map((c) => {
+                  const affordable = canAfford(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => affordable && setCurrency(c)}
+                      aria-pressed={currency === c}
+                      disabled={!affordable}
+                      className={`h-11 flex-1 rounded-full border text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                        currency === c
+                          ? "bg-foreground text-background border-foreground"
+                          : "bg-card text-muted-foreground border-border"
+                      }`}
+                    >
+                      {c === "stamps"
+                        ? t("payStamps", { count: view.stamps.required ?? 0 })
+                        : t("payPoints", { count: view.points.required ?? 0 })}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            <Button
+              variant="gradient"
+              size="lg"
+              disabled={currency === null || !selectedAffordable}
+              onClick={() =>
+                currency && selectedAffordable && onClaim(currency)
+              }
+              className="h-13 w-full rounded-full text-base sm:w-auto"
+            >
+              {t("redeemCta")}
+            </Button>
+          </>
+        ) : !redeemed ? (
           <Button
             variant="gradient"
             size="lg"
@@ -385,13 +534,66 @@ function RewardDetail({
             className="h-13 w-full rounded-full text-base sm:w-auto"
           >
             <Lock />
-            {t("lockedCta", { count: missing })}
+            {locked ? t("lockedGeneric") : t("notReadyCta")}
           </Button>
-        )}
+        ) : null}
         <ResponsiveModalClose className="w-full sm:w-auto">
           {t("close")}
         </ResponsiveModalClose>
       </ResponsiveModalFooter>
+    </div>
+  );
+}
+
+function ProgressRows({ reward }: { reward: RewardListItem }) {
+  const t = useTranslations("Rewards");
+  return (
+    <div className="flex flex-col gap-2">
+      {reward.stamps.required != null ? (
+        <CurrencyRow
+          icon={<Stamp className="size-4" />}
+          label={t("balanceStamps", {
+            have: reward.stamps.balance,
+            cost: reward.stamps.required,
+          })}
+          progress={reward.stamps.affordable ? 1 : reward.stamps.progress}
+        />
+      ) : null}
+      {reward.points.required != null ? (
+        <CurrencyRow
+          icon={<Coins className="size-4" />}
+          label={t("balancePoints", {
+            have: reward.points.balance,
+            cost: reward.points.required,
+          })}
+          progress={reward.points.affordable ? 1 : reward.points.progress}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function CurrencyRow({
+  icon,
+  label,
+  progress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  progress: number;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-foreground inline-flex items-center gap-1.5 text-sm font-semibold">
+        {icon}
+        {label}
+      </span>
+      <div className="bg-card/70 h-2 overflow-hidden rounded-full">
+        <div
+          className="from-primary to-primary/50 h-full rounded-full bg-gradient-to-r"
+          style={{ width: `${Math.round(progress * 100)}%` }}
+        />
+      </div>
     </div>
   );
 }

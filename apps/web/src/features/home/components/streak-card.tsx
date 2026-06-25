@@ -176,7 +176,7 @@ function StreakDetail({
 
   const claimNow = () => {
     (document.activeElement as HTMLElement | null)?.blur();
-    openClaim("streak");
+    openClaim({ kind: "streak" });
   };
 
   return (

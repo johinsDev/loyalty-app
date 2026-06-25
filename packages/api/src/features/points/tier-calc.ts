@@ -45,3 +45,9 @@ export function tierFor(tierPoints: number): TierView {
 export function tierRank(key: string): number {
   return ASC.findIndex((t) => t.key === key);
 }
+
+/** The current tier key for a given window tier-points total. Used by the
+ *  rewards feature to gate tier-locked rewards without re-deriving the view. */
+export function currentTierKey(tierPoints: number): string {
+  return tierFor(tierPoints).current.key;
+}

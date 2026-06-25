@@ -17,6 +17,7 @@
     "@loyalty/analytics": "workspace:*",
     "@loyalty/api": "workspace:*",
     "@loyalty/auth": "workspace:*",
+    "@loyalty/cache": "workspace:*",
     "@loyalty/db": "workspace:*",
     "@loyalty/feature-flags": "workspace:*",
     "@loyalty/log": "workspace:*",

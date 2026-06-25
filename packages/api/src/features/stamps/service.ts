@@ -1,18 +1,15 @@
 import { tasks } from "@trigger.dev/sdk/v3";
-import { TRPCError } from "@trpc/server";
 
 import type { RealtimeBinding } from "../../trpc";
-import { signClaimToken, verifyClaimToken } from "./claim-token";
 import type { StampsRepository } from "./repository";
 import type {
-  CompletedWalletItem,
   HistoryInput,
   PurchaseHistoryItem,
   RecordPurchaseInput,
   WalletView,
 } from "./schemas";
 
-type NotificationKey = "stamp-earned" | "reward-claimed" | "first-purchase";
+type NotificationKey = "first-purchase";
 
 type EnqueuePayload = {
   customerIds: string[];
@@ -33,18 +30,18 @@ const defaultEnqueue: Enqueue = async (payload) => {
 export interface StampsServiceOptions {
   /** Bound by the router from `ctx.realtime` (FakeRealtime in dev/preview). */
   realtime?: RealtimeBinding;
-  /** HS256 secret for claim tokens (`REALTIME_AUTH_SECRET`). */
-  signSecret: string;
   /** Override the notification enqueue (tests inject a fake). */
   enqueue?: Enqueue;
 }
 
 /**
- * Stamps business logic: record a purchase (→ stamp → wallet bump → completion),
- * read the customer's wallet / history / completed wallets, and the reward claim
- * (issue the signed QR token + confirm the scan). Side effects are best-effort:
- * realtime fires inline (instant card animation); WhatsApp + in-app go through
- * the Trigger.dev `send-notification` job. Neither failure rolls back the write.
+ * Stamps business logic: record a purchase (→ stamp → spendable-balance bump),
+ * and read the customer's wallet / history. The card is a perpetual spendable
+ * balance — it never completes and never blocks a purchase (the free drink is a
+ * rewards-catalog reward claimed via the rewards feature). Side effects are
+ * best-effort: realtime fires inline (instant card animation); the first-purchase
+ * notification goes through the Trigger.dev `send-notification` job. Neither
+ * failure rolls back the write.
  */
 export class StampsService {
   constructor(
@@ -65,10 +62,6 @@ export class StampsService {
       idempotencyKey: input.idempotencyKey,
     });
 
-    if (result.kind === "reward_pending") {
-      throw new TRPCError({ code: "CONFLICT", message: "REWARD_PENDING" });
-    }
-
     if (result.kind === "recorded") {
       // Realtime fires inline so the stamp card animates instantly.
       await this.publish(input.customerId, {
@@ -78,7 +71,6 @@ export class StampsService {
           currentStamps: result.wallet.currentStamps,
           walletSize: result.wallet.walletSize,
           stampsGoal: result.wallet.stampsGoal,
-          completed: result.completed,
         },
       });
 
@@ -126,68 +118,6 @@ export class StampsService {
       input.page,
       input.pageSize,
     );
-  }
-
-  myCompletedWallets(
-    organizationId: string,
-    customerId: string,
-  ): Promise<CompletedWalletItem[]> {
-    return this.repo.completedWallets(organizationId, customerId);
-  }
-
-  async issueClaimToken(
-    organizationId: string,
-    customerId: string,
-  ): Promise<{ token: string; expiresAt: string; walletId: string }> {
-    const pending = await this.repo.pendingWallet(organizationId, customerId);
-    if (!pending) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "NO_REWARD_PENDING",
-      });
-    }
-    const { token, expiresAt } = await signClaimToken({
-      customerId,
-      walletId: pending.id,
-      secret: this.opts.signSecret,
-    });
-    return { token, expiresAt, walletId: pending.id };
-  }
-
-  async claim(
-    organizationId: string,
-    claimedByUserId: string,
-    token: string,
-  ): Promise<{ ok: true; newWallet: WalletView }> {
-    let parsed: { customerId: string; walletId: string };
-    try {
-      parsed = await verifyClaimToken(token, this.opts.signSecret);
-    } catch {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_TOKEN" });
-    }
-
-    const result = await this.repo.claimWallet({
-      orgId: organizationId,
-      walletId: parsed.walletId,
-      customerId: parsed.customerId,
-      claimedByUserId,
-    });
-    if (result.kind === "not_pending") {
-      throw new TRPCError({ code: "CONFLICT", message: "ALREADY_CLAIMED" });
-    }
-
-    await this.publish(parsed.customerId, {
-      event: "reward.claimed",
-      data: { walletId: result.walletId },
-    });
-    await this.enqueue({
-      customerIds: [parsed.customerId],
-      organizationId,
-      notificationKey: "reward-claimed",
-      payload: { walletId: result.walletId },
-    });
-
-    return { ok: true, newWallet: result.newWallet };
   }
 
   private async publish(

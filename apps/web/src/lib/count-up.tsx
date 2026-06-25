@@ -13,6 +13,9 @@ type Props = {
   duration?: number;
   /** Delay before the count starts, in ms. */
   delay?: number;
+  /** Format each frame (e.g. a locale-aware / compact formatter). Defaults to
+   *  `toLocaleString("es")`. */
+  format?: (value: number) => string;
   className?: string;
 };
 
@@ -29,6 +32,7 @@ export function CountUp({
   plus = false,
   duration = 1100,
   delay = 0,
+  format,
   className,
 }: Props) {
   const reduced = useReducedMotion();
@@ -63,7 +67,7 @@ export function CountUp({
   return (
     <span className={className}>
       {plus ? "+" : ""}
-      {display.toLocaleString("es")}
+      {format ? format(display) : display.toLocaleString("es")}
     </span>
   );
 }

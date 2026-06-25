@@ -52,7 +52,7 @@ export function StreakRewardBanner() {
             </p>
             <button
               type="button"
-              onClick={() => openClaim("streak")}
+              onClick={() => openClaim({ kind: "streak" })}
               className="flex-none rounded-full bg-neutral-900 px-4 py-2 text-xs font-extrabold text-white"
             >
               {t("rewardBannerCta")}

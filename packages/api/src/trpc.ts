@@ -81,6 +81,13 @@ export type Context = {
    */
   realtime?: RealtimeBinding;
   /**
+   * Read-through cache binding. Same pattern as `realtime` — apps bind their
+   * configured `@loyalty/cache` store so routers can `ctx.cache?.getOrSet(...)`
+   * without importing the apps' bootstrap singleton. Optional → tests + CLI
+   * run uncached. See `.claude/skills/cache/SKILL.md`.
+   */
+  cache?: CacheBinding;
+  /**
    * Storage manager. Same pattern as `realtime` — apps bind a
    * configured `StorageManager` so the storage router doesn't import
    * the apps' bootstrap singleton.
@@ -132,6 +139,22 @@ export type Context = {
    */
   shortlinks?: ShortlinksBinding;
 };
+
+/**
+ * Structural slice of a `@loyalty/cache` store — `getOrSet` for read-through
+ * caching plus the direct `get`/`set`/`delete` trio used by short-lived state
+ * (e.g. the code-based claim OTP). Apps bind their configured store.
+ */
+export interface CacheBinding {
+  getOrSet<T>(
+    key: string,
+    factory: () => Promise<T>,
+    ttlSeconds?: number,
+  ): Promise<T>;
+  get<T = unknown>(key: string): Promise<T | null>;
+  set(key: string, value: unknown, ttlSeconds?: number): Promise<void>;
+  delete(key: string): Promise<void>;
+}
 
 /** Structural slice of the `@loyalty/shortlinks` manager (the `shorten` op). */
 export interface ShortlinksBinding {

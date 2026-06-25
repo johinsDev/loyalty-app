@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Button,
   ResponsiveModal,
   ResponsiveModalContent,
   ResponsiveModalDescription,
@@ -13,7 +12,6 @@ import { CupSoda, Gift } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { useQrDrawer } from "@/features/qr/hooks/use-qr-drawer";
 import { useCurrency } from "@/lib/currency";
 import { useTRPC } from "@/lib/trpc/client";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
@@ -31,17 +29,17 @@ type Selected =
  * a client `useQuery` (so the cookie is sent — these are per-user + protected,
  * and the cross-origin Worker can't authenticate an SSR fetch). Shows
  * `<StampsCardSkeleton />` while loading; the realtime listener invalidates both
- * so a new stamp pops in live. Tapping a
- * filled stamp reveals the real purchase that earned it; an empty one shows how
- * many are left; the reward stamp opens the QR drawer to claim when the card is
- * full, else shows the prize.
+ * so a new stamp pops in live. `currentStamps` is a spendable balance (it can
+ * exceed `walletSize`); the card visual shows progress within the current
+ * buy-N-get-1 cycle (`currentStamps % stampsGoal`). Tapping a filled stamp
+ * reveals the real purchase that earned it; an empty one shows how many are
+ * left; the reward stamp shows the prize (claimed via the rewards screen).
  */
 export function StampsCard() {
   const t = useTranslations("Home");
   const format = useFormatter();
   const trpc = useTRPC();
   const { defaultCurrency } = useCurrency();
-  const setQrOpen = useQrDrawer((s) => s.setOpen);
   const reduced = useReducedMotion();
   const [selected, setSelected] = useState<Selected | null>(null);
 
@@ -52,10 +50,13 @@ export function StampsCard() {
 
   if (!w || !history) return <StampsCardSkeleton />;
 
-  const filled = w.currentStamps;
-  // The card has `walletSize` spots: `stampsGoal` stamps + the last (free reward).
-  const total = w.walletSize;
   const goal = w.stampsGoal;
+  // The card has `walletSize` spots: `stampsGoal` stamps + the last (free
+  // reward). `currentStamps` can exceed the card — show the in-cycle progress
+  // (a full card when the balance is an exact multiple of the goal).
+  const total = w.walletSize;
+  const inCycle = goal > 0 ? w.currentStamps % goal : 0;
+  const filled = inCycle === 0 && w.currentStamps > 0 ? goal : inCycle;
   const remaining = Math.max(0, goal - filled);
   const stamps = Array.from({ length: total }, (_, i) => i + 1);
 
@@ -94,12 +95,6 @@ export function StampsCard() {
     setSelected(isFilled ? { kind: "filled", n } : { kind: "empty", n });
   };
 
-  const claimNow = () => {
-    blurActive();
-    setSelected(null);
-    setQrOpen(true);
-  };
-
   return (
     <section className="bg-card rounded-3xl p-6 shadow-lg shadow-black/5 ring-1 ring-black/5 dark:ring-white/10">
       <style>{`@keyframes tw-zoom-in{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}@keyframes t4StampGlow{0%,100%{box-shadow:0 6px 14px -4px rgba(251,191,36,.5)}50%{box-shadow:0 8px 22px 0 rgba(251,191,36,.85)}}`}</style>
@@ -112,7 +107,7 @@ export function StampsCard() {
         </span>
       </div>
       <p className="text-primary mb-4 text-sm font-semibold">
-        {w.rewardPending ? t("rewardReady") : t("stampsRemaining", { count: remaining })}
+        {t("stampsRemaining", { count: remaining })}
       </p>
       <div className="grid grid-cols-5 gap-3">
         {stamps.map((n) => {
@@ -173,8 +168,6 @@ export function StampsCard() {
           <StampDetail
             selected={selected}
             total={goal}
-            rewardPending={w.rewardPending}
-            onClaim={claimNow}
             purchase={
               selected?.kind === "filled" ? walletPurchases[selected.n - 1] : undefined
             }
@@ -190,16 +183,12 @@ export function StampsCard() {
 function StampDetail({
   selected,
   total,
-  rewardPending,
-  onClaim,
   purchase,
   money,
   formatDate,
 }: {
   selected: Selected | null;
   total: number;
-  rewardPending: boolean;
-  onClaim: () => void;
   purchase: { priceCents: number; createdAt: Date } | undefined;
   money: (cents: number) => string;
   formatDate: (d: Date) => string;
@@ -212,24 +201,17 @@ function StampDetail({
       <>
         <ResponsiveModalHeader className="text-left">
           <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
-            {rewardPending ? t("rewardClaimTitle") : t("stampRewardTitle")}
+            {t("stampRewardTitle")}
           </ResponsiveModalTitle>
           <ResponsiveModalDescription className="sr-only">
-            {rewardPending ? t("rewardClaimBody") : t("stampDetailReward")}
+            {t("stampDetailReward")}
           </ResponsiveModalDescription>
         </ResponsiveModalHeader>
         <div className="space-y-4 px-4 pb-6">
           <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-br from-amber-300 to-amber-400 p-5 text-white shadow-md shadow-amber-400/40">
             <Gift className="size-9 flex-none" />
-            <p className="text-sm font-semibold">
-              {rewardPending ? t("rewardClaimBody") : t("stampDetailReward")}
-            </p>
+            <p className="text-sm font-semibold">{t("stampDetailReward")}</p>
           </div>
-          {rewardPending ? (
-            <Button onClick={onClaim} className="h-12 w-full rounded-2xl font-semibold">
-              {t("rewardClaimCta")}
-            </Button>
-          ) : null}
         </div>
       </>
     );

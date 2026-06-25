@@ -18,6 +18,7 @@
     "./features/realtime": "./src/features/realtime/index.ts",
     "./features/streaks": "./src/features/streaks/index.ts",
     "./features/points": "./src/features/points/index.ts",
+    "./features/rewards": "./src/features/rewards/index.ts",
     "./features/products": "./src/features/products/index.ts",
     "./features/banners": "./src/features/banners/index.ts",
     "./features/banners/schemas": "./src/features/banners/schemas.ts",

@@ -11,6 +11,7 @@ import { cors } from "hono/cors";
 
 import { analytics } from "./lib/analytics";
 import { auth } from "./lib/auth";
+import { cache } from "./lib/cache";
 import { env } from "./lib/env";
 import { flags } from "./lib/feature-flags";
 import { log } from "./lib/log";
@@ -72,6 +73,7 @@ app.all("/trpc/*", (c) =>
         ...ctx,
         realtime,
         storage,
+        cache,
         rateLimiter,
         analytics: analytics.forRequest({
           distinctId,

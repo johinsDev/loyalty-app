@@ -139,7 +139,7 @@ export function NotificationsView() {
     >
       <AppSidebar />
       <SidebarInset className="from-primary/5 to-background text-foreground overflow-x-clip bg-gradient-to-b">
-        <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-2xl lg:px-8 lg:pt-12">
+        <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-5xl lg:px-8 lg:pt-12">
           {/* Header */}
           <div className="flex items-start justify-between gap-3">
             <div>

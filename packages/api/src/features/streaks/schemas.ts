@@ -14,6 +14,32 @@ export const claimInputSchema = z.object({
   token: z.string().min(1),
 });
 
+export const requestClaimInputSchema = z.object({
+  customerId: z.string().min(1),
+});
+
+export const confirmClaimWithCodeInputSchema = z.object({
+  pendingId: z.string().min(1),
+  code: z.string().length(6),
+});
+
+export const cancelClaimInputSchema = z.object({
+  pendingId: z.string().min(1),
+});
+
+/** Result of a `requestClaim` — the code is delivered out-of-band (realtime +
+ *  WhatsApp), never returned over HTTP. */
+export interface RequestClaimResult {
+  pendingId: string;
+  expiresAt: string;
+}
+
+export type RequestClaimInput = z.infer<typeof requestClaimInputSchema>;
+export type ConfirmClaimWithCodeInput = z.infer<
+  typeof confirmClaimWithCodeInputSchema
+>;
+export type CancelClaimInput = z.infer<typeof cancelClaimInputSchema>;
+
 export type StreakStatus = "active" | "completed" | "claimed";
 
 /** Per-day state for the L-D week strip on the card. */

@@ -7,7 +7,11 @@ import {
   staffProcedure,
 } from "../../trpc";
 import { PointsRepository } from "./repository";
-import { customerIdInputSchema, historyInputSchema } from "./schemas";
+import {
+  customerIdInputSchema,
+  historyInputSchema,
+  transactionsInputSchema,
+} from "./schemas";
 import { PointsService } from "./service";
 
 const orgId = async (): Promise<string> =>
@@ -40,5 +44,17 @@ export const pointsRouter = router({
     .input(historyInputSchema)
     .query(async ({ ctx, input }) =>
       buildPointsService(ctx).myHistory(await orgId(), ctx.session.user.id, input),
+    ),
+
+  // Cursor-paginated, UI-friendly ledger (date-range + infinite scroll) for the
+  // dedicated "Tus puntos" history view and the inline detail list.
+  myTransactions: protectedProcedure
+    .input(transactionsInputSchema)
+    .query(async ({ ctx, input }) =>
+      buildPointsService(ctx).myTransactions(
+        await orgId(),
+        ctx.session.user.id,
+        input,
+      ),
     ),
 });
