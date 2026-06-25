@@ -155,6 +155,21 @@ export function createAuth(
           },
         }
       : undefined,
+    // Account linking for the web customer "Connect Google" flow. Linking is
+    // EXPLICIT only (no implicit sign-in linking): a phone-first user opts in
+    // from their profile via `linkSocial`. `allowDifferentEmails` is required
+    // because phone-first accounts carry a synthetic `<phone>@phone.local`
+    // email that won't match the Google email. `updateUserInfoOnLink` pulls
+    // Google's verified email onto `user.email`/`emailVerified` (the profile
+    // then mirrors it to `customer.email`).
+    account: {
+      accountLinking: {
+        enabled: true,
+        trustedProviders: ["google"],
+        allowDifferentEmails: true,
+        updateUserInfoOnLink: true,
+      },
+    },
     plugins: [
       organization(),
       // Admin passwordless sign-in. `disableSignUp` → a magic-link to an

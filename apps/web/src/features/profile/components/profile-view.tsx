@@ -8,9 +8,10 @@ import { ProfileScreen } from "./profile-screen";
 /**
  * Customer profile / account — a faithful build of the "T4 · Perfil" Claude
  * Design template. Mobile-first; on desktop the bottom nav gives way to the
- * sidebar. Editable fields (name / nickname / birthday / avatar) are local
- * design-first state (see {@link ProfileScreen}); theme, language, notification
- * opt-outs and sign-out are the real, wired controls.
+ * sidebar. Every section is wired to the real `profile` tRPC router (see
+ * {@link ProfileScreen}): name / nickname / avatar edits, phone change via
+ * OTP, Google link/unlink, plus the live stats, notification opt-outs, theme,
+ * language and sign-out.
  */
 export async function ProfileView() {
   await requireSession();

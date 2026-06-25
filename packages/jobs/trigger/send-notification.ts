@@ -12,6 +12,10 @@ type Payload = {
   organizationId: string;
   notificationKey: NotificationKey;
   payload?: Record<string, unknown>;
+  /** Explicit contact override — when set, the Notifier delivers to THIS
+   *  contact instead of resolving each customer's current row. Used by the
+   *  phone-change alert to reach the OLD number even after the row is updated. */
+  recipient?: { phone: string; email: string | null; name: string | null };
 };
 
 /**
@@ -23,7 +27,13 @@ type Payload = {
 export const sendNotificationTask = task({
   id: "send-notification",
   maxDuration: 120,
-  run: async ({ customerIds, organizationId, notificationKey, payload }: Payload) => {
+  run: async ({
+    customerIds,
+    organizationId,
+    notificationKey,
+    payload,
+    recipient,
+  }: Payload) => {
     logger.info("send-notification start", {
       notificationKey,
       recipients: customerIds.length,
@@ -47,7 +57,9 @@ export const sendNotificationTask = task({
     for (const customerId of customerIds) {
       try {
         const result = await notifier.send(
-          { customerId, organizationId },
+          recipient
+            ? { customerId, organizationId, ...recipient }
+            : { customerId, organizationId },
           createNotification(notificationKey, payload),
         );
         for (const r of result.results) {

@@ -801,6 +801,44 @@ export class BannerNotification
   }
 }
 
+/**
+ * Security alert when a customer changes their phone. Transactional (always
+ * sends). WhatsApp is dispatched with an explicit recipient override (the OLD
+ * contact) so it reaches the previous number even though the `customer` row
+ * already holds the new one; the database (in-app feed) entry is keyed to the
+ * account. No SMS / mail.
+ */
+export class PhoneChangedNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(private readonly newPhoneMasked: string) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  #body(): string {
+    return `Cambiaste el número de tu cuenta T4 Diver Club a ${this.newPhoneMasked}. Si no fuiste vos, contactá a la tienda de inmediato.`;
+  }
+
+  toWhatsApp() {
+    return { body: this.#body() };
+  }
+
+  toDatabase() {
+    return {
+      type: "phone-changed",
+      title: "Cambiaste tu número",
+      body: this.#body(),
+    };
+  }
+}
+
 /** Builds a notification from its key + the admin-supplied payload. */
 export function createNotification(
   key: NotificationKey,
@@ -903,6 +941,13 @@ export function createNotification(
       const remaining =
         typeof payload?.remaining === "number" ? payload.remaining : 0;
       return new TierNearNotification(nextName, remaining);
+    }
+    case "phone-changed": {
+      const masked =
+        typeof payload?.newPhoneMasked === "string"
+          ? payload.newPhoneMasked
+          : "";
+      return new PhoneChangedNotification(masked);
     }
   }
 }

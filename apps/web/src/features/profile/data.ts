@@ -1,22 +1,9 @@
 /**
- * Hardcoded profile sample — a faithful port of the "T4 · Perfil" Claude Design
- * template. Local/design-first until a customer-profile API lands; the editable
- * fields below live in component state. Stats mirror the home/rewards demo data.
+ * Static design tokens for the profile screen. The editable fields (name,
+ * nickname, avatar, stats, …) now come from the `profile` tRPC router — see
+ * {@link import("./components/profile-screen").ProfileScreen}. Only the avatar
+ * presets + upload constraints + app version stay here.
  */
-
-export const profile = {
-  name: "Ari Tanaka",
-  nickname: "ari",
-  email: "ari.tanaka@gmail.com",
-  /** 1-indexed month + day + year. */
-  birthday: { month: 7, day: 14, year: 1998 },
-  memberSince: "Mar 2024",
-  points: 312,
-  tier: "Hoja",
-  visits: 47,
-  emailVerified: true,
-  googleLinked: true,
-} as const;
 
 export type TeaAvatar = {
   id: string;

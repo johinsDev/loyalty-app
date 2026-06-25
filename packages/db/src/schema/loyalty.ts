@@ -24,6 +24,14 @@ export const customer = sqliteTable(
     phone: text("phone").notNull(),
     email: text("email"),
     name: text("name"),
+    // Personal handle, unique per org (stored lowercased). Optional.
+    nickname: text("nickname"),
+    // Avatar is one of: a preset id (avatarPreset), a custom upload
+    // (avatarUrl + avatarThumbhash), or none (initials fallback). The three
+    // are kept mutually exclusive by the profile service.
+    avatarPreset: text("avatar_preset"),
+    avatarUrl: text("avatar_url"),
+    avatarThumbhash: text("avatar_thumbhash"),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -33,6 +41,10 @@ export const customer = sqliteTable(
   },
   (t) => ({
     phonePerOrg: uniqueIndex("customer_phone_per_org_uq").on(t.organizationId, t.phone),
+    nicknamePerOrg: uniqueIndex("customer_nickname_per_org_uq").on(
+      t.organizationId,
+      t.nickname,
+    ),
   }),
 );
 
