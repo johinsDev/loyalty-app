@@ -118,7 +118,11 @@
     "codeCopyFailed": "No se pudo copiar el código",
     "terms": "Válido en cualquier local T4. Una promo por visita. No acumulable con otras promociones ni con canjes de puntos.",
     "showAtRegister": "Mostrar en caja",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "seeAll": "Ver todo",
+    "all": "Todas",
+    "howToUse": "Cómo usar",
+    "back": "Volver a promociones"
   },
   "Rewards": {
     "title": "Recompensas",

@@ -118,7 +118,11 @@
     "codeCopyFailed": "Couldn't copy the code",
     "terms": "Valid at any T4 store. One promo per visit. Not combinable with other promotions or point redemptions.",
     "showAtRegister": "Show at register",
-    "close": "Close"
+    "close": "Close",
+    "seeAll": "See all",
+    "all": "All",
+    "howToUse": "How to use",
+    "back": "Back to promos"
   },
   "Rewards": {
     "title": "Rewards",

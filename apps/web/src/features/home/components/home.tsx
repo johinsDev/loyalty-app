@@ -1,12 +1,12 @@
 import { SidebarInset, SidebarProvider } from "@loyalty/ui";
 
 import { BannerRail } from "@/features/banners/components/banner-rail";
+import { PromoRail } from "@/features/promos/components/promo-rail";
 import { FadeUp } from "@/lib/animate";
 
 import { AppSidebar } from "./app-sidebar";
 import { GreetingHeader } from "./greeting-header";
 import { PointsCard } from "./points-card";
-import { PromosCarousel } from "./promos-carousel";
 import { RecentVisits } from "./recent-visits";
 import { RewardCard } from "./reward-card";
 import { RewardReadyBanner } from "./reward-ready-banner";
@@ -57,7 +57,7 @@ export async function Home() {
           <RewardCard />
 
           <FadeUp index={5} className="mt-6">
-            <PromosCarousel />
+            <PromoRail />
           </FadeUp>
 
           <FadeUp

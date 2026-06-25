@@ -1,40 +1,86 @@
-import { SidebarInset, SidebarProvider } from "@loyalty/ui";
-import { getTranslations } from "next-intl/server";
+"use client";
 
-import { promos } from "../data";
-import { PromosCatalog } from "./promos-catalog";
-import { AppSidebar } from "@/features/home/components/app-sidebar";
+import { Skeleton } from "@loyalty/ui";
+import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
+
+import { useTRPC } from "@/lib/trpc/client";
+
+import { PromoCard } from "./promo-card";
 
 /**
- * Customer promos hub — a faithful build of the "T4 · Promos" Claude Design
- * template: a "destacadas" hero carousel, category filter chips, the list of all
- * active promos, and a bottom Drawer with a promo's detail + register code.
- * Mobile-first; on desktop the bottom nav gives way to the sidebar and the
- * layout widens. All data is hardcoded sample content (see `../data`) until the
- * customer promos API lands; the catalog and its drawer are the interactive
- * (client) parts. Reached from the home "para ti hoy" carousel.
+ * Customer promos hub (/promos) — category chips + a grid of published promos,
+ * wired to the cached, localized `listPublic`. Detail opens at `/promo/[slug]`
+ * (intercepted modal). Chips are derived from the loaded promos' categories.
  */
-export async function Promos() {
-  const t = await getTranslations("Promos");
+export function Promos() {
+  const t = useTranslations("Promos");
+  const trpc = useTRPC();
+  const [category, setCategory] = useState<string | null>(null);
+  const { data, isLoading } = useQuery(
+    trpc.promociones.listPublic.queryOptions({ category: category ?? undefined, pageSize: 40 }),
+  );
+
+  const items = data?.items ?? [];
+  const categories = Array.from(
+    new Set(items.map((p) => p.category).filter((c): c is string => Boolean(c))),
+  );
 
   return (
-    <SidebarProvider style={{ "--sidebar-width": "18rem" } as React.CSSProperties}>
-      <AppSidebar />
-      <SidebarInset className="from-primary/5 to-background text-foreground overflow-x-clip bg-gradient-to-b">
-        <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-5xl lg:px-8 lg:pt-12">
-          <header className="mb-5">
-            <h1 className="font-display text-3xl font-semibold tracking-tight">
-              {t("title")}
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {t("subtitle", { count: promos.length })}
-            </p>
-          </header>
+    <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-5xl lg:px-8 lg:pt-12">
+      <h1 className="font-display text-2xl font-semibold tracking-tight">{t("title")}</h1>
 
-          <PromosCatalog />
+      {categories.length > 0 ? (
+        <div className="scrollbar-hide mt-4 flex gap-2 overflow-x-auto pb-1">
+          <Chip active={category === null} onClick={() => setCategory(null)}>
+            {t("all")}
+          </Chip>
+          {categories.map((c) => (
+            <Chip key={c} active={category === c} onClick={() => setCategory(c)}>
+              {c}
+            </Chip>
+          ))}
         </div>
+      ) : null}
 
-      </SidebarInset>
-    </SidebarProvider>
+      {isLoading ? (
+        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {["a", "b", "c", "d"].map((k) => (
+            <Skeleton key={k} className="h-44 rounded-3xl lg:h-52" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <p className="text-muted-foreground mt-8 text-center text-sm">{t("empty")}</p>
+      ) : (
+        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {items.map((promo) => (
+            <PromoCard key={promo.id} promo={promo} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-9 shrink-0 rounded-full px-4 text-sm font-bold transition-colors ${
+        active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

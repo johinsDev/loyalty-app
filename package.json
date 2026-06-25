@@ -49,6 +49,7 @@
     "env:check": "infisical secrets --env=${INFISICAL_ENV:-dev} --recursive",
     "prepare": "lefthook install",
     "db:seed:banners": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-banners.ts",
+    "db:seed:promos": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-promos.ts",
     "db:seed:i18n": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-i18n.ts"
   },
   "devDependencies": {

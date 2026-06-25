@@ -1,74 +1,94 @@
-import { getPrimaryOrganizationId } from "@loyalty/db";
+import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
-import { managerProcedure, router } from "../../trpc";
+import { loadLocaleContext } from "../_shared/localize";
+import { managerProcedure, publicProcedure, router, staffProcedure } from "../../trpc";
 import { PromoRepository } from "./repository";
 import {
-  advanceInputSchema,
-  getStateInputSchema,
+  applicableInputSchema,
+  cancelNotificationInputSchema,
+  createNotificationInputSchema,
+  idInputSchema,
   listInputSchema,
-  publishInputSchema,
+  listNotificationsInputSchema,
+  publicListInputSchema,
+  slugInputSchema,
+  updateInputSchema,
 } from "./schemas";
 import { PromoService } from "./service";
-import type { Context } from "../../trpc";
 
-function makeService(db: Context["db"]): PromoService {
+function makeService(db: typeof Db): PromoService {
   return new PromoService(db, new PromoRepository(db));
 }
-
+const orgId = async (): Promise<string> => (await getPrimaryOrganizationId()) ?? "";
 async function requireOrg(): Promise<string> {
-  const organizationId = await getPrimaryOrganizationId();
-  if (!organizationId) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "No active organization",
-    });
-  }
-  return organizationId;
+  const id = await getPrimaryOrganizationId();
+  if (!id) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No active organization" });
+  return id;
 }
 
 /**
- * Server-driven promo wizard. `managerProcedure` — managers + owners build
- * promos. The FE only ever calls `create` once, then loops
- * `getState` → `advance` per step → `publish`. See `.claude/skills/wizard/SKILL.md`.
+ * Promotions. Public localized reads (home rail + /promos hub + detail), a
+ * manager CRUD authoring flow (create draft → patch → publish), and the staff
+ * `applicable` evaluation used at checkout (eligibility + computed discount).
  */
 export const promocionesRouter = router({
-  create: managerProcedure.mutation(async ({ ctx }) => {
-    const organizationId = await requireOrg();
-    return makeService(ctx.db).create(organizationId, ctx.session.user.id);
+  // ── Public (cacheable, localized) ──────────────────────────────────────────
+  homePromos: publicProcedure.query(async ({ ctx }) => {
+    const id = await orgId();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    return makeService(ctx.db).homePromos(id, lc);
+  }),
+  listPublic: publicProcedure.input(publicListInputSchema).query(async ({ ctx, input }) => {
+    const id = await orgId();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    return makeService(ctx.db).listPromos(id, lc, input);
+  }),
+  bySlug: publicProcedure.input(slugInputSchema).query(async ({ ctx, input }) => {
+    const id = await orgId();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    return makeService(ctx.db).promoBySlug(id, input.slug, lc);
   }),
 
-  getState: managerProcedure
-    .input(getStateInputSchema)
-    .query(async ({ ctx, input }) => {
-      const organizationId = await requireOrg();
-      return makeService(ctx.db).getState(organizationId, input.id);
-    }),
-
-  advance: managerProcedure
-    .input(advanceInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      const organizationId = await requireOrg();
-      return makeService(ctx.db).advance(
-        organizationId,
-        ctx.session.user.id,
-        input.id,
-        input.step,
-        input.input,
-      );
-    }),
-
+  // ── Admin (managers + owners) ──────────────────────────────────────────────
+  create: managerProcedure.mutation(async ({ ctx }) =>
+    makeService(ctx.db).create(await requireOrg(), ctx.session.user.id),
+  ),
+  get: managerProcedure
+    .input(idInputSchema)
+    .query(async ({ ctx, input }) => makeService(ctx.db).get(await requireOrg(), input.id)),
+  update: managerProcedure
+    .input(updateInputSchema)
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).update(await requireOrg(), input)),
   publish: managerProcedure
-    .input(publishInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      const organizationId = await requireOrg();
-      return makeService(ctx.db).publish(organizationId, input.id);
-    }),
-
+    .input(idInputSchema)
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).publish(await requireOrg(), input.id)),
   list: managerProcedure
     .input(listInputSchema)
-    .query(async ({ ctx, input }) => {
-      const organizationId = await requireOrg();
-      return makeService(ctx.db).list(organizationId, input);
-    }),
+    .query(async ({ ctx, input }) => makeService(ctx.db).list(await requireOrg(), input)),
+  remove: managerProcedure
+    .input(idInputSchema)
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).remove(await requireOrg(), input.id)),
+
+  // ── Checkout (cashier) ─────────────────────────────────────────────────────
+  applicable: staffProcedure.input(applicableInputSchema).query(async ({ ctx, input }) => {
+    const id = await requireOrg();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    return makeService(ctx.db).applicable(id, input.customerId, input.cart, lc);
+  }),
+
+  // ── Notifications (managers) ───────────────────────────────────────────────
+  notifications: router({
+    list: managerProcedure
+      .input(listNotificationsInputSchema)
+      .query(async ({ ctx, input }) => makeService(ctx.db).listNotifications(input.promoId)),
+    create: managerProcedure
+      .input(createNotificationInputSchema)
+      .mutation(async ({ ctx, input }) =>
+        makeService(ctx.db).createNotification(await requireOrg(), input),
+      ),
+    cancel: managerProcedure
+      .input(cancelNotificationInputSchema)
+      .mutation(async ({ ctx, input }) => makeService(ctx.db).cancelNotification(input.id)),
+  }),
 });

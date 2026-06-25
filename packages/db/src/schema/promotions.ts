@@ -1,7 +1,36 @@
 import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 import { organization, user } from "./auth";
+
+/** Discriminated benefit config (stored as JSON, typed by `promo.type`). */
+export type PromoBenefit =
+  | { percent: number; maxDiscountCents?: number }
+  | { amountCents: number }
+  | { buyQty: number; payQty: number }
+  | { freeRef: { kind: "product" | "variant" | "modifier"; id: string } }
+  | { multiplier: number };
+
+/** What the promo applies to. */
+export type PromoScope = { productIds?: string[]; categoryIds?: string[] };
+
+/** Non-queryable conditions (the queryable ones are first-class columns). */
+export type PromoConditions = {
+  minPurchaseCents?: number;
+  maxDiscountCents?: number;
+  firstPurchaseOnly?: boolean;
+  maxUsesTotal?: number;
+  maxPerCustomer?: number;
+  daysOfWeek?: number[]; // 0 (Sun) – 6 (Sat)
+  hoursFrom?: string; // "HH:mm"
+  hoursTo?: string;
+};
 
 /**
  * `promo` — a marketing promotion built through the multi-step wizard
@@ -44,6 +73,33 @@ export const promo = sqliteTable(
     startsAt: integer("starts_at", { mode: "timestamp" }),
     endsAt: integer("ends_at", { mode: "timestamp" }),
 
+    // ── Promo engine (the real model; supersedes segment/products/branding) ──
+    slug: text("slug"),
+    // percentage | fixed | nForM | freeItem | pointsMultiplier
+    type: text("type"),
+    benefit: text("benefit", { mode: "json" }).$type<PromoBenefit>(),
+    scopeKind: text("scope_kind"), // order | products | categories
+    scope: text("scope", { mode: "json" }).$type<PromoScope>(),
+    conditions: text("conditions", { mode: "json" }).$type<PromoConditions>(),
+    audienceType: text("audience_type").notNull().default("all"), // all | tier | specific
+    tierKey: text("tier_key"),
+    audienceCustomerIds: text("audience_customer_ids", { mode: "json" }).$type<string[]>(),
+    stackable: integer("stackable", { mode: "boolean" }).notNull().default(false),
+
+    // Visual / content
+    shortDescription: text("short_description"),
+    longDescription: text("long_description"),
+    badgeLabel: text("badge_label"), // e.g. "2×1"
+    icon: text("icon"),
+    backgroundCss: text("background_css"),
+    mainImageUrl: text("main_image_url"),
+    category: text("category"), // promo section/category tag
+    featured: integer("featured", { mode: "boolean" }).notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    seoTitle: text("seo_title"),
+    seoDescription: text("seo_description"),
+    ogImageUrl: text("og_image_url"),
+
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -54,13 +110,14 @@ export const promo = sqliteTable(
   },
   (t) => ({
     orgStatusIdx: index("promo_org_status_idx").on(t.organizationId, t.status),
+    slugPerOrg: uniqueIndex("promo_slug_per_org_uq").on(t.organizationId, t.slug),
   }),
 );
 
 export type PromoRow = typeof promo.$inferSelect;
 export type PromoInsert = typeof promo.$inferInsert;
 
-export const promoRelations = relations(promo, ({ one }) => ({
+export const promoRelations = relations(promo, ({ one, many }) => ({
   organization: one(organization, {
     fields: [promo.organizationId],
     references: [organization.id],
@@ -69,4 +126,68 @@ export const promoRelations = relations(promo, ({ one }) => ({
     fields: [promo.createdByUserId],
     references: [user.id],
   }),
+  translations: many(promoTranslation),
+  notifications: many(promoNotification),
 }));
+
+// Per-locale content overrides (base columns = default locale). Slug canonical.
+export const promoTranslation = sqliteTable(
+  "promo_translation",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    promoId: text("promo_id")
+      .notNull()
+      .references(() => promo.id, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    name: text("name").notNull(),
+    shortDescription: text("short_description"),
+    longDescription: text("long_description"),
+    badgeLabel: text("badge_label"),
+  },
+  (t) => ({
+    uq: uniqueIndex("promo_translation_uq").on(t.promoId, t.locale),
+  }),
+);
+
+// Scheduled notification spec for a promo (Trigger.dev owns execution). Mirrors
+// banner_notification + a `repeat` field for weekly recurrence.
+export const promoNotification = sqliteTable(
+  "promo_notification",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    promoId: text("promo_id")
+      .notNull()
+      .references(() => promo.id, { onDelete: "cascade" }),
+    audienceType: text("audience_type").notNull(), // all | tier | specific
+    audienceValue: text("audience_value"),
+    channels: text("channels").notNull(),
+    scheduledAt: integer("scheduled_at", { mode: "timestamp" }),
+    repeat: text("repeat").notNull().default("none"), // none | weekly
+    runId: text("run_id"),
+    status: text("status").notNull().default("scheduled"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    byPromo: index("promo_notification_promo_idx").on(t.promoId),
+  }),
+);
+
+export const promoTranslationRelations = relations(promoTranslation, ({ one }) => ({
+  promo: one(promo, { fields: [promoTranslation.promoId], references: [promo.id] }),
+}));
+export const promoNotificationRelations = relations(promoNotification, ({ one }) => ({
+  promo: one(promo, { fields: [promoNotification.promoId], references: [promo.id] }),
+}));
+
+export type PromoTranslationRow = typeof promoTranslation.$inferSelect;
+export type PromoNotificationRow = typeof promoNotification.$inferSelect;
+export type PromoNotificationInsert = typeof promoNotification.$inferInsert;

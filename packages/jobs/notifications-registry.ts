@@ -802,6 +802,59 @@ export class BannerNotification
 }
 
 /**
+ * Promo announcement — marketing (respects opt-out). Built by the
+ * `send-promo-notification` job (distinct from the keyed `PromoNotification`
+ * above). Deep-links to the promo detail.
+ */
+export class PromoAnnouncementNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "marketing" as const;
+
+  constructor(
+    private readonly content: { name: string; shortDescription: string; slug: string },
+    private readonly channels: ChannelName[],
+  ) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return this.channels;
+  }
+
+  toPush() {
+    return {
+      title: this.content.name,
+      body: this.content.shortDescription,
+      data: { kind: "promo", slug: this.content.slug },
+      clickAction: `/promos/${this.content.slug}`,
+    };
+  }
+
+  toRealtime() {
+    return {
+      event: "notification",
+      data: {
+        type: "promo",
+        title: this.content.name,
+        body: this.content.shortDescription,
+        slug: this.content.slug,
+      },
+    };
+  }
+
+  toDatabase() {
+    return {
+      type: "promo",
+      title: this.content.name,
+      body: this.content.shortDescription,
+      data: { slug: this.content.slug },
+    };
+  }
+}
+
+/**
  * Security alert when a customer changes their phone. Transactional (always
  * sends). WhatsApp is dispatched with an explicit recipient override (the OLD
  * contact) so it reaches the previous number even though the `customer` row

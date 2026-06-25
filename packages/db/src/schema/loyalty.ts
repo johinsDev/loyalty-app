@@ -8,6 +8,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 import { organization, user } from "./auth";
+import { promo } from "./promotions";
 
 // End customer of the loyalty program (distinct from `user`, which is the
 // staff/owner. A customer is identified by phone primarily — they don't need
@@ -106,7 +107,15 @@ export const purchase = sqliteTable(
     addedByUserId: text("added_by_user_id")
       .notNull()
       .references(() => user.id),
+    // `priceCents` = the NET charged (after any promo). For itemized purchases
+    // `subtotalCents` + `discountCents` + `appliedPromoId` carry the breakdown.
     priceCents: integer("price_cents").notNull(),
+    subtotalCents: integer("subtotal_cents"),
+    discountCents: integer("discount_cents").notNull().default(0),
+    currency: text("currency").notNull().default("COP"),
+    appliedPromoId: text("applied_promo_id").references(() => promo.id, {
+      onDelete: "set null",
+    }),
     idempotencyKey: text("idempotency_key").notNull(),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
@@ -119,6 +128,64 @@ export const purchase = sqliteTable(
     ),
   }),
 );
+
+// Itemized line items for a purchase (snapshot of price at sale time). Enables
+// promo discount computation + future per-product stamp rules.
+export const purchaseItem = sqliteTable(
+  "purchase_item",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    purchaseId: text("purchase_id")
+      .notNull()
+      .references(() => purchase.id, { onDelete: "cascade" }),
+    productId: text("product_id").notNull(),
+    variantId: text("variant_id"),
+    modifierOptionIds: text("modifier_option_ids", { mode: "json" }).$type<string[]>(),
+    qty: integer("qty").notNull().default(1),
+    unitAmountCents: integer("unit_amount_cents").notNull(),
+    currency: text("currency").notNull().default("COP"),
+  },
+  (t) => ({
+    byPurchase: index("purchase_item_purchase_idx").on(t.purchaseId),
+  }),
+);
+
+// One row per promo application (usage). Drives maxUsesTotal / maxPerCustomer.
+export const promoRedemption = sqliteTable(
+  "promo_redemption",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    promoId: text("promo_id")
+      .notNull()
+      .references(() => promo.id, { onDelete: "cascade" }),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customer.id, { onDelete: "cascade" }),
+    purchaseId: text("purchase_id")
+      .notNull()
+      .references(() => purchase.id, { onDelete: "cascade" }),
+    discountCents: integer("discount_cents").notNull(),
+    currency: text("currency").notNull().default("COP"),
+    appliedAt: integer("applied_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    byPromo: index("promo_redemption_promo_idx").on(t.promoId),
+    byPromoCustomer: index("promo_redemption_promo_customer_idx").on(
+      t.promoId,
+      t.customerId,
+    ),
+  }),
+);
+
+export type PurchaseItemRow = typeof purchaseItem.$inferSelect;
+export type PurchaseItemInsert = typeof purchaseItem.$inferInsert;
+export type PromoRedemptionRow = typeof promoRedemption.$inferSelect;
 
 // Append-only log of every stamp granted. Source of truth for currentStamps.
 // Each stamp is granted by exactly one purchase.
