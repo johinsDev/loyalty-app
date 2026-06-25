@@ -71,6 +71,13 @@
       "when": 1782402178593,
       "tag": "0009_jittery_susan_delgado",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1782408183906,
+      "tag": "0010_curly_prima",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useFadeUp } from "@/lib/animate";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { ItemizedPurchase } from "./itemized-purchase";
 import { QrScanner } from "./qr-scanner";
 
 type CustomerHit = {
@@ -55,6 +56,7 @@ export function ScanView() {
   const [selected, setSelected] = useState<CustomerHit | null>(null);
   const [wallet, setWallet] = useState<WalletView | null>(null);
   const [priceCop, setPriceCop] = useState<number | undefined>(undefined);
+  const [purchaseMode, setPurchaseMode] = useState<"total" | "items">("total");
   const [pastedCode, setPastedCode] = useState("");
 
   const debouncedQuery = useDebounce(query.trim(), { wait: 250 });
@@ -290,28 +292,60 @@ export function ScanView() {
               <p className="text-muted-foreground mt-1 mb-4 text-sm">
                 {t("recordPurchaseHint")}
               </p>
-              <label className="text-muted-foreground/70 mb-1.5 block text-[0.6875rem] font-extrabold tracking-wider">
-                {t("priceLabel")}
-              </label>
-              <CurrencyInput
-                currency="COP"
-                locale="es-CO"
-                decimalScale={0}
-                value={priceCop}
-                onValueChange={setPriceCop}
-                placeholder={t("pricePlaceholder")}
-                className="h-10"
-              />
-              <Button
-                variant="gradient"
-                size="lg"
-                disabled={priceCop === undefined || recordPurchase.isPending}
-                onClick={() => void onRecordPurchase()}
-                className="mt-4 h-10 w-full gap-2 rounded-2xl text-base font-extrabold"
-              >
-                <Check className="size-5" />
-                {t("recordPurchase")}
-              </Button>
+
+              {/* Total vs itemized (the latter enables promo apply). */}
+              <div className="bg-muted mb-4 grid grid-cols-2 gap-1 rounded-2xl p-1">
+                {(["total", "items"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setPurchaseMode(m)}
+                    className={
+                      purchaseMode === m
+                        ? "bg-card rounded-xl py-2 text-sm font-bold shadow-sm"
+                        : "text-muted-foreground rounded-xl py-2 text-sm font-bold"
+                    }
+                  >
+                    {t(m === "total" ? "modeTotal" : "modeItems")}
+                  </button>
+                ))}
+              </div>
+
+              {purchaseMode === "total" ? (
+                <>
+                  <label className="text-muted-foreground/70 mb-1.5 block text-[0.6875rem] font-extrabold tracking-wider">
+                    {t("priceLabel")}
+                  </label>
+                  <CurrencyInput
+                    currency="COP"
+                    locale="es-CO"
+                    decimalScale={0}
+                    value={priceCop}
+                    onValueChange={setPriceCop}
+                    placeholder={t("pricePlaceholder")}
+                    className="h-10"
+                  />
+                  <Button
+                    variant="gradient"
+                    size="lg"
+                    disabled={priceCop === undefined || recordPurchase.isPending}
+                    onClick={() => void onRecordPurchase()}
+                    className="mt-4 h-10 w-full gap-2 rounded-2xl text-base font-extrabold"
+                  >
+                    <Check className="size-5" />
+                    {t("recordPurchase")}
+                  </Button>
+                </>
+              ) : (
+                <ItemizedPurchase
+                  customerId={selected.id}
+                  onSuccess={(view) => {
+                    setWallet(view);
+                    setStep("purchase-success");
+                  }}
+                  onRewardPending={() => setStep("scan")}
+                />
+              )}
             </div>
           )}
         </div>

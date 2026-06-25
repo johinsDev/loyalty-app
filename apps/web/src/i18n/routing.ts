@@ -20,6 +20,7 @@ export const routing = defineRouting({
     "/banner/[slug]": "/banner/[slug]",
     "/store": { es: "/tienda", en: "/store" },
     "/promos": { es: "/promociones", en: "/promos" },
+    "/promos/[slug]": { es: "/promociones/[slug]", en: "/promos/[slug]" },
     "/card": { es: "/tarjeta", en: "/card" },
     "/history": { es: "/historial", en: "/history" },
     "/notifications": { es: "/notificaciones", en: "/notifications" },

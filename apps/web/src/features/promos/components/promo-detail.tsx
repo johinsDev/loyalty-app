@@ -1,92 +1,68 @@
 "use client";
 
-import {
-  Button,
-  ResponsiveModalClose,
-  ResponsiveModalDescription,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from "@loyalty/ui";
-import { Clock, Copy } from "lucide-react";
+import { Ticket } from "lucide-react";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
 
-import { PROMO_THEME, type Promo, promoGradient } from "../data";
+import type { PromoDetailData } from "../types";
 
 /**
- * Detail of a single promo, rendered inside the catalog's bottom Drawer: the
- * tinted icon, name, effect + validity, description, the register code with a
- * copy-to-clipboard action, the terms, and a "show at register" CTA.
+ * Shared promo detail — rendered inside the intercepted modal and on the full
+ * `/promo/[slug]` page. Background + optional main image, badge, the long
+ * (tiptap) description as `prose`, and a "show at the register" note (the promo
+ * is applied at checkout by the cashier).
  */
-export function PromoDetail({ promo }: { promo: Promo }) {
+export function PromoDetail({ promo }: { promo: PromoDetailData }) {
   const t = useTranslations("Promos");
-  const Icon = promo.icon;
-
-  const copyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(promo.code);
-      toast.success(t("codeCopied"));
-    } catch {
-      toast.error(t("codeCopyFailed"));
-    }
-  };
-
   return (
-    <div className="flex flex-col items-center px-6 pb-2 text-center">
-      <span
-        className="mt-2 grid size-24 place-items-center rounded-[1.75rem] shadow-lg shadow-black/5"
-        style={{ backgroundImage: promoGradient(PROMO_THEME[promo.theme].tint) }}
-      >
-        <Icon className="size-11 text-[#000323]" />
-      </span>
-      <ResponsiveModalHeader className="items-center gap-2">
-        <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
-          {promo.name}
-        </ResponsiveModalTitle>
-        <span className="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold">
-          {promo.badge}
-          <span aria-hidden>·</span>
-          <Clock className="size-3.5" />
-          {promo.validity}
-        </span>
-        <ResponsiveModalDescription className="text-[0.9375rem] leading-relaxed">
-          {promo.description}
-        </ResponsiveModalDescription>
-      </ResponsiveModalHeader>
-
-      <div className="border-primary/40 bg-primary/5 mt-1 flex w-full items-center gap-3 rounded-2xl border border-dashed p-4">
-        <div className="min-w-0 flex-1 text-left">
-          <div className="text-muted-foreground text-[0.6875rem] font-extrabold tracking-wider">
-            {t("code")}
-          </div>
-          <div className="font-display text-foreground truncate text-xl font-semibold tracking-wide">
-            {promo.code}
-          </div>
-        </div>
-        <Button
-          type="button"
-          size="sm"
-          onClick={copyCode}
-          className="shrink-0 rounded-full font-bold"
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="px-4 pt-4 sm:px-6">
+        <div
+          className="relative h-48 w-full shrink-0 overflow-hidden rounded-3xl lg:h-60"
+          style={{ background: promo.backgroundCss ?? "var(--muted)" }}
         >
-          <Copy className="size-4" />
-          {t("copy")}
-        </Button>
+          {promo.mainImageUrl ? (
+            <Image
+              src={promo.mainImageUrl}
+              alt={promo.name}
+              fill
+              sizes="(min-width: 1024px) 40rem, 100vw"
+              className="object-cover"
+              priority
+            />
+          ) : null}
+          {promo.badgeLabel ? (
+            <span className="absolute top-4 left-4 inline-flex rounded-full bg-white/25 px-3 py-1 text-xs font-extrabold tracking-wide text-white backdrop-blur-sm">
+              {promo.badgeLabel}
+            </span>
+          ) : null}
+        </div>
       </div>
 
-      <p className="bg-muted/60 text-muted-foreground mt-4 w-full rounded-2xl p-4 text-left text-xs leading-relaxed">
-        {t("terms")}
-      </p>
+      <div className="px-6 pt-5 pb-8 sm:px-8">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{promo.name}</h1>
+        {promo.shortDescription ? (
+          <p className="text-muted-foreground mt-1 text-sm">{promo.shortDescription}</p>
+        ) : null}
 
-      <ResponsiveModalFooter className="w-full gap-2 px-0">
-        <ResponsiveModalClose variant="gradient" className="w-full sm:w-auto">
-          {t("showAtRegister")}
-        </ResponsiveModalClose>
-        <ResponsiveModalClose className="w-full sm:w-auto">
-          {t("close")}
-        </ResponsiveModalClose>
-      </ResponsiveModalFooter>
+        {promo.longDescription ? (
+          <div
+            className="prose prose-sm dark:prose-invert text-muted-foreground prose-headings:text-foreground prose-a:text-primary mt-4 max-w-none"
+            // Admin-authored tiptap HTML.
+            dangerouslySetInnerHTML={{ __html: promo.longDescription }}
+          />
+        ) : null}
+
+        <div className="border-border mt-6 flex items-start gap-3 rounded-2xl border p-4">
+          <Ticket className="text-primary mt-0.5 size-5 shrink-0" />
+          <div>
+            <p className="text-sm font-bold">{t("howToUse")}</p>
+            <p className="text-muted-foreground mt-0.5 text-sm">{t("showAtRegister")}</p>
+          </div>
+        </div>
+
+        <div className="pb-[calc(0.5rem+env(safe-area-inset-bottom))]" />
+      </div>
     </div>
   );
 }

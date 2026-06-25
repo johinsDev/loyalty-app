@@ -2,7 +2,9 @@ import type { db as Db } from "@loyalty/db";
 import {
   loyaltyCard,
   type LoyaltyCardRow,
+  promoRedemption,
   purchase,
+  purchaseItem,
   stamp,
   STAMPS_PER_REWARD,
   WALLET_SIZE,
@@ -101,8 +103,22 @@ export class StampsRepository {
     orgId: string;
     customerId: string;
     addedByUserId: string;
+    /** The NET charged (after any promo). */
     priceCents: number;
     idempotencyKey: string;
+    // Optional itemized + promo breakdown.
+    subtotalCents?: number;
+    discountCents?: number;
+    currency?: string;
+    appliedPromoId?: string | null;
+    items?: {
+      productId: string;
+      variantId?: string | null;
+      modifierOptionIds?: string[];
+      qty: number;
+      unitAmountCents: number;
+      currency?: string;
+    }[];
   }): Promise<RecordResult> {
     return this.db.transaction(async (tx) => {
       // Idempotency: a retry with the same key returns the prior result.
@@ -185,6 +201,7 @@ export class StampsRepository {
         active = created[0]!;
       }
 
+      const currency = input.currency ?? "COP";
       const purch = await tx
         .insert(purchase)
         .values({
@@ -193,10 +210,38 @@ export class StampsRepository {
           walletId: active.id,
           addedByUserId: input.addedByUserId,
           priceCents: input.priceCents,
+          subtotalCents: input.subtotalCents ?? null,
+          discountCents: input.discountCents ?? 0,
+          currency,
+          appliedPromoId: input.appliedPromoId ?? null,
           idempotencyKey: input.idempotencyKey,
         })
         .returning();
       const purchaseId = purch[0]!.id;
+
+      // Itemized line items (snapshot) + promo redemption (usage), atomic.
+      if (input.items && input.items.length > 0) {
+        await tx.insert(purchaseItem).values(
+          input.items.map((it) => ({
+            purchaseId,
+            productId: it.productId,
+            variantId: it.variantId ?? null,
+            modifierOptionIds: it.modifierOptionIds ?? null,
+            qty: it.qty,
+            unitAmountCents: it.unitAmountCents,
+            currency: it.currency ?? currency,
+          })),
+        );
+      }
+      if (input.appliedPromoId && (input.discountCents ?? 0) >= 0) {
+        await tx.insert(promoRedemption).values({
+          promoId: input.appliedPromoId,
+          customerId: input.customerId,
+          purchaseId,
+          discountCents: input.discountCents ?? 0,
+          currency,
+        });
+      }
 
       await tx.insert(stamp).values({
         cardId: active.id,

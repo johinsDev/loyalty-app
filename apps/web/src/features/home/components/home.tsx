@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { env } from "@/env";
 import { BannerRail } from "@/features/banners/components/banner-rail";
+import { PromoRail } from "@/features/promos/components/promo-rail";
 import { FadeUp } from "@/lib/animate";
 import { getSession } from "@/lib/auth-guard";
 
@@ -10,7 +11,6 @@ import { AppSidebar } from "./app-sidebar";
 import { GreetingHeader } from "./greeting-header";
 import { PointsCard } from "./points-card";
 import { PointsListener } from "./points-listener";
-import { PromosCarousel } from "./promos-carousel";
 import { RecentVisits } from "./recent-visits";
 import { RewardCard } from "./reward-card";
 import { RewardReadyBanner } from "./reward-ready-banner";
@@ -72,7 +72,7 @@ export async function Home() {
           </FadeUp>
 
           <FadeUp index={5} className="mt-6">
-            <PromosCarousel />
+            <PromoRail />
           </FadeUp>
 
           <FadeUp

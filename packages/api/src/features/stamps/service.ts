@@ -55,7 +55,8 @@ export class StampsService {
   async recordPurchase(
     organizationId: string,
     addedByUserId: string,
-    input: RecordPurchaseInput,
+    // The router resolves net price + discount server-side for itemized sales.
+    input: RecordPurchaseInput & { subtotalCents?: number; discountCents?: number },
   ): Promise<{ wallet: WalletView; purchaseId: string }> {
     const result = await this.repo.recordPurchase({
       orgId: organizationId,
@@ -63,6 +64,11 @@ export class StampsService {
       addedByUserId,
       priceCents: input.priceCents,
       idempotencyKey: input.idempotencyKey,
+      subtotalCents: input.subtotalCents,
+      discountCents: input.discountCents,
+      currency: input.currency,
+      appliedPromoId: input.appliedPromoId ?? null,
+      items: input.items,
     });
 
     if (result.kind === "reward_pending") {
