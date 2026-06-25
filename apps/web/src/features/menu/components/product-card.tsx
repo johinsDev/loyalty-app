@@ -10,11 +10,15 @@ import { BLUR } from "../blur";
 import type { MenuCard } from "../types";
 import { FavoriteButton } from "./favorite-button";
 
-export function money(format: ReturnType<typeof useFormatter>, cents: number) {
+export function money(
+  format: ReturnType<typeof useFormatter>,
+  cents: number,
+  currency = "COP",
+) {
   return format.number(cents / 100, {
     style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
+    currency,
+    // Let Intl pick fraction digits per currency (COP → 0, USD → 2).
     // Spanish omits the separator for 4-digit numbers by default; force it so
     // "2.000 COP" reads consistently with "16.500 COP".
     useGrouping: "always",
@@ -74,7 +78,7 @@ export function ProductCard({
           {product.name}
         </p>
         <span className="font-display text-primary font-semibold tracking-tight">
-          {money(format, product.priceCents)}
+          {money(format, product.priceCents, product.currency)}
         </span>
         {product.earn.points > 0 ? (
           <span className="text-muted-foreground text-xs font-semibold">

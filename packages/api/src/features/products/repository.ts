@@ -1,20 +1,27 @@
 import type { db as Db } from "@loyalty/db";
 import {
   category,
+  categoryTranslation,
   modifierGroup,
   modifierOption,
+  modifierOptionPrice,
   product,
   productCategory,
   productFavorite,
   productImage,
   productOption,
   productOptionValue,
+  productPrice,
+  productTranslation,
   productVariant,
+  productVariantPrice,
   section,
   sectionProduct,
 } from "@loyalty/db/schema";
 import { and, asc, eq, gt, inArray, like, or, sql } from "drizzle-orm";
 
+import type { LocaleContext } from "../_shared/localize";
+import { pickPrice } from "../_shared/localize";
 import { earnFor } from "./earn";
 import type {
   MenuCard,
@@ -64,6 +71,7 @@ export class ProductsRepository {
     categorySlug?: string | null;
     sectionSlug?: string | null;
     search?: string | null;
+    ctx: LocaleContext;
   }): Promise<MenuList> {
     const { orgId, pageSize } = input;
     const cur = decodeCursor(input.cursor);
@@ -115,7 +123,7 @@ export class ProductsRepository {
 
     const page = ids.slice(0, pageSize);
     const hasMore = ids.length > pageSize;
-    const cards = await this.cardsByIds(page.map((p) => p.id));
+    const cards = await this.cardsByIds(page.map((p) => p.id), input.ctx);
 
     let nextCursor: string | null = null;
     if (hasMore && page.length > 0) {
@@ -126,13 +134,45 @@ export class ProductsRepository {
   }
 
   /** Compact cards for a set of product ids, preserving sortOrder,id order. */
-  private async cardsByIds(productIds: string[]): Promise<MenuCard[]> {
+  private async cardsByIds(
+    productIds: string[],
+    ctx: LocaleContext,
+  ): Promise<MenuCard[]> {
     if (productIds.length === 0) return [];
     const rows = await this.db
       .select()
       .from(product)
       .where(inArray(product.id, productIds))
       .orderBy(asc(product.sortOrder), asc(product.id));
+
+    // Per-locale name/description overrides + per-currency price overrides.
+    const trByProduct = new Map<string, { name: string; description: string | null }>();
+    if (ctx.locale !== ctx.defaultLocale) {
+      const trs = await this.db
+        .select()
+        .from(productTranslation)
+        .where(
+          and(
+            inArray(productTranslation.productId, productIds),
+            eq(productTranslation.locale, ctx.locale),
+          ),
+        );
+      for (const t of trs)
+        trByProduct.set(t.productId, { name: t.name, description: t.description });
+    }
+    const priceByProduct = new Map<string, number>();
+    if (ctx.currency !== ctx.defaultCurrency) {
+      const prices = await this.db
+        .select()
+        .from(productPrice)
+        .where(
+          and(
+            inArray(productPrice.productId, productIds),
+            eq(productPrice.currency, ctx.currency),
+          ),
+        );
+      for (const pr of prices) priceByProduct.set(pr.productId, pr.amountCents);
+    }
 
     const images = await this.db
       .select({
@@ -165,20 +205,34 @@ export class ProductsRepository {
       catSlugs.set(c.productId, arr);
     }
 
-    return rows.map((p) => ({
-      id: p.id,
-      slug: p.slug,
-      name: p.name,
-      description: snippet(p.description),
-      priceCents: p.basePriceCents,
-      currency: p.currency,
-      imageUrl: firstImage.get(p.id) ?? null,
-      categorySlugs: catSlugs.get(p.id) ?? [],
-      earn: earnFor(p.basePriceCents),
-    }));
+    return rows.map((p) => {
+      const tr = trByProduct.get(p.id);
+      const name = tr?.name ?? p.name;
+      const description = tr?.description ?? p.description;
+      const priceRow = priceByProduct.has(p.id)
+        ? [{ currency: ctx.currency, amountCents: priceByProduct.get(p.id)! }]
+        : [];
+      const price = pickPrice(p.basePriceCents, p.currency, priceRow, ctx);
+      return {
+        id: p.id,
+        slug: p.slug,
+        name,
+        description: snippet(description),
+        priceCents: price.priceCents,
+        currency: price.currency,
+        imageUrl: firstImage.get(p.id) ?? null,
+        categorySlugs: catSlugs.get(p.id) ?? [],
+        // Earn stays in default-currency terms (points config is COP-based).
+        earn: earnFor(p.basePriceCents),
+      };
+    });
   }
 
-  async productBySlug(orgId: string, slug: string): Promise<ProductDetail | null> {
+  async productBySlug(
+    orgId: string,
+    slug: string,
+    ctx: LocaleContext,
+  ): Promise<ProductDetail | null> {
     const p = await this.db.query.product.findFirst({
       where: and(eq(product.organizationId, orgId), eq(product.slug, slug)),
       with: {
@@ -203,13 +257,72 @@ export class ProductsRepository {
     const variantImages = (variantId: string) =>
       p.images.filter((img) => img.variantId === variantId).map((img) => img.url);
 
+    // Localize name/description + resolve prices for the active currency.
+    let tr: { name: string; description: string | null } | undefined;
+    if (ctx.locale !== ctx.defaultLocale) {
+      const rows = await this.db
+        .select()
+        .from(productTranslation)
+        .where(
+          and(
+            eq(productTranslation.productId, p.id),
+            eq(productTranslation.locale, ctx.locale),
+          ),
+        )
+        .limit(1);
+      if (rows[0]) tr = { name: rows[0].name, description: rows[0].description };
+    }
+
+    const variantIds = p.variants.map((v) => v.id);
+    const optionIds = p.modifierGroups.flatMap((g) => g.options.map((o) => o.id));
+    const [basePriceRows, variantPriceRows, optionPriceRows] = await Promise.all([
+      ctx.currency === ctx.defaultCurrency
+        ? Promise.resolve([])
+        : this.db
+            .select()
+            .from(productPrice)
+            .where(
+              and(eq(productPrice.productId, p.id), eq(productPrice.currency, ctx.currency)),
+            ),
+      ctx.currency === ctx.defaultCurrency || variantIds.length === 0
+        ? Promise.resolve([])
+        : this.db
+            .select()
+            .from(productVariantPrice)
+            .where(
+              and(
+                inArray(productVariantPrice.variantId, variantIds),
+                eq(productVariantPrice.currency, ctx.currency),
+              ),
+            ),
+      ctx.currency === ctx.defaultCurrency || optionIds.length === 0
+        ? Promise.resolve([])
+        : this.db
+            .select()
+            .from(modifierOptionPrice)
+            .where(
+              and(
+                inArray(modifierOptionPrice.modifierOptionId, optionIds),
+                eq(modifierOptionPrice.currency, ctx.currency),
+              ),
+            ),
+    ]);
+    const variantPriceById = new Map(variantPriceRows.map((r) => [r.variantId, r.amountCents]));
+    const optionPriceById = new Map(
+      optionPriceRows.map((r) => [r.modifierOptionId, r.amountCents]),
+    );
+    const basePrice = pickPrice(p.basePriceCents, p.currency, basePriceRows, ctx);
+    const detailCurrency = basePrice.currency;
+    const amountFor = (ownerCents: number, override: number | undefined) =>
+      detailCurrency === p.currency ? ownerCents : (override ?? ownerCents);
+
     return {
       id: p.id,
       slug: p.slug,
-      name: p.name,
-      description: p.description,
-      currency: p.currency,
-      basePriceCents: p.basePriceCents,
+      name: tr?.name ?? p.name,
+      description: tr?.description ?? p.description,
+      currency: detailCurrency,
+      basePriceCents: basePrice.priceCents,
       earn: earnFor(p.basePriceCents),
       images: p.images.map((img) => ({
         url: img.url,
@@ -223,7 +336,7 @@ export class ProductsRepository {
       })),
       variants: p.variants.map((v) => ({
         id: v.id,
-        priceCents: v.priceCents,
+        priceCents: amountFor(v.priceCents, variantPriceById.get(v.id)),
         isDefault: v.isDefault,
         optionValueIds: v.values.map((vv) => vv.optionValueId),
         earn: earnFor(v.priceCents),
@@ -239,7 +352,7 @@ export class ProductsRepository {
         options: g.options.map((mo) => ({
           id: mo.id,
           name: mo.name,
-          priceDeltaCents: mo.priceDeltaCents,
+          priceDeltaCents: amountFor(mo.priceDeltaCents, optionPriceById.get(mo.id)),
         })),
       })),
       categorySlugs: p.categories.map((pc) => pc.category.slug),
@@ -251,7 +364,11 @@ export class ProductsRepository {
     };
   }
 
-  async sections(orgId: string, placement: string): Promise<SectionView[]> {
+  async sections(
+    orgId: string,
+    placement: string,
+    ctx: LocaleContext,
+  ): Promise<SectionView[]> {
     const placements =
       placement === "both" ? ["both"] : [placement, "both"];
     const rows = await this.db.query.section.findMany({
@@ -268,7 +385,7 @@ export class ProductsRepository {
     });
 
     const allProductIds = rows.flatMap((s) => s.products.map((sp) => sp.productId));
-    const cards = await this.cardsByIds([...new Set(allProductIds)]);
+    const cards = await this.cardsByIds([...new Set(allProductIds)], ctx);
     const cardById = new Map(cards.map((c) => [c.id, c]));
 
     return rows.map((s) => ({
@@ -293,13 +410,30 @@ export class ProductsRepository {
     }));
   }
 
-  async categories(orgId: string): Promise<{ slug: string; name: string }[]> {
+  async categories(
+    orgId: string,
+    ctx: LocaleContext,
+  ): Promise<{ slug: string; name: string }[]> {
     const rows = await this.db
-      .select({ slug: category.slug, name: category.name })
+      .select({ id: category.id, slug: category.slug, name: category.name })
       .from(category)
       .where(eq(category.organizationId, orgId))
       .orderBy(asc(category.sortOrder), asc(category.name));
-    return rows;
+
+    if (ctx.locale === ctx.defaultLocale || rows.length === 0) {
+      return rows.map((r) => ({ slug: r.slug, name: r.name }));
+    }
+    const trs = await this.db
+      .select()
+      .from(categoryTranslation)
+      .where(
+        and(
+          inArray(categoryTranslation.categoryId, rows.map((r) => r.id)),
+          eq(categoryTranslation.locale, ctx.locale),
+        ),
+      );
+    const nameById = new Map(trs.map((t) => [t.categoryId, t.name]));
+    return rows.map((r) => ({ slug: r.slug, name: nameById.get(r.id) ?? r.name }));
   }
 
   async favoriteProductIds(orgId: string, customerId: string): Promise<string[]> {
@@ -315,9 +449,13 @@ export class ProductsRepository {
     return rows.map((r) => r.productId);
   }
 
-  async favoriteProducts(orgId: string, customerId: string): Promise<MenuCard[]> {
+  async favoriteProducts(
+    orgId: string,
+    customerId: string,
+    ctx: LocaleContext,
+  ): Promise<MenuCard[]> {
     const ids = await this.favoriteProductIds(orgId, customerId);
-    return this.cardsByIds(ids);
+    return this.cardsByIds(ids, ctx);
   }
 
   /** Toggle a favorite; returns the new state (true = now favorited). */

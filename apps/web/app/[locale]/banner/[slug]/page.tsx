@@ -11,8 +11,8 @@ import { trpc } from "@/lib/trpc/server";
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const api = await trpc();
+  const { locale, slug } = await params;
+  const api = await trpc({ locale });
   const banner = await api.banners.bySlug({ slug }).catch(() => null);
   if (!banner) return {};
   const title = banner.seo.title ?? banner.name;
@@ -35,7 +35,7 @@ export default async function BannerPage({ params }: Props) {
   setRequestLocale(locale);
   await requireCustomer(); // v1 auth-gated; ready to go public later.
 
-  const api = await trpc();
+  const api = await trpc({ locale });
   const banner = await api.banners.bySlug({ slug });
   if (!banner) notFound();
 

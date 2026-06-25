@@ -30,13 +30,13 @@ const procedureTypes = new Map(
  * session cookie is forwarded so the Worker authenticates the request the same
  * way Better Auth would in-process.
  */
-const httpCaller = (cookie: string): ServerCaller => {
+const httpCaller = (cookie: string, extra: Record<string, string>): ServerCaller => {
   const client = createTRPCUntypedClient<AppRouter>({
     links: [
       httpBatchLink({
         url: getTrpcUrl(),
         transformer: superjson,
-        headers: () => (cookie ? { cookie } : {}),
+        headers: () => ({ ...(cookie ? { cookie } : {}), ...extra }),
         // Never let Next cache a server-side auth/data read — a cached `auth.me`
         // would make guards (session/role/customer) act on stale state.
         fetch: (input, init) =>
@@ -77,7 +77,18 @@ const httpCaller = (cookie: string): ServerCaller => {
  * request the same way Better Auth would. The FE is a thin client — there is
  * no in-process backend path.
  */
-export const trpc = async (): Promise<ServerCaller> => {
+export const trpc = async (opts?: { locale?: string }): Promise<ServerCaller> => {
   const requestHeaders = await headers();
-  return httpCaller(requestHeaders.get("cookie") ?? "");
+  const cookie = requestHeaders.get("cookie") ?? "";
+  const fromCookie = (name: string) =>
+    cookie
+      .split("; ")
+      .find((c) => c.startsWith(`${name}=`))
+      ?.split("=")[1];
+  const extra: Record<string, string> = {};
+  const locale = opts?.locale ?? fromCookie("NEXT_LOCALE");
+  const currency = fromCookie("NEXT_CURRENCY");
+  if (locale) extra["x-locale"] = decodeURIComponent(locale);
+  if (currency) extra["x-currency"] = decodeURIComponent(currency);
+  return httpCaller(cookie, extra);
 };

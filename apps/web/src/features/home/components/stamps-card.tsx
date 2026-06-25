@@ -12,6 +12,7 @@ import { CupSoda, Gift } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { useCurrency } from "@/lib/currency";
 import { useTRPC } from "@/lib/trpc/client";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 
@@ -38,6 +39,7 @@ export function StampsCard() {
   const t = useTranslations("Home");
   const format = useFormatter();
   const trpc = useTRPC();
+  const { defaultCurrency } = useCurrency();
   const reduced = useReducedMotion();
   const [selected, setSelected] = useState<Selected | null>(null);
 
@@ -67,8 +69,8 @@ export function StampsCard() {
   const money = (cents: number) =>
     format.number(cents / 100, {
       style: "currency",
-      currency: "COP",
-      maximumFractionDigits: 0,
+      currency: defaultCurrency,
+      useGrouping: "always",
     });
 
   const enter = (i: number) =>

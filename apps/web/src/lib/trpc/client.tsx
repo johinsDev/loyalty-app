@@ -23,6 +23,22 @@ const makeClient = () =>
       httpBatchLink({
         url: getTrpcUrl(),
         transformer: superjson,
+        // Tell the Worker the active locale + currency so it returns localized
+        // content + per-currency prices (read fresh from cookies per request).
+        headers: () => {
+          if (typeof document === "undefined") return {};
+          const read = (name: string) =>
+            document.cookie
+              .split("; ")
+              .find((c) => c.startsWith(`${name}=`))
+              ?.split("=")[1];
+          const out: Record<string, string> = {};
+          const locale = read("NEXT_LOCALE");
+          const currency = read("NEXT_CURRENCY");
+          if (locale) out["x-locale"] = decodeURIComponent(locale);
+          if (currency) out["x-currency"] = decodeURIComponent(currency);
+          return out;
+        },
         // Send cookies to the (possibly cross-origin) Worker API.
         fetch: (url, opts) => fetch(url, { ...opts, credentials: "include" }),
       }),

@@ -3,6 +3,7 @@ export * from "./banners";
 export * from "./email-outbox";
 export * from "./loyalty";
 export * from "./notifications";
+export * from "./organization-settings";
 export * from "./products";
 export * from "./promotions";
 export * from "./push-outbox";

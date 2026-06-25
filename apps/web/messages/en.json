@@ -5,7 +5,8 @@
   },
   "Common": {
     "install": "Install app",
-    "switchLocale": "Switch language"
+    "switchLocale": "Switch language",
+    "switchCurrency": "Change currency"
   },
   "Theme": {
     "light": "Light",
@@ -386,7 +387,8 @@
     "preferences": {
       "title": "PREFERENCES",
       "theme": "Theme",
-      "language": "Language"
+      "language": "Language",
+      "currency": "Currency"
     },
     "notifications": {
       "title": "Notification preferences",

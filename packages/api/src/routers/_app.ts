@@ -8,6 +8,7 @@ import { pushOutboxRouter } from "../features/push-outbox";
 import { pushTokensRouter } from "../features/push-tokens";
 import { realtimeRouter } from "../features/realtime";
 import { rewardsRouter } from "../features/rewards";
+import { settingsRouter } from "../features/settings";
 import { pointsRouter } from "../features/points";
 import { stampsRouter } from "../features/stamps";
 import { streaksRouter } from "../features/streaks";
@@ -30,6 +31,7 @@ export const appRouter = router({
   rewards: rewardsRouter,
   menu: menuRouter,
   banners: bannersRouter,
+  settings: settingsRouter,
   notifications: notificationsRouter,
   promociones: promocionesRouter,
   emailOutbox: emailOutboxRouter,
