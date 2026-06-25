@@ -10,6 +10,7 @@ import { realtimeRouter } from "../features/realtime";
 import { rewardsRouter } from "../features/rewards";
 import { settingsRouter } from "../features/settings";
 import { pointsRouter } from "../features/points";
+import { profileRouter } from "../features/profile";
 import { stampsRouter } from "../features/stamps";
 import { streaksRouter } from "../features/streaks";
 import { shortlinksRouter } from "../features/shortlinks";
@@ -28,6 +29,7 @@ export const appRouter = router({
   stamps: stampsRouter,
   streaks: streaksRouter,
   points: pointsRouter,
+  profile: profileRouter,
   rewards: rewardsRouter,
   menu: menuRouter,
   banners: bannersRouter,
