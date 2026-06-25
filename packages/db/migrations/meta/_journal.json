@@ -57,6 +57,13 @@
       "when": 1782322072658,
       "tag": "0007_damp_lyja",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1782342176481,
+      "tag": "0008_late_typhoid_mary",
+      "breakpoints": true
     }
   ]
 }

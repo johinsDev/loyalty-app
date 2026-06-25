@@ -1229,7 +1229,62 @@
     "colorMode": "Color personalizado",
     "iconCustom": "Personalizado",
     "imgUpload": "Arrastra una imagen o haz clic",
-    "imgRemove": "Quitar"
+    "imgRemove": "Quitar",
+    "fieldSlug": "Slug (URL)",
+    "fieldLong": "Descripción",
+    "fieldCtaHref": "Enlace del botón",
+    "fieldCtaKind": "Tipo de enlace",
+    "ctaInternal": "Interno (en la app)",
+    "ctaExternal": "Externo (otra web)",
+    "fieldMainImage": "Imagen principal",
+    "saveError": "No se pudo guardar el paso",
+    "publishError": "No se pudo publicar",
+    "state": {
+      "active": "Activo",
+      "scheduled": "Programado",
+      "expired": "Vencido",
+      "draft": "Borrador"
+    },
+    "notify": {
+      "title": "Notificaciones",
+      "empty": "Sin notificaciones programadas.",
+      "audience": "Audiencia",
+      "audAll": "Todos",
+      "audTier": "Por nivel",
+      "audSpecific": "Específicos",
+      "tier": "Nivel",
+      "when": "Cuándo",
+      "now": "Ahora",
+      "channels": "Canales",
+      "ch": {
+        "push": "Push",
+        "database": "Bandeja",
+        "realtime": "En vivo"
+      },
+      "status": {
+        "scheduled": "Programada",
+        "sent": "Enviada",
+        "canceled": "Cancelada",
+        "failed": "Falló"
+      },
+      "cancel": "Cancelar",
+      "searchCustomers": "Buscar cliente…",
+      "schedule": "Programar",
+      "sendNow": "Enviar ahora",
+      "added": "Notificación agregada",
+      "addError": "No se pudo agregar",
+      "needChannel": "Elegí al menos un canal"
+    },
+    "fieldCtaTarget": "Destino del botón",
+    "ctaValueUrl": "URL",
+    "ctaValueProduct": "Slug del producto",
+    "ctaTarget": {
+      "none": "Sin botón",
+      "external": "URL externa",
+      "product": "Producto",
+      "promo": "Promociones",
+      "reward": "Recompensas"
+    }
   },
   "Settings": {
     "title": "Ajustes",

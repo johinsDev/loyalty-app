@@ -1,3 +1,4 @@
+import { bannersRouter } from "../features/banners";
 import { emailOutboxRouter } from "../features/email-outbox";
 import { flagsRouter } from "../features/flags";
 import { menuRouter } from "../features/products";
@@ -27,6 +28,7 @@ export const appRouter = router({
   streaks: streaksRouter,
   points: pointsRouter,
   menu: menuRouter,
+  banners: bannersRouter,
   premios: premiosRouter,
   notifications: notificationsRouter,
   promociones: promocionesRouter,

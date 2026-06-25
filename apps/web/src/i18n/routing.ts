@@ -17,6 +17,7 @@ export const routing = defineRouting({
     "/rewards": { es: "/recompensas", en: "/rewards" },
     "/menu": { es: "/menu", en: "/menu" },
     "/product/[slug]": "/product/[slug]",
+    "/banner/[slug]": "/banner/[slug]",
     "/store": { es: "/tienda", en: "/store" },
     "/promos": { es: "/promociones", en: "/promos" },
     "/card": { es: "/tarjeta", en: "/card" },

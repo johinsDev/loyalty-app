@@ -1229,7 +1229,62 @@
     "colorMode": "Custom color",
     "iconCustom": "Custom",
     "imgUpload": "Drag an image or click",
-    "imgRemove": "Remove"
+    "imgRemove": "Remove",
+    "fieldSlug": "Slug (URL)",
+    "fieldLong": "Description",
+    "fieldCtaHref": "Button link",
+    "fieldCtaKind": "Link type",
+    "ctaInternal": "Internal (in-app)",
+    "ctaExternal": "External (other site)",
+    "fieldMainImage": "Main image",
+    "saveError": "Could not save the step",
+    "publishError": "Could not publish",
+    "state": {
+      "active": "Active",
+      "scheduled": "Scheduled",
+      "expired": "Expired",
+      "draft": "Draft"
+    },
+    "notify": {
+      "title": "Notifications",
+      "empty": "No scheduled notifications.",
+      "audience": "Audience",
+      "audAll": "Everyone",
+      "audTier": "By tier",
+      "audSpecific": "Specific",
+      "tier": "Tier",
+      "when": "When",
+      "now": "Now",
+      "channels": "Channels",
+      "ch": {
+        "push": "Push",
+        "database": "Inbox",
+        "realtime": "Live"
+      },
+      "status": {
+        "scheduled": "Scheduled",
+        "sent": "Sent",
+        "canceled": "Canceled",
+        "failed": "Failed"
+      },
+      "cancel": "Cancel",
+      "searchCustomers": "Search a customer…",
+      "schedule": "Schedule",
+      "sendNow": "Send now",
+      "added": "Notification added",
+      "addError": "Could not add",
+      "needChannel": "Pick at least one channel"
+    },
+    "fieldCtaTarget": "Button target",
+    "ctaValueUrl": "URL",
+    "ctaValueProduct": "Product slug",
+    "ctaTarget": {
+      "none": "No button",
+      "external": "External URL",
+      "product": "Product",
+      "promo": "Promos",
+      "reward": "Rewards"
+    }
   },
   "Settings": {
     "title": "Settings",

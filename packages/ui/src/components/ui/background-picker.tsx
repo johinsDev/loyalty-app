@@ -21,6 +21,36 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   { key: "ink", css: "linear-gradient(135deg, #1f2937, #000323)" },
 ]
 
+/** Decorative patterns — a layered CSS `background` (texture over a gradient).
+ * Pure CSS so they stay a plain string (no asset upload) and render anywhere
+ * via style.background, just like the gradient presets. */
+export const BACKGROUND_PATTERNS: BackgroundPreset[] = [
+  {
+    key: "dots",
+    css: "radial-gradient(rgba(255,255,255,0.18) 1.5px, transparent 1.6px) 0 0/14px 14px, linear-gradient(135deg, #1BAD9D, #0e6f64)",
+  },
+  {
+    key: "grid",
+    css: "linear-gradient(rgba(255,255,255,0.12) 1px, transparent 1px) 0 0/20px 20px, linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px) 0 0/20px 20px, linear-gradient(135deg, #3b73d6, #1f3a8a)",
+  },
+  {
+    key: "stripes",
+    css: "repeating-linear-gradient(45deg, rgba(255,255,255,0.10) 0 10px, transparent 10px 20px), linear-gradient(135deg, #7c5cff, #4527a0)",
+  },
+  {
+    key: "mesh",
+    css: "radial-gradient(at 18% 22%, #f0a868 0, transparent 45%), radial-gradient(at 82% 28%, #e0467c 0, transparent 45%), radial-gradient(at 50% 82%, #7c5cff 0, transparent 45%), #1f2937",
+  },
+  {
+    key: "sunburst",
+    css: "repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,0.08) 0deg 6deg, transparent 6deg 12deg), linear-gradient(135deg, #e0467c, #7c1d3f)",
+  },
+  {
+    key: "glow",
+    css: "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.28), transparent 42%), linear-gradient(135deg, #1f2937, #000323)",
+  },
+]
+
 /** A background value is an uploaded image when it's a CSS `url(...)`. */
 function isImageBackground(value: string): boolean {
   return value.startsWith("url(")
@@ -32,6 +62,8 @@ interface BackgroundPickerProps {
   value: string
   onValueChange: (background: string) => void
   presets?: BackgroundPreset[]
+  /** Decorative patterns shown as a second grid. Pass `[]` to hide them. */
+  patterns?: BackgroundPreset[]
   swatches?: string[]
   /** Label shown next to the custom color when the value isn't a preset. */
   customLabel?: string
@@ -46,13 +78,15 @@ function BackgroundPicker({
   value,
   onValueChange,
   presets = BACKGROUND_PRESETS,
+  patterns = BACKGROUND_PATTERNS,
   swatches,
   customLabel,
   uploadLabel = "Drag an image or click",
   removeLabel = "Remove",
   className,
 }: BackgroundPickerProps) {
-  const matchesPreset = presets.some((p) => p.css === value)
+  const matchesPreset =
+    presets.some((p) => p.css === value) || patterns.some((p) => p.css === value)
   const isImage = isImageBackground(value)
   // Seed the custom picker with a brand hex unless the value already is one.
   const customColor = matchesPreset || isImage ? "#1BAD9D" : value
@@ -86,6 +120,25 @@ function BackgroundPicker({
           />
         ))}
       </div>
+      {patterns.length > 0 ? (
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {patterns.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              aria-label={p.key}
+              onClick={() => onValueChange(p.css)}
+              style={{ background: p.css }}
+              className={cn(
+                "h-12 rounded-xl outline-none transition-transform",
+                value === p.css
+                  ? "ring-foreground ring-offset-card ring-2 ring-offset-2"
+                  : "hover:scale-105"
+              )}
+            />
+          ))}
+        </div>
+      ) : null}
       <div className="flex items-center gap-2">
         <ColorPicker
           value={customColor}
