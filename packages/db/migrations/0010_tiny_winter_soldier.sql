@@ -13,31 +13,6 @@ CREATE TABLE `reward_availability` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `reward_availability_customer_reward_uq` ON `reward_availability` (`customer_id`,`reward_id`);--> statement-breakpoint
 CREATE INDEX `reward_availability_ready_idx` ON `reward_availability` (`ready_at`);--> statement-breakpoint
-PRAGMA foreign_keys=OFF;--> statement-breakpoint
-CREATE TABLE `__new_redemption` (
-	`id` text PRIMARY KEY NOT NULL,
-	`customer_id` text NOT NULL,
-	`organization_id` text NOT NULL,
-	`card_id` text,
-	`reward_id` text NOT NULL,
-	`redeemed_by_user_id` text NOT NULL,
-	`currency` text NOT NULL,
-	`stamps_spent` integer DEFAULT 0 NOT NULL,
-	`points_spent` integer DEFAULT 0 NOT NULL,
-	`created_at` integer NOT NULL,
-	FOREIGN KEY (`customer_id`) REFERENCES `customer`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`organization_id`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`card_id`) REFERENCES `loyalty_card`(`id`) ON UPDATE no action ON DELETE set null,
-	FOREIGN KEY (`reward_id`) REFERENCES `reward`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`redeemed_by_user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action
-);
---> statement-breakpoint
-INSERT INTO `__new_redemption`("id", "customer_id", "organization_id", "card_id", "reward_id", "redeemed_by_user_id", "currency", "stamps_spent", "points_spent", "created_at") SELECT "id", "customer_id", "organization_id", "card_id", "reward_id", "redeemed_by_user_id", "currency", "stamps_spent", "points_spent", "created_at" FROM `redemption`;--> statement-breakpoint
-DROP TABLE `redemption`;--> statement-breakpoint
-ALTER TABLE `__new_redemption` RENAME TO `redemption`;--> statement-breakpoint
-PRAGMA foreign_keys=ON;--> statement-breakpoint
-CREATE INDEX `redemption_customer_idx` ON `redemption` (`organization_id`,`customer_id`,`created_at`);--> statement-breakpoint
-CREATE INDEX `redemption_customer_reward_idx` ON `redemption` (`customer_id`,`reward_id`);--> statement-breakpoint
 DROP INDEX IF EXISTS "organization_slug_unique";--> statement-breakpoint
 DROP INDEX IF EXISTS "session_token_unique";--> statement-breakpoint
 DROP INDEX IF EXISTS "user_phone_number_unique";--> statement-breakpoint
@@ -52,8 +27,6 @@ DROP INDEX IF EXISTS "points_account_customer_id_unique";--> statement-breakpoin
 DROP INDEX IF EXISTS "points_tx_customer_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "points_tx_purchase_uq";--> statement-breakpoint
 DROP INDEX IF EXISTS "purchase_idempotency_per_org_uq";--> statement-breakpoint
-DROP INDEX IF EXISTS "redemption_customer_idx";--> statement-breakpoint
-DROP INDEX IF EXISTS "redemption_customer_reward_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "reward_availability_customer_reward_uq";--> statement-breakpoint
 DROP INDEX IF EXISTS "reward_availability_ready_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "notification_feed_idx";--> statement-breakpoint
@@ -86,7 +59,7 @@ DROP INDEX IF EXISTS "sms_outbox_to_sent_at_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "sms_outbox_sent_at_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "whatsapp_outbox_to_sent_at_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "whatsapp_outbox_sent_at_idx";--> statement-breakpoint
-ALTER TABLE `reward` ALTER COLUMN "stamps_required" TO "stamps_required" integer;--> statement-breakpoint
+ALTER TABLE `redemption` ALTER COLUMN "stamps_spent" TO "stamps_spent" integer NOT NULL DEFAULT 0;--> statement-breakpoint
 CREATE UNIQUE INDEX `organization_slug_unique` ON `organization` (`slug`);--> statement-breakpoint
 CREATE UNIQUE INDEX `session_token_unique` ON `session` (`token`);--> statement-breakpoint
 CREATE UNIQUE INDEX `user_phone_number_unique` ON `user` (`phone_number`);--> statement-breakpoint
@@ -131,6 +104,11 @@ CREATE INDEX `sms_outbox_to_sent_at_idx` ON `sms_outbox` (`to`,`sent_at`);--> st
 CREATE INDEX `sms_outbox_sent_at_idx` ON `sms_outbox` (`sent_at`);--> statement-breakpoint
 CREATE INDEX `whatsapp_outbox_to_sent_at_idx` ON `whatsapp_outbox` (`to`,`sent_at`);--> statement-breakpoint
 CREATE INDEX `whatsapp_outbox_sent_at_idx` ON `whatsapp_outbox` (`sent_at`);--> statement-breakpoint
+ALTER TABLE `redemption` ADD `customer_id` text;--> statement-breakpoint
+ALTER TABLE `redemption` ADD `organization_id` text;--> statement-breakpoint
+ALTER TABLE `redemption` ADD `currency` text DEFAULT 'stamps' NOT NULL;--> statement-breakpoint
+ALTER TABLE `redemption` ADD `points_spent` integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE `reward` ALTER COLUMN "stamps_required" TO "stamps_required" integer;--> statement-breakpoint
 ALTER TABLE `reward` ADD `image_url` text;--> statement-breakpoint
 ALTER TABLE `reward` ADD `points_cost` integer;--> statement-breakpoint
 ALTER TABLE `reward` ADD `cost_mode` text DEFAULT 'or' NOT NULL;--> statement-breakpoint

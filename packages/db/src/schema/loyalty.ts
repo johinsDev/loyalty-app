@@ -182,12 +182,18 @@ export const redemption = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    customerId: text("customer_id")
-      .notNull()
-      .references(() => customer.id, { onDelete: "cascade" }),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
+    // Nullable so the columns can be added to the pre-existing table, and
+    // because legacy rows (pre-rewards "premios" redemptions) have no customer
+    // attribution. The claim flow always sets both on new rows.
+    // Nullable so the columns could be added to the pre-existing table, and
+    // because legacy rows (pre-rewards "premios" redemptions) have no customer
+    // attribution. The claim flow always sets both on new rows.
+    customerId: text("customer_id").references(() => customer.id, {
+      onDelete: "cascade",
+    }),
+    organizationId: text("organization_id").references(() => organization.id, {
+      onDelete: "cascade",
+    }),
     // The stamp card the stamps were spent from (null for points-only claims).
     cardId: text("card_id").references(() => loyaltyCard.id, {
       onDelete: "set null",
@@ -198,7 +204,7 @@ export const redemption = sqliteTable(
     redeemedByUserId: text("redeemed_by_user_id")
       .notNull()
       .references(() => user.id),
-    currency: text("currency").notNull(), // "stamps" | "points"
+    currency: text("currency").notNull().default("stamps"), // "stamps" | "points"
     stampsSpent: integer("stamps_spent").notNull().default(0),
     pointsSpent: integer("points_spent").notNull().default(0),
     createdAt: integer("created_at", { mode: "timestamp" })
