@@ -46,7 +46,8 @@
     "env:bootstrap": "bash scripts/infisical-bootstrap.sh",
     "env:pull": "bash scripts/env-pull.sh",
     "env:check": "infisical secrets --env=${INFISICAL_ENV:-dev} --recursive",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "db:seed:banners": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-banners.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",

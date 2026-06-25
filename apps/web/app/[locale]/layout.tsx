@@ -18,6 +18,8 @@ import { Providers } from "./providers";
 
 type Props = {
   children: ReactNode;
+  /** Parallel slot for intercepted detail modals (e.g. `/banner/[slug]`). */
+  modal: ReactNode;
   params: Promise<{ locale: string }>;
 };
 
@@ -34,7 +36,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   };
 }
 
-export default async function LocaleLayout({ children, params }: Props) {
+export default async function LocaleLayout({ children, modal, params }: Props) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) {
     notFound();
@@ -46,6 +48,7 @@ export default async function LocaleLayout({ children, params }: Props) {
     <Providers locale={locale} messages={messages} now={new Date()}>
       <AppChrome />
       {children}
+      {modal}
       <BottomNav />
       <RealtimeNotifications host={env.NEXT_PUBLIC_PARTYKIT_HOST} />
       <NotificationsDrawer />

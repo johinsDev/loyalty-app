@@ -411,5 +411,8 @@
     "total": "Total",
     "pointsEarned": "POINTS EARNED",
     "sellosEarned": "STAMPS EARNED"
+  },
+  "Banners": {
+    "backToHome": "Back to home"
   }
 }

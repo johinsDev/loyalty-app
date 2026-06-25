@@ -411,5 +411,8 @@
     "total": "Total",
     "pointsEarned": "PUNTOS GANADOS",
     "sellosEarned": "SELLOS GANADOS"
+  },
+  "Banners": {
+    "backToHome": "Volver al inicio"
   }
 }

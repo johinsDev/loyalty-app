@@ -9,346 +9,175 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
   Badge,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Input,
+  Skeleton,
 } from "@loyalty/ui";
-import { Image as ImageIcon, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bell, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
-import { EmptyState } from "@/components/empty-state";
-import { type FilterOption, FilterMultiSelect } from "@/components/filters";
-import { type ViewMode, ViewToggle } from "@/components/view-toggle";
-import { useFadeUp } from "@/lib/animate";
 import { useRouter } from "@/i18n/navigation";
+import { useTRPC } from "@/lib/trpc/client";
 
-import {
-  type Banner,
-  type BannerType,
-  banners,
-  GRADIENTS,
-  gradientCss,
-  type Status,
-  STATUSES,
-} from "../data";
+type DisplayState = "draft" | "scheduled" | "active" | "expired";
 
-const TYPES: BannerType[] = ["promo", "standalone"];
-const STATUS_DOT: Record<Status, string> = {
-  active: "#1f9d68",
-  scheduled: "#3b73d6",
-  expired: "#9aa1ab",
-  draft: "#c98a00",
-};
-const STATUS_TEXT: Record<Status, string> = {
-  active: "text-emerald-600",
-  scheduled: "text-blue-600",
-  expired: "text-muted-foreground",
-  draft: "text-amber-600",
+const STATE_STYLE: Record<DisplayState, string> = {
+  active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  scheduled: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  expired: "bg-muted text-muted-foreground",
+  draft: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
 };
 
-/**
- * Banners — a card grid (mini gradient preview, type, status, range, clicks)
- * with status/type filters. Add/edit open the banner wizard; delete confirms +
- * offers undo. Design-first / hardcoded (../data).
- */
+/** Admin banners list — published + draft banners with their derived display
+ *  state, scheduled-notification count, search, edit and delete. */
 export function BannersView() {
   const t = useTranslations("Banners");
-  const tCommon = useTranslations("Common");
+  const trpc = useTRPC();
   const router = useRouter();
-  const fade = useFadeUp({ step: 30 });
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
 
-  const [query, setQuery] = useState("");
-  const [statuses, setStatuses] = useState<Status[]>([...STATUSES]);
-  const [types, setTypes] = useState<BannerType[]>([...TYPES]);
-  const [view, setView] = useState<ViewMode>("grid");
-  const [toDelete, setToDelete] = useState<Banner | null>(null);
+  const { data, isLoading } = useQuery(
+    trpc.banners.list.queryOptions({ search: search || undefined, page: 1, pageSize: 50 }),
+  );
 
-  const statusOptions: FilterOption<Status>[] = STATUSES.map((s) => ({
-    value: s,
-    label: t(`status.${s}`),
-    dot: STATUS_DOT[s],
-  }));
-  const typeOptions: FilterOption<BannerType>[] = TYPES.map((ty) => ({
-    value: ty,
-    label: t(`type.${ty}`),
-  }));
+  const remove = useMutation(
+    trpc.banners.remove.mutationOptions({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries(trpc.banners.list.queryFilter());
+      },
+    }),
+  );
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return banners.filter((b) => {
-      if (!statuses.includes(b.status)) return false;
-      if (!types.includes(b.type)) return false;
-      if (q && !b.title.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [query, statuses, types]);
-
-  const clearFilters = () => {
-    setQuery("");
-    setStatuses([...STATUSES]);
-    setTypes([...TYPES]);
-  };
-
-  const onDelete = () => {
-    if (!toDelete) return;
-    const name = toDelete.title;
-    setToDelete(null);
-    toast.success(t("deleted", { name }), {
-      action: { label: t("undo"), onClick: () => toast(t("restored", { name })) },
-    });
-  };
-
-  let i = 0;
+  const rows = data?.rows ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="mx-auto w-full max-w-6xl px-5 py-6 lg:px-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">
             {t("title")}
           </h1>
-          <p className="text-muted-foreground/80 mt-0.5 text-sm font-semibold">
-            {t("subtitle")}
-          </p>
+          <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
         </div>
-        <Button
-          className="h-10 gap-2 rounded-xl font-semibold"
-          onClick={() => router.push("/banners/new")}
-        >
+        <Button className="h-10 gap-1.5 rounded-xl" onClick={() => router.push("/banners/new")}>
           <Plus className="size-4" />
           {t("add")}
         </Button>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-52 flex-1">
-          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="border-border bg-card placeholder:text-muted-foreground h-10 w-full rounded-xl border pr-3 pl-9 text-sm outline-none"
-          />
-        </div>
-        <FilterMultiSelect
-          label={t("statusFilter")}
-          options={statusOptions}
-          selected={statuses}
-          onChange={setStatuses}
-        />
-        <FilterMultiSelect
-          label={t("typeFilter")}
-          options={typeOptions}
-          selected={types}
-          onChange={setTypes}
-        />
-        <ViewToggle
-          value={view}
-          onValueChange={setView}
-          ariaLabel={tCommon("viewToggle")}
+      <div className="relative mt-5 max-w-sm">
+        <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t("searchPlaceholder")}
+          className="h-10 pl-9"
         />
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={ImageIcon}
-          title={t("empty")}
-          hint={t("emptyHint")}
-          action={
-            <Button variant="outline" className="rounded-xl" onClick={clearFilters}>
-              {t("clearFilters")}
-            </Button>
-          }
-        />
-      ) : view === "grid" ? (
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((b) => {
-            const g = GRADIENTS.find((x) => x.key === b.gradient) ?? GRADIENTS[0]!;
-            return (
+      {isLoading ? (
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {["a", "b", "c"].map((k) => (
+            <Skeleton key={k} className="h-44 rounded-3xl" />
+          ))}
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="border-border mt-6 rounded-3xl border border-dashed p-12 text-center">
+          <p className="font-semibold">{t("empty")}</p>
+          <p className="text-muted-foreground mt-1 text-sm">{t("emptyHint")}</p>
+        </div>
+      ) : (
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {rows.map(({ banner, displayState, notificationCount }) => (
+            <div
+              key={banner.id}
+              className="bg-card border-border flex flex-col overflow-hidden rounded-3xl border shadow-sm"
+            >
               <div
-                key={b.id}
-                style={fade(i++)}
-                className="bg-card border-border flex flex-col rounded-3xl border p-4 shadow-sm"
+                className="relative h-28"
+                style={{ background: banner.backgroundCss ?? "var(--muted)" }}
               >
-                <div
-                  className="relative flex h-24 items-center gap-2 overflow-hidden rounded-2xl px-4 text-white"
-                  style={{ background: gradientCss(g) }}
+                <Badge
+                  className={`absolute top-3 left-3 border-0 ${STATE_STYLE[displayState as DisplayState]}`}
                 >
-                  <span className="text-3xl">{b.emoji}</span>
-                  <span className="font-display text-lg font-semibold leading-tight">
-                    {b.title}
-                  </span>
+                  {t(`state.${displayState}`)}
+                </Badge>
+              </div>
+              <div className="flex flex-1 flex-col p-4">
+                <p className="font-semibold">{banner.name}</p>
+                {banner.shortDescription ? (
+                  <p className="text-muted-foreground mt-0.5 line-clamp-1 text-sm">
+                    {banner.shortDescription}
+                  </p>
+                ) : null}
+                <div className="text-muted-foreground mt-3 flex items-center gap-3 text-xs font-semibold">
+                  {notificationCount > 0 ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Bell className="size-3.5" />
+                      {notificationCount}
+                    </span>
+                  ) : null}
                 </div>
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  <Badge
-                    variant="secondary"
-                    className={`gap-1.5 ${STATUS_TEXT[b.status]}`}
-                  >
-                    <span
-                      className="size-1.5 rounded-full"
-                      style={{ background: STATUS_DOT[b.status] }}
-                    />
-                    {t(`status.${b.status}`)}
-                  </Badge>
-                  <span className="text-muted-foreground/70 text-xs font-semibold">
-                    {t(`type.${b.type}`)} · {b.range}
-                  </span>
-                </div>
-                <div className="text-muted-foreground/70 mt-2 text-xs font-semibold">
-                  {t("clicksCount", { n: b.clicks.toLocaleString() })}
-                </div>
-                <div className="border-border mt-3 flex items-center gap-1 border-t pt-3">
+                <div className="mt-4 flex items-center gap-2">
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="h-9 flex-1 gap-1.5 rounded-lg"
+                    className="h-9 flex-1 gap-1.5 rounded-xl"
                     onClick={() =>
-                      router.push({ pathname: "/banners/[id]", params: { id: b.id } })
+                      router.push({ pathname: "/banners/[id]", params: { id: banner.id } })
                     }
                   >
                     <Pencil className="size-3.5" />
                     {t("edit")}
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label={t("delete")}
-                    className="text-destructive hover:bg-destructive/10 size-9 rounded-lg"
-                    onClick={() => setToDelete(b)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="bg-card border-border mt-5 overflow-hidden rounded-3xl border shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("col.banner")}</TableHead>
-                <TableHead>{t("col.type")}</TableHead>
-                <TableHead>{t("col.status")}</TableHead>
-                <TableHead>{t("col.range")}</TableHead>
-                <TableHead className="text-right">{t("col.clicks")}</TableHead>
-                <TableHead className="w-24" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((b) => {
-                const g =
-                  GRADIENTS.find((x) => x.key === b.gradient) ?? GRADIENTS[0]!;
-                return (
-                  <TableRow
-                    key={b.id}
-                    className="cursor-pointer"
-                    onClick={() =>
-                      router.push({
-                        pathname: "/banners/[id]",
-                        params: { id: b.id },
-                      })
-                    }
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-2.5">
-                        <span
-                          className="grid size-9 flex-none place-items-center rounded-xl text-lg text-white"
-                          style={{ background: gradientCss(g) }}
-                        >
-                          {b.emoji}
-                        </span>
-                        <span className="font-bold">{b.title}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground font-semibold">
-                      {t(`type.${b.type}`)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={`gap-1.5 ${STATUS_TEXT[b.status]}`}
-                      >
-                        <span
-                          className="size-1.5 rounded-full"
-                          style={{ background: STATUS_DOT[b.status] }}
-                        />
-                        {t(`status.${b.status}`)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground font-semibold">
-                      {b.range}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-right font-semibold">
-                      {b.clicks.toLocaleString()}
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1">
+                  <AlertDialog>
+                    <AlertDialogTrigger
+                      render={
                         <Button
                           variant="outline"
-                          size="icon"
-                          aria-label={t("edit")}
-                          className="size-8 rounded-lg"
+                          className="text-destructive size-9 rounded-xl p-0"
+                          aria-label={t("delete")}
+                        />
+                      }
+                    >
+                      <Trash2 className="size-4" />
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {t("deleteDescription", { name: banner.name })}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction
                           onClick={() =>
-                            router.push({
-                              pathname: "/banners/[id]",
-                              params: { id: b.id },
-                            })
+                            remove.mutate(
+                              { id: banner.id },
+                              {
+                                onSuccess: () =>
+                                  toast.success(t("deleted", { name: banner.name })),
+                              },
+                            )
                           }
                         >
-                          <Pencil className="size-3.5" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          aria-label={t("delete")}
-                          className="text-destructive hover:bg-destructive/10 size-8 rounded-lg"
-                          onClick={() => setToDelete(b)}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                          {t("deleteConfirm")}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
-
-      <AlertDialog
-        open={toDelete !== null}
-        onOpenChange={(o) => !o && setToDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("deleteDescription", { name: toDelete?.title ?? "" })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="h-10 px-4">
-              {t("cancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={onDelete}
-              className="bg-destructive h-10 px-4 text-white hover:bg-destructive/90"
-            >
-              {t("deleteConfirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

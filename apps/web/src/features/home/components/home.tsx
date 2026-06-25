@@ -2,6 +2,7 @@ import { SidebarInset, SidebarProvider } from "@loyalty/ui";
 import { getTranslations } from "next-intl/server";
 
 import { env } from "@/env";
+import { BannerRail } from "@/features/banners/components/banner-rail";
 import { FadeUp } from "@/lib/animate";
 import { getSession } from "@/lib/auth-guard";
 
@@ -57,6 +58,10 @@ export async function Home() {
 
           <FadeUp index={3} className="mt-4">
             <ScanCta />
+          </FadeUp>
+
+          <FadeUp index={4} className="mt-6">
+            <BannerRail />
           </FadeUp>
 
           <FadeUp index={4} className="mt-6">

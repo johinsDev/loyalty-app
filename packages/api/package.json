@@ -19,6 +19,8 @@
     "./features/streaks": "./src/features/streaks/index.ts",
     "./features/points": "./src/features/points/index.ts",
     "./features/products": "./src/features/products/index.ts",
+    "./features/banners": "./src/features/banners/index.ts",
+    "./features/banners/schemas": "./src/features/banners/schemas.ts",
     "./features/storage": "./src/features/storage/index.ts",
     "./features/promotions": "./src/features/promotions/index.ts",
     "./features/promotions/schemas": "./src/features/promotions/schemas.ts"
