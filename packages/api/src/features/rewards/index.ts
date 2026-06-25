@@ -10,3 +10,12 @@ export {
   REMINDER_ENABLED,
   REMINDER_STAGES,
 } from "./reminder-config";
+export type {
+  CancelClaimInput,
+  ConfirmClaimWithCodeInput,
+  IssueClaimTokenInput,
+  RequestClaimInput,
+  RewardFilter,
+  RewardSectionsView,
+  SetClaimCurrencyInput,
+} from "./schemas";
