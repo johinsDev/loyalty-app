@@ -8,7 +8,13 @@ import {
   WINDOW_DAYS,
 } from "./config";
 import type { PointsRepository } from "./repository";
-import type { HistoryInput, PointsHistoryItem, PointsSummary } from "./schemas";
+import type {
+  HistoryInput,
+  PointsHistoryItem,
+  PointsSummary,
+  PointsTransactionsView,
+  TransactionsInput,
+} from "./schemas";
 import { tierFor, tierRank } from "./tier-calc";
 
 type NotificationKey = "tier-up" | "tier-down" | "tier-near";
@@ -59,7 +65,11 @@ export class PointsService {
     customerId: string,
     priceCents: number,
     purchaseId: string,
-  ): Promise<{ earned: number; balance: number }> {
+  ): Promise<{
+    earned: number;
+    balance: number;
+    tierUp?: { tierName: string } | null;
+  }> {
     if (!POINTS_ENABLED) {
       return { earned: 0, balance: await this.repo.balance(organizationId, customerId) };
     }
@@ -81,13 +91,18 @@ export class PointsService {
       event: "points.earned",
       data: { earned: points, balance },
     });
-    await this.recompute(organizationId, customerId);
-    return { earned: points, balance };
+    const tierUp = await this.recompute(organizationId, customerId);
+    return { earned: points, balance, tierUp };
   }
 
   /** Recompute the tier from the window; fire up/down + near-threshold side
-   *  effects. Shared by earn (instant up) and the cron (time-based down). */
-  async recompute(organizationId: string, customerId: string): Promise<void> {
+   *  effects. Shared by earn (instant up) and the cron (time-based down).
+   *  Returns the tier name when the customer moved UP (so the purchase
+   *  orchestration can fold it into the single rewards-unlock celebration). */
+  async recompute(
+    organizationId: string,
+    customerId: string,
+  ): Promise<{ tierName: string } | null> {
     const windowStart = new Date(Date.now() - WINDOW_DAYS * DAY_MS);
     const tierPoints = await this.repo.tierPoints(
       organizationId,
@@ -104,11 +119,13 @@ export class PointsService {
     let nearKey = account?.nearNotifiedTierKey ?? null;
 
     const tierChanged = newKey !== oldKey;
+    let tierUp: { tierName: string } | null = null;
     // First-ever assignment to the base tier is silent — just create the account.
     const isInitialBase = oldKey === null && newRank === 0;
     if (tierChanged && !isInitialBase) {
       nearKey = null; // a new tier resets the "almost there" dedupe
       if (newRank > oldRank) {
+        tierUp = { tierName: view.current.name };
         await this.publish(customerId, {
           event: "tier.changed",
           data: {
@@ -165,6 +182,8 @@ export class PointsService {
         nearNotifiedTierKey: nearKey,
       });
     }
+
+    return tierUp;
   }
 
   async mySummary(
@@ -202,6 +221,21 @@ export class PointsService {
     input: HistoryInput,
   ): Promise<{ rows: PointsHistoryItem[]; total: number }> {
     return this.repo.history(organizationId, customerId, input.page, input.pageSize);
+  }
+
+  /** Cursor-paginated, UI-friendly ledger for the dedicated transactions view
+   *  (date-range + infinite scroll). The repo resolves `kind` + `rewardName`. */
+  myTransactions(
+    organizationId: string,
+    customerId: string,
+    input: TransactionsInput,
+  ): Promise<PointsTransactionsView> {
+    return this.repo.transactions(organizationId, customerId, {
+      from: input.from ? new Date(input.from) : undefined,
+      to: input.to ? new Date(input.to) : undefined,
+      cursor: input.cursor,
+      limit: input.limit,
+    });
   }
 
   private async publish(

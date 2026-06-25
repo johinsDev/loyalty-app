@@ -5,7 +5,17 @@ import { Button, CurrencyInput } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import { useDebounce } from "ahooks";
-import { ArrowLeft, Check, Gift, QrCode, Search, User, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Flame,
+  Gift,
+  KeyRound,
+  QrCode,
+  Search,
+  User,
+  X,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -24,26 +34,34 @@ type CustomerHit = {
 };
 
 type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
+type ClaimResult = inferRouterOutputs<AppRouter>["rewards"]["claim"];
+type AvailableReward =
+  inferRouterOutputs<AppRouter>["rewards"]["availableForCustomer"][number];
 
-type Step = "identify" | "found" | "purchase-success" | "scan" | "claim-success";
+/** What the no-scanner code path is claiming — a reward or the pending streak.
+ *  Carries the `pendingId` returned by `requestClaim` plus a label for the UI. */
+type PendingClaim =
+  | { kind: "reward"; pendingId: string; label: string }
+  | { kind: "streak"; pendingId: string; label: string };
+
+type Step =
+  | "identify"
+  | "found"
+  | "purchase-success"
+  | "scan"
+  | "code-entry"
+  | "claim-success";
 
 /** QR prefixes the customer app renders for single-use claim tokens. */
-const CLAIM_PREFIX = "T4R|"; // stamp wallet reward
+const REWARD_PREFIX = "T4P|"; // stamps/points reward
 const STREAK_PREFIX = "T4S|"; // streak reward
-
-/** A REWARD_PENDING conflict thrown by `stamps.recordPurchase`. */
-function isRewardPending(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false;
-  const e = err as { message?: string; data?: { code?: string } };
-  return e.data?.code === "CONFLICT" && e.message === "REWARD_PENDING";
-}
 
 /**
  * Escanear tab — wired to the real ledger backend. Search a socio
- * (`customers.search`), load their wallet (`stamps.walletForCustomer`), and
- * either record a purchase by price (`stamps.recordPurchase`) or scan their
- * reward QR to claim it (`stamps.claim`). When a purchase is blocked by an
- * unclaimed reward (REWARD_PENDING) we flip straight to the scanner.
+ * (`customers.search`), load their wallet (`stamps.walletForCustomer`), record a
+ * purchase by price (`stamps.recordPurchase`), and see which rewards are ready
+ * to claim (`rewards.availableForCustomer`). Scanning the customer's reward QR
+ * claims it: `T4P|` → `rewards.claim`, `T4S|` → `streaks.claimReward`.
  */
 export function ScanView() {
   const t = useTranslations("Cashier");
@@ -58,6 +76,10 @@ export function ScanView() {
   const [priceCop, setPriceCop] = useState<number | undefined>(undefined);
   const [purchaseMode, setPurchaseMode] = useState<"total" | "items">("total");
   const [pastedCode, setPastedCode] = useState("");
+  const [claimResult, setClaimResult] = useState<ClaimResult | null>(null);
+  // No-scanner code path: the pending claim + the 6-digit code the cashier types.
+  const [pendingClaim, setPendingClaim] = useState<PendingClaim | null>(null);
+  const [codeInput, setCodeInput] = useState("");
 
   const debouncedQuery = useDebounce(query.trim(), { wait: 250 });
   const search = useQuery(
@@ -67,12 +89,45 @@ export function ScanView() {
     ),
   );
 
+  // Read-only nudge: rewards this socio can claim right now.
+  const available = useQuery(
+    trpc.rewards.availableForCustomer.queryOptions(
+      { customerId: selected?.id ?? "" },
+      { enabled: step === "found" && Boolean(selected) },
+    ),
+  );
+
+  // Pending streak reward (staff read) — claimable via the same code path.
+  const streak = useQuery(
+    trpc.streaks.streakForCustomer.queryOptions(
+      { customerId: selected?.id ?? "" },
+      { enabled: step === "found" && Boolean(selected) },
+    ),
+  );
+  const streakPending = streak.data?.rewardPending ?? false;
+
   const recordPurchase = useMutation(
     trpc.stamps.recordPurchase.mutationOptions(),
   );
-  const claim = useMutation(trpc.stamps.claim.mutationOptions());
+  const claim = useMutation(trpc.rewards.claim.mutationOptions());
   const claimStreak = useMutation(trpc.streaks.claimReward.mutationOptions());
+  const requestRewardClaim = useMutation(
+    trpc.rewards.requestClaim.mutationOptions(),
+  );
+  const confirmRewardClaim = useMutation(
+    trpc.rewards.confirmClaimWithCode.mutationOptions(),
+  );
+  const requestStreakClaim = useMutation(
+    trpc.streaks.requestClaim.mutationOptions(),
+  );
+  const confirmStreakClaim = useMutation(
+    trpc.streaks.confirmClaimWithCode.mutationOptions(),
+  );
   const isClaiming = claim.isPending || claimStreak.isPending;
+  const isRequesting =
+    requestRewardClaim.isPending || requestStreakClaim.isPending;
+  const isConfirming =
+    confirmRewardClaim.isPending || confirmStreakClaim.isPending;
 
   const reset = () => {
     setStep("identify");
@@ -80,6 +135,81 @@ export function ScanView() {
     setSelected(null);
     setWallet(null);
     setPriceCop(undefined);
+    setClaimResult(null);
+    setPendingClaim(null);
+    setCodeInput("");
+  };
+
+  // No-scanner path: request a 6-digit code (delivered to the customer's phone),
+  // then move to the code-entry step. The customer picks the spend currency for
+  // an OR reward on their own phone — the cashier no longer chooses it.
+  const startRewardClaim = async (reward: AvailableReward) => {
+    if (!selected) return;
+    try {
+      const res = await requestRewardClaim.mutateAsync({
+        customerId: selected.id,
+        rewardId: reward.rewardId,
+      });
+      setPendingClaim({
+        kind: "reward",
+        pendingId: res.pendingId,
+        label: reward.name,
+      });
+      setCodeInput("");
+      setStep("code-entry");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("codeRequestError"));
+    }
+  };
+
+  const startStreakClaim = async () => {
+    if (!selected) return;
+    try {
+      const res = await requestStreakClaim.mutateAsync({
+        customerId: selected.id,
+      });
+      setPendingClaim({
+        kind: "streak",
+        pendingId: res.pendingId,
+        label: t("streakReward"),
+      });
+      setCodeInput("");
+      setStep("code-entry");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("codeRequestError"));
+    }
+  };
+
+  const confirmCode = async () => {
+    if (!pendingClaim) return;
+    const code = codeInput.trim();
+    try {
+      if (pendingClaim.kind === "reward") {
+        const result = await confirmRewardClaim.mutateAsync({
+          pendingId: pendingClaim.pendingId,
+          code,
+        });
+        setClaimResult(result);
+      } else {
+        await confirmStreakClaim.mutateAsync({
+          pendingId: pendingClaim.pendingId,
+          code,
+        });
+        setClaimResult(null);
+      }
+      setStep("claim-success");
+      toast.success(t("claimValidated"));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "CODE_INVALID") toast.error(t("codeInvalid"));
+      else if (msg === "CODE_EXPIRED") toast.error(t("codeExpired"));
+      else if (msg === "TOO_MANY_ATTEMPTS") toast.error(t("codeTooMany"));
+      else if (msg === "NOT_YOUR_CLAIM") toast.error(t("codeNotYours"));
+      else if (msg === "ALREADY_CLAIMED") toast.error(t("alreadyClaimed"));
+      else if (msg === "INSUFFICIENT_BALANCE")
+        toast.error(t("insufficientBalance"));
+      else toast.error(t("codeConfirmError"));
+    }
   };
 
   const selectCustomer = async (hit: CustomerHit) => {
@@ -110,11 +240,6 @@ export function ScanView() {
       setStep("purchase-success");
       toast.success(t("purchaseRecorded"));
     } catch (err) {
-      if (isRewardPending(err)) {
-        toast.error(t("rewardPendingToast"));
-        setStep("scan");
-        return;
-      }
       toast.error(err instanceof Error ? err.message : t("purchaseError"));
     }
   };
@@ -122,24 +247,30 @@ export function ScanView() {
   const onScanResult = useCallback(
     async (text: string) => {
       const isStreak = text.startsWith(STREAK_PREFIX);
-      const isStamp = text.startsWith(CLAIM_PREFIX);
-      if (!isStreak && !isStamp) {
+      const isReward = text.startsWith(REWARD_PREFIX);
+      if (!isStreak && !isReward) {
         toast.error(t("notRewardCode"));
         return;
       }
-      const token = text.slice(CLAIM_PREFIX.length); // both prefixes are 4 chars
+      const token = text.slice(REWARD_PREFIX.length); // both prefixes are 4 chars
       try {
         if (isStreak) {
           await claimStreak.mutateAsync({ token });
+          setClaimResult(null);
         } else {
-          const { newWallet } = await claim.mutateAsync({ token });
-          setWallet(newWallet);
+          const result = await claim.mutateAsync({ token });
+          setClaimResult(result);
         }
         setStep("claim-success");
         toast.success(t("claimValidated"));
       } catch (err) {
         if (err instanceof Error && err.message === "ALREADY_CLAIMED") {
           toast.error(t("alreadyClaimed"));
+        } else if (
+          err instanceof Error &&
+          err.message === "INSUFFICIENT_BALANCE"
+        ) {
+          toast.error(t("insufficientBalance"));
         } else {
           toast.error(t("invalidToken"));
         }
@@ -242,6 +373,57 @@ export function ScanView() {
                 </span>
               </div>
             </div>
+
+            {/* Claimable now — each is actionable via the no-scanner code path. */}
+            {(available.data && available.data.length > 0) || streakPending ? (
+              <div className="bg-primary/10 mt-4 rounded-2xl p-3.5">
+                <div className="text-primary inline-flex items-center gap-1.5 text-xs font-extrabold tracking-wide">
+                  <Gift className="size-4" />
+                  {t("availableRewardsLabel")}
+                </div>
+                <div className="mt-2.5 flex flex-col gap-2">
+                  {available.data?.map((reward) => (
+                    <div
+                      key={reward.rewardId}
+                      className="bg-card border-border flex items-center gap-2 rounded-xl border p-2.5"
+                    >
+                      <span className="text-foreground min-w-0 flex-1 truncate text-sm font-bold">
+                        {reward.name}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="gradient"
+                        disabled={isRequesting}
+                        onClick={() => void startRewardClaim(reward)}
+                        className="h-10 flex-none gap-1.5 rounded-xl px-3 text-xs font-extrabold"
+                      >
+                        <KeyRound className="size-4" />
+                        {t("claimWithoutScanner")}
+                      </Button>
+                    </div>
+                  ))}
+                  {streakPending ? (
+                    <div className="bg-card border-border flex items-center gap-2 rounded-xl border p-2.5">
+                      <span className="text-foreground inline-flex min-w-0 flex-1 items-center gap-1.5 truncate text-sm font-bold">
+                        <Flame className="text-primary size-4 flex-none" />
+                        {t("streakReward")}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="gradient"
+                        disabled={isRequesting}
+                        onClick={() => void startStreakClaim()}
+                        className="h-10 flex-none gap-1.5 rounded-xl px-3 text-xs font-extrabold"
+                      >
+                        <KeyRound className="size-4" />
+                        {t("claimWithoutScanner")}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
@@ -262,92 +444,68 @@ export function ScanView() {
             </div>
           </div>
 
-          {wallet.rewardPending ? (
-            <div className="bg-card border-border rounded-3xl border p-6 shadow-sm">
-              <div className="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold tracking-wide">
-                <Gift className="size-4" />
-                {t("rewardPendingTag")}
-              </div>
-              <h2 className="font-display mt-3 text-lg font-semibold">
-                {t("rewardPendingTitle")}
-              </h2>
-              <p className="text-muted-foreground mt-1 text-sm">
-                {t("rewardPendingHint")}
-              </p>
-              <Button
-                variant="gradient"
-                size="lg"
-                onClick={() => setStep("scan")}
-                className="mt-4 h-10 w-full gap-2 rounded-2xl text-base font-extrabold"
-              >
-                <QrCode className="size-5" />
-                {t("scanQr")}
-              </Button>
+          <div className="bg-card border-border rounded-3xl border p-6 shadow-sm">
+            <h2 className="font-display text-lg font-semibold">
+              {t("recordPurchaseTitle")}
+            </h2>
+            <p className="text-muted-foreground mt-1 mb-4 text-sm">
+              {t("recordPurchaseHint")}
+            </p>
+
+            {/* Total vs itemized (the latter enables promo apply). */}
+            <div className="bg-muted mb-4 grid grid-cols-2 gap-1 rounded-2xl p-1">
+              {(["total", "items"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setPurchaseMode(m)}
+                  className={
+                    purchaseMode === m
+                      ? "bg-card rounded-xl py-2 text-sm font-bold shadow-sm"
+                      : "text-muted-foreground rounded-xl py-2 text-sm font-bold"
+                  }
+                >
+                  {t(m === "total" ? "modeTotal" : "modeItems")}
+                </button>
+              ))}
             </div>
-          ) : (
-            <div className="bg-card border-border rounded-3xl border p-6 shadow-sm">
-              <h2 className="font-display text-lg font-semibold">
-                {t("recordPurchaseTitle")}
-              </h2>
-              <p className="text-muted-foreground mt-1 mb-4 text-sm">
-                {t("recordPurchaseHint")}
-              </p>
 
-              {/* Total vs itemized (the latter enables promo apply). */}
-              <div className="bg-muted mb-4 grid grid-cols-2 gap-1 rounded-2xl p-1">
-                {(["total", "items"] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setPurchaseMode(m)}
-                    className={
-                      purchaseMode === m
-                        ? "bg-card rounded-xl py-2 text-sm font-bold shadow-sm"
-                        : "text-muted-foreground rounded-xl py-2 text-sm font-bold"
-                    }
-                  >
-                    {t(m === "total" ? "modeTotal" : "modeItems")}
-                  </button>
-                ))}
-              </div>
-
-              {purchaseMode === "total" ? (
-                <>
-                  <label className="text-muted-foreground/70 mb-1.5 block text-[0.6875rem] font-extrabold tracking-wider">
-                    {t("priceLabel")}
-                  </label>
-                  <CurrencyInput
-                    currency="COP"
-                    locale="es-CO"
-                    decimalScale={0}
-                    value={priceCop}
-                    onValueChange={setPriceCop}
-                    placeholder={t("pricePlaceholder")}
-                    className="h-10"
-                  />
-                  <Button
-                    variant="gradient"
-                    size="lg"
-                    disabled={priceCop === undefined || recordPurchase.isPending}
-                    onClick={() => void onRecordPurchase()}
-                    className="mt-4 h-10 w-full gap-2 rounded-2xl text-base font-extrabold"
-                  >
-                    <Check className="size-5" />
-                    {t("recordPurchase")}
-                  </Button>
-                </>
-              ) : (
-                <ItemizedPurchase
-                  customerId={selected.id}
-                  onSuccess={(view) => {
-                    setWallet(view);
-                    setStep("purchase-success");
-                  }}
-                  onRewardPending={() => setStep("scan")}
+            {purchaseMode === "total" ? (
+              <>
+                <label className="text-muted-foreground/70 mb-1.5 block text-[0.6875rem] font-extrabold tracking-wider">
+                  {t("priceLabel")}
+                </label>
+                <CurrencyInput
+                  currency="COP"
+                  locale="es-CO"
+                  decimalScale={0}
+                  value={priceCop}
+                  onValueChange={setPriceCop}
+                  placeholder={t("pricePlaceholder")}
+                  className="h-10"
                 />
-              )}
-            </div>
-          )}
+                <Button
+                  variant="gradient"
+                  size="lg"
+                  disabled={priceCop === undefined || recordPurchase.isPending}
+                  onClick={() => void onRecordPurchase()}
+                  className="mt-4 h-10 w-full gap-2 rounded-2xl text-base font-extrabold"
+                >
+                  <Check className="size-5" />
+                  {t("recordPurchase")}
+                </Button>
+              </>
+            ) : (
+              <ItemizedPurchase
+                customerId={selected.id}
+                onSuccess={(view) => {
+                  setWallet(view);
+                  setStep("purchase-success");
+                }}
+                onRewardPending={() => setStep("scan")}
+              />
+            )}
+          </div>
         </div>
       )}
 
@@ -373,11 +531,6 @@ export function ScanView() {
               {wallet.currentStamps}/{wallet.walletSize} {t("stampMany")}
             </div>
           </div>
-          {wallet.rewardPending ? (
-            <div className="bg-primary/10 text-primary mt-1 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-extrabold">
-              🎯 {t("nudgeComplete")}
-            </div>
-          ) : null}
           <Button
             variant="gradient"
             size="lg"
@@ -441,6 +594,57 @@ export function ScanView() {
         </div>
       )}
 
+      {step === "code-entry" && pendingClaim && selected && (
+        <div className="bg-card border-border mx-auto max-w-md rounded-3xl border p-6 shadow-sm">
+          <button
+            type="button"
+            onClick={() => {
+              setPendingClaim(null);
+              setCodeInput("");
+              setStep("found");
+            }}
+            className="text-muted-foreground mb-3.5 flex items-center gap-1 text-sm font-bold"
+          >
+            <ArrowLeft className="size-4" />
+            {t("back")}
+          </button>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
+            {t("codeEntryTitle", { reward: pendingClaim.label })}
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {t("codeEntryHint", { customer: customerName(selected) })}
+          </p>
+          <label className="text-muted-foreground/70 mt-4 mb-1.5 block text-[0.6875rem] font-extrabold tracking-wider">
+            {t("codeLabel")}
+          </label>
+          <input
+            value={codeInput}
+            onChange={(e) =>
+              setCodeInput(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="••••••"
+            className="border-border bg-muted placeholder:text-muted-foreground/50 font-display h-12 w-full rounded-2xl border px-3.5 text-center text-2xl font-semibold tracking-[0.4em] tabular-nums outline-none"
+          />
+          <Button
+            variant="gradient"
+            size="lg"
+            disabled={codeInput.trim().length !== 6 || isConfirming}
+            onClick={() => void confirmCode()}
+            className="mt-4 h-10 w-full gap-2 rounded-2xl text-base font-extrabold"
+          >
+            <Check className="size-5" />
+            {t("confirmClaim")}
+          </Button>
+          {isConfirming ? (
+            <div className="text-muted-foreground mt-3 text-center text-sm font-semibold">
+              {t("validating")}
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {step === "claim-success" && (
         <div className="flex flex-col items-center gap-3.5 py-10 text-center">
           <div className="from-primary to-primary/80 grid size-24 place-items-center rounded-3xl bg-gradient-to-br text-white shadow-xl">
@@ -449,9 +653,28 @@ export function ScanView() {
           <div className="font-display text-3xl font-semibold tracking-tight">
             {t("claimValidated")}
           </div>
-          <div className="text-muted-foreground text-base">
-            {t("handRewardToCustomer")}
-          </div>
+          {claimResult ? (
+            <>
+              <div className="text-muted-foreground text-base">
+                {t("handReward", { name: claimResult.rewardName })}
+              </div>
+              <div className="bg-card border-border mt-1 rounded-2xl border p-4">
+                <div className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
+                  {t("newBalance")}
+                </div>
+                <div className="text-lg font-extrabold">
+                  {t("balancesAfter", {
+                    stamps: claimResult.stampsBalance,
+                    points: claimResult.pointsBalance,
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-muted-foreground text-base">
+              {t("handRewardToCustomer")}
+            </div>
+          )}
           <Button
             variant="gradient"
             size="lg"

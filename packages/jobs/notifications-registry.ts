@@ -238,13 +238,21 @@ export class RewardClaimedNotification
 {
   readonly category = "transactional" as const;
 
+  constructor(private readonly rewardName: string | null = null) {
+    super();
+  }
+
+  #what(): string {
+    return this.rewardName ? `"${this.rewardName}"` : "tu premio";
+  }
+
   via(): ChannelName[] {
     return ["whatsapp", "database"];
   }
 
   toWhatsApp() {
     return {
-      body: "¡Reclamaste tu premio! 🎉 Gracias por ser parte de T4. Tu nueva tarjeta ya empezó.",
+      body: `¡Reclamaste ${this.#what()}! 🎉 Gracias por ser parte de T4. Seguí sumando para el próximo.`,
     };
   }
 
@@ -252,7 +260,45 @@ export class RewardClaimedNotification
     return {
       type: "reward-claimed",
       title: "¡Premio reclamado! 🎉",
-      body: "Disfrutá tu premio. Tu nueva tarjeta ya empezó a sumar.",
+      body: `Disfrutá ${this.#what()}. Seguí sumando para tu próximo premio.`,
+    };
+  }
+}
+
+/**
+ * Reward claim code — the 6-digit OTP for the cashier-initiated, no-scanner
+ * claim path. Delivered out-of-band so the cashier validates the customer is
+ * present; transactional, WhatsApp + push. Mirrors an OTP message: short-lived,
+ * "don't share". Realtime fires inline in the service (`reward.claim-code`).
+ */
+export class RewardClaimCodeNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(
+    private readonly rewardName: string,
+    private readonly code: string,
+  ) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "push"];
+  }
+
+  toWhatsApp() {
+    return {
+      body: `Tu código para reclamar ${this.rewardName} es: ${this.code}\nExpira en 3 minutos. No lo compartas.`,
+    };
+  }
+
+  toPush() {
+    return {
+      title: "Tu código para reclamar 🎁",
+      body: `${this.rewardName}: ${this.code}. Expira en 3 minutos.`,
+      data: { kind: "reward-claim-code" },
     };
   }
 }
@@ -498,6 +544,169 @@ export class TierDownNotification
   }
 }
 
+/**
+ * A reward just became claimable. Used two ways:
+ *   - immediate unlock (the purchase flow can target all channels), or
+ *   - a granular in-app feed row only (when `channelsOnly: "database"` so the
+ *     combined recap owns WhatsApp/push and we never fan out N messages).
+ */
+export class RewardAvailableNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(
+    private readonly rewardName: string,
+    private readonly databaseOnly = false,
+  ) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return this.databaseOnly
+      ? ["database"]
+      : ["whatsapp", "database", "push", "realtime"];
+  }
+
+  #title(): string {
+    return `¡Desbloqueaste un premio! 🎁`;
+  }
+
+  #body(): string {
+    return `Ya podés canjear "${this.rewardName}". Mostrá tu código en la caja.`;
+  }
+
+  toWhatsApp() {
+    return { body: `${this.#title()}\n${this.#body()}` };
+  }
+
+  toPush() {
+    return {
+      title: this.#title(),
+      body: `Ya podés canjear "${this.rewardName}".`,
+      data: { kind: "reward-available", rewardName: this.rewardName },
+    };
+  }
+
+  toRealtime() {
+    return {
+      event: "notification",
+      data: {
+        type: "reward-available",
+        title: this.#title(),
+        body: this.#body(),
+      },
+    };
+  }
+
+  toDatabase() {
+    return {
+      type: "reward-available",
+      title: this.#title(),
+      body: this.#body(),
+      data: { rewardName: this.rewardName },
+    };
+  }
+}
+
+/**
+ * Combined post-purchase rewards recap — ONE WhatsApp + push summarizing every
+ * reward that just became claimable (the granular per-reward feed rows are
+ * written by `reward-available` database-only sends). Realtime is fired inline
+ * by the rewards service (`rewards.unlocked`) for a single celebration.
+ */
+export class PurchaseRewardsRecapNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(private readonly rewardNames: string[]) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "push", "database"];
+  }
+
+  #title(): string {
+    return this.rewardNames.length === 1
+      ? "¡Desbloqueaste un premio! 🎁"
+      : `¡Desbloqueaste ${this.rewardNames.length} premios! 🎁`;
+  }
+
+  #body(): string {
+    const list = this.rewardNames.map((n) => `"${n}"`).join(", ");
+    return `Ya podés canjear ${list}. Mostrá tu código en la caja.`;
+  }
+
+  toWhatsApp() {
+    return { body: `${this.#title()}\n${this.#body()}` };
+  }
+
+  toPush() {
+    return {
+      title: this.#title(),
+      body: this.#body(),
+      data: { kind: "purchase-rewards-recap" },
+    };
+  }
+
+  toDatabase() {
+    return {
+      type: "purchase-rewards-recap",
+      title: this.#title(),
+      body: this.#body(),
+      data: { rewards: this.rewardNames },
+    };
+  }
+}
+
+/**
+ * Reward reminder — "don't forget your unclaimed reward" nudge from the daily
+ * cron, escalating through stages (d2/d7/d30). WhatsApp + in-app feed + push.
+ */
+export class RewardReminderNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(private readonly rewardName: string) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database", "push"];
+  }
+
+  #body(): string {
+    return `Todavía tenés "${this.rewardName}" sin reclamar. ¡Pasá por tu T4 y disfrutalo! 🧋`;
+  }
+
+  toWhatsApp() {
+    return { body: `¡Tu premio te espera! 🎁\n${this.#body()}` };
+  }
+
+  toPush() {
+    return {
+      title: "¡Tu premio te espera! 🎁",
+      body: `Reclamá "${this.rewardName}".`,
+      data: { kind: "reward-reminder", rewardName: this.rewardName },
+    };
+  }
+
+  toDatabase() {
+    return {
+      type: "reward-reminder",
+      title: "¡Tu premio te espera! 🎁",
+      body: this.#body(),
+      data: { rewardName: this.rewardName },
+    };
+  }
+}
+
 /** Almost at the next tier. */
 export class TierNearNotification
   extends Notification
@@ -619,7 +828,7 @@ export class PromoAnnouncementNotification
       title: this.content.name,
       body: this.content.shortDescription,
       data: { kind: "promo", slug: this.content.slug },
-      clickAction: `/promo/${this.content.slug}`,
+      clickAction: `/promos/${this.content.slug}`,
     };
   }
 
@@ -641,6 +850,44 @@ export class PromoAnnouncementNotification
       title: this.content.name,
       body: this.content.shortDescription,
       data: { slug: this.content.slug },
+    };
+  }
+}
+
+/**
+ * Security alert when a customer changes their phone. Transactional (always
+ * sends). WhatsApp is dispatched with an explicit recipient override (the OLD
+ * contact) so it reaches the previous number even though the `customer` row
+ * already holds the new one; the database (in-app feed) entry is keyed to the
+ * account. No SMS / mail.
+ */
+export class PhoneChangedNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(private readonly newPhoneMasked: string) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  #body(): string {
+    return `Cambiaste el número de tu cuenta T4 Diver Club a ${this.newPhoneMasked}. Si no fuiste vos, contactá a la tienda de inmediato.`;
+  }
+
+  toWhatsApp() {
+    return { body: this.#body() };
+  }
+
+  toDatabase() {
+    return {
+      type: "phone-changed",
+      title: "Cambiaste tu número",
+      body: this.#body(),
     };
   }
 }
@@ -669,8 +916,40 @@ export function createNotification(
       const completed = payload?.completed === true;
       return new StampEarnedNotification(currentStamps, stampsGoal, completed);
     }
-    case "reward-claimed":
-      return new RewardClaimedNotification();
+    case "reward-claimed": {
+      const rewardName =
+        typeof payload?.rewardName === "string" ? payload.rewardName : null;
+      return new RewardClaimedNotification(rewardName);
+    }
+    case "reward-claim-code": {
+      const rewardName =
+        typeof payload?.rewardName === "string" ? payload.rewardName : "tu premio";
+      const code = typeof payload?.code === "string" ? payload.code : "";
+      return new RewardClaimCodeNotification(rewardName, code);
+    }
+    case "reward-available": {
+      const rewardName =
+        typeof payload?.rewardName === "string" ? payload.rewardName : "";
+      const databaseOnly = payload?.channelsOnly === "database";
+      return new RewardAvailableNotification(rewardName, databaseOnly);
+    }
+    case "purchase-rewards-recap": {
+      const rewards = Array.isArray(payload?.rewards)
+        ? (payload.rewards as unknown[])
+            .map((r) =>
+              r && typeof r === "object" && "name" in r
+                ? String((r as { name: unknown }).name)
+                : null,
+            )
+            .filter((n): n is string => n !== null)
+        : [];
+      return new PurchaseRewardsRecapNotification(rewards);
+    }
+    case "reward-reminder": {
+      const rewardName =
+        typeof payload?.rewardName === "string" ? payload.rewardName : "";
+      return new RewardReminderNotification(rewardName);
+    }
     case "streak-completed": {
       const currentCount =
         typeof payload?.currentCount === "number" ? payload.currentCount : 0;
@@ -715,6 +994,13 @@ export function createNotification(
       const remaining =
         typeof payload?.remaining === "number" ? payload.remaining : 0;
       return new TierNearNotification(nextName, remaining);
+    }
+    case "phone-changed": {
+      const masked =
+        typeof payload?.newPhoneMasked === "string"
+          ? payload.newPhoneMasked
+          : "";
+      return new PhoneChangedNotification(masked);
     }
   }
 }

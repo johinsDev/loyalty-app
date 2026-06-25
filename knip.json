@@ -98,6 +98,7 @@
         "src/seed-menu.ts",
         "src/seed-banners.ts",
         "src/seed-promos.ts",
+        "src/seed-rewards.ts",
         "src/reset-test.ts",
         "src/backfill-customers.ts",
         "src/seed-i18n.ts"

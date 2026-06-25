@@ -3,10 +3,13 @@ import {
   pointsAccount,
   type PointsAccountRow,
   pointsTransaction,
+  purchase,
+  reward,
 } from "@loyalty/db/schema";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
 
-import type { PointsHistoryItem } from "./schemas";
+import type { PointsHistoryItem, PointsTransactionItem } from "./schemas";
+import { classifyTransaction } from "./transactions";
 
 /**
  * Drizzle access for points. The `points_transaction` ledger is the source of
@@ -162,6 +165,114 @@ export class PointsRepository {
       })),
       total: count[0]?.value ?? 0,
     };
+  }
+
+  /** Cursor-paginated ledger for the dedicated transactions view. Returns the
+   *  UI-friendly shape (`kind` + resolved `rewardName`); the raw `reward:<id>`
+   *  reason never leaves this layer. Keyset on the indexed `createdAt`; a deleted
+   *  reward resolves to `rewardName: null`. */
+  async transactions(
+    orgId: string,
+    customerId: string,
+    opts: { from?: Date; to?: Date; cursor?: string; limit: number },
+  ): Promise<{ items: PointsTransactionItem[]; nextCursor: string | null }> {
+    const conds = [
+      eq(pointsTransaction.organizationId, orgId),
+      eq(pointsTransaction.customerId, customerId),
+    ];
+    if (opts.from) conds.push(gte(pointsTransaction.createdAt, opts.from));
+    if (opts.to) conds.push(lte(pointsTransaction.createdAt, opts.to));
+    if (opts.cursor) {
+      const c = new Date(opts.cursor);
+      if (!Number.isNaN(c.getTime())) {
+        conds.push(lt(pointsTransaction.createdAt, c));
+      }
+    }
+
+    // Over-fetch one to know whether there's a next page.
+    const rows = await this.db
+      .select({
+        id: pointsTransaction.id,
+        type: pointsTransaction.type,
+        points: pointsTransaction.points,
+        reason: pointsTransaction.reason,
+        createdAt: pointsTransaction.createdAt,
+        purchaseId: pointsTransaction.purchaseId,
+      })
+      .from(pointsTransaction)
+      .where(and(...conds))
+      .orderBy(desc(pointsTransaction.createdAt))
+      .limit(opts.limit + 1);
+
+    const hasMore = rows.length > opts.limit;
+    const page = hasMore ? rows.slice(0, opts.limit) : rows;
+
+    const classified = page.map((r) => ({
+      row: r,
+      ...classifyTransaction(r.type, r.reason),
+    }));
+
+    // Resolve reward names in one batched query (tolerate deleted rewards).
+    const rewardIds = [
+      ...new Set(
+        classified
+          .map((c) => c.rewardId)
+          .filter((id): id is string => id !== null),
+      ),
+    ];
+    const names = new Map<string, string>();
+    if (rewardIds.length > 0) {
+      const rewardRows = await this.db
+        .select({ id: reward.id, name: reward.name })
+        .from(reward)
+        .where(
+          and(
+            eq(reward.organizationId, orgId),
+            inArray(reward.id, rewardIds),
+          ),
+        );
+      for (const rw of rewardRows) names.set(rw.id, rw.name);
+    }
+
+    // Resolve purchase amounts (the value shown in a purchase row's detail —
+    // there's no product catalog yet) in one batched query.
+    const purchaseIds = [
+      ...new Set(
+        page
+          .map((r) => r.purchaseId)
+          .filter((id): id is string => id !== null),
+      ),
+    ];
+    const prices = new Map<string, number>();
+    if (purchaseIds.length > 0) {
+      const purchaseRows = await this.db
+        .select({ id: purchase.id, priceCents: purchase.priceCents })
+        .from(purchase)
+        .where(
+          and(
+            eq(purchase.organizationId, orgId),
+            inArray(purchase.id, purchaseIds),
+          ),
+        );
+      for (const p of purchaseRows) prices.set(p.id, p.priceCents);
+    }
+
+    const items: PointsTransactionItem[] = classified.map((c) => ({
+      id: c.row.id,
+      type: c.row.type as PointsTransactionItem["type"],
+      points: c.row.points,
+      createdAt: c.row.createdAt,
+      kind: c.kind,
+      rewardName: c.rewardId ? (names.get(c.rewardId) ?? null) : null,
+      priceCents: c.row.purchaseId
+        ? (prices.get(c.row.purchaseId) ?? null)
+        : null,
+    }));
+
+    const nextCursor = hasMore
+      ? (page[page.length - 1]?.createdAt.toISOString() ?? null)
+      : null;
+    return { items, nextCursor };
   }
 
   /** Customers with any points activity — the cron recomputes each one's tier

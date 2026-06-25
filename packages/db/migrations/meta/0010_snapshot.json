@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "1a629fc9-9d42-4b92-848a-e0ab7d45c868",
+  "id": "eb83a428-44c8-459d-8549-7a88857d0142",
   "prevId": "24e3685a-2f70-4c9f-a730-4cf3b0b5b362",
   "tables": {
     "account": {
@@ -1500,122 +1500,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "promo_redemption": {
-      "name": "promo_redemption",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "promo_id": {
-          "name": "promo_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "customer_id": {
-          "name": "customer_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "purchase_id": {
-          "name": "purchase_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "discount_cents": {
-          "name": "discount_cents",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'COP'"
-        },
-        "applied_at": {
-          "name": "applied_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "promo_redemption_promo_idx": {
-          "name": "promo_redemption_promo_idx",
-          "columns": [
-            "promo_id"
-          ],
-          "isUnique": false
-        },
-        "promo_redemption_promo_customer_idx": {
-          "name": "promo_redemption_promo_customer_idx",
-          "columns": [
-            "promo_id",
-            "customer_id"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "promo_redemption_promo_id_promo_id_fk": {
-          "name": "promo_redemption_promo_id_promo_id_fk",
-          "tableFrom": "promo_redemption",
-          "tableTo": "promo",
-          "columnsFrom": [
-            "promo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "promo_redemption_customer_id_customer_id_fk": {
-          "name": "promo_redemption_customer_id_customer_id_fk",
-          "tableFrom": "promo_redemption",
-          "tableTo": "customer",
-          "columnsFrom": [
-            "customer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "promo_redemption_purchase_id_purchase_id_fk": {
-          "name": "promo_redemption_purchase_id_purchase_id_fk",
-          "tableFrom": "promo_redemption",
-          "tableTo": "purchase",
-          "columnsFrom": [
-            "purchase_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "purchase": {
       "name": "purchase",
       "columns": {
@@ -1659,36 +1543,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
-        },
-        "subtotal_cents": {
-          "name": "subtotal_cents",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "discount_cents": {
-          "name": "discount_cents",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'COP'"
-        },
-        "applied_promo_id": {
-          "name": "applied_promo_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
           "autoincrement": false
         },
         "idempotency_key": {
@@ -1768,109 +1622,6 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "purchase_applied_promo_id_promo_id_fk": {
-          "name": "purchase_applied_promo_id_promo_id_fk",
-          "tableFrom": "purchase",
-          "tableTo": "promo",
-          "columnsFrom": [
-            "applied_promo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "purchase_item": {
-      "name": "purchase_item",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "purchase_id": {
-          "name": "purchase_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "product_id": {
-          "name": "product_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "variant_id": {
-          "name": "variant_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "modifier_option_ids": {
-          "name": "modifier_option_ids",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "qty": {
-          "name": "qty",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 1
-        },
-        "unit_amount_cents": {
-          "name": "unit_amount_cents",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'COP'"
-        }
-      },
-      "indexes": {
-        "purchase_item_purchase_idx": {
-          "name": "purchase_item_purchase_idx",
-          "columns": [
-            "purchase_id"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "purchase_item_purchase_id_purchase_id_fk": {
-          "name": "purchase_item_purchase_id_purchase_id_fk",
-          "tableFrom": "purchase_item",
-          "tableTo": "purchase",
-          "columnsFrom": [
-            "purchase_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1885,6 +1636,20 @@
           "type": "text",
           "primaryKey": true,
           "notNull": true,
+          "autoincrement": false
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "card_id": {
@@ -1908,12 +1673,29 @@
           "notNull": true,
           "autoincrement": false
         },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'stamps'"
+        },
         "stamps_spent": {
           "name": "stamps_spent",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": 0
+        },
+        "points_spent": {
+          "name": "points_spent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
         },
         "created_at": {
           "name": "created_at",
@@ -2000,12 +1782,65 @@
           "notNull": false,
           "autoincrement": false
         },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "stamps_required": {
           "name": "stamps_required",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
+        },
+        "points_cost": {
+          "name": "points_cost",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "cost_mode": {
+          "name": "cost_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'or'"
+        },
+        "allowed_tiers": {
+          "name": "allowed_tiers",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sections": {
+          "name": "sections",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'[]'"
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "limit_per_customer": {
+          "name": "limit_per_customer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'unlimited'"
         },
         "active": {
           "name": "active",
@@ -2038,6 +1873,122 @@
           "tableTo": "organization",
           "columnsFrom": [
             "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "reward_availability": {
+      "name": "reward_availability",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reward_id": {
+          "name": "reward_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ready_at": {
+          "name": "ready_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_stage": {
+          "name": "last_stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'immediate'"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "reward_availability_customer_reward_uq": {
+          "name": "reward_availability_customer_reward_uq",
+          "columns": [
+            "customer_id",
+            "reward_id"
+          ],
+          "isUnique": true
+        },
+        "reward_availability_ready_idx": {
+          "name": "reward_availability_ready_idx",
+          "columns": [
+            "ready_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "reward_availability_customer_id_customer_id_fk": {
+          "name": "reward_availability_customer_id_customer_id_fk",
+          "tableFrom": "reward_availability",
+          "tableTo": "customer",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "reward_availability_organization_id_organization_id_fk": {
+          "name": "reward_availability_organization_id_organization_id_fk",
+          "tableFrom": "reward_availability",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "reward_availability_reward_id_reward_id_fk": {
+          "name": "reward_availability_reward_id_reward_id_fk",
+          "tableFrom": "reward_availability",
+          "tableTo": "reward",
+          "columnsFrom": [
+            "reward_id"
           ],
           "columnsTo": [
             "id"
@@ -4054,164 +4005,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "benefit": {
-          "name": "benefit",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "scope_kind": {
-          "name": "scope_kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "scope": {
-          "name": "scope",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "conditions": {
-          "name": "conditions",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "audience_type": {
-          "name": "audience_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'all'"
-        },
-        "tier_key": {
-          "name": "tier_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "audience_customer_ids": {
-          "name": "audience_customer_ids",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "stackable": {
-          "name": "stackable",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "short_description": {
-          "name": "short_description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "long_description": {
-          "name": "long_description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "badge_label": {
-          "name": "badge_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "icon": {
-          "name": "icon",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "background_css": {
-          "name": "background_css",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "main_image_url": {
-          "name": "main_image_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "category": {
-          "name": "category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "featured": {
-          "name": "featured",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "sort_order": {
-          "name": "sort_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "seo_title": {
-          "name": "seo_title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "seo_description": {
-          "name": "seo_description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "og_image_url": {
-          "name": "og_image_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "integer",
@@ -4242,14 +4035,6 @@
             "status"
           ],
           "isUnique": false
-        },
-        "promo_slug_per_org_uq": {
-          "name": "promo_slug_per_org_uq",
-          "columns": [
-            "organization_id",
-            "slug"
-          ],
-          "isUnique": true
         }
       },
       "foreignKeys": {
@@ -4272,199 +4057,6 @@
           "tableTo": "user",
           "columnsFrom": [
             "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "promo_notification": {
-      "name": "promo_notification",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "promo_id": {
-          "name": "promo_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "audience_type": {
-          "name": "audience_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "audience_value": {
-          "name": "audience_value",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "channels": {
-          "name": "channels",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "scheduled_at": {
-          "name": "scheduled_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "repeat": {
-          "name": "repeat",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'none'"
-        },
-        "run_id": {
-          "name": "run_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'scheduled'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "promo_notification_promo_idx": {
-          "name": "promo_notification_promo_idx",
-          "columns": [
-            "promo_id"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "promo_notification_promo_id_promo_id_fk": {
-          "name": "promo_notification_promo_id_promo_id_fk",
-          "tableFrom": "promo_notification",
-          "tableTo": "promo",
-          "columnsFrom": [
-            "promo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "promo_translation": {
-      "name": "promo_translation",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "promo_id": {
-          "name": "promo_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "locale": {
-          "name": "locale",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "short_description": {
-          "name": "short_description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "long_description": {
-          "name": "long_description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "badge_label": {
-          "name": "badge_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "promo_translation_uq": {
-          "name": "promo_translation_uq",
-          "columns": [
-            "promo_id",
-            "locale"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {
-        "promo_translation_promo_id_promo_id_fk": {
-          "name": "promo_translation_promo_id_promo_id_fk",
-          "tableFrom": "promo_translation",
-          "tableTo": "promo",
-          "columnsFrom": [
-            "promo_id"
           ],
           "columnsTo": [
             "id"

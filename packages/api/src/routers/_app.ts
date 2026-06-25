@@ -7,8 +7,10 @@ import { promocionesRouter } from "../features/promotions";
 import { pushOutboxRouter } from "../features/push-outbox";
 import { pushTokensRouter } from "../features/push-tokens";
 import { realtimeRouter } from "../features/realtime";
+import { rewardsRouter } from "../features/rewards";
 import { settingsRouter } from "../features/settings";
 import { pointsRouter } from "../features/points";
+import { profileRouter } from "../features/profile";
 import { stampsRouter } from "../features/stamps";
 import { streaksRouter } from "../features/streaks";
 import { shortlinksRouter } from "../features/shortlinks";
@@ -19,7 +21,6 @@ import { router } from "../trpc";
 import { authRouter } from "./auth";
 import { customersRouter } from "./customers";
 import { healthRouter } from "./health";
-import { premiosRouter } from "./premios";
 
 export const appRouter = router({
   health: healthRouter,
@@ -28,10 +29,11 @@ export const appRouter = router({
   stamps: stampsRouter,
   streaks: streaksRouter,
   points: pointsRouter,
+  profile: profileRouter,
+  rewards: rewardsRouter,
   menu: menuRouter,
   banners: bannersRouter,
   settings: settingsRouter,
-  premios: premiosRouter,
   notifications: notificationsRouter,
   promociones: promocionesRouter,
   emailOutbox: emailOutboxRouter,

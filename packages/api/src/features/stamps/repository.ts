@@ -9,23 +9,13 @@ import {
   STAMPS_PER_REWARD,
   WALLET_SIZE,
 } from "@loyalty/db/schema";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
-import type {
-  CompletedWalletItem,
-  PurchaseHistoryItem,
-  WalletStatus,
-  WalletView,
-} from "./schemas";
+import type { PurchaseHistoryItem, WalletView } from "./schemas";
 
 export type RecordResult =
-  | { kind: "recorded"; wallet: WalletView; purchaseId: string; completed: boolean }
-  | { kind: "idempotent"; wallet: WalletView; purchaseId: string }
-  | { kind: "reward_pending"; wallet: WalletView };
-
-export type ClaimResult =
-  | { kind: "claimed"; walletId: string; newWallet: WalletView }
-  | { kind: "not_pending" };
+  | { kind: "recorded"; wallet: WalletView; purchaseId: string }
+  | { kind: "idempotent"; wallet: WalletView; purchaseId: string };
 
 function toView(card: LoyaltyCardRow | null): WalletView {
   if (!card) {
@@ -34,9 +24,7 @@ function toView(card: LoyaltyCardRow | null): WalletView {
       currentStamps: 0,
       walletSize: WALLET_SIZE,
       stampsGoal: STAMPS_PER_REWARD,
-      status: "active",
       sequence: 1,
-      rewardPending: false,
     };
   }
   return {
@@ -44,45 +32,25 @@ function toView(card: LoyaltyCardRow | null): WalletView {
     currentStamps: card.currentStamps,
     walletSize: WALLET_SIZE,
     stampsGoal: STAMPS_PER_REWARD,
-    status: card.status as WalletStatus,
     sequence: card.sequence,
-    rewardPending: card.status === "completed",
   };
 }
 
 /**
- * Drizzle access for stamps: purchases, the wallet (`loyalty_card`) lifecycle,
- * and the stamp ledger. Only layer that touches the db. The earn + claim flows
- * run in transactions so a purchase + stamp + wallet bump (and completion) are
- * atomic.
+ * Drizzle access for stamps: purchases, the single perpetual `active`
+ * `loyalty_card` (whose `currentStamps` is the spendable balance), and the
+ * stamp ledger. The free-drink reward is now a catalog reward claimed via the
+ * rewards feature — the card never auto-completes and never blocks purchases.
+ * Only layer that touches the db; recordPurchase runs in a transaction so the
+ * purchase + stamp + balance bump are atomic.
  */
 export class StampsRepository {
   constructor(private readonly db: typeof Db) {}
 
-  /** The card to show the customer: the active one, else the latest completed
-   *  (reward-pending) one, else null. */
+  /** The customer's single active card (null before any purchase). */
   async currentWallet(
     orgId: string,
     customerId: string,
-  ): Promise<LoyaltyCardRow | null> {
-    const active = await this.byStatus(orgId, customerId, "active");
-    if (active) return active;
-    return this.byStatus(orgId, customerId, "completed");
-  }
-
-  async walletView(orgId: string, customerId: string): Promise<WalletView> {
-    return toView(await this.currentWallet(orgId, customerId));
-  }
-
-  /** The completed (reward-pending, unclaimed) card, if any. */
-  pendingWallet(orgId: string, customerId: string): Promise<LoyaltyCardRow | null> {
-    return this.byStatus(orgId, customerId, "completed");
-  }
-
-  private async byStatus(
-    orgId: string,
-    customerId: string,
-    status: WalletStatus,
   ): Promise<LoyaltyCardRow | null> {
     const rows = await this.db
       .select()
@@ -91,12 +59,16 @@ export class StampsRepository {
         and(
           eq(loyaltyCard.organizationId, orgId),
           eq(loyaltyCard.customerId, customerId),
-          eq(loyaltyCard.status, status),
+          eq(loyaltyCard.status, "active"),
         ),
       )
       .orderBy(desc(loyaltyCard.sequence))
       .limit(1);
     return rows[0] ?? null;
+  }
+
+  async walletView(orgId: string, customerId: string): Promise<WalletView> {
+    return toView(await this.currentWallet(orgId, customerId));
   }
 
   async recordPurchase(input: {
@@ -145,24 +117,8 @@ export class StampsRepository {
         };
       }
 
-      // A completed-unclaimed card blocks new purchases — reward must be claimed.
-      const pending = await tx
-        .select()
-        .from(loyaltyCard)
-        .where(
-          and(
-            eq(loyaltyCard.organizationId, input.orgId),
-            eq(loyaltyCard.customerId, input.customerId),
-            eq(loyaltyCard.status, "completed"),
-          ),
-        )
-        .orderBy(desc(loyaltyCard.sequence))
-        .limit(1);
-      if (pending[0]) {
-        return { kind: "reward_pending", wallet: toView(pending[0]) };
-      }
-
-      // Ensure an active card (open the first/next one if needed).
+      // Ensure the single active card (open the first one if needed). The card
+      // is perpetual: it never completes, so there's only ever one per customer.
       const activeRows = await tx
         .select()
         .from(loyaltyCard)
@@ -177,17 +133,6 @@ export class StampsRepository {
         .limit(1);
       let active = activeRows[0];
       if (!active) {
-        const maxRows = await tx
-          .select({
-            m: sql<number>`coalesce(max(${loyaltyCard.sequence}), 0)`,
-          })
-          .from(loyaltyCard)
-          .where(
-            and(
-              eq(loyaltyCard.organizationId, input.orgId),
-              eq(loyaltyCard.customerId, input.customerId),
-            ),
-          );
         const created = await tx
           .insert(loyaltyCard)
           .values({
@@ -195,7 +140,7 @@ export class StampsRepository {
             organizationId: input.orgId,
             currentStamps: 0,
             status: "active",
-            sequence: (maxRows[0]?.m ?? 0) + 1,
+            sequence: 1,
           })
           .returning();
         active = created[0]!;
@@ -250,14 +195,10 @@ export class StampsRepository {
         amount: 1,
       });
 
-      const newStamps = active.currentStamps + 1;
-      const completed = newStamps >= STAMPS_PER_REWARD;
       const updated = await tx
         .update(loyaltyCard)
         .set({
-          currentStamps: newStamps,
-          status: completed ? "completed" : "active",
-          completedAt: completed ? new Date() : null,
+          currentStamps: active.currentStamps + 1,
           updatedAt: new Date(),
         })
         .where(eq(loyaltyCard.id, active.id))
@@ -267,54 +208,6 @@ export class StampsRepository {
         kind: "recorded",
         wallet: toView(updated[0] ?? null),
         purchaseId,
-        completed,
-      };
-    });
-  }
-
-  async claimWallet(input: {
-    orgId: string;
-    walletId: string;
-    customerId: string;
-    claimedByUserId: string;
-  }): Promise<ClaimResult> {
-    return this.db.transaction(async (tx) => {
-      // Single-use: the `status = completed` guard means a replay finds the card
-      // already claimed → 0 rows → not_pending.
-      const updated = await tx
-        .update(loyaltyCard)
-        .set({
-          status: "claimed",
-          claimedAt: new Date(),
-          claimedByUserId: input.claimedByUserId,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(loyaltyCard.id, input.walletId),
-            eq(loyaltyCard.organizationId, input.orgId),
-            eq(loyaltyCard.customerId, input.customerId),
-            eq(loyaltyCard.status, "completed"),
-          ),
-        )
-        .returning();
-      if (!updated[0]) return { kind: "not_pending" };
-
-      const created = await tx
-        .insert(loyaltyCard)
-        .values({
-          customerId: input.customerId,
-          organizationId: input.orgId,
-          currentStamps: 0,
-          status: "active",
-          sequence: updated[0].sequence + 1,
-        })
-        .returning();
-
-      return {
-        kind: "claimed",
-        walletId: input.walletId,
-        newWallet: toView(created[0] ?? null),
       };
     });
   }
@@ -365,29 +258,5 @@ export class StampsRepository {
       })),
       total: count[0]?.value ?? 0,
     };
-  }
-
-  async completedWallets(
-    orgId: string,
-    customerId: string,
-  ): Promise<CompletedWalletItem[]> {
-    const rows = await this.db
-      .select()
-      .from(loyaltyCard)
-      .where(
-        and(
-          eq(loyaltyCard.organizationId, orgId),
-          eq(loyaltyCard.customerId, customerId),
-          inArray(loyaltyCard.status, ["completed", "claimed"]),
-        ),
-      )
-      .orderBy(desc(loyaltyCard.sequence));
-    return rows.map((c) => ({
-      id: c.id,
-      sequence: c.sequence,
-      status: c.status as "completed" | "claimed",
-      completedAt: c.completedAt,
-      claimedAt: c.claimedAt,
-    }));
   }
 }
