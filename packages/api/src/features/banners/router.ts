@@ -1,6 +1,7 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
+import { loadLocaleContext } from "../_shared/localize";
 import { managerProcedure, publicProcedure, router } from "../../trpc";
 import { BannersRepository } from "./repository";
 import {
@@ -39,14 +40,18 @@ async function requireOrg(): Promise<string> {
  */
 export const bannersRouter = router({
   // ── Public (cacheable) ─────────────────────────────────────────────────────
-  homeBanners: publicProcedure.query(async ({ ctx }) =>
-    makeService(ctx.db).homeBanners(await orgId()),
-  ),
+  homeBanners: publicProcedure.query(async ({ ctx }) => {
+    const id = await orgId();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    return makeService(ctx.db).homeBanners(id, lc);
+  }),
   bySlug: publicProcedure
     .input(slugInputSchema)
-    .query(async ({ ctx, input }) =>
-      makeService(ctx.db).bannerBySlug(await orgId(), input.slug),
-    ),
+    .query(async ({ ctx, input }) => {
+      const id = await orgId();
+      const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+      return makeService(ctx.db).bannerBySlug(id, input.slug, lc);
+    }),
 
   // ── Admin wizard (managers + owners) ───────────────────────────────────────
   create: managerProcedure.mutation(async ({ ctx }) =>

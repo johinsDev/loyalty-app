@@ -1298,7 +1298,8 @@
       "onboarding": "Onboarding",
       "team": "Team & roles",
       "integrations": "Integrations",
-      "seo": "SEO"
+      "seo": "SEO",
+      "localization": "Language & currency"
     },
     "brand": {
       "title": "Brand & store",
@@ -1445,6 +1446,16 @@
       "searchPreview": "Search result",
       "imgUpload": "Drag an image or click",
       "imgRemove": "Remove"
+    },
+    "localization": {
+      "title": "Language & currency",
+      "desc": "Pick the default language and currency, and which ones you offer. With more than one, customers see the switchers.",
+      "locales": "Enabled languages",
+      "defaultLocale": "Default language",
+      "currencies": "Enabled currencies",
+      "defaultCurrency": "Default currency",
+      "error": "Could not save",
+      "defaultMustBeEnabled": "The default must be enabled"
     }
   },
   "Purchases": {

@@ -2,16 +2,19 @@ import type { db as Db } from "@loyalty/db";
 import {
   banner,
   bannerNotification,
+  bannerTranslation,
   customer,
   pointsAccount,
   type BannerInsert,
   type BannerNotificationInsert,
   type BannerNotificationRow,
   type BannerRow,
+  type BannerTranslationRow,
 } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gte, isNull, like, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, like, lte, or, sql } from "drizzle-orm";
 
+import type { LocaleContext } from "../_shared/localize";
 import { slugify, slugSuffix } from "../_shared/slugify";
 import type {
   BannerCard,
@@ -19,6 +22,27 @@ import type {
   BannerDisplayState,
   ListInput,
 } from "./schemas";
+
+/** Localized text for a banner: per-field override from the translation row,
+ *  else the default-locale base columns. */
+function localized(
+  row: BannerRow,
+  tr: BannerTranslationRow | undefined,
+  ctx: LocaleContext,
+): { name: string; shortDescription: string | null; longDescription: string | null } {
+  if (ctx.locale === ctx.defaultLocale || !tr) {
+    return {
+      name: row.name,
+      shortDescription: row.shortDescription,
+      longDescription: row.longDescription,
+    };
+  }
+  return {
+    name: tr.name || row.name,
+    shortDescription: tr.shortDescription ?? row.shortDescription,
+    longDescription: tr.longDescription ?? row.longDescription,
+  };
+}
 
 /** Slice of a banner a wizard step may write (excludes identity + lifecycle). */
 export type BannerPatch = Partial<
@@ -52,12 +76,13 @@ export interface AdminListResult {
   total: number;
 }
 
-function toCard(row: BannerRow): BannerCard {
+function toCard(row: BannerRow, tr: BannerTranslationRow | undefined, ctx: LocaleContext): BannerCard {
+  const loc = localized(row, tr, ctx);
   return {
     id: row.id,
     slug: row.slug,
-    name: row.name,
-    shortDescription: row.shortDescription,
+    name: loc.name,
+    shortDescription: loc.shortDescription,
     backgroundCss: row.backgroundCss,
     mainImageUrl: row.mainImageUrl,
     mainImageBlur: row.mainImageBlur,
@@ -71,10 +96,11 @@ function toCard(row: BannerRow): BannerCard {
   };
 }
 
-function toDetail(row: BannerRow): BannerDetail {
+function toDetail(row: BannerRow, tr: BannerTranslationRow | undefined, ctx: LocaleContext): BannerDetail {
+  const loc = localized(row, tr, ctx);
   return {
-    ...toCard(row),
-    longDescription: row.longDescription,
+    ...toCard(row, tr, ctx),
+    longDescription: loc.longDescription,
     seo: {
       title: row.seoTitle,
       description: row.seoDescription,
@@ -100,7 +126,11 @@ export class BannersRepository {
   constructor(private readonly db: typeof Db) {}
 
   // ── Public reads ────────────────────────────────────────────────────────
-  async listHomeBanners(orgId: string, now = new Date()): Promise<BannerCard[]> {
+  async listHomeBanners(
+    orgId: string,
+    ctx: LocaleContext,
+    now = new Date(),
+  ): Promise<BannerCard[]> {
     const rows = await this.db
       .select()
       .from(banner)
@@ -113,10 +143,15 @@ export class BannersRepository {
         ),
       )
       .orderBy(asc(banner.sortOrder), asc(banner.id));
-    return rows.map(toCard);
+    const trByBanner = await this.#translations(rows.map((r) => r.id), ctx);
+    return rows.map((r) => toCard(r, trByBanner.get(r.id), ctx));
   }
 
-  async bannerBySlug(orgId: string, slug: string): Promise<BannerDetail | null> {
+  async bannerBySlug(
+    orgId: string,
+    slug: string,
+    ctx: LocaleContext,
+  ): Promise<BannerDetail | null> {
     const rows = await this.db
       .select()
       .from(banner)
@@ -128,7 +163,30 @@ export class BannersRepository {
         ),
       )
       .limit(1);
-    return rows[0] ? toDetail(rows[0]) : null;
+    const row = rows[0];
+    if (!row) return null;
+    const trByBanner = await this.#translations([row.id], ctx);
+    return toDetail(row, trByBanner.get(row.id), ctx);
+  }
+
+  /** Batch-load translation rows for the active (non-default) locale. */
+  async #translations(
+    bannerIds: string[],
+    ctx: LocaleContext,
+  ): Promise<Map<string, BannerTranslationRow>> {
+    const map = new Map<string, BannerTranslationRow>();
+    if (ctx.locale === ctx.defaultLocale || bannerIds.length === 0) return map;
+    const rows = await this.db
+      .select()
+      .from(bannerTranslation)
+      .where(
+        and(
+          inArray(bannerTranslation.bannerId, bannerIds),
+          eq(bannerTranslation.locale, ctx.locale),
+        ),
+      );
+    for (const r of rows) map.set(r.bannerId, r);
+    return map;
   }
 
   // ── Admin CRUD ──────────────────────────────────────────────────────────

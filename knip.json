@@ -98,7 +98,8 @@
         "src/seed-menu.ts",
         "src/seed-banners.ts",
         "src/reset-test.ts",
-        "src/backfill-customers.ts"
+        "src/backfill-customers.ts",
+        "src/seed-i18n.ts"
       ]
     },
     "packages/log": {},

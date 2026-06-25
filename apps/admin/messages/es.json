@@ -1298,7 +1298,8 @@
       "onboarding": "Onboarding",
       "team": "Equipo y roles",
       "integrations": "Integraciones",
-      "seo": "SEO"
+      "seo": "SEO",
+      "localization": "Idioma y moneda"
     },
     "brand": {
       "title": "Marca y tienda",
@@ -1445,6 +1446,16 @@
       "searchPreview": "Resultado de búsqueda",
       "imgUpload": "Arrastra una imagen o haz clic",
       "imgRemove": "Quitar"
+    },
+    "localization": {
+      "title": "Idioma y moneda",
+      "desc": "Elegí el idioma y la moneda por defecto, y cuáles ofrecés. Con más de uno, el cliente ve los selectores.",
+      "locales": "Idiomas habilitados",
+      "defaultLocale": "Idioma por defecto",
+      "currencies": "Monedas habilitadas",
+      "defaultCurrency": "Moneda por defecto",
+      "error": "No se pudo guardar",
+      "defaultMustBeEnabled": "El valor por defecto debe estar habilitado"
     }
   },
   "Purchases": {

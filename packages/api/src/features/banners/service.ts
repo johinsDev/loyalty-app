@@ -4,6 +4,7 @@ import type { BannerRow } from "@loyalty/db/schema";
 import { runs, tasks } from "@trigger.dev/sdk/v3";
 import { TRPCError } from "@trpc/server";
 
+import { SUPPORTED_LOCALES, type LocaleContext } from "../_shared/localize";
 import type { WizardState } from "../_shared/wizard";
 import {
   displayState,
@@ -51,27 +52,34 @@ export class BannersService {
     private readonly repo: BannersRepository,
   ) {}
 
-  // ── Public (cached) ───────────────────────────────────────────────────────
-  homeBanners(orgId: string): Promise<BannerCard[]> {
+  // ── Public (cached; banners have no price → keyed by locale only) ─────────
+  homeBanners(orgId: string, lc: LocaleContext): Promise<BannerCard[]> {
     return cache.getOrSet(
-      `banners:${orgId}:home`,
-      () => this.repo.listHomeBanners(orgId),
+      `banners:${orgId}:home:${lc.locale}`,
+      () => this.repo.listHomeBanners(orgId, lc),
       TTL_SECONDS,
     );
   }
 
-  bannerBySlug(orgId: string, slug: string): Promise<BannerDetail | null> {
+  bannerBySlug(
+    orgId: string,
+    slug: string,
+    lc: LocaleContext,
+  ): Promise<BannerDetail | null> {
     return cache.getOrSet(
-      `banners:${orgId}:detail:${slug}`,
-      () => this.repo.bannerBySlug(orgId, slug),
+      `banners:${orgId}:detail:${slug}:${lc.locale}`,
+      () => this.repo.bannerBySlug(orgId, slug, lc),
       TTL_SECONDS,
     );
   }
 
-  /** Drop cached public reads after an admin mutation. */
+  /** Drop cached public reads (all locales) after an admin mutation. */
   async invalidate(orgId: string, slug?: string): Promise<void> {
-    const keys = [`banners:${orgId}:home`];
-    if (slug) keys.push(`banners:${orgId}:detail:${slug}`);
+    const keys: string[] = [];
+    for (const locale of SUPPORTED_LOCALES) {
+      keys.push(`banners:${orgId}:home:${locale}`);
+      if (slug) keys.push(`banners:${orgId}:detail:${slug}:${locale}`);
+    }
     await cache.deleteMany(keys);
   }
 
