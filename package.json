@@ -35,6 +35,7 @@
     "db:seed:owner": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-owner.ts",
     "db:seed:org": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-org.ts",
     "db:seed:rewards": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-rewards.ts",
+    "db:seed:menu": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-menu.ts",
     "db:reset:test": "bash scripts/with-infisical.sh bun run --cwd packages/db src/reset-test.ts",
     "db:backfill-customers": "bash scripts/with-infisical.sh bun run --cwd packages/db src/backfill-customers.ts",
     "db:seed:preview-admin": "bash scripts/with-infisical.sh bun run --cwd packages/auth src/seed-preview-admin.ts",
@@ -46,7 +47,8 @@
     "env:bootstrap": "bash scripts/infisical-bootstrap.sh",
     "env:pull": "bash scripts/env-pull.sh",
     "env:check": "infisical secrets --env=${INFISICAL_ENV:-dev} --recursive",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "db:seed:banners": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-banners.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",

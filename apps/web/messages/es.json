@@ -257,6 +257,14 @@
     "featured": "DESTACADO",
     "empty": "No encontramos bebidas con ese filtro.",
     "onRedeem": "al canjear",
+    "earnPoints": "+{points} pts",
+    "earnStamp": "+1 sello",
+    "required": "(obligatorio)",
+    "addToOrderSoon": "Agregar al pedido · Próximamente",
+    "allProducts": "Todo el menú",
+    "backToMenu": "Volver al menú",
+    "seeAll": "Ver todo",
+    "results": "Resultados",
     "size": "Tamaño",
     "sizeM": "Mediano",
     "sizeL": "Grande +$0.80",
@@ -506,5 +514,8 @@
     "txAdjust": "Ajuste",
     "txOther": "Movimiento",
     "detailPurchaseValue": "Compra de {value}"
+  },
+  "Banners": {
+    "backToHome": "Volver al inicio"
   }
 }

@@ -1,0 +1,124 @@
+import { relations } from "drizzle-orm";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+
+import { organization } from "./auth";
+
+// Banners: first-class promotional / announcement cards (not necessarily a promo
+// — also new hours, new drinks, a new store). Multi-tenant (org-scoped). Admin
+// authors them (name, slug, background image|gradient|pattern, main image, short
+// + long tiptap description, optional CTA, display window, scheduled
+// notifications). The customer sees a home rail; tapping a banner with a CTA goes
+// straight to the target, otherwise it opens the detail (intercepted modal + RSC
+// page for SEO). v1 is auth-gated but written public-ready.
+
+export const banner = sqliteTable(
+  "banner",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    status: text("status").notNull().default("draft"), // draft | published
+    sortOrder: integer("sort_order").notNull().default(0),
+
+    // Content
+    shortDescription: text("short_description"),
+    // Rich text (tiptap HTML).
+    longDescription: text("long_description"),
+
+    // Visual — two layers. `backgroundCss` is whatever BackgroundPicker emits
+    // (solid color | gradient | `url(...)` image | decorative pattern).
+    backgroundCss: text("background_css"),
+    mainImageUrl: text("main_image_url"),
+    mainImageBlur: text("main_image_blur"),
+
+    // Call to action — when present, the home tap goes straight here (no detail).
+    ctaLabel: text("cta_label"),
+    ctaHref: text("cta_href"),
+    ctaKind: text("cta_kind"), // internal | external
+
+    // Display window (home visibility); both nullable = always within range.
+    displayFrom: integer("display_from", { mode: "timestamp" }),
+    displayUntil: integer("display_until", { mode: "timestamp" }),
+
+    // SEO (detail page).
+    seoTitle: text("seo_title"),
+    seoDescription: text("seo_description"),
+    ogImageUrl: text("og_image_url"),
+
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    slugPerOrg: uniqueIndex("banner_slug_per_org_uq").on(t.organizationId, t.slug),
+    byOrgSort: index("banner_org_sort_idx").on(
+      t.organizationId,
+      t.status,
+      t.sortOrder,
+      t.id,
+    ),
+  }),
+);
+
+// Scheduled notification spec for a banner. Trigger.dev owns execution: we store
+// the spec + the delayed-run id so the admin can list/edit/cancel. `status` is a
+// lightweight mirror (the source of truth lives in Trigger).
+export const bannerNotification = sqliteTable(
+  "banner_notification",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    bannerId: text("banner_id")
+      .notNull()
+      .references(() => banner.id, { onDelete: "cascade" }),
+    audienceType: text("audience_type").notNull(), // all | tier | specific
+    // JSON: tier → "oro"; specific → ["c_1","c_2"]; all → null.
+    audienceValue: text("audience_value"),
+    // JSON array of channels, e.g. ["push","database","realtime"].
+    channels: text("channels").notNull(),
+    // null = send immediately ("now").
+    scheduledAt: integer("scheduled_at", { mode: "timestamp" }),
+    runId: text("run_id"),
+    status: text("status").notNull().default("scheduled"), // scheduled | sent | canceled | failed
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    byBanner: index("banner_notification_banner_idx").on(t.bannerId),
+  }),
+);
+
+export const bannerRelations = relations(banner, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [banner.organizationId],
+    references: [organization.id],
+  }),
+  notifications: many(bannerNotification),
+}));
+
+export const bannerNotificationRelations = relations(bannerNotification, ({ one }) => ({
+  banner: one(banner, {
+    fields: [bannerNotification.bannerId],
+    references: [banner.id],
+  }),
+}));
+
+// ---- Row types -------------------------------------------------------------
+
+export type BannerRow = typeof banner.$inferSelect;
+export type BannerInsert = typeof banner.$inferInsert;
+export type BannerNotificationRow = typeof bannerNotification.$inferSelect;
+export type BannerNotificationInsert = typeof bannerNotification.$inferInsert;

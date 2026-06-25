@@ -41,6 +41,9 @@ CREATE INDEX `redemption_customer_reward_idx` ON `redemption` (`customer_id`,`re
 DROP INDEX IF EXISTS "organization_slug_unique";--> statement-breakpoint
 DROP INDEX IF EXISTS "session_token_unique";--> statement-breakpoint
 DROP INDEX IF EXISTS "user_phone_number_unique";--> statement-breakpoint
+DROP INDEX IF EXISTS "banner_slug_per_org_uq";--> statement-breakpoint
+DROP INDEX IF EXISTS "banner_org_sort_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "banner_notification_banner_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "email_outbox_to_sent_at_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "email_outbox_sent_at_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "customer_phone_per_org_uq";--> statement-breakpoint
@@ -55,6 +58,13 @@ DROP INDEX IF EXISTS "reward_availability_ready_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "notification_feed_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "notification_created_at_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "notification_preference_customer_org_channel_uq";--> statement-breakpoint
+DROP INDEX IF EXISTS "category_slug_per_org_uq";--> statement-breakpoint
+DROP INDEX IF EXISTS "product_slug_per_org_uq";--> statement-breakpoint
+DROP INDEX IF EXISTS "product_org_sort_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "product_category_uq";--> statement-breakpoint
+DROP INDEX IF EXISTS "product_favorite_uq";--> statement-breakpoint
+DROP INDEX IF EXISTS "product_variant_value_uq";--> statement-breakpoint
+DROP INDEX IF EXISTS "section_product_uq";--> statement-breakpoint
 DROP INDEX IF EXISTS "promo_org_status_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "push_outbox_device_token_sent_at_idx";--> statement-breakpoint
 DROP INDEX IF EXISTS "push_outbox_sent_at_idx";--> statement-breakpoint
@@ -73,6 +83,9 @@ ALTER TABLE `reward` ALTER COLUMN "stamps_required" TO "stamps_required" integer
 CREATE UNIQUE INDEX `organization_slug_unique` ON `organization` (`slug`);--> statement-breakpoint
 CREATE UNIQUE INDEX `session_token_unique` ON `session` (`token`);--> statement-breakpoint
 CREATE UNIQUE INDEX `user_phone_number_unique` ON `user` (`phone_number`);--> statement-breakpoint
+CREATE UNIQUE INDEX `banner_slug_per_org_uq` ON `banner` (`organization_id`,`slug`);--> statement-breakpoint
+CREATE INDEX `banner_org_sort_idx` ON `banner` (`organization_id`,`status`,`sort_order`,`id`);--> statement-breakpoint
+CREATE INDEX `banner_notification_banner_idx` ON `banner_notification` (`banner_id`);--> statement-breakpoint
 CREATE INDEX `email_outbox_to_sent_at_idx` ON `email_outbox` (`to`,`sent_at`);--> statement-breakpoint
 CREATE INDEX `email_outbox_sent_at_idx` ON `email_outbox` (`sent_at`);--> statement-breakpoint
 CREATE UNIQUE INDEX `customer_phone_per_org_uq` ON `customer` (`organization_id`,`phone`);--> statement-breakpoint
@@ -83,6 +96,13 @@ CREATE UNIQUE INDEX `purchase_idempotency_per_org_uq` ON `purchase` (`organizati
 CREATE INDEX `notification_feed_idx` ON `notification` (`customer_id`,`organization_id`,`read_at`);--> statement-breakpoint
 CREATE INDEX `notification_created_at_idx` ON `notification` (`customer_id`,`created_at`);--> statement-breakpoint
 CREATE UNIQUE INDEX `notification_preference_customer_org_channel_uq` ON `notification_preference` (`customer_id`,`organization_id`,`channel`);--> statement-breakpoint
+CREATE UNIQUE INDEX `category_slug_per_org_uq` ON `category` (`organization_id`,`slug`);--> statement-breakpoint
+CREATE UNIQUE INDEX `product_slug_per_org_uq` ON `product` (`organization_id`,`slug`);--> statement-breakpoint
+CREATE INDEX `product_org_sort_idx` ON `product` (`organization_id`,`status`,`sort_order`,`id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `product_category_uq` ON `product_category` (`product_id`,`category_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `product_favorite_uq` ON `product_favorite` (`customer_id`,`product_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `product_variant_value_uq` ON `product_variant_value` (`variant_id`,`option_value_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `section_product_uq` ON `section_product` (`section_id`,`product_id`);--> statement-breakpoint
 CREATE INDEX `promo_org_status_idx` ON `promo` (`organization_id`,`status`);--> statement-breakpoint
 CREATE INDEX `push_outbox_device_token_sent_at_idx` ON `push_outbox` (`device_token`,`sent_at`);--> statement-breakpoint
 CREATE INDEX `push_outbox_sent_at_idx` ON `push_outbox` (`sent_at`);--> statement-breakpoint

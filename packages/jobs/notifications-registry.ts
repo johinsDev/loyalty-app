@@ -738,6 +738,69 @@ export class TierNearNotification
   }
 }
 
+/**
+ * Banner announcement — marketing (respects opt-out). Built directly by the
+ * `send-banner-notification` job (not via the keyed registry below), since its
+ * audience is resolved at fire time and its channels are admin-selected. Deep
+ * links to the CTA target if present, else the banner detail.
+ */
+export class BannerNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "marketing" as const;
+
+  constructor(
+    private readonly content: {
+      name: string;
+      shortDescription: string;
+      slug: string;
+      ctaHref: string | null;
+    },
+    private readonly channels: ChannelName[],
+  ) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return this.channels;
+  }
+
+  #clickAction(): string {
+    return this.content.ctaHref ?? `/banner/${this.content.slug}`;
+  }
+
+  toPush() {
+    return {
+      title: this.content.name,
+      body: this.content.shortDescription,
+      data: { kind: "banner", slug: this.content.slug },
+      clickAction: this.#clickAction(),
+    };
+  }
+
+  toRealtime() {
+    return {
+      event: "notification",
+      data: {
+        type: "banner",
+        title: this.content.name,
+        body: this.content.shortDescription,
+        slug: this.content.slug,
+      },
+    };
+  }
+
+  toDatabase() {
+    return {
+      type: "banner",
+      title: this.content.name,
+      body: this.content.shortDescription,
+      data: { slug: this.content.slug, ctaHref: this.content.ctaHref },
+    };
+  }
+}
+
 /** Builds a notification from its key + the admin-supplied payload. */
 export function createNotification(
   key: NotificationKey,

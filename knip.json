@@ -35,7 +35,9 @@
         "src/features/storage/components/rhf-file-upload.tsx",
         "src/lib/image-loader.ts"
       ],
-      "project": ["**/*.{ts,tsx}"],
+      "project": [
+        "**/*.{ts,tsx}"
+      ],
       "ignoreDependencies": [
         "zustand",
         "immer",
@@ -54,7 +56,9 @@
         "src/features/push/components/push-enable-button.tsx",
         "src/features/realtime/hooks/use-customer-room.ts"
       ],
-      "project": ["**/*.{ts,tsx}"],
+      "project": [
+        "**/*.{ts,tsx}"
+      ],
       "ignoreDependencies": [
         "zustand",
         "immer"
@@ -62,8 +66,12 @@
     },
     "apps/e2e": {},
     "apps/storybook": {
-      "entry": ["stories/**/*.stories.{ts,tsx}"],
-      "project": ["**/*.{ts,tsx}"]
+      "entry": [
+        "stories/**/*.stories.{ts,tsx}"
+      ],
+      "project": [
+        "**/*.{ts,tsx}"
+      ]
     },
     "packages/api": {},
     "packages/auth": {
@@ -75,13 +83,20 @@
         "src/seed-preview-admin.ts"
       ]
     },
-    "packages/date": { "entry": ["src/index.ts", "src/react/index.ts"] },
+    "packages/date": {
+      "entry": [
+        "src/index.ts",
+        "src/react/index.ts"
+      ]
+    },
     "packages/db": {
       "entry": [
         "src/index.ts",
         "src/migrate.ts",
         "src/seed-owner.ts",
         "src/seed-org.ts",
+        "src/seed-menu.ts",
+        "src/seed-banners.ts",
         "src/reset-test.ts",
         "src/backfill-customers.ts"
       ]
@@ -89,48 +104,100 @@
     "packages/log": {},
     "packages/ui": {},
     "packages/cache": {
-      "ignoreDependencies": ["@upstash/redis", "ioredis"]
+      "ignoreDependencies": [
+        "@upstash/redis",
+        "ioredis"
+      ]
     },
     "packages/rate-limit": {
-      "ignoreDependencies": ["@upstash/ratelimit", "@upstash/redis", "ioredis"]
+      "ignoreDependencies": [
+        "@upstash/ratelimit",
+        "@upstash/redis",
+        "ioredis"
+      ]
     },
     "packages/analytics": {
-      "ignoreDependencies": ["posthog-js", "posthog-node"]
+      "ignoreDependencies": [
+        "posthog-js",
+        "posthog-node"
+      ]
     },
     "packages/feature-flags": {
-      "ignoreDependencies": ["posthog-js", "posthog-node"]
+      "ignoreDependencies": [
+        "posthog-js",
+        "posthog-node"
+      ]
     },
     "packages/email": {
-      "ignoreDependencies": ["resend"]
+      "ignoreDependencies": [
+        "resend"
+      ]
     },
     "packages/email-templates": {
-      "entry": ["src/index.ts", "emails/**/*.{ts,tsx}"],
-      "ignoreDependencies": ["@react-email/preview-server"]
+      "entry": [
+        "src/index.ts",
+        "emails/**/*.{ts,tsx}"
+      ],
+      "ignoreDependencies": [
+        "@react-email/preview-server"
+      ]
     },
     "packages/push": {
-      "ignoreDependencies": ["expo-server-sdk", "web-push"]
+      "ignoreDependencies": [
+        "expo-server-sdk",
+        "web-push"
+      ]
     },
     "packages/realtime": {
-      "entry": ["src/index.ts", "src/client/index.ts"]
+      "entry": [
+        "src/index.ts",
+        "src/client/index.ts"
+      ]
     },
     "partykit": {
-      "entry": ["src/server.ts", "src/parties/**/*.ts"]
+      "entry": [
+        "src/server.ts",
+        "src/parties/**/*.ts"
+      ]
     },
     "packages/sms": {
-      "ignoreDependencies": ["twilio"]
+      "ignoreDependencies": [
+        "twilio"
+      ]
     },
     "packages/storage": {
-      "ignoreDependencies": ["@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner"]
+      "ignoreDependencies": [
+        "@aws-sdk/client-s3",
+        "@aws-sdk/s3-request-presigner"
+      ]
     },
     "packages/whatsapp": {
-      "ignoreDependencies": ["twilio"]
+      "ignoreDependencies": [
+        "twilio"
+      ]
     },
     "packages/jobs": {
-      "entry": ["trigger/**/*.ts", "trigger.config.ts", "log.ts", "whatsapp.ts"]
+      "entry": [
+        "trigger/**/*.ts",
+        "trigger.config.ts",
+        "log.ts",
+        "whatsapp.ts"
+      ]
     }
   },
-  "ignoreDependencies": ["@commitlint/cli", "oxlint", "next", "@aws-sdk/client-s3", "@libsql/client"],
-  "ignoreBinaries": ["infisical"],
+  "ignoreDependencies": [
+    "@commitlint/cli",
+    "oxlint",
+    "next",
+    "@aws-sdk/client-s3",
+    "@libsql/client"
+  ],
+  "ignoreBinaries": [
+    "infisical"
+  ],
   "ignoreExportsUsedInFile": true,
-  "ignore": [".claude/**", ".agents/**"]
+  "ignore": [
+    ".claude/**",
+    ".agents/**"
+  ]
 }

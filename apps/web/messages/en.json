@@ -257,6 +257,14 @@
     "featured": "FEATURED",
     "empty": "No drinks match that filter.",
     "onRedeem": "on redeem",
+    "earnPoints": "+{points} pts",
+    "earnStamp": "+1 stamp",
+    "required": "(required)",
+    "addToOrderSoon": "Add to order · Coming soon",
+    "allProducts": "Full menu",
+    "backToMenu": "Back to menu",
+    "seeAll": "See all",
+    "results": "Results",
     "size": "Size",
     "sizeM": "Medium",
     "sizeL": "Large +$0.80",
@@ -506,5 +514,8 @@
     "txAdjust": "Adjustment",
     "txOther": "Activity",
     "detailPurchaseValue": "Purchase of {value}"
+  },
+  "Banners": {
+    "backToHome": "Back to home"
   }
 }
