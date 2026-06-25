@@ -7,6 +7,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { type ReactNode, useState } from "react";
 
+import { CurrencyProvider } from "@/lib/currency";
 import { TRPCProvider } from "@/lib/trpc/client";
 import { makeQueryClient } from "@/lib/trpc/query-client";
 
@@ -47,6 +48,7 @@ export const Providers = ({ children, locale, messages, now }: Props) => {
       <NuqsAdapter>
         <QueryClientProvider client={queryClient}>
           <TRPCProvider queryClient={queryClient}>
+            <CurrencyProvider>
             <AnalyticsProvider
               provider={POSTHOG_KEY ? "posthog" : "null"}
               apiKey={POSTHOG_KEY}
@@ -63,6 +65,7 @@ export const Providers = ({ children, locale, messages, now }: Props) => {
                 {children}
               </FlagsProvider>
             </AnalyticsProvider>
+            </CurrencyProvider>
           </TRPCProvider>
         </QueryClientProvider>
       </NuqsAdapter>

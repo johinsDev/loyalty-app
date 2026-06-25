@@ -4,6 +4,7 @@
 
 export type SettingsSection =
   | "brand"
+  | "localization"
   | "seo"
   | "hours"
   | "loyalty"
@@ -13,6 +14,7 @@ export type SettingsSection =
 
 export const SECTIONS: SettingsSection[] = [
   "brand",
+  "localization",
   "seo",
   "hours",
   "loyalty",

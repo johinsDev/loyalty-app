@@ -388,7 +388,104 @@ export const productFavoriteRelations = relations(productFavorite, ({ one }) => 
   }),
 }));
 
+// ---- i18n + multi-currency -------------------------------------------------
+// Base columns hold the org's default-locale content + default-currency price;
+// these tables hold overrides for OTHER locales/currencies. Reads fall back to
+// the base when a row is missing. Slug stays canonical (not translated).
+
+export const productTranslation = sqliteTable(
+  "product_translation",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    productId: text("product_id")
+      .notNull()
+      .references(() => product.id, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+  },
+  (t) => ({
+    uq: uniqueIndex("product_translation_uq").on(t.productId, t.locale),
+  }),
+);
+
+export const categoryTranslation = sqliteTable(
+  "category_translation",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    categoryId: text("category_id")
+      .notNull()
+      .references(() => category.id, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    name: text("name").notNull(),
+  },
+  (t) => ({
+    uq: uniqueIndex("category_translation_uq").on(t.categoryId, t.locale),
+  }),
+);
+
+export const productPrice = sqliteTable(
+  "product_price",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    productId: text("product_id")
+      .notNull()
+      .references(() => product.id, { onDelete: "cascade" }),
+    currency: text("currency").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+  },
+  (t) => ({
+    uq: uniqueIndex("product_price_uq").on(t.productId, t.currency),
+  }),
+);
+
+export const productVariantPrice = sqliteTable(
+  "product_variant_price",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    variantId: text("variant_id")
+      .notNull()
+      .references(() => productVariant.id, { onDelete: "cascade" }),
+    currency: text("currency").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+  },
+  (t) => ({
+    uq: uniqueIndex("product_variant_price_uq").on(t.variantId, t.currency),
+  }),
+);
+
+export const modifierOptionPrice = sqliteTable(
+  "modifier_option_price",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    modifierOptionId: text("modifier_option_id")
+      .notNull()
+      .references(() => modifierOption.id, { onDelete: "cascade" }),
+    currency: text("currency").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+  },
+  (t) => ({
+    uq: uniqueIndex("modifier_option_price_uq").on(t.modifierOptionId, t.currency),
+  }),
+);
+
 // ---- Row types -------------------------------------------------------------
+
+export type ProductTranslationRow = typeof productTranslation.$inferSelect;
+export type CategoryTranslationRow = typeof categoryTranslation.$inferSelect;
+export type ProductPriceRow = typeof productPrice.$inferSelect;
+export type ProductVariantPriceRow = typeof productVariantPrice.$inferSelect;
+export type ModifierOptionPriceRow = typeof modifierOptionPrice.$inferSelect;
 
 export type CategoryRow = typeof category.$inferSelect;
 export type ProductRow = typeof product.$inferSelect;

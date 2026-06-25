@@ -116,7 +116,29 @@ export const bannerNotificationRelations = relations(bannerNotification, ({ one 
   }),
 }));
 
+// Per-locale overrides (base columns = default-locale content). Slug canonical.
+export const bannerTranslation = sqliteTable(
+  "banner_translation",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    bannerId: text("banner_id")
+      .notNull()
+      .references(() => banner.id, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    name: text("name").notNull(),
+    shortDescription: text("short_description"),
+    longDescription: text("long_description"),
+  },
+  (t) => ({
+    uq: uniqueIndex("banner_translation_uq").on(t.bannerId, t.locale),
+  }),
+);
+
 // ---- Row types -------------------------------------------------------------
+
+export type BannerTranslationRow = typeof bannerTranslation.$inferSelect;
 
 export type BannerRow = typeof banner.$inferSelect;
 export type BannerInsert = typeof banner.$inferInsert;

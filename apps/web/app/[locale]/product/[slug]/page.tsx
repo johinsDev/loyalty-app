@@ -11,8 +11,8 @@ import { trpc } from "@/lib/trpc/server";
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const api = await trpc();
+  const { locale, slug } = await params;
+  const api = await trpc({ locale });
   const product = await api.menu.productBySlug({ slug }).catch(() => null);
   if (!product) return {};
   const title = product.seo.title ?? product.name;
@@ -35,7 +35,7 @@ export default async function ProductPage({ params }: Props) {
   setRequestLocale(locale);
   await requireCustomer(); // v1 auth-gated; ready to go public later.
 
-  const api = await trpc();
+  const api = await trpc({ locale });
   const product = await api.menu.productBySlug({ slug });
   if (!product) notFound();
 

@@ -4,6 +4,7 @@ import { Button } from "@loyalty/ui";
 import {
   Clock,
   Globe,
+  Languages,
   Plug,
   Sparkles,
   Stamp,
@@ -22,6 +23,7 @@ import { SECTIONS, type SettingsSection } from "../data";
 import { BrandSection } from "./brand-section";
 import { HoursSection } from "./hours-section";
 import { IntegrationsSection } from "./integrations-section";
+import { LocalizationSection } from "./localization-section";
 import { LoyaltySection } from "./loyalty-section";
 import { OnboardingSection } from "./onboarding-section";
 import { SeoSection } from "./seo-section";
@@ -29,6 +31,7 @@ import { TeamSection } from "./team-section";
 
 const ICON: Record<SettingsSection, LucideIcon> = {
   brand: Store,
+  localization: Languages,
   seo: Globe,
   hours: Clock,
   loyalty: Stamp,
@@ -104,6 +107,8 @@ export function SettingsView({
         <div className="bg-card border-border rounded-3xl border p-6 shadow-sm lg:col-span-3">
           {active === "brand" ? (
             <BrandSection />
+          ) : active === "localization" ? (
+            <LocalizationSection />
           ) : active === "seo" ? (
             <SeoSection />
           ) : active === "hours" ? (

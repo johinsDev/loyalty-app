@@ -110,7 +110,7 @@ export function ProductDetail({ product }: { product: ProductDetailData }) {
             {product.name}
           </h1>
           <span className="font-display text-primary text-2xl font-semibold whitespace-nowrap">
-            {money(format, priceCents)}
+            {money(format, priceCents, product.currency)}
           </span>
         </div>
 
@@ -176,7 +176,7 @@ export function ProductDetail({ product }: { product: ProductDetailData }) {
                 >
                   ＋ {mo.name}
                   {mo.priceDeltaCents > 0
-                    ? ` ${money(format, mo.priceDeltaCents)}`
+                    ? ` ${money(format, mo.priceDeltaCents, product.currency)}`
                     : ""}
                 </span>
               ))}

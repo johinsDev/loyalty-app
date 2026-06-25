@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Gem,
   Gift,
+  Coins,
   Globe,
   HelpCircle,
   type LucideIcon,
@@ -34,7 +35,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { CurrencySwitcher } from "@/components/currency-switcher";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { useCurrency } from "@/lib/currency";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useFadeUp } from "@/lib/animate";
@@ -53,6 +56,7 @@ type DrawerKind = "name" | "nick" | "birthday" | "avatar" | "signout" | null;
 
 export function ProfileScreen() {
   const t = useTranslations("Profile");
+  const { enabledLocales, enabledCurrencies } = useCurrency();
   const fade = useFadeUp();
   const locale = useLocale();
   const router = useRouter();
@@ -237,15 +241,28 @@ export function ProfileScreen() {
 
       {/* PREFERENCES */}
       <Section label={t("preferences.title")} style={fade(3)}>
-        <div className="flex items-center gap-3.5 px-4 py-3">
-          <span className="bg-primary/10 grid size-10 flex-none place-items-center rounded-xl">
-            <Globe className="text-primary size-5" />
-          </span>
-          <span className="flex-1 text-sm font-bold">
-            {t("preferences.language")}
-          </span>
-          <LocaleSwitcher />
-        </div>
+        {enabledLocales.length > 1 ? (
+          <div className="flex items-center gap-3.5 px-4 py-3">
+            <span className="bg-primary/10 grid size-10 flex-none place-items-center rounded-xl">
+              <Globe className="text-primary size-5" />
+            </span>
+            <span className="flex-1 text-sm font-bold">
+              {t("preferences.language")}
+            </span>
+            <LocaleSwitcher />
+          </div>
+        ) : null}
+        {enabledCurrencies.length > 1 ? (
+          <div className="border-border flex items-center gap-3.5 border-t px-4 py-3">
+            <span className="bg-primary/10 grid size-10 flex-none place-items-center rounded-xl">
+              <Coins className="text-primary size-5" />
+            </span>
+            <span className="flex-1 text-sm font-bold">
+              {t("preferences.currency")}
+            </span>
+            <CurrencySwitcher />
+          </div>
+        ) : null}
         <div className="border-border flex items-center gap-3.5 border-t px-4 py-3">
           <span className="bg-primary/10 grid size-10 flex-none place-items-center rounded-xl">
             <Moon className="text-primary size-5" />
