@@ -8,7 +8,16 @@ import {
   ResponsiveModalTitle,
 } from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Crown, Flower2, Leaf, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Crown,
+  Flower2,
+  Gift,
+  Leaf,
+  ShoppingBag,
+  Sparkles,
+  Wallet,
+} from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState, type ComponentType } from "react";
 
@@ -28,6 +37,32 @@ const TIER_ICONS: Record<string, ComponentType<{ className?: string }>> = {
 };
 const tierIcon = (key: string) => TIER_ICONS[key] ?? Sparkles;
 
+const TX_ICONS: Record<string, ComponentType<{ className?: string }>> = {
+  purchase: ShoppingBag,
+  reward: Gift,
+  adjust: Sparkles,
+  other: Wallet,
+};
+
+/** Friendly inline label for a point transaction (no raw reason parsing). */
+function txLabel(
+  e: { kind: string; rewardName: string | null },
+  t: (key: string, values?: Record<string, string>) => string,
+): string {
+  switch (e.kind) {
+    case "purchase":
+      return t("txPurchase");
+    case "reward":
+      return e.rewardName
+        ? t("txRedeem", { reward: e.rewardName })
+        : t("txRedeemGeneric");
+    case "adjust":
+      return t("txAdjust");
+    default:
+      return t("txOther");
+  }
+}
+
 /**
  * Points wallet — a progress ring around the spendable balance, the current
  * tier badge (color from config), and a tier-to-tier bar. Reads the real
@@ -38,6 +73,7 @@ const tierIcon = (key: string) => TIER_ICONS[key] ?? Sparkles;
  */
 export function PointsCard() {
   const t = useTranslations("Home");
+  const format = useFormatter();
   const trpc = useTRPC();
   const reduced = useReducedMotion();
   const [open, setOpen] = useState(false);
@@ -60,6 +96,17 @@ export function PointsCard() {
   const TierIcon = tierIcon(s.current.icon);
   const NextIcon = s.next ? tierIcon(s.next.icon) : Crown;
   const ringOffset = RING_CIRCUMFERENCE * (1 - (filled ? s.progress : 0));
+
+  // Keep the balance legible inside the ring: compact, locale-aware notation for
+  // big numbers (es "13,9 mil" / en "13.9K"), and scale the font by length so it
+  // never overflows.
+  const formatPoints = (n: number) =>
+    s.balance >= 10_000
+      ? format.number(n, { notation: "compact", maximumFractionDigits: 1 })
+      : format.number(n);
+  const balanceLen = formatPoints(s.balance).length;
+  const balanceSize =
+    balanceLen <= 5 ? "text-5xl" : balanceLen <= 7 ? "text-4xl" : "text-3xl";
 
   return (
     <section className="from-primary/5 to-primary/20 shadow-primary/15 rounded-3xl bg-gradient-to-br p-7 shadow-xl">
@@ -96,7 +143,8 @@ export function PointsCard() {
             </span>
             <CountUp
               value={s.balance}
-              className="font-display text-foreground text-5xl leading-none font-semibold tracking-tight"
+              format={formatPoints}
+              className={`font-display text-foreground ${balanceSize} leading-none font-semibold tracking-tight`}
             />
             <span
               className="bg-card inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap shadow-sm"
@@ -170,7 +218,7 @@ function PointsDetail({
   const format = useFormatter();
   const trpc = useTRPC();
   const { data: history } = useQuery(
-    trpc.points.myHistory.queryOptions({ page: 1, pageSize: 20 }),
+    trpc.points.myTransactions.queryOptions({ limit: 20 }),
   );
 
   return (
@@ -200,29 +248,39 @@ function PointsDetail({
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-2">
-          {history && history.rows.length > 0 ? (
-            history.rows.map((e) => (
-              <div
-                key={e.id}
-                className="bg-card flex items-center gap-3 rounded-2xl p-3 ring-1 ring-black/5 dark:ring-white/10"
-              >
-                <span className="from-primary/10 to-primary/5 grid size-11 flex-none place-items-center rounded-xl bg-gradient-to-br text-xl">
-                  🧋
-                </span>
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="text-foreground truncate text-sm font-bold">
-                    {e.reason ?? t("pointsEarnReason")}
+        <div className="-mr-2 flex max-h-72 min-h-0 flex-col gap-2 overflow-y-auto pr-2">
+          {history && history.items.length > 0 ? (
+            history.items.map((e) => {
+              const Icon = TX_ICONS[e.kind] ?? Wallet;
+              const negative = e.points < 0;
+              return (
+                <div
+                  key={e.id}
+                  className="bg-card flex items-center gap-3 rounded-2xl p-3 ring-1 ring-black/5 dark:ring-white/10"
+                >
+                  <span className="from-primary/10 to-primary/5 grid size-11 flex-none place-items-center rounded-xl bg-gradient-to-br">
+                    <Icon className="text-primary size-5" />
                   </span>
-                  <span className="text-muted-foreground text-xs">
-                    {format.dateTime(e.createdAt, { dateStyle: "medium" })}
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-foreground truncate text-sm font-bold">
+                      {txLabel(e, t)}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {format.dateTime(e.createdAt, { dateStyle: "medium" })}
+                    </span>
+                  </div>
+                  <span
+                    className={`inline-flex flex-none items-center rounded-full px-3 py-1 text-xs font-extrabold ${
+                      negative
+                        ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                        : "bg-primary/10 text-primary"
+                    }`}
+                  >
+                    {e.points > 0 ? `+${e.points}` : e.points}
                   </span>
                 </div>
-                <span className="bg-primary/10 text-primary inline-flex flex-none items-center rounded-full px-3 py-1 text-xs font-extrabold">
-                  {e.points > 0 ? `+${e.points}` : e.points}
-                </span>
-              </div>
-            ))
+              );
+            })
           ) : (
             <p className="text-muted-foreground text-sm">{t("pointsNoActivity")}</p>
           )}
@@ -231,11 +289,11 @@ function PointsDetail({
 
       <div className="p-4">
         <Link
-          href="/history"
+          href="/points/history"
           onClick={onClose}
           className="bg-primary/10 text-primary flex items-center justify-center gap-1.5 rounded-full py-3 text-sm font-bold"
         >
-          {t("seeAllHistory")}
+          {t("seeAllPoints")}
           <ArrowRight className="size-4" />
         </Link>
       </div>

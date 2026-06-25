@@ -11,23 +11,30 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from "@loyalty/ui";
+import { useQuery } from "@tanstack/react-query";
 import { Check, Layers, Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { parseAsBoolean, useQueryState } from "nuqs";
 
-import { currentTier, stampsBalance, tiers } from "../data";
+import { useTRPC } from "@/lib/trpc/client";
+
+import { tierIcon } from "../lib/tier-icon";
 
 /**
  * "Ver todos los niveles y condiciones" — a trigger button plus a bottom Drawer
  * that lists every tier with its threshold, benefits and fine print, marking the
  * one the customer is on and locking the ones still ahead. The open state lives
  * in the URL (`?levels=1`) via nuqs, so the reward detail (and a shared link) can
- * open it too. Rendered once inside the tier card.
+ * open it too. Rendered once inside the tier card. Reads `rewards.levels`.
  */
 export function AllLevelsSheet() {
   const t = useTranslations("Rewards");
+  const trpc = useTRPC();
   const [open, setOpen] = useQueryState("levels", parseAsBoolean.withDefault(false));
-  const current = currentTier();
+  const { data } = useQuery(trpc.rewards.levels.queryOptions());
+
+  const all = data?.all ?? [];
+  const currentThreshold = data?.current.threshold ?? 0;
 
   return (
     <>
@@ -56,9 +63,10 @@ export function AllLevelsSheet() {
           </ResponsiveModalHeader>
 
           <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 pb-2">
-            {tiers.map((tier) => {
-              const isCurrent = tier.key === current.key;
-              const locked = stampsBalance < tier.at;
+            {all.map((tier) => {
+              const isCurrent = tier.threshold === currentThreshold;
+              const locked = tier.threshold > currentThreshold;
+              const TierIcon = tierIcon(tier.icon);
               return (
                 <li
                   key={tier.key}
@@ -69,8 +77,9 @@ export function AllLevelsSheet() {
                   } ${locked ? "opacity-70" : ""}`}
                 >
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="font-display text-foreground text-lg font-semibold tracking-tight">
-                      {tier.emoji} {tier.name}
+                    <span className="font-display text-foreground inline-flex items-center gap-1.5 text-lg font-semibold tracking-tight">
+                      <TierIcon className="text-primary size-5" />
+                      {tier.name}
                     </span>
                     {isCurrent ? (
                       <Badge className="rounded-full px-2.5 py-0.5 text-[0.625rem] font-extrabold tracking-wider">
@@ -79,24 +88,26 @@ export function AllLevelsSheet() {
                     ) : (
                       <span className="text-muted-foreground inline-flex items-center gap-1 text-xs font-bold whitespace-nowrap">
                         {locked ? <Lock className="size-3.5" /> : <Check className="size-3.5" />}
-                        {t("levelFrom", { count: tier.at })}
+                        {t("levelFromPoints", { count: tier.threshold })}
                       </span>
                     )}
                   </div>
                   <ul className="flex flex-col gap-1.5">
                     {tier.benefits.map((benefit) => (
                       <li
-                        key={benefit}
+                        key={benefit.label}
                         className="text-foreground flex items-center gap-2 text-sm"
                       >
                         <Check className="text-primary size-3.5 shrink-0" />
-                        {benefit}
+                        {benefit.label}
                       </li>
                     ))}
                   </ul>
-                  <p className="text-muted-foreground mt-2.5 text-xs leading-relaxed">
-                    {tier.conditions}
-                  </p>
+                  {tier.terms ? (
+                    <p className="text-muted-foreground mt-2.5 text-xs leading-relaxed">
+                      {tier.terms}
+                    </p>
+                  ) : null}
                 </li>
               );
             })}

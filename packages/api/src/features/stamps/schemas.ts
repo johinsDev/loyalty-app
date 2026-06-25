@@ -21,24 +21,19 @@ export const historyInputSchema = z.object({
   pageSize: z.number().int().min(1).max(50).default(20),
 });
 
-export const claimInputSchema = z.object({
-  token: z.string().min(1),
-});
-
-export type WalletStatus = "active" | "completed" | "claimed";
-
-/** The customer's current card, shaped for the FE. `id` is null before any
- *  purchase exists. `walletSize` = total spots on the card (incl. the free one);
- *  `stampsGoal` = paid stamps that complete it (the last spot is the free drink);
- *  `rewardPending` = a completed card is waiting to be claimed. */
+/**
+ * The customer's spendable stamp card, shaped for the FE. `id` is null before
+ * any purchase exists. `currentStamps` is the spendable balance (it may exceed
+ * `walletSize` — the card never auto-completes and never blocks purchases; the
+ * free-drink reward is claimed via the rewards flow). `walletSize`/`stampsGoal`
+ * are kept so the FE can still render the buy-9-get-1 card visual (progress =
+ * `currentStamps % stampsGoal`). */
 export interface WalletView {
   id: string | null;
   currentStamps: number;
   walletSize: number;
   stampsGoal: number;
-  status: WalletStatus;
   sequence: number;
-  rewardPending: boolean;
 }
 
 export interface PurchaseHistoryItem {
@@ -47,14 +42,6 @@ export interface PurchaseHistoryItem {
   stamps: number;
   walletSequence: number;
   createdAt: Date;
-}
-
-export interface CompletedWalletItem {
-  id: string;
-  sequence: number;
-  status: "completed" | "claimed";
-  completedAt: Date | null;
-  claimedAt: Date | null;
 }
 
 export type RecordPurchaseInput = z.infer<typeof recordPurchaseInputSchema>;

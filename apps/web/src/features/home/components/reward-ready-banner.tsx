@@ -7,37 +7,59 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { useQrDrawer } from "@/features/qr/hooks/use-qr-drawer";
+import type { RewardListItem } from "@/features/rewards/types";
 import { useTRPC } from "@/lib/trpc/client";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 /**
- * Dismissible in-app banner shown on entry when the BE says the customer has a
- * completed wallet (a reward to claim). "Reclamar" opens the QR drawer; the ✕
- * dismisses it for the session. Reads the same `myWallet` query the card uses
- * (React Query dedupes by key), so no extra request. When the reward is claimed
- * `rewardPending` flips false — it collapses out (height + fade) instead of
- * popping, so the celebration that follows doesn't jump.
+ * Dismissible in-app banner for the STAMP-CARD-COMPLETION free drink only — the
+ * "bebida gratis" you earn by filling your wallet. It shows when the stamp
+ * wallet is complete (`currentStamps >= stampsGoal`) AND that full-card free
+ * drink is actually claimable (a stamps-only ready reward whose `stampsRequired`
+ * equals the wallet goal — seeded as "Bebida gratis"). Arbitrary ready rewards
+ * (toppings/upgrades) live on /recompensas and never trigger this banner.
+ * "Reclamar" opens the unified QR drawer pre-selected to that reward; the ✕
+ * dismisses it for the session.
  */
 export function RewardReadyBanner() {
   const t = useTranslations("Home");
   const trpc = useTRPC();
-  const setQrOpen = useQrDrawer((s) => s.setOpen);
   const reduced = useReducedMotion();
+  const openClaim = useQrDrawer((s) => s.openClaim);
   const [dismissed, setDismissed] = useState(false);
 
-  const { data } = useQuery(trpc.stamps.myWallet.queryOptions());
-  const show = !dismissed && Boolean(data?.rewardPending);
+  const { data: wallet } = useQuery(trpc.stamps.myWallet.queryOptions());
+  const { data: ready } = useQuery(
+    trpc.rewards.list.queryOptions({ filter: "listos", limit: 20 }),
+  );
+
+  // The full-card free drink: a stamps-only ready reward whose stamps cost is
+  // exactly the wallet goal. Only meaningful once the card is actually complete.
+  const walletComplete =
+    wallet != null &&
+    wallet.stampsGoal > 0 &&
+    wallet.currentStamps >= wallet.stampsGoal;
+
+  const freeDrink: RewardListItem | null =
+    walletComplete && ready
+      ? (ready.items.find(
+          (r) =>
+            r.pointsCost == null &&
+            r.stampsRequired != null &&
+            r.stampsRequired === wallet.stampsGoal,
+        ) ?? null)
+      : null;
+
+  const show = !dismissed && freeDrink !== null;
 
   return (
     <AnimatePresence initial={false}>
-      {show ? (
+      {show && freeDrink ? (
         <motion.div
           key="reward-banner"
           layout
           initial={reduced ? { opacity: 0 } : { opacity: 0, height: 0 }}
-          animate={
-            reduced ? { opacity: 1 } : { opacity: 1, height: "auto" }
-          }
+          animate={reduced ? { opacity: 1 } : { opacity: 1, height: "auto" }}
           exit={
             reduced
               ? { opacity: 0 }
@@ -55,7 +77,13 @@ export function RewardReadyBanner() {
             </p>
             <button
               type="button"
-              onClick={() => setQrOpen(true)}
+              onClick={() =>
+                openClaim({
+                  kind: "reward",
+                  rewardId: freeDrink.id,
+                  currency: "stamps",
+                })
+              }
               className="flex-none rounded-full bg-neutral-900 px-4 py-2 text-xs font-extrabold text-white"
             >
               {t("rewardBannerCta")}

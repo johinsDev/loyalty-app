@@ -1,23 +1,17 @@
 import { SidebarInset, SidebarProvider } from "@loyalty/ui";
-import { getTranslations } from "next-intl/server";
 
-import { env } from "@/env";
 import { FadeUp } from "@/lib/animate";
-import { getSession } from "@/lib/auth-guard";
 
 import { AppSidebar } from "./app-sidebar";
 import { GreetingHeader } from "./greeting-header";
 import { PointsCard } from "./points-card";
-import { PointsListener } from "./points-listener";
 import { PromosCarousel } from "./promos-carousel";
 import { RecentVisits } from "./recent-visits";
 import { RewardCard } from "./reward-card";
 import { RewardReadyBanner } from "./reward-ready-banner";
 import { ScanCta } from "./scan-cta";
-import { StampEarnedListener } from "./stamp-earned-listener";
 import { StampsCard } from "./stamps-card";
 import { StreakCard } from "./streak-card";
-import { StreakListener } from "./streak-listener";
 import { StreakRewardBanner } from "./streak-reward-banner";
 import { Usuals } from "./usuals";
 
@@ -29,10 +23,6 @@ import { Usuals } from "./usuals";
  * `../data`); both wallet models — points ring and stamp card — are shown.
  */
 export async function Home() {
-  const t = await getTranslations("Home");
-  const session = await getSession();
-  const customerId = session?.user?.id ?? null;
-
   return (
     <SidebarProvider style={{ "--sidebar-width": "18rem" } as React.CSSProperties}>
       <AppSidebar />
@@ -59,12 +49,7 @@ export async function Home() {
             <ScanCta />
           </FadeUp>
 
-          <FadeUp index={4} className="mt-6">
-            <p className="text-muted-foreground mb-3 text-xs font-bold tracking-wider">
-              {t("readyToClaim")}
-            </p>
-            <RewardCard />
-          </FadeUp>
+          <RewardCard />
 
           <FadeUp index={5} className="mt-6">
             <PromosCarousel />
@@ -82,23 +67,6 @@ export async function Home() {
             </div>
           </FadeUp>
         </div>
-
-        {customerId ? (
-          <>
-            <StampEarnedListener
-              customerId={customerId}
-              partykitHost={env.NEXT_PUBLIC_PARTYKIT_HOST}
-            />
-            <StreakListener
-              customerId={customerId}
-              partykitHost={env.NEXT_PUBLIC_PARTYKIT_HOST}
-            />
-            <PointsListener
-              customerId={customerId}
-              partykitHost={env.NEXT_PUBLIC_PARTYKIT_HOST}
-            />
-          </>
-        ) : null}
       </SidebarInset>
     </SidebarProvider>
   );

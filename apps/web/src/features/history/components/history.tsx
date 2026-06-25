@@ -23,7 +23,7 @@ export async function History() {
     >
       <AppSidebar />
       <SidebarInset className="from-primary/5 to-background text-foreground overflow-x-clip bg-gradient-to-b">
-        <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-3xl lg:px-8 lg:pt-12">
+        <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-5xl lg:px-8 lg:pt-12">
           <header className="mb-5">
             <h1 className="font-display text-3xl font-semibold tracking-tight">
               {t("title")}

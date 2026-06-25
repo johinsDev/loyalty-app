@@ -130,6 +130,13 @@ export const stamp = sqliteTable("stamp", {
     .$defaultFn(() => new Date()),
 });
 
+// A claimable reward in the catalog. Cost is in stamps and/or points (spendable
+// balances — see pointsTransaction / loyaltyCard). When BOTH costs are set,
+// `costMode` decides redemption: "or" (customer pays one) | "and" (pays both).
+// `allowedTiers` (json array of points-tier keys; null = every tier) gates the
+// reward by level. `sections` (json array, e.g. ["destacados"]) + `sortOrder`
+// drive the curated rows on /recompensas. `limitPerCustomer`: "unlimited"
+// (repeatable, re-arms when the balance is re-accumulated) | "once".
 export const reward = sqliteTable("reward", {
   id: text("id")
     .primaryKey()
@@ -139,7 +146,23 @@ export const reward = sqliteTable("reward", {
     .references(() => organization.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
-  stampsRequired: integer("stamps_required").notNull(),
+  imageUrl: text("image_url"),
+  // Cost per currency (nullable = that currency isn't accepted for this reward).
+  // At least one must be set. `stampsRequired` is the stamps cost.
+  stampsRequired: integer("stamps_required"),
+  pointsCost: integer("points_cost"),
+  // "or" | "and" — only meaningful when both costs are set.
+  costMode: text("cost_mode").notNull().default("or"),
+  // JSON array of tier keys allowed to claim (null = all tiers).
+  allowedTiers: text("allowed_tiers", { mode: "json" }).$type<string[] | null>(),
+  // JSON array of curated section keys (e.g. ["novedades","destacados"]).
+  sections: text("sections", { mode: "json" })
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+  sortOrder: integer("sort_order").notNull().default(0),
+  // "unlimited" | "once"
+  limitPerCustomer: text("limit_per_customer").notNull().default("unlimited"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
@@ -149,24 +172,89 @@ export const reward = sqliteTable("reward", {
     .$defaultFn(() => new Date()),
 });
 
-export const redemption = sqliteTable("redemption", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  cardId: text("card_id")
-    .notNull()
-    .references(() => loyaltyCard.id, { onDelete: "cascade" }),
-  rewardId: text("reward_id")
-    .notNull()
-    .references(() => reward.id),
-  redeemedByUserId: text("redeemed_by_user_id")
-    .notNull()
-    .references(() => user.id),
-  stampsSpent: integer("stamps_spent").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+// A single reward claim. Multi-currency: `currency` says which balance was
+// spent ("stamps" | "points"); the matching *Spent column holds the amount, the
+// other is 0. `cardId` is null for points-only claims (no stamp card involved).
+// `customerId`/`organizationId` are denormalized for history + the "once" check.
+export const redemption = sqliteTable(
+  "redemption",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customer.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // The stamp card the stamps were spent from (null for points-only claims).
+    cardId: text("card_id").references(() => loyaltyCard.id, {
+      onDelete: "set null",
+    }),
+    rewardId: text("reward_id")
+      .notNull()
+      .references(() => reward.id),
+    redeemedByUserId: text("redeemed_by_user_id")
+      .notNull()
+      .references(() => user.id),
+    currency: text("currency").notNull(), // "stamps" | "points"
+    stampsSpent: integer("stamps_spent").notNull().default(0),
+    pointsSpent: integer("points_spent").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    byCustomer: index("redemption_customer_idx").on(
+      t.organizationId,
+      t.customerId,
+      t.createdAt,
+    ),
+    byCustomerReward: index("redemption_customer_reward_idx").on(
+      t.customerId,
+      t.rewardId,
+    ),
+  }),
+);
+
+// Per-(customer, reward) availability cycle, driving the reminder cron. A row
+// exists while a reward is ready-and-unclaimed for the customer: `readyAt` is
+// when it became ready in the current cycle, `lastStage` is the last reminder
+// stage sent ("immediate" | "d2" | "d7" | "d30"). The purchase flow upserts it
+// on unlock; claim (or the balance dropping below cost) deletes it, so a
+// repeatable reward re-arms fresh next time.
+export const rewardAvailability = sqliteTable(
+  "reward_availability",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customer.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    rewardId: text("reward_id")
+      .notNull()
+      .references(() => reward.id, { onDelete: "cascade" }),
+    readyAt: integer("ready_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    lastStage: text("last_stage").notNull().default("immediate"),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    perCustomerReward: uniqueIndex("reward_availability_customer_reward_uq").on(
+      t.customerId,
+      t.rewardId,
+    ),
+    byReadyAt: index("reward_availability_ready_idx").on(t.readyAt),
+  }),
+);
 
 // A streak: consecutive OPEN days with at least one purchase. Mirrors
 // loyaltyCard's lifecycle (`status`: active | completed | claimed, `sequence` =
@@ -382,6 +470,14 @@ export const rewardRelations = relations(reward, ({ one, many }) => ({
 }));
 
 export const redemptionRelations = relations(redemption, ({ one }) => ({
+  customer: one(customer, {
+    fields: [redemption.customerId],
+    references: [customer.id],
+  }),
+  organization: one(organization, {
+    fields: [redemption.organizationId],
+    references: [organization.id],
+  }),
   card: one(loyaltyCard, {
     fields: [redemption.cardId],
     references: [loyaltyCard.id],
@@ -396,6 +492,24 @@ export const redemptionRelations = relations(redemption, ({ one }) => ({
   }),
 }));
 
+export const rewardAvailabilityRelations = relations(
+  rewardAvailability,
+  ({ one }) => ({
+    customer: one(customer, {
+      fields: [rewardAvailability.customerId],
+      references: [customer.id],
+    }),
+    organization: one(organization, {
+      fields: [rewardAvailability.organizationId],
+      references: [organization.id],
+    }),
+    reward: one(reward, {
+      fields: [rewardAvailability.rewardId],
+      references: [reward.id],
+    }),
+  }),
+);
+
 export type CustomerRow = typeof customer.$inferSelect;
 export type LoyaltyCardRow = typeof loyaltyCard.$inferSelect;
 export type LoyaltyCardInsert = typeof loyaltyCard.$inferInsert;
@@ -409,3 +523,9 @@ export type PointsTransactionRow = typeof pointsTransaction.$inferSelect;
 export type PointsTransactionInsert = typeof pointsTransaction.$inferInsert;
 export type PointsAccountRow = typeof pointsAccount.$inferSelect;
 export type PointsAccountInsert = typeof pointsAccount.$inferInsert;
+export type RewardRow = typeof reward.$inferSelect;
+export type RewardInsert = typeof reward.$inferInsert;
+export type RedemptionRow = typeof redemption.$inferSelect;
+export type RedemptionInsert = typeof redemption.$inferInsert;
+export type RewardAvailabilityRow = typeof rewardAvailability.$inferSelect;
+export type RewardAvailabilityInsert = typeof rewardAvailability.$inferInsert;

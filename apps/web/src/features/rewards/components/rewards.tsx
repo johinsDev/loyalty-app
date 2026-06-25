@@ -1,20 +1,21 @@
 import { SidebarInset, SidebarProvider } from "@loyalty/ui";
 import { getTranslations } from "next-intl/server";
 
-import { stampsBalance } from "../data";
-import { RecentRedemptions } from "./recent-redemptions";
-import { RewardsCatalog } from "./rewards-catalog";
-import { TierCard } from "./tier-card";
 import { AppSidebar } from "@/features/home/components/app-sidebar";
 
+import { RecentRedemptions } from "./recent-redemptions";
+import { RewardsBalance } from "./rewards-balance";
+import { RewardsCatalog } from "./rewards-catalog";
+import { TierCard } from "./tier-card";
+
 /**
- * Customer rewards — a faithful build of the "T4 · Recompensas (Sellos)" Claude
- * Design template. Stamp-currency catalog: claimable + coming-up rewards, the
- * tier card with next-level progress and benefits, a search box, filter chips,
- * and recent redemptions. Mobile-first; on desktop the tier card becomes a
+ * Customer rewards — the stamps/points reward catalog wired to `rewards.*`:
+ * claimable + coming-up + locked + redeemed rewards, the tier card with
+ * next-level progress and benefits, a search box, filter chips, curated section
+ * rows, and recent redemptions. Mobile-first; on desktop the tier card becomes a
  * sticky aside next to the catalog and the bottom nav gives way to the sidebar.
- * All data is hardcoded sample content (see `../data`) until the rewards API
- * lands; the catalog and its drawer are the only interactive (client) parts.
+ * This RSC is the routing shell; the data-bearing pieces are client components
+ * (per-user + protected queries the cross-origin Worker can't SSR-authenticate).
  */
 export async function Rewards() {
   const t = await getTranslations("Rewards");
@@ -28,9 +29,7 @@ export async function Rewards() {
             <h1 className="font-display text-3xl font-semibold tracking-tight">
               {t("title")}
             </h1>
-            <span className="bg-card text-primary inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold whitespace-nowrap shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-              🧋 {t("balance", { count: stampsBalance })}
-            </span>
+            <RewardsBalance />
           </header>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -48,7 +47,6 @@ export async function Rewards() {
             <RecentRedemptions />
           </div>
         </div>
-
       </SidebarInset>
     </SidebarProvider>
   );

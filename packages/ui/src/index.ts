@@ -15,6 +15,7 @@ export * from "./components/ui/button";
 export * from "./components/ui/button-group";
 export * from "./components/ui/calendar";
 export * from "./components/ui/date-picker";
+export * from "./components/ui/date-range-picker";
 export * from "./components/ui/card";
 export * from "./components/ui/carousel";
 export * from "./components/ui/chart";

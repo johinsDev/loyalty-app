@@ -1,4 +1,4 @@
-import { CupSoda, Flower2, type LucideIcon, Leaf, Sparkles } from "lucide-react";
+import { CupSoda, Flower2, type LucideIcon, Leaf } from "lucide-react";
 
 /**
  * Hardcoded demo data for the customer home. Everything here is sample content
@@ -21,13 +21,6 @@ export const pointsWallet = {
   ringOffset: 218,
   nextTier: { name: "Flor", icon: Flower2, at: 600 },
   tierProgress: 0.35,
-} as const;
-
-/** The single reward that's ready to redeem right now. */
-export const readyReward = {
-  title: "Topping gratis",
-  meta: "50 pts · disponible ahora",
-  icon: Sparkles,
 } as const;
 
 export type Usual = { name: string; orders: number; icon: LucideIcon };

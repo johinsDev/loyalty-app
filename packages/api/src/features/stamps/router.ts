@@ -10,10 +10,10 @@ import {
 import { tasks } from "@trigger.dev/sdk/v3";
 
 import { buildPointsService } from "../points";
+import { buildRewardsService, RewardsRepository } from "../rewards";
 import { buildStreaksService } from "../streaks";
 import { StampsRepository } from "./repository";
 import {
-  claimInputSchema,
   customerIdInputSchema,
   historyInputSchema,
   recordPurchaseInputSchema,
@@ -30,7 +30,6 @@ function buildService(ctx: {
 }): StampsService {
   return new StampsService(new StampsRepository(ctx.db), {
     realtime: ctx.realtime,
-    signSecret: process.env.REALTIME_AUTH_SECRET ?? "",
   });
 }
 
@@ -48,8 +47,16 @@ export const stampsRouter = router({
     .input(recordPurchaseInputSchema)
     .mutation(async ({ ctx, input }) => {
       const org = await orgId();
-      // Stamps blocks (throws REWARD_PENDING) before any other side effect, so a
-      // single purchase advances every track only when it actually records.
+
+      // Spendable balances BEFORE the purchase — used to detect rewards that
+      // cross from not-claimable to claimable after this purchase's grants.
+      const rewardsRepo = new RewardsRepository(ctx.db);
+      const before = await rewardsRepo
+        .balances(org, input.customerId)
+        .catch(() => ({ stamps: 0, points: 0 }));
+
+      // Stamps always records now (no completion / no block). Single purchase
+      // advances every loyalty track.
       const { wallet, purchaseId } = await buildService(ctx).recordPurchase(
         org,
         ctx.session.user.id,
@@ -58,26 +65,40 @@ export const stampsRouter = router({
       // Points + streak: best-effort, idempotent; never fail the purchase.
       const points = await buildPointsService(ctx)
         .earnForPurchase(org, input.customerId, input.priceCents, purchaseId)
-        .catch(() => ({ earned: 0, balance: 0 }));
+        .catch(() => ({ earned: 0, balance: 0, tierUp: null }));
       await buildStreaksService(ctx)
         .advanceForPurchase(org, input.customerId)
         .catch(() => {});
 
-      // One consolidated per-purchase notification (WhatsApp + feed) combining
-      // whatever's active — avoids a separate WhatsApp per loyalty track. Realtime
-      // already animated each card inline. loyaltyMode-aware: only includes the
-      // tracks that are on (stamps always on for the pilot).
+      // One consolidated per-purchase recap (WhatsApp + feed) combining whatever
+      // routine earn happened — avoids a separate WhatsApp per loyalty track.
+      // Realtime already animated each card inline.
       await tasks
         .trigger("send-notification", {
           customerIds: [input.customerId],
           organizationId: org,
           notificationKey: "purchase-recap",
           payload: {
-            stamps: { currentStamps: wallet.currentStamps, completed: wallet.rewardPending },
-            points: points.earned > 0 ? { earned: points.earned, balance: points.balance } : null,
+            stamps: { currentStamps: wallet.currentStamps },
+            points:
+              points.earned > 0
+                ? { earned: points.earned, balance: points.balance }
+                : null,
           },
         })
         .catch(() => {});
+
+      // Rewards unlock detection + aggregated celebration (one combined
+      // WhatsApp/push/realtime; N granular DB rows). Best-effort.
+      const after = { stamps: wallet.currentStamps, points: points.balance };
+      await buildRewardsService(ctx).processPurchaseUnlocks(
+        org,
+        input.customerId,
+        before,
+        after,
+        { tierUp: points.tierUp ?? null },
+      );
+
       return wallet;
     }),
 
@@ -85,15 +106,6 @@ export const stampsRouter = router({
     .input(customerIdInputSchema)
     .query(async ({ ctx, input }) =>
       buildService(ctx).walletForCustomer(await orgId(), input.customerId),
-    ),
-
-  claim: staffProcedure
-    .use(
-      rateLimit({ name: "stamps.claim", limit: 30, window: "1m", by: "user" }),
-    )
-    .input(claimInputSchema)
-    .mutation(async ({ ctx, input }) =>
-      buildService(ctx).claim(await orgId(), ctx.session.user.id, input.token),
     ),
 
   // ---- Customer (self) ------------------------------------------------
@@ -106,12 +118,4 @@ export const stampsRouter = router({
     .query(async ({ ctx, input }) =>
       buildService(ctx).myHistory(await orgId(), ctx.session.user.id, input),
     ),
-
-  myCompletedWallets: protectedProcedure.query(async ({ ctx }) =>
-    buildService(ctx).myCompletedWallets(await orgId(), ctx.session.user.id),
-  ),
-
-  issueClaimToken: protectedProcedure.mutation(async ({ ctx }) =>
-    buildService(ctx).issueClaimToken(await orgId(), ctx.session.user.id),
-  ),
 });
