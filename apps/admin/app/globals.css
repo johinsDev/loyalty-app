@@ -7,9 +7,10 @@
    app: the shared components carry `data-slot` hooks and resolve `rounded-*`
    from these theme tokens, so re-skinning here leaves web + Storybook intact.
 
-   `--primary` / `--ring` (and their sidebar twins) are still overridden
-   per-tenant by the SSR brand-color `<style>` in app/layout.tsx — the
-   neutral palette below only sets the greys. */
+   The admin chrome uses the preset's fixed Violet accent (primary +
+   sidebar-primary below) — decoupled from the tenant brand color. The org
+   brand color (`brandThemeCss`) is scoped to `.preview-customer` in
+   app/layout.tsx, so it only themes the customer-facing preview islands. */
 
 /* Luma's radius is multiplicative off `--radius` (vs the shared additive
    scale). Overrides the imported @theme so every admin `rounded-*` follows
@@ -33,8 +34,8 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.491 0.27 292.581);
+  --primary-foreground: oklch(0.969 0.016 293.756);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -53,8 +54,8 @@
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.541 0.281 293.009);
+  --sidebar-primary-foreground: oklch(0.969 0.016 293.756);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
@@ -68,8 +69,8 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.432 0.232 292.759);
+  --primary-foreground: oklch(0.969 0.016 293.756);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -87,8 +88,8 @@
   --chart-5: oklch(0.269 0 0);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.922 0 0);
-  --sidebar-primary-foreground: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.606 0.25 292.717);
+  --sidebar-primary-foreground: oklch(0.969 0.016 293.756);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
@@ -99,6 +100,22 @@
    utilities baked into the shared button without `!important`. Applies to
    every size (icon buttons become circles). */
 [data-slot="button"] {
+  border-radius: var(--radius-4xl);
+}
+
+/* Luma select: a pill trigger on a muted fill (no border), a softly rounded
+   popup, and pill-shaped item rows so the highlight reads as a stadium. */
+[data-slot="select-trigger"] {
+  border-radius: var(--radius-4xl);
+  border-color: transparent;
+  background-color: var(--secondary);
+}
+
+[data-slot="select-content"] {
+  border-radius: var(--radius-2xl);
+}
+
+[data-slot="select-item"] {
   border-radius: var(--radius-4xl);
 }
 

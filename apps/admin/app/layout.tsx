@@ -42,7 +42,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     ? cookieLocale
     : routing.defaultLocale;
 
-  const themeCss = brandThemeCss(await brandColor());
+  // The admin chrome uses the preset's fixed Violet accent (see globals.css).
+  // The tenant brand color only themes the customer-facing preview islands, so
+  // scope `brandThemeCss` (which targets :root/.dark) down to `.preview-customer`.
+  const brandCss = brandThemeCss(await brandColor())
+    .replaceAll(":root", ".preview-customer")
+    .replaceAll(".dark", ".dark .preview-customer");
 
   return (
     <html
@@ -51,8 +56,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       suppressHydrationWarning
     >
       <body>
-        {themeCss ? (
-          <style id="brand-theme" dangerouslySetInnerHTML={{ __html: themeCss }} />
+        {brandCss ? (
+          <style id="brand-theme" dangerouslySetInnerHTML={{ __html: brandCss }} />
         ) : null}
         <ThemeProvider
           attribute="class"
