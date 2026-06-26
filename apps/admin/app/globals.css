@@ -121,6 +121,30 @@
   padding-block: 0.5rem;
 }
 
+/* Luma filled inputs: very rounded, borderless at rest, on a muted fill. The
+   border is only dropped at rest so the focus ring and aria-invalid borders
+   still show. */
+[data-slot="input"] {
+  border-radius: var(--radius-3xl);
+  background-color: color-mix(in oklab, var(--input) 50%, transparent);
+}
+
+[data-slot="textarea"] {
+  border-radius: var(--radius-2xl);
+  background-color: color-mix(in oklab, var(--input) 50%, transparent);
+}
+
+[data-slot="input"]:not(:focus-visible):not([aria-invalid="true"]),
+[data-slot="textarea"]:not(:focus-visible):not([aria-invalid="true"]) {
+  border-color: transparent;
+}
+
+/* Luma pill tabs (segmented control). */
+[data-slot="tabs-list"],
+[data-slot="tabs-trigger"] {
+  border-radius: 9999px;
+}
+
 /* Customer-facing preview islands inside the admin (wizard live previews)
    mirror the customer web look, so reset the radius scale back to the shared
    @loyalty/ui (additive) values and revert the pill button within them. */
