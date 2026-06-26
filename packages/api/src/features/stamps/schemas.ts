@@ -26,6 +26,15 @@ export const recordPurchaseInputSchema = z.object({
   items: z.array(purchaseLineSchema).optional(),
   appliedPromoId: z.string().uuid().optional(),
   currency: z.string().optional(),
+  // Optional inline reward redeem (POS): the cashier redeems a reward as part of
+  // this same sale. Deducted inside the purchase tx (after the stamp is granted,
+  // so it's spendable); a not-redeemable reward rolls back the whole sale.
+  inlineReward: z
+    .object({
+      rewardId: z.string().min(1),
+      currency: z.enum(["stamps", "points", "both"]),
+    })
+    .optional(),
 });
 
 export const customerIdInputSchema = z.object({

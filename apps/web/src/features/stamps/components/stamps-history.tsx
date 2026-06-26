@@ -1,21 +1,15 @@
 "use client";
 
-import {
-  DateRangePicker,
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalDescription,
-  ResponsiveModalTitle,
-  Skeleton,
-} from "@loyalty/ui";
-import { useInfiniteQuery } from "@tanstack/react-query";
 import { formatDate } from "@loyalty/date";
-import { ArrowLeft, ChevronRight, Gift } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { DateRangePicker, Skeleton } from "@loyalty/ui";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { parseAsString, useQueryStates } from "nuqs";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
-import { Link } from "@/i18n/navigation";
+import { money } from "@/features/menu/components/product-card";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useFadeUp } from "@/lib/animate";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -42,12 +36,14 @@ const dateToYmd = (d: Date | undefined): string | null => {
 };
 
 /**
- * Full redemption history (`rewards.history`) — an infinite list of past claims
- * with an optional from/to date range filter (nuqs). Each row shows the reward,
- * when it was redeemed, and the amount spent. Client component.
+ * Full stamps history — every purchase earns exactly one stamp, so the stamp
+ * ledger is just the purchase list. Mirrors `PointsHistory`: infinite
+ * `purchases.myPurchases` + from/to date-range filter (nuqs). Each row shows
+ * the stamps earned + the amount; tapping it opens the shared `/compras/[id]`
+ * detail. Client component.
  */
-export function RedemptionHistory() {
-  const t = useTranslations("Rewards");
+export function StampsHistory() {
+  const t = useTranslations("StampsHistory");
   const locale = useLocale();
 
   const [range, setRange] = useQueryStates({
@@ -58,14 +54,14 @@ export function RedemptionHistory() {
   return (
     <div className="mx-auto w-full max-w-md px-5 pt-14 pb-32 md:pb-12 lg:max-w-5xl lg:px-8 lg:pt-12">
       <Link
-        href="/rewards"
+        href="/"
         className="text-muted-foreground mb-3 inline-flex items-center gap-1 text-sm font-bold"
       >
         <ArrowLeft className="size-4" />
-        {t("backToRewards")}
+        {t("back")}
       </Link>
       <h1 className="font-display mb-5 text-3xl font-semibold tracking-tight">
-        {t("historyTitle")}
+        {t("title")}
       </h1>
 
       <div className="mb-5 lg:max-w-xl">
@@ -90,7 +86,7 @@ export function RedemptionHistory() {
         </label>
       </div>
 
-      <RedemptionHistoryList
+      <StampsHistoryList
         from={toIso(range.from, false)}
         to={toIso(range.to, true)}
       />
@@ -98,34 +94,22 @@ export function RedemptionHistory() {
   );
 }
 
-/**
- * The paginated redemption list itself — `rewards.history` infinite query +
- * loading skeleton + empty state + infinite-scroll sentinel, with no page
- * chrome. Shared by the standalone history page and the "Canjeadas" catalog tab
- * (FIX 2), so both show the same data/shape as "Canjeadas recientemente". An
- * optional from/to range narrows the query.
- */
-export function RedemptionHistoryList({
-  from,
-  to,
-}: {
-  from?: string;
-  to?: string;
-} = {}) {
-  const t = useTranslations("Rewards");
+function StampsHistoryList({ from, to }: { from?: string; to?: string }) {
+  const t = useTranslations("StampsHistory");
   const locale = useLocale();
+  const format = useFormatter();
   const fade = useFadeUp();
+  const router = useRouter();
   const trpc = useTRPC();
 
   const query = useInfiniteQuery(
-    trpc.rewards.history.infiniteQueryOptions(
+    trpc.purchases.myPurchases.infiniteQueryOptions(
       { from, to, limit: 20 },
       { getNextPageParam: (last) => last.nextCursor ?? undefined },
     ),
   );
 
   const items = query.data?.pages.flatMap((p) => p.items) ?? [];
-  const [selected, setSelected] = useState<(typeof items)[number] | null>(null);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -163,7 +147,7 @@ export function RedemptionHistoryList({
   if (items.length === 0) {
     return (
       <p className="text-muted-foreground rounded-3xl border border-dashed py-10 text-center text-sm">
-        {t("emptyHistory")}
+        {t("empty")}
       </p>
     );
   }
@@ -175,37 +159,29 @@ export function RedemptionHistoryList({
           <li key={item.id} style={fade(i)}>
             <button
               type="button"
-              onClick={() => setSelected(item)}
+              onClick={() =>
+                router.push({
+                  pathname: "/compras/[id]",
+                  params: { id: item.id },
+                })
+              }
               className="hover:bg-muted/40 -mx-2 flex w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-2xl px-2 py-3.5 text-left transition-colors"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <span className="bg-primary/10 grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl text-lg">
-                  {item.rewardImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.rewardImageUrl}
-                      alt=""
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    <Gift className="text-primary size-4" />
-                  )}
+                <span className="bg-primary/10 grid size-10 shrink-0 place-items-center rounded-xl text-lg">
+                  🧋
                 </span>
                 <div className="flex min-w-0 flex-col">
                   <span className="text-foreground truncate text-sm font-bold">
-                    {item.rewardName}
+                    {money(format, item.totalCents, item.currency)}
                   </span>
                   <span className="text-muted-foreground text-xs">
-                    {t("redeemedOn", {
-                      date: formatDate(item.redeemedAt, { locale }),
-                    })}
+                    {t("on", { date: formatDate(item.createdAt, { locale }) })}
                   </span>
                 </div>
               </div>
-              <span className="text-muted-foreground shrink-0 text-sm font-bold">
-                {item.currency === "stamps"
-                  ? t("spentStamps", { count: item.stampsSpent })
-                  : t("spentPoints", { count: item.pointsSpent })}
+              <span className="text-primary shrink-0 text-sm font-extrabold">
+                +{item.stampsEarned} 🧋
               </span>
             </button>
           </li>
@@ -217,55 +193,6 @@ export function RedemptionHistoryList({
         </p>
       ) : null}
       <div ref={sentinelRef} aria-hidden className="h-px" />
-
-      <ResponsiveModal
-        open={selected !== null}
-        onOpenChange={(open) => !open && setSelected(null)}
-      >
-        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-sm">
-          {selected ? (
-            <div className="flex flex-col items-center gap-2 px-6 pt-2 pb-6 text-center">
-              <span className="bg-primary/10 grid size-16 place-items-center overflow-hidden rounded-2xl">
-                {selected.rewardImageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={selected.rewardImageUrl}
-                    alt=""
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <Gift className="text-primary size-7" />
-                )}
-              </span>
-              <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
-                {selected.rewardName}
-              </ResponsiveModalTitle>
-              <ResponsiveModalDescription className="text-muted-foreground text-sm">
-                {t("redeemedOn", {
-                  date: formatDate(selected.redeemedAt, { locale }),
-                })}
-              </ResponsiveModalDescription>
-              <div className="text-primary font-display mt-3 text-4xl font-semibold tabular-nums">
-                {selected.currency === "stamps"
-                  ? t("spentStamps", { count: selected.stampsSpent })
-                  : t("spentPoints", { count: selected.pointsSpent })}
-              </div>
-              {selected.purchaseId ? (
-                <Link
-                  href={{
-                    pathname: "/compras/[id]",
-                    params: { id: selected.purchaseId },
-                  }}
-                  className="text-primary mt-4 inline-flex items-center gap-1 text-sm font-bold"
-                >
-                  {t("viewPurchase")}
-                  <ChevronRight className="size-4" />
-                </Link>
-              ) : null}
-            </div>
-          ) : null}
-        </ResponsiveModalContent>
-      </ResponsiveModal>
     </>
   );
 }

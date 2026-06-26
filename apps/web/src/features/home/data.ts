@@ -1,4 +1,4 @@
-import { CupSoda, Flower2, type LucideIcon, Leaf } from "lucide-react";
+import { Flower2, Leaf } from "lucide-react";
 
 /**
  * Hardcoded demo data for the customer home. Everything here is sample content
@@ -22,21 +22,3 @@ export const pointsWallet = {
   nextTier: { name: "Flor", icon: Flower2, at: 600 },
   tierProgress: 0.35,
 } as const;
-
-export type Usual = { name: string; orders: number; icon: LucideIcon };
-
-export const usuals: readonly Usual[] = [
-  { name: "Taro Milk Tea", orders: 12, icon: CupSoda },
-  { name: "Strawberry Matcha", orders: 9, icon: CupSoda },
-  { name: "Matcha Latte", orders: 7, icon: CupSoda },
-  { name: "Taro Frappé", orders: 6, icon: CupSoda },
-];
-
-export type Visit = { id: number; place: string; reward: string };
-
-export const visits: readonly Visit[] = [
-  { id: 1, place: "Hoy · T4 Centro", reward: "+24 pts" },
-  { id: 2, place: "12 jun · T4 Centro", reward: "+18 pts" },
-  { id: 3, place: "5 jun · T4 Norte", reward: "+30 pts" },
-];
-

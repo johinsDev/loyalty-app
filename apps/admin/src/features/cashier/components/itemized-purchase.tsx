@@ -5,7 +5,7 @@ import { Button } from "@loyalty/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import { useDebounce } from "ahooks";
-import { Check, Minus, Plus, Search, Tag, Trash2 } from "lucide-react";
+import { Check, Gift, Minus, Plus, Search, Tag, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -13,6 +13,19 @@ import { toast } from "sonner";
 import { useTRPC } from "@/lib/trpc/client";
 
 type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
+
+type AvailableReward =
+  inferRouterOutputs<AppRouter>["rewards"]["availableForCustomer"][number];
+
+/** Map the reward's affordable currencies to the inline-redeem currency the
+ *  purchase mutation expects. An "and" reward (both required) is paid as "both";
+ *  otherwise prefer stamps, fall back to points. */
+function inlineRewardCurrency(rw: AvailableReward): "stamps" | "points" | "both" {
+  if (rw.costMode === "and") return "both";
+  if (rw.affordableWith.includes("stamps")) return "stamps";
+  if (rw.affordableWith.includes("points")) return "points";
+  return "stamps";
+}
 
 type CartItem = {
   productId: string;
@@ -59,6 +72,7 @@ export function ItemizedPurchase({
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [chosenPromoId, setChosenPromoId] = useState<string | null>(null);
+  const [inlineRewardId, setInlineRewardId] = useState<string | null>(null);
 
   const debouncedQuery = useDebounce(query.trim(), { wait: 250 });
   const menu = useQuery(
@@ -105,6 +119,14 @@ export function ItemizedPurchase({
     setChosenPromoId(best?.promo.id ?? null);
   }, [applicable.data]);
 
+  // Rewards this customer can redeem right now — offered as an optional inline
+  // redemption folded into this same sale (deducted in the purchase tx).
+  const availableRewards = useQuery(
+    trpc.rewards.availableForCustomer.queryOptions({ customerId }),
+  );
+  const rewards = availableRewards.data ?? [];
+  const chosenReward = rewards.find((r) => r.rewardId === inlineRewardId) ?? null;
+
   const chosen = promos.find((p) => p.promo.id === chosenPromoId) ?? null;
   const discount = chosen?.discountCents ?? 0;
   const net = Math.max(0, subtotal - discount);
@@ -145,14 +167,28 @@ export function ItemizedPurchase({
           unitAmountCents: i.unitAmountCents,
         })),
         appliedPromoId: chosenPromoId ?? undefined,
+        inlineReward:
+          chosenReward != null
+            ? {
+                rewardId: chosenReward.rewardId,
+                currency: inlineRewardCurrency(chosenReward),
+              }
+            : undefined,
         currency: CURRENCY,
       });
       onSuccess(view);
+      setInlineRewardId(null);
       toast.success(t("purchaseRecorded"));
     } catch (err) {
       if (isRewardPending(err)) {
         toast.error(t("rewardPendingToast"));
         onRewardPending();
+        return;
+      }
+      if (err instanceof Error && err.message === "reward-not-redeemable") {
+        toast.error(t("inlineRewardError"));
+        setInlineRewardId(null);
+        void availableRewards.refetch();
         return;
       }
       if (err instanceof Error && err.message === "PROMO_NOT_APPLICABLE") {
@@ -283,6 +319,46 @@ export function ItemizedPurchase({
                             ? t("pointsMultiplier", { x: ap.pointsMultiplier })
                             : ""}
                       </div>
+                    </div>
+                    {active ? <Check className="text-primary size-5 shrink-0" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* Inline reward redeem — optional, folded into this same sale */}
+      {cart.length > 0 ? (
+        <div className="border-border rounded-2xl border p-3.5">
+          <div className="flex items-center gap-2">
+            <Gift className="text-muted-foreground size-4" />
+            <h3 className="text-sm font-bold">{t("inlineRewardHeading")}</h3>
+          </div>
+          {availableRewards.isPending ? (
+            <p className="text-muted-foreground mt-2 text-xs">{t("searching")}</p>
+          ) : rewards.length === 0 ? (
+            <p className="text-muted-foreground mt-2 text-xs">{t("inlineRewardNone")}</p>
+          ) : (
+            <div className="mt-2 space-y-1.5">
+              {rewards.map((rw) => {
+                const active = rw.rewardId === inlineRewardId;
+                return (
+                  <button
+                    key={rw.rewardId}
+                    type="button"
+                    onClick={() =>
+                      setInlineRewardId(active ? null : rw.rewardId)
+                    }
+                    className={
+                      active
+                        ? "border-primary bg-primary/5 flex w-full items-center justify-between gap-3 rounded-xl border-2 p-2.5 text-left"
+                        : "border-border flex w-full items-center justify-between gap-3 rounded-xl border p-2.5 text-left"
+                    }
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-bold">{rw.name}</div>
                     </div>
                     {active ? <Check className="text-primary size-5 shrink-0" /> : null}
                   </button>

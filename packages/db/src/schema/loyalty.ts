@@ -286,6 +286,11 @@ export const redemption = sqliteTable(
     currency: text("currency").notNull().default("stamps"), // "stamps" | "points"
     stampsSpent: integer("stamps_spent").notNull().default(0),
     pointsSpent: integer("points_spent").notNull().default(0),
+    // Set when the reward is redeemed INLINE as part of a register sale (the
+    // purchase detail surfaces it); null for standalone QR/OTP claims.
+    purchaseId: text("purchase_id").references(() => purchase.id, {
+      onDelete: "set null",
+    }),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -300,6 +305,7 @@ export const redemption = sqliteTable(
       t.customerId,
       t.rewardId,
     ),
+    byPurchase: index("redemption_purchase_idx").on(t.purchaseId),
   }),
 );
 
