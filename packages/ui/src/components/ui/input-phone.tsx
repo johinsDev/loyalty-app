@@ -297,12 +297,20 @@ export function InputPhone({
             +{def.dialCode}
           </span>
         </ComboboxTrigger>
-        <ComboboxContent className="w-[300px]">
+        <ComboboxContent
+          className={cn(
+            "w-[300px]",
+            // Admin (sm): shrink the search box and give it breathing room
+            // below before the list, instead of the default flush h-11.
+            size === "sm" &&
+              "*:data-[slot=input-group]:m-1.5 *:data-[slot=input-group]:mb-1 *:data-[slot=input-group]:h-9 *:data-[slot=input-group]:text-sm",
+          )}
+        >
           <ComboboxInput
             placeholder="Buscar país…"
             showTrigger={false}
             autoFocus
-            className={cn(size === "sm" && "h-9 text-sm")}
+            className={cn(size === "sm" && "text-sm")}
           />
           <ComboboxList>
             {(code: CountryCode) => {

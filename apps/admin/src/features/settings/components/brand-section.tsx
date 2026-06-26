@@ -6,6 +6,12 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  Dropzone,
+  DropzoneArea,
+  DropzoneDescription,
+  DropzoneIcon,
+  DropzoneLabel,
+  DropzoneRejections,
   ImageCropper,
   Input,
   InputPhone,
@@ -14,9 +20,9 @@ import {
   UrlInput,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ImagePlus } from "lucide-react";
+import { XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { FileUpload } from "@/features/storage/components/file-upload";
@@ -150,7 +156,10 @@ export function BrandSection() {
   );
 }
 
-/** Logo upload with a square crop step. */
+/**
+ * Logo upload — a large drag-and-drop zone (mirrors the T&C dropzone) that opens
+ * a square crop step before uploading to the default disk via `useFileUpload`.
+ */
 function LogoField({
   value,
   onChange,
@@ -159,7 +168,6 @@ function LogoField({
   onChange: (url: string | null) => void;
 }) {
   const t = useTranslations("Settings");
-  const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
 
   const upload = useFileUpload({
@@ -171,34 +179,46 @@ function LogoField({
   });
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="bg-muted border-border grid size-16 place-items-center overflow-hidden rounded-2xl border">
-        {value ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={value} alt="logo" className="size-full object-cover" />
-        ) : (
-          <ImagePlus className="text-muted-foreground size-5" />
-        )}
-      </div>
-      <Button
-        variant="outline"
-        className="h-10 rounded-xl"
-        onClick={() => inputRef.current?.click()}
+    <>
+      <Dropzone
+        accept={{ "image/*": [] }}
+        multiple={false}
         disabled={upload.isUploading}
-      >
-        {value ? t("brand.logoChange") : t("brand.logoUpload")}
-      </Button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
+        onDrop={(files) => {
+          const f = files[0];
           if (f) setFile(f);
-          e.target.value = "";
         }}
-      />
+      >
+        {value ? (
+          <div className="group/logo border-border bg-muted/30 relative flex min-h-44 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed p-4 transition-colors hover:border-muted-foreground/50">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={value} alt="logo" className="max-h-36 max-w-full rounded-xl object-contain" />
+            <div className="bg-foreground/0 pointer-events-none absolute inset-0 flex items-center justify-center transition-colors group-hover/logo:bg-foreground/40">
+              <span className="bg-background/90 rounded-lg px-3 py-1.5 text-sm font-medium opacity-0 shadow-sm transition-opacity group-hover/logo:opacity-100">
+                {t("brand.logoChange")}
+              </span>
+            </div>
+            <button
+              type="button"
+              aria-label={t("brand.imgRemove")}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(null);
+              }}
+              className="bg-background/90 text-muted-foreground hover:text-foreground absolute right-2 top-2 grid size-7 place-items-center rounded-full shadow-sm"
+            >
+              <XIcon className="size-4" />
+            </button>
+          </div>
+        ) : (
+          <DropzoneArea className="min-h-44">
+            <DropzoneIcon />
+            <DropzoneLabel>{t("brand.logoUpload")}</DropzoneLabel>
+            <DropzoneDescription>{t("brand.logoHint")}</DropzoneDescription>
+          </DropzoneArea>
+        )}
+        <DropzoneRejections />
+      </Dropzone>
       <Dialog open={Boolean(file)} onOpenChange={(o) => !o && setFile(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogTitle>{t("brand.logoCrop")}</DialogTitle>
@@ -219,7 +239,7 @@ function LogoField({
           ) : null}
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
 
