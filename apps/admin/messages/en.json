@@ -879,6 +879,7 @@
     "inlineRewardError": "Couldn't redeem the reward. Check the balance."
   },
   "Admin": {
+    "menu": "Menu",
     "greeting": "Hi, {name}",
     "storesMembers": "{stores} stores · {members} members",
     "cashierMode": "Cashier mode",
@@ -1509,7 +1510,7 @@
       }
     },
     "seo": {
-      "title": "SEO & favicon",
+      "title": "SEO",
       "desc": "How your app looks when shared and in search engines.",
       "metaTitle": "Title (meta title)",
       "metaTitlePlaceholder": "T4 Lovers — Bubble tea & more",

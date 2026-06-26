@@ -22,10 +22,12 @@ async function requireOrg(): Promise<string> {
   return id;
 }
 
-/** Static-map deps from the request ctx (public disk + server-side Maps key). */
+/** Static-map deps from the request ctx (default disk + server-side Maps key).
+ *  The Worker registers only a `default` disk (public when R2_PUBLIC_URL is set),
+ *  so we omit the name — `disk("public")` would throw "Unknown disk". */
 function mapDeps(ctx: { storage?: { disk(name?: string): unknown } }): MapDeps {
   return {
-    disk: ctx.storage?.disk("public") as MapDeps["disk"],
+    disk: ctx.storage?.disk() as MapDeps["disk"],
     mapsKey: process.env.GOOGLE_MAPS_API_KEY,
   };
 }

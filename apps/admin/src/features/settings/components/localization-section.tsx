@@ -86,7 +86,7 @@ export function LocalizationSection() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="space-y-2">
-          <Label className="text-xs">{t("localization.locales")}</Label>
+          <Label className="text-sm">{t("localization.locales")}</Label>
           <div className="flex flex-wrap gap-3">
             {LOCALES.map((l) => (
               <label key={l} className="flex items-center gap-2 text-sm font-semibold">
@@ -98,7 +98,7 @@ export function LocalizationSection() {
               </label>
             ))}
           </div>
-          <Label className="text-xs">{t("localization.defaultLocale")}</Label>
+          <Label className="text-sm">{t("localization.defaultLocale")}</Label>
           <Select value={defaultLocale} onValueChange={(v) => setDefaultLocale(v ?? "es")}>
             <SelectTrigger size="lg" className="w-full text-sm">
               <SelectValue>{(v) => LOCALE_LABEL[v as string]}</SelectValue>
@@ -114,7 +114,7 @@ export function LocalizationSection() {
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs">{t("localization.currencies")}</Label>
+          <Label className="text-sm">{t("localization.currencies")}</Label>
           <div className="flex flex-wrap gap-3">
             {CURRENCIES.map((c) => (
               <label key={c} className="flex items-center gap-2 text-sm font-semibold">
@@ -126,7 +126,7 @@ export function LocalizationSection() {
               </label>
             ))}
           </div>
-          <Label className="text-xs">{t("localization.defaultCurrency")}</Label>
+          <Label className="text-sm">{t("localization.defaultCurrency")}</Label>
           <Select value={defaultCurrency} onValueChange={(v) => setDefaultCurrency(v ?? "COP")}>
             <SelectTrigger size="lg" className="w-full text-sm">
               <SelectValue>{(v) => v as string}</SelectValue>

@@ -8,8 +8,10 @@ import {
   DialogTitle,
   ImageCropper,
   Input,
+  InputPhone,
   Label,
   Textarea,
+  UrlInput,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImagePlus } from "lucide-react";
@@ -111,15 +113,23 @@ export function BrandSection() {
         <div className="space-y-4">
           <Field label={t("brand.social")}>
             <div className="space-y-2">
-              {SOCIALS.map((s) => (
-                <Input
-                  key={s}
-                  value={social[s] ?? ""}
-                  onChange={(e) => setSocial((cur) => ({ ...cur, [s]: e.target.value }))}
-                  placeholder={s === "whatsapp" ? "+57…" : `https://… (${s})`}
-                  className="h-10"
-                />
-              ))}
+              {SOCIALS.map((s) =>
+                s === "whatsapp" ? (
+                  <InputPhone
+                    key={s}
+                    size="sm"
+                    value={social[s] ?? ""}
+                    onChange={(v) => setSocial((cur) => ({ ...cur, [s]: v.e164 }))}
+                  />
+                ) : (
+                  <UrlInput
+                    key={s}
+                    value={social[s] ?? ""}
+                    onChange={(v) => setSocial((cur) => ({ ...cur, [s]: v }))}
+                    placeholder={`… (${s})`}
+                  />
+                ),
+              )}
             </div>
           </Field>
           <Field label={t("brand.terms")}>
@@ -225,7 +235,7 @@ function Field({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <Label className="text-xs">{label}</Label>
+        <Label className="text-sm">{label}</Label>
         {hint ? <span className="text-muted-foreground/70 text-xs font-semibold">{hint}</span> : null}
       </div>
       {children}

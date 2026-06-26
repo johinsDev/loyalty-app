@@ -38,6 +38,14 @@ import { useState } from "react";
 import { customer, pointsWallet } from "../data";
 import { useQrDrawer } from "@/features/qr/hooks/use-qr-drawer";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { useBranding } from "@/lib/branding";
+
+/** 2-letter brand initials from a name (e.g. "T4 Lovers" → "T4"). */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
+  return name.trim().slice(0, 2).toUpperCase() || "T4";
+}
 
 type Href = "/" | "/rewards" | "/menu" | "/card" | "/profile";
 type Item = { key: string; href: Href; icon: LucideIcon };
@@ -66,6 +74,8 @@ export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const openQr = useQrDrawer((s) => s.openDrawer);
+  const branding = useBranding();
+  const brandName = branding?.name || "T4 Lovers";
   const [signingOut, setSigningOut] = useState(false);
 
   const onSignOut = async () => {
@@ -83,12 +93,17 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href="/" />}>
-              <span className="bg-primary text-primary-foreground font-display flex aspect-square size-10 items-center justify-center rounded-2xl text-base font-bold">
-                T4
-              </span>
-              <span className="font-display text-lg font-semibold">
-                T4 Lovers
-              </span>
+              {branding?.logoUrl ? (
+                <span className="flex aspect-square size-10 items-center justify-center overflow-hidden rounded-2xl">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={branding.logoUrl} alt="" className="size-full object-cover" />
+                </span>
+              ) : (
+                <span className="bg-primary text-primary-foreground font-display flex aspect-square size-10 items-center justify-center rounded-2xl text-base font-bold">
+                  {initials(brandName)}
+                </span>
+              )}
+              <span className="font-display text-lg font-semibold">{brandName}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

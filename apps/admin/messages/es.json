@@ -879,6 +879,7 @@
     "inlineRewardError": "No se pudo canjear la recompensa. Revisá el saldo."
   },
   "Admin": {
+    "menu": "Menú",
     "greeting": "Hola, {name}",
     "storesMembers": "{stores} tiendas · {members} socios",
     "cashierMode": "Modo caja",
@@ -1509,7 +1510,7 @@
       }
     },
     "seo": {
-      "title": "SEO y favicon",
+      "title": "SEO",
       "desc": "Cómo aparece tu app al compartirla y en buscadores.",
       "metaTitle": "Título (meta title)",
       "metaTitlePlaceholder": "T4 Lovers — Bubble tea & más",

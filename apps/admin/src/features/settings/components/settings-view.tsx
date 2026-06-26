@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@loyalty/ui";
 import {
   Clock,
   Globe,
@@ -14,7 +13,6 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -68,12 +66,6 @@ export function SettingsView({
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <LocaleSwitcher />
-          <Button
-            className="h-10 rounded-xl font-semibold"
-            onClick={() => toast.success(t("saved"))}
-          >
-            {t("save")}
-          </Button>
         </div>
       </div>
 

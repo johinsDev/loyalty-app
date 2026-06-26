@@ -23,6 +23,9 @@ export function UrlInput({
   className,
   id,
 }: UrlInputProps) {
+  // Show the bare host/path; the protocol lives in the add-on. Pasting a full
+  // URL strips the protocol so it never doubles up.
+  const bare = (value ?? "").replace(/^https?:\/\//i, "")
   return (
     <InputGroup className={cn("h-10 rounded-xl", className)}>
       <InputGroupAddon align="inline-start">
@@ -30,8 +33,12 @@ export function UrlInput({
       </InputGroupAddon>
       <InputGroupInput
         id={id}
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
+        value={bare}
+        onChange={(e) => {
+          const stripped = e.target.value.replace(/^https?:\/\//i, "").trimStart()
+          // Always emit a complete URL (or "") so it validates with zod `.url()`.
+          onChange?.(stripped ? `https://${stripped}` : "")
+        }}
         placeholder={placeholder}
       />
     </InputGroup>

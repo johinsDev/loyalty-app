@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Input, Label, Textarea } from "@loyalty/ui";
+import { Button, Input, Label, type Tag, TagInput, Textarea } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -22,7 +22,7 @@ export function SeoSection() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [keywords, setKeywords] = useState("");
+  const [keywords, setKeywords] = useState<Tag[]>([]);
   const [ogImageUrl, setOgImageUrl] = useState<string | null>(null);
   const [seeded, setSeeded] = useState(false);
 
@@ -30,7 +30,7 @@ export function SeoSection() {
     if (data && !seeded) {
       setTitle(data.seo.title ?? "");
       setDescription(data.seo.description ?? "");
-      setKeywords((data.seo.keywords ?? []).join(", "));
+      setKeywords((data.seo.keywords ?? []).map((text, i) => ({ id: `k${i}`, text })));
       setOgImageUrl(data.seo.ogImageUrl ?? null);
       setSeeded(true);
     }
@@ -50,10 +50,7 @@ export function SeoSection() {
     update.mutate({
       seoTitle: title,
       seoDescription: description,
-      seoKeywords: keywords
-        .split(",")
-        .map((k) => k.trim())
-        .filter(Boolean),
+      seoKeywords: keywords.map((k) => k.text.trim()).filter(Boolean),
       ogImageUrl: ogImageUrl ?? "",
     });
 
@@ -83,12 +80,7 @@ export function SeoSection() {
             />
           </Field>
           <Field label={t("seo.keywords")} hint={t("seo.keywordsHint")}>
-            <Input
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              placeholder="bubble tea, boba, té"
-              className="h-10"
-            />
+            <TagInput value={keywords} onChange={setKeywords} placeholder="bubble tea, boba…" />
           </Field>
         </div>
 
@@ -121,7 +113,7 @@ function Field({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <Label className="text-xs">{label}</Label>
+        <Label className="text-sm">{label}</Label>
         {hint ? <span className="text-muted-foreground/70 text-xs font-semibold">{hint}</span> : null}
       </div>
       {children}
