@@ -157,6 +157,8 @@ export interface RedemptionHistoryItem {
   stampsSpent: number;
   pointsSpent: number;
   redeemedAt: Date;
+  /** The purchase this reward was redeemed inline within (null for QR/OTP). */
+  purchaseId: string | null;
 }
 
 export interface RedemptionHistoryView {

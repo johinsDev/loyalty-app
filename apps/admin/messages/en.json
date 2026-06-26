@@ -873,7 +873,10 @@
     "increase": "Increase",
     "removeLine": "Remove",
     "promoNotApplicable": "That promotion no longer applies. Pick another.",
-    "pointsMultiplier": "{x}× points"
+    "pointsMultiplier": "{x}× points",
+    "inlineRewardHeading": "Redeem a reward in this sale",
+    "inlineRewardNone": "No rewards available",
+    "inlineRewardError": "Couldn't redeem the reward. Check the balance."
   },
   "Admin": {
     "greeting": "Hi, {name}",

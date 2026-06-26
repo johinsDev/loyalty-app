@@ -475,14 +475,14 @@ export function ProfileScreen() {
           icon={Receipt}
           label={t("purchaseHistory")}
           sub={t("purchaseHistorySub")}
-          href="/rewards"
+          href="/compras"
           chevron
         />
         <Row
           icon={Gift}
           label={t("rewardsHistory")}
           sub={t("rewardsHistorySub")}
-          href="/rewards"
+          href="/rewards/history"
           chevron
         />
       </Section>
@@ -1269,7 +1269,7 @@ function Row({
   value?: string;
   edit?: boolean;
   chevron?: boolean;
-  href?: "/rewards" | "/store";
+  href?: "/rewards" | "/store" | "/compras" | "/rewards/history";
   onClick?: () => void;
   children?: React.ReactNode;
 }) {

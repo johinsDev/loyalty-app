@@ -5,12 +5,15 @@ import {
   promoRedemption,
   purchase,
   purchaseItem,
+  reward,
   stamp,
   STAMPS_PER_REWARD,
   WALLET_SIZE,
 } from "@loyalty/db/schema";
+import { TRPCError } from "@trpc/server";
 import { and, desc, eq, sql } from "drizzle-orm";
 
+import { redeemWithinTx } from "../rewards/redeem-tx";
 import type { PurchaseHistoryItem, WalletView } from "./schemas";
 
 export type RecordResult =
@@ -91,6 +94,13 @@ export class StampsRepository {
       unitAmountCents: number;
       currency?: string;
     }[];
+    // Optional inline reward redeem within this sale (deducted after the stamp
+    // is granted, so the just-earned stamp is spendable).
+    inlineReward?: {
+      rewardId: string;
+      currency: "stamps" | "points" | "both";
+      redeemedByUserId: string;
+    };
   }): Promise<RecordResult> {
     return this.db.transaction(async (tx) => {
       // Idempotency: a retry with the same key returns the prior result.
@@ -203,10 +213,50 @@ export class StampsRepository {
         })
         .where(eq(loyaltyCard.id, active.id))
         .returning();
+      let wallet = toView(updated[0] ?? null);
+
+      // Inline reward redeem: AFTER the stamp + card bump (so the just-earned
+      // stamp is spendable). A not-redeemable reward throws → the whole sale
+      // (purchase included) rolls back, so the cashier can retry without it.
+      if (input.inlineReward) {
+        const rwRows = await tx
+          .select()
+          .from(reward)
+          .where(
+            and(
+              eq(reward.organizationId, input.orgId),
+              eq(reward.id, input.inlineReward.rewardId),
+            ),
+          )
+          .limit(1);
+        const rw = rwRows[0];
+        if (!rw) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "reward-not-redeemable",
+          });
+        }
+        const redeemed = await redeemWithinTx(tx, {
+          orgId: input.orgId,
+          customerId: input.customerId,
+          reward: rw,
+          currency: input.inlineReward.currency,
+          claimedByUserId: input.inlineReward.redeemedByUserId,
+          purchaseId,
+        });
+        if (redeemed.kind !== "claimed") {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "reward-not-redeemable",
+          });
+        }
+        // Reflect the post-redeem spendable stamp balance in the returned wallet.
+        wallet = { ...wallet, currentStamps: redeemed.stampsBalance };
+      }
 
       return {
         kind: "recorded",
-        wallet: toView(updated[0] ?? null),
+        wallet,
         purchaseId,
       };
     });

@@ -873,7 +873,10 @@
     "increase": "Agregar",
     "removeLine": "Eliminar",
     "promoNotApplicable": "Esa promoción ya no aplica. Elige otra.",
-    "pointsMultiplier": "{x}× puntos"
+    "pointsMultiplier": "{x}× puntos",
+    "inlineRewardHeading": "Canjear recompensa en esta venta",
+    "inlineRewardNone": "No hay recompensas disponibles",
+    "inlineRewardError": "No se pudo canjear la recompensa. Revisá el saldo."
   },
   "Admin": {
     "greeting": "Hola, {name}",

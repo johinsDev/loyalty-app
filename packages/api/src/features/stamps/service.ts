@@ -66,6 +66,13 @@ export class StampsService {
       currency: input.currency,
       appliedPromoId: input.appliedPromoId ?? null,
       items: input.items,
+      inlineReward: input.inlineReward
+        ? {
+            rewardId: input.inlineReward.rewardId,
+            currency: input.inlineReward.currency,
+            redeemedByUserId: addedByUserId,
+          }
+        : undefined,
     });
 
     if (result.kind === "recorded") {

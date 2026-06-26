@@ -128,4 +128,35 @@ describe("StampsService.recordPurchase", () => {
     expect(realtime.publish).not.toHaveBeenCalled();
     expect(enqueue).not.toHaveBeenCalled();
   });
+
+  it("threads inlineReward into the repo with redeemedByUserId = staff id", async () => {
+    const { service } = build(repo);
+    await service.recordPurchase(ORG, STAFF, {
+      customerId: CUSTOMER,
+      priceCents: 1500,
+      idempotencyKey: "idem-inline-1",
+      inlineReward: { rewardId: "rw_1", currency: "stamps" },
+    });
+    expect(repo.recordPurchase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inlineReward: {
+          rewardId: "rw_1",
+          currency: "stamps",
+          redeemedByUserId: STAFF,
+        },
+      }),
+    );
+  });
+
+  it("omits inlineReward when not provided", async () => {
+    const { service } = build(repo);
+    await service.recordPurchase(ORG, STAFF, {
+      customerId: CUSTOMER,
+      priceCents: 1500,
+      idempotencyKey: "idem-inline-2",
+    });
+    expect(repo.recordPurchase).toHaveBeenCalledWith(
+      expect.objectContaining({ inlineReward: undefined }),
+    );
+  });
 });

@@ -226,7 +226,8 @@
     "claimCurrencyChoose": "How do you want to pay?",
     "claimPayingStamps": "Paying with: stamps",
     "claimPayingPoints": "Paying with: points",
-    "claimCurrencyError": "We couldn't change the payment method. Try again."
+    "claimCurrencyError": "We couldn't change the payment method. Try again.",
+    "viewPurchase": "View purchase"
   },
   "Welcome": {
     "title": "Welcome, {name}!",
@@ -552,6 +553,43 @@
     "txAdjust": "Adjustment",
     "txOther": "Activity",
     "detailPurchaseValue": "Purchase of {value}"
+  },
+  "Purchases": {
+    "title": "Your purchases",
+    "back": "Back",
+    "dateRange": "Date range",
+    "clear": "Clear",
+    "apply": "Apply",
+    "empty": "No purchases in this period.",
+    "loadingMore": "Loading more…",
+    "amountOnly": "Purchase with no item breakdown.",
+    "items": "{count, plural, one {# item} other {# items}}",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "total": "Total",
+    "stampsEarned": "STAMPS EARNED",
+    "pointsEarned": "POINTS EARNED",
+    "promoApplied": "PROMO APPLIED",
+    "rewardRedeemed": "REWARD REDEEMED",
+    "cashier": "Served by {name}",
+    "viewProduct": "View product",
+    "viewPromo": "View promo",
+    "viewReward": "View reward",
+    "orderNo": "Order {orderNo}",
+    "spentStamps": "−{count} stamps",
+    "spentPoints": "−{count} pts"
+  },
+  "StampsHistory": {
+    "title": "Stamps history",
+    "back": "Back",
+    "dateFrom": "From",
+    "dateTo": "To",
+    "dateRange": "Date range",
+    "clear": "Clear",
+    "apply": "Apply",
+    "empty": "No stamps in this period.",
+    "loadingMore": "Loading more…",
+    "on": "{date}"
   },
   "Banners": {
     "backToHome": "Back to home"
