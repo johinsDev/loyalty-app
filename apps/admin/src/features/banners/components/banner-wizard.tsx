@@ -617,7 +617,7 @@ function NotificationsPanel({ bannerId }: { bannerId: string }) {
 function BannerPreview({ form }: { form: Form }) {
   return (
     <div
-      className="relative h-44 overflow-hidden rounded-3xl shadow-sm"
+      className="preview-customer relative h-44 overflow-hidden rounded-3xl shadow-sm"
       style={{ background: form.backgroundCss }}
     >
       <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/10 to-transparent" />

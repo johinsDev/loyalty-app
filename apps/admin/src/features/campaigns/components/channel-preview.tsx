@@ -106,7 +106,7 @@ function Frame({
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div className="preview-customer">
       <div className="text-muted-foreground/70 mb-1.5 flex items-center gap-1.5 text-xs font-bold">
         <Icon className="size-3.5" />
         {label}

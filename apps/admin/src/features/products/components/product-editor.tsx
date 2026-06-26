@@ -1010,7 +1010,7 @@ function ProductPreview({
       currency: draft.currency,
     }).format(n);
   return (
-    <div className="bg-card border-border rounded-3xl border p-4 shadow-sm">
+    <div className="preview-customer bg-card border-border rounded-3xl border p-4 shadow-sm">
       <div className="bg-muted/50 grid aspect-square place-items-center rounded-2xl text-6xl">
         {draft.media[0]?.emoji ?? "🛍️"}
       </div>

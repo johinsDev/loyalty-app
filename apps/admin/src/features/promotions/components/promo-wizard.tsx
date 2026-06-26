@@ -944,7 +944,7 @@ function NotificationsPanel({ promoId }: { promoId: string }) {
 function PromoPreview({ form }: { form: Form }) {
   return (
     <div
-      className="relative h-44 w-full overflow-hidden rounded-3xl shadow-lg shadow-black/10 ring-1 ring-black/5 lg:h-52"
+      className="preview-customer relative h-44 w-full overflow-hidden rounded-3xl shadow-lg shadow-black/10 ring-1 ring-black/5 lg:h-52"
       style={{ background: form.backgroundCss }}
     >
       {form.mainImageUrl ? (
