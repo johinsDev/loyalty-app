@@ -27,9 +27,15 @@ export const routing = defineRouting({
     "/promos/[slug]": { es: "/promociones/[slug]", en: "/promos/[slug]" },
     "/card": { es: "/tarjeta", en: "/card" },
     "/history": { es: "/historial", en: "/history" },
+    "/compras": { es: "/compras", en: "/purchases" },
+    "/compras/[id]": { es: "/compras/[id]", en: "/purchases/[id]" },
     "/points/history": {
       es: "/puntos/historial",
       en: "/points/history",
+    },
+    "/stamps/history": {
+      es: "/sellos/historial",
+      en: "/stamps/history",
     },
     "/notifications": { es: "/notificaciones", en: "/notifications" },
     "/sign-in": { es: "/iniciar-sesion", en: "/sign-in" },
