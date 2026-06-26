@@ -879,6 +879,7 @@
     "inlineRewardError": "No se pudo canjear la recompensa. Revisá el saldo."
   },
   "Admin": {
+    "menu": "Menú",
     "greeting": "Hola, {name}",
     "storesMembers": "{stores} tiendas · {members} socios",
     "cashierMode": "Modo caja",
@@ -1385,7 +1386,17 @@
       "color": "Color de marca",
       "preview": "Vista previa",
       "imgUpload": "Arrastra una imagen o haz clic",
-      "imgRemove": "Quitar"
+      "imgRemove": "Quitar",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Bubble tea & más",
+      "social": "Redes sociales",
+      "terms": "Términos y condiciones (PDF)",
+      "logoUpload": "Subir logo",
+      "logoChange": "Cambiar",
+      "logoCrop": "Recortar logo",
+      "logoCropConfirm": "Usar logo",
+      "logoUploading": "Subiendo…",
+      "error": "No se pudo guardar. Inténtalo de nuevo."
     },
     "hours": {
       "title": "Horarios y ubicación",
@@ -1499,7 +1510,7 @@
       }
     },
     "seo": {
-      "title": "SEO y favicon",
+      "title": "SEO",
       "desc": "Cómo aparece tu app al compartirla y en buscadores.",
       "metaTitle": "Título (meta title)",
       "metaTitlePlaceholder": "T4 Lovers — Bubble tea & más",
@@ -1517,7 +1528,8 @@
       "tabPreview": "Pestaña del navegador",
       "searchPreview": "Resultado de búsqueda",
       "imgUpload": "Arrastra una imagen o haz clic",
-      "imgRemove": "Quitar"
+      "imgRemove": "Quitar",
+      "keywordsHint": "Separadas por coma"
     },
     "localization": {
       "title": "Idioma y moneda",
@@ -1528,7 +1540,8 @@
       "defaultCurrency": "Moneda por defecto",
       "error": "No se pudo guardar",
       "defaultMustBeEnabled": "El valor por defecto debe estar habilitado"
-    }
+    },
+    "cancel": "Cancelar"
   },
   "Purchases": {
     "title": "Compras",
@@ -1601,7 +1614,21 @@
     "fieldHours": "Horario",
     "hoursPlaceholder": "10:00–21:00",
     "hoursFrom": "Desde",
-    "hoursTo": "Hasta"
+    "hoursTo": "Hasta",
+    "primary": "Principal",
+    "published": "Publicada",
+    "unpublished": "Oculta",
+    "makePrimary": "Hacer principal",
+    "saveError": "No se pudo guardar. Inténtalo de nuevo.",
+    "fieldPublished": "Visible para clientes",
+    "publishedHint": "Muestra esta sucursal en la app.",
+    "scopeTitle": "Billetera de fidelidad",
+    "scopeHint": "Sellos/puntos compartidos entre tiendas, o por tienda (enforcement pronto).",
+    "scopeSaved": "Actualizado",
+    "scope": {
+      "org": "Compartida entre tiendas",
+      "store": "Por tienda"
+    }
   },
   "Employees": {
     "title": "Empleados",

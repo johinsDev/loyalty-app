@@ -339,7 +339,7 @@ function CustomerPreview({
       .join("")
       .toUpperCase() || "T4";
   return (
-    <div className="bg-card border-border rounded-3xl border p-5 shadow-sm">
+    <div className="preview-customer bg-card border-border rounded-3xl border p-5 shadow-sm">
       <div className="flex items-center gap-3">
         <span className="bg-primary/10 text-primary font-display grid size-12 flex-none place-items-center rounded-2xl text-lg font-bold">
           {initials}

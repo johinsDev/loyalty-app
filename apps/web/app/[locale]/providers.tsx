@@ -7,6 +7,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { type ReactNode, useState } from "react";
 
+import { type Branding, BrandingProvider } from "@/lib/branding";
 import { CurrencyProvider } from "@/lib/currency";
 import { TRPCProvider } from "@/lib/trpc/client";
 import { makeQueryClient } from "@/lib/trpc/query-client";
@@ -33,9 +34,11 @@ type Props = {
    * (which logs an `ENVIRONMENT_FALLBACK` error per call).
    */
   now: Date;
+  /** Org branding fetched server-side (shared via context, no client fetch). */
+  branding: Branding | null;
 };
 
-export const Providers = ({ children, locale, messages, now }: Props) => {
+export const Providers = ({ children, locale, messages, now, branding }: Props) => {
   const [queryClient] = useState(makeQueryClient);
 
   return (
@@ -49,6 +52,7 @@ export const Providers = ({ children, locale, messages, now }: Props) => {
         <QueryClientProvider client={queryClient}>
           <TRPCProvider queryClient={queryClient}>
             <CurrencyProvider>
+            <BrandingProvider branding={branding}>
             <AnalyticsProvider
               provider={POSTHOG_KEY ? "posthog" : "null"}
               apiKey={POSTHOG_KEY}
@@ -65,6 +69,7 @@ export const Providers = ({ children, locale, messages, now }: Props) => {
                 {children}
               </FlagsProvider>
             </AnalyticsProvider>
+            </BrandingProvider>
             </CurrencyProvider>
           </TRPCProvider>
         </QueryClientProvider>

@@ -13,6 +13,7 @@ import { NotificationsOnEntry } from "@/features/notifications/components/notifi
 import { QrDrawer } from "@/features/qr/components/qr-drawer";
 import { RealtimeNotifications } from "@/features/realtime/components/realtime-notifications";
 import { routing } from "@/i18n/routing";
+import { trpc } from "@/lib/trpc/server";
 
 import { Providers } from "./providers";
 
@@ -43,9 +44,10 @@ export default async function LocaleLayout({ children, modal, params }: Props) {
   }
   setRequestLocale(locale);
   const messages = await getMessages();
+  const branding = await (await trpc({ locale })).settings.branding().catch(() => null);
 
   return (
-    <Providers locale={locale} messages={messages} now={new Date()}>
+    <Providers locale={locale} messages={messages} now={new Date()} branding={branding}>
       <AppChrome />
       {children}
       {modal}

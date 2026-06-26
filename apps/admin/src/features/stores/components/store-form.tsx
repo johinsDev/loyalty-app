@@ -6,39 +6,117 @@ import {
   Input,
   InputPhone,
   Label,
+  Switch,
   TimeInput,
 } from "@loyalty/ui";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { useRouter } from "@/i18n/navigation";
+import { useTRPC } from "@/lib/trpc/client";
 
-import { emptyStoreDraft, getStoreDraft, type StoreDraft } from "../data";
+type Draft = {
+  name: string;
+  address: string;
+  lat?: number;
+  lng?: number;
+  placeId?: string;
+  phone: string;
+  hoursFrom: string;
+  hoursTo: string;
+  isPublished: boolean;
+};
+
+const EMPTY: Draft = {
+  name: "",
+  address: "",
+  phone: "",
+  hoursFrom: "10:00",
+  hoursTo: "21:00",
+  isPublished: true,
+};
+
+/** Uniform weekly hours from a single open/close (per-day editor = fast-follow). */
+function buildHours(
+  from: string,
+  to: string,
+): Record<string, { open: string; close: string; closed: boolean }> {
+  return Object.fromEntries(
+    Array.from({ length: 7 }, (_, d) => [String(d), { open: from, close: to, closed: false }]),
+  );
+}
 
 /**
- * Create / edit a store on its own page — a single `<form onSubmit>` so Enter
- * submits. Address uses `AddressAutocomplete`, phone uses `InputPhone`, hours use
- * two `TimeInput`s. Design-first: submit toasts + returns to the list; the seam
- * is a tRPC mutation later.
+ * Create / edit a store — `<form onSubmit>` so Enter submits. Address uses the
+ * Places autocomplete (captures lat/lng + placeId → the server generates a Static
+ * Maps shot), phone uses `InputPhone`, hours a single open/close. Wired to
+ * `stores.create` / `stores.update`.
  */
 export function StoreForm({ id }: { id?: string }) {
   const t = useTranslations("Stores");
   const router = useRouter();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const isEdit = id !== undefined;
-  const [draft, setDraft] = useState<StoreDraft>(
-    id ? getStoreDraft(id) : emptyStoreDraft,
-  );
 
-  const set = (patch: Partial<StoreDraft>) =>
-    setDraft((prev) => ({ ...prev, ...patch }));
+  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [seeded, setSeeded] = useState(false);
+  const set = (patch: Partial<Draft>) => setDraft((prev) => ({ ...prev, ...patch }));
+
+  const { data } = useQuery({
+    ...trpc.stores.get.queryOptions({ id: id ?? "" }),
+    enabled: isEdit,
+  });
+  useEffect(() => {
+    if (!data || seeded) return;
+    const h = (data.hours ?? {}) as Record<string, { open: string; close: string }>;
+    const first = h["1"] ?? h["0"];
+    setDraft({
+      name: data.name,
+      address: data.address ?? "",
+      lat: data.lat ?? undefined,
+      lng: data.lng ?? undefined,
+      placeId: data.placeId ?? undefined,
+      phone: data.phone ?? "",
+      hoursFrom: first?.open ?? "10:00",
+      hoursTo: first?.close ?? "21:00",
+      isPublished: data.isPublished,
+    });
+    setSeeded(true);
+  }, [data, seeded]);
+
+  const invalidate = () => queryClient.invalidateQueries(trpc.stores.list.queryFilter());
+  const create = useMutation(trpc.stores.create.mutationOptions());
+  const update = useMutation(trpc.stores.update.mutationOptions());
+  const busy = create.isPending || update.isPending;
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const name = draft.name.trim() || t("namePlaceholder");
-    toast.success(isEdit ? t("updated", { name }) : t("created", { name }));
-    router.push("/stores");
+    const payload = {
+      name: draft.name.trim() || t("namePlaceholder"),
+      address: draft.address || undefined,
+      lat: draft.lat,
+      lng: draft.lng,
+      placeId: draft.placeId,
+      phone: draft.phone || undefined,
+      hours: buildHours(draft.hoursFrom, draft.hoursTo),
+      isPublished: draft.isPublished,
+    };
+    const opts = {
+      onSuccess: async () => {
+        await invalidate();
+        toast.success(
+          isEdit ? t("updated", { name: payload.name }) : t("created", { name: payload.name }),
+        );
+        router.push("/stores");
+      },
+      onError: () => toast.error(t("saveError")),
+    };
+    if (isEdit) update.mutate({ id, ...payload }, opts);
+    else create.mutate(payload, opts);
   };
 
   return (
@@ -77,6 +155,9 @@ export function StoreForm({ id }: { id?: string }) {
           <AddressAutocomplete
             value={draft.address}
             onValueChange={(v) => set({ address: v })}
+            onSelect={(p) =>
+              set({ address: p.description, lat: p.lat, lng: p.lng, placeId: p.placeId })
+            }
           />
         </div>
 
@@ -91,23 +172,25 @@ export function StoreForm({ id }: { id?: string }) {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="store-hours">{t("fieldHours")}</Label>
+          <Label>{t("fieldHours")}</Label>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">{t("hoursFrom")}</Label>
-              <TimeInput
-                value={draft.hoursFrom}
-                onChange={(v) => set({ hoursFrom: v })}
-              />
+              <TimeInput value={draft.hoursFrom} onChange={(v) => set({ hoursFrom: v })} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">{t("hoursTo")}</Label>
-              <TimeInput
-                value={draft.hoursTo}
-                onChange={(v) => set({ hoursTo: v })}
-              />
+              <TimeInput value={draft.hoursTo} onChange={(v) => set({ hoursTo: v })} />
             </div>
           </div>
+        </div>
+
+        <div className="border-border flex items-center justify-between rounded-2xl border p-3">
+          <div>
+            <p className="text-sm font-semibold">{t("fieldPublished")}</p>
+            <p className="text-muted-foreground text-xs">{t("publishedHint")}</p>
+          </div>
+          <Switch checked={draft.isPublished} onCheckedChange={(v) => set({ isPublished: v })} />
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
@@ -119,7 +202,7 @@ export function StoreForm({ id }: { id?: string }) {
           >
             {t("cancel")}
           </Button>
-          <Button type="submit" className="h-10 rounded-xl font-semibold">
+          <Button type="submit" className="h-10 rounded-xl font-semibold" disabled={busy}>
             {isEdit ? t("saveChanges") : t("save")}
           </Button>
         </div>

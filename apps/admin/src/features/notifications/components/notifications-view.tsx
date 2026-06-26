@@ -273,7 +273,7 @@ function PushPreview({
   placeholder: string;
 }) {
   return (
-    <div className="bg-card border-border rounded-3xl border p-4 shadow-sm">
+    <div className="preview-customer bg-card border-border rounded-3xl border p-4 shadow-sm">
       <div className="bg-muted/40 border-border flex items-start gap-3 rounded-2xl border p-3.5">
         <span className="bg-primary/10 text-primary grid size-8 flex-none place-items-center rounded-full">
           <Bell className="size-4" />

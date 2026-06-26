@@ -1,6 +1,6 @@
 import { CacheManager } from "@loyalty/cache";
 import type { db as Db } from "@loyalty/db";
-import { organizationSettings } from "@loyalty/db/schema";
+import { organization, organizationSettings } from "@loyalty/db/schema";
 import { eq } from "drizzle-orm";
 
 // v1 supported sets. Enabled values are clamped to these in the settings service.
@@ -61,6 +61,64 @@ export function getLocalization(db: typeof Db, orgId: string): Promise<Localizat
 
 export async function invalidateLocalization(orgId: string): Promise<void> {
   await cache.delete(key(orgId));
+}
+
+/** Org branding (name/logo/color/social/T&C/SEO + loyalty scope) — drives the
+ *  customer app theme + store profile. Cached; consumed at SSR. */
+export interface Branding {
+  name: string;
+  description: string | null;
+  logoUrl: string | null;
+  brandColor: string | null;
+  socialLinks: Record<string, string>;
+  termsPdfUrl: string | null;
+  loyaltyScope: string;
+  seo: {
+    title: string | null;
+    description: string | null;
+    keywords: string[];
+    ogImageUrl: string | null;
+  };
+}
+
+const brandingKey = (orgId: string) => `org-branding:${orgId}`;
+
+export function getBranding(db: typeof Db, orgId: string): Promise<Branding> {
+  return cache.getOrSet(
+    brandingKey(orgId),
+    async () => {
+      const [orgRow] = await db
+        .select({ name: organization.name, logo: organization.logo })
+        .from(organization)
+        .where(eq(organization.id, orgId))
+        .limit(1);
+      const [s] = await db
+        .select()
+        .from(organizationSettings)
+        .where(eq(organizationSettings.organizationId, orgId))
+        .limit(1);
+      return {
+        name: orgRow?.name ?? "",
+        description: s?.description ?? null,
+        logoUrl: orgRow?.logo ?? null,
+        brandColor: s?.brandColor ?? null,
+        socialLinks: (s?.socialLinks ?? {}) as Record<string, string>,
+        termsPdfUrl: s?.termsPdfUrl ?? null,
+        loyaltyScope: s?.loyaltyScope ?? "org",
+        seo: {
+          title: s?.seoTitle ?? null,
+          description: s?.seoDescription ?? null,
+          keywords: s?.seoKeywords ?? [],
+          ogImageUrl: s?.ogImageUrl ?? null,
+        },
+      };
+    },
+    TTL_SECONDS,
+  );
+}
+
+export async function invalidateBranding(orgId: string): Promise<void> {
+  await cache.delete(brandingKey(orgId));
 }
 
 /** Resolve the active locale/currency from request headers, clamped to what the

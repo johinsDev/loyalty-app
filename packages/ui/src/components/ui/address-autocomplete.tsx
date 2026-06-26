@@ -4,11 +4,13 @@ import * as React from "react"
 import { MapPin } from "lucide-react"
 
 import { cn } from "../../cn"
-import { Popover, PopoverContent, PopoverTrigger } from "./popover"
 
 export interface AddressSuggestion {
   description: string
   placeId?: string
+  /** Filled on selection via Place Details (when a key + placeId are present). */
+  lat?: number
+  lng?: number
 }
 
 export interface AddressAutocompleteProps {
@@ -22,6 +24,27 @@ export interface AddressAutocompleteProps {
 
 const PLACES_AUTOCOMPLETE_URL =
   "https://places.googleapis.com/v1/places:autocomplete"
+const PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
+
+/** Resolve a placeId to its lat/lng via Place Details (best-effort). */
+async function fetchPlaceLocation(
+  placeId: string,
+  key: string,
+): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const res = await fetch(`${PLACE_DETAILS_URL}${placeId}`, {
+      headers: { "X-Goog-Api-Key": key, "X-Goog-FieldMask": "location" },
+    })
+    const data = (await res.json()) as {
+      location?: { latitude?: number; longitude?: number }
+    }
+    const lat = data.location?.latitude
+    const lng = data.location?.longitude
+    return lat != null && lng != null ? { lat, lng } : null
+  } catch {
+    return null
+  }
+}
 
 interface PlacePrediction {
   placePrediction?: {
@@ -92,57 +115,57 @@ export function AddressAutocomplete({
     }
   }, [value, effectiveKey])
 
-  function handleSelect(place: AddressSuggestion) {
+  async function handleSelect(place: AddressSuggestion) {
     skipNextFetch.current = true
     onValueChange(place.description)
-    onSelect?.(place)
     setSuggestions([])
     setOpen(false)
+    const loc =
+      place.placeId && effectiveKey
+        ? await fetchPlaceLocation(place.placeId, effectiveKey)
+        : null
+    onSelect?.(loc ? { ...place, ...loc } : place)
   }
 
-  const input = (
+  const showDropdown = Boolean(effectiveKey) && open && suggestions.length > 0
+
+  // Full-width suggestions dropdown anchored to the input — a plain absolutely
+  // positioned list (no popover positioner) so it always matches the input width.
+  return (
     <div className={cn("relative w-full", className)}>
-      <MapPin className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+      <MapPin className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
       <input
         type="text"
         value={value}
         onChange={(e) => onValueChange(e.target.value)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => window.setTimeout(() => setOpen(false), 120)}
         placeholder={placeholder}
-        className="h-10 w-full min-w-0 rounded-xl border border-input bg-input/30 pr-4 pl-9 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+        className="h-10 w-full min-w-0 rounded-xl border border-input bg-transparent pr-4 pl-9 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
       />
-    </div>
-  )
-
-  // Without a key we act as a plain text input (usable in design / Storybook).
-  if (!effectiveKey) {
-    return input
-  }
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<div>{input}</div>} />
-      <PopoverContent
-        align="start"
-        sideOffset={4}
-        className="w-(--anchor-width) gap-0 p-1"
-        // Keep focus in the input when the listbox opens.
-        initialFocus={false}
-      >
-        <ul role="listbox" className="flex flex-col">
+      {showDropdown ? (
+        <ul
+          role="listbox"
+          className="bg-popover text-popover-foreground absolute top-full left-0 z-50 mt-1 flex w-full flex-col gap-0.5 rounded-xl p-1 shadow-md ring-1 ring-foreground/10"
+        >
           {suggestions.map((s) => (
             <li key={s.placeId ?? s.description} role="option" aria-selected={false}>
               <button
                 type="button"
-                onClick={() => handleSelect(s)}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                // mousedown fires before the input's blur, so the select isn't lost.
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  void handleSelect(s)
+                }}
+                className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors"
               >
-                <MapPin className="size-4 shrink-0 text-muted-foreground" />
+                <MapPin className="text-muted-foreground size-4 shrink-0" />
                 <span className="truncate">{s.description}</span>
               </button>
             </li>
           ))}
         </ul>
-      </PopoverContent>
-    </Popover>
+      ) : null}
+    </div>
   )
 }

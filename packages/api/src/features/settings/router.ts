@@ -3,7 +3,12 @@ import { TRPCError } from "@trpc/server";
 
 import { managerProcedure, publicProcedure, router } from "../../trpc";
 import { SettingsRepository } from "./repository";
-import { updateLocalizationInputSchema } from "./schemas";
+import {
+  setLoyaltyScopeInputSchema,
+  updateBrandingInputSchema,
+  updateLocalizationInputSchema,
+  updateSeoInputSchema,
+} from "./schemas";
 import { SettingsService } from "./service";
 
 function makeService(db: typeof Db): SettingsService {
@@ -19,8 +24,9 @@ async function requireOrg(): Promise<string> {
 }
 
 /**
- * Org settings. `localization` is public (the customer app reads it to gate the
- * locale/currency switchers); editing requires a manager.
+ * Org settings. `localization` + `branding` are public (the customer app reads
+ * them to gate the locale/currency switchers and to theme + show the store
+ * profile); editing requires a manager.
  */
 export const settingsRouter = router({
   localization: publicProcedure.query(async ({ ctx }) =>
@@ -30,5 +36,24 @@ export const settingsRouter = router({
     .input(updateLocalizationInputSchema)
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).updateLocalization(await requireOrg(), input),
+    ),
+
+  branding: publicProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).branding(await orgId()),
+  ),
+  updateBranding: managerProcedure
+    .input(updateBrandingInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).updateBranding(await requireOrg(), input),
+    ),
+  updateSeo: managerProcedure
+    .input(updateSeoInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).updateSeo(await requireOrg(), input),
+    ),
+  setLoyaltyScope: managerProcedure
+    .input(setLoyaltyScopeInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).setLoyaltyScope(await requireOrg(), input),
     ),
 });

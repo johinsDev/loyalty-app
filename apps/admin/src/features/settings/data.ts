@@ -23,49 +23,8 @@ export const SECTIONS: SettingsSection[] = [
   "integrations",
 ];
 
-// ── Brand ───────────────────────────────────────────────────────────────────
-export type Brand = {
-  name: string;
-  tagline: string;
-  logoEmoji: string;
-  color: string;
-};
-export const brand: Brand = {
-  name: "T4 Lovers",
-  tagline: "Bubble tea & más",
-  logoEmoji: "🧋",
-  color: "#1BAD9D",
-};
-export const BRAND_COLORS = [
-  "#1BAD9D",
-  "#7c5cff",
-  "#e0467c",
-  "#f0a868",
-  "#3b73d6",
-  "#1f9d68",
-];
-export const BRAND_EMOJIS = ["🧋", "🍵", "🧁", "⭐", "🫧", "🌿"];
-
-// ── SEO & favicon ─────────────────────────────────────────────────────────────
-export type Seo = {
-  metaTitle: string;
-  metaDescription: string;
-  keywords: string[];
-  /** Emoji or an uploaded image (data URL) — same value model as IconPicker. */
-  favicon: string;
-  /** "" or an uploaded image as a CSS `url(...)` background. */
-  ogImage: string;
-  canonicalUrl: string;
-};
-export const seo: Seo = {
-  metaTitle: "T4 Lovers — Bubble tea & más",
-  metaDescription:
-    "Suma sellos en cada compra y canjea bubble teas gratis, toppings y más.",
-  keywords: ["bubble tea", "lealtad", "recompensas"],
-  favicon: "🧋",
-  ogImage: "",
-  canonicalUrl: "https://t4lovers.app",
-};
+// Brand + SEO are now wired to real data (`settings.branding` / `settings.seo`),
+// so their mock constants were removed. The sections below stay design-first.
 
 // ── Hours & location ────────────────────────────────────────────────────────
 export type DayHours = {

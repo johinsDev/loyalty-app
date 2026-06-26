@@ -173,7 +173,7 @@ function RewardPreview({
 }) {
   return (
     <div
-      className="rounded-3xl p-5 text-white shadow-lg"
+      className="preview-customer rounded-3xl p-5 text-white shadow-lg"
       style={{ background: draft.bg }}
     >
       <div className="grid size-14 place-items-center overflow-hidden rounded-2xl bg-white/15 text-3xl">

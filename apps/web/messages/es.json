@@ -250,7 +250,9 @@
     "call": "Llamar",
     "viewMap": "Ver en mapa",
     "directions": "Cómo llegar",
-    "mapTitle": "Mapa de {name}"
+    "mapTitle": "Mapa de {name}",
+    "empty": "Aún no hay tiendas.",
+    "emptyHint": "Agrega una sucursal en el admin para mostrarla aquí."
   },
   "Menu": {
     "title": "Menú",

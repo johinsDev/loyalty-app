@@ -24,6 +24,7 @@
     "./features/banners/schemas": "./src/features/banners/schemas.ts",
     "./features/settings": "./src/features/settings/index.ts",
     "./features/storage": "./src/features/storage/index.ts",
+    "./features/stores": "./src/features/stores/index.ts",
     "./features/promotions": "./src/features/promotions/index.ts",
     "./features/promotions/schemas": "./src/features/promotions/schemas.ts"
   },

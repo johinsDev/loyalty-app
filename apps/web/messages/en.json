@@ -250,7 +250,9 @@
     "call": "Call",
     "viewMap": "View on map",
     "directions": "Get directions",
-    "mapTitle": "Map of {name}"
+    "mapTitle": "Map of {name}",
+    "empty": "No stores yet.",
+    "emptyHint": "Add a location in the admin to show it here."
   },
   "Menu": {
     "title": "Menu",
