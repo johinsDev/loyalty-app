@@ -113,12 +113,12 @@
 
 [data-slot="select-content"] {
   border-radius: var(--radius-2xl);
-  padding: 0.625rem;
+  padding: 0.4375rem;
 }
 
 [data-slot="select-item"] {
   border-radius: var(--radius-4xl);
-  padding-block: 0.625rem;
+  padding-block: 0.5rem;
 }
 
 /* Customer-facing preview islands inside the admin (wizard live previews)
