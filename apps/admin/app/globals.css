@@ -145,6 +145,44 @@
   border-radius: 9999px;
 }
 
+/* Luma cards: extra-soft corners. (overflow-hidden clips images to match.) */
+[data-slot="card"] {
+  border-radius: var(--radius-4xl);
+}
+
+/* Luma checkbox: tiny radius on a muted fill, borderless until checked/focused
+   (checked keeps its primary fill from the component). */
+[data-slot="checkbox"] {
+  border-radius: 5px;
+}
+
+[data-slot="checkbox"]:not([data-checked]):not(:focus-visible) {
+  border-color: transparent;
+  background-color: color-mix(in oklab, var(--input) 90%, transparent);
+}
+
+/* Luma phone field: the country chip + number read as one filled pill,
+   borderless at rest (focus ring / expanded / invalid borders preserved). */
+[data-slot="input-phone-country"],
+[data-slot="input-phone-number"] {
+  background-color: color-mix(in oklab, var(--input) 50%, transparent);
+}
+
+[data-slot="input-phone-country"] {
+  border-top-left-radius: var(--radius-3xl);
+  border-bottom-left-radius: var(--radius-3xl);
+}
+
+[data-slot="input-phone-number"] {
+  border-top-right-radius: var(--radius-3xl);
+  border-bottom-right-radius: var(--radius-3xl);
+}
+
+[data-slot="input-phone-country"]:not(:focus-visible):not([aria-expanded="true"]),
+[data-slot="input-phone-number"]:not(:focus-visible):not([aria-invalid="true"]) {
+  border-color: transparent;
+}
+
 /* Customer-facing preview islands inside the admin (wizard live previews)
    mirror the customer web look, so reset the radius scale back to the shared
    @loyalty/ui (additive) values and revert the pill button within them. */
