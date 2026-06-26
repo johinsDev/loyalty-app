@@ -9,6 +9,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "./popover"
 export interface AddressSuggestion {
   description: string
   placeId?: string
+  /** Filled on selection via Place Details (when a key + placeId are present). */
+  lat?: number
+  lng?: number
 }
 
 export interface AddressAutocompleteProps {
@@ -22,6 +25,27 @@ export interface AddressAutocompleteProps {
 
 const PLACES_AUTOCOMPLETE_URL =
   "https://places.googleapis.com/v1/places:autocomplete"
+const PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
+
+/** Resolve a placeId to its lat/lng via Place Details (best-effort). */
+async function fetchPlaceLocation(
+  placeId: string,
+  key: string,
+): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const res = await fetch(`${PLACE_DETAILS_URL}${placeId}`, {
+      headers: { "X-Goog-Api-Key": key, "X-Goog-FieldMask": "location" },
+    })
+    const data = (await res.json()) as {
+      location?: { latitude?: number; longitude?: number }
+    }
+    const lat = data.location?.latitude
+    const lng = data.location?.longitude
+    return lat != null && lng != null ? { lat, lng } : null
+  } catch {
+    return null
+  }
+}
 
 interface PlacePrediction {
   placePrediction?: {
@@ -92,12 +116,16 @@ export function AddressAutocomplete({
     }
   }, [value, effectiveKey])
 
-  function handleSelect(place: AddressSuggestion) {
+  async function handleSelect(place: AddressSuggestion) {
     skipNextFetch.current = true
     onValueChange(place.description)
-    onSelect?.(place)
     setSuggestions([])
     setOpen(false)
+    const loc =
+      place.placeId && effectiveKey
+        ? await fetchPlaceLocation(place.placeId, effectiveKey)
+        : null
+    onSelect?.({ ...place, ...(loc ?? {}) })
   }
 
   const input = (
@@ -133,7 +161,7 @@ export function AddressAutocomplete({
             <li key={s.placeId ?? s.description} role="option" aria-selected={false}>
               <button
                 type="button"
-                onClick={() => handleSelect(s)}
+                onClick={() => void handleSelect(s)}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
               >
                 <MapPin className="size-4 shrink-0 text-muted-foreground" />

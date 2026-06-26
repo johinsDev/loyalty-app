@@ -3,11 +3,20 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import { organization } from "./auth";
 
-// Per-org localization config: the default locale + currency and which extra
-// ones the store enables. When more than one is enabled, the customer app shows
-// the locale/currency switchers; missing translations/prices fall back to the
-// default. v1 supports es/en + COP/USD only (validated in the service). This is
-// also the future home for the rest of the admin Settings.
+/** Brand social links (only filled keys are shown in the customer app). */
+export type SocialLinks = {
+  instagram?: string;
+  whatsapp?: string;
+  facebook?: string;
+  tiktok?: string;
+  x?: string;
+  website?: string;
+};
+
+// Per-org localization + branding config (1:1 with the org). Started as the
+// locale/currency config and is now the home for the rest of the admin Settings:
+// brand (description, color, social, terms), SEO, and the loyalty wallet scope.
+// `name` + `logo` stay on the `organization` row; everything else lives here.
 export const organizationSettings = sqliteTable("organization_settings", {
   id: text("id")
     .primaryKey()
@@ -26,6 +35,23 @@ export const organizationSettings = sqliteTable("organization_settings", {
     .$type<string[]>()
     .notNull()
     .$defaultFn(() => ["COP"]),
+
+  // ── Branding (drives the customer app theme + store profile) ──────────────
+  description: text("description"),
+  brandColor: text("brand_color"), // hex, e.g. "#1BAD9D" → re-themes the app
+  socialLinks: text("social_links", { mode: "json" }).$type<SocialLinks>(),
+  termsPdfUrl: text("terms_pdf_url"), // uploaded T&C (R2)
+
+  // Wallet scope across stores: "org" = shared (today), "store" = per-branch
+  // (enforcement deferred — see docs/store-config.md backlog).
+  loyaltyScope: text("loyalty_scope").notNull().default("org"),
+
+  // ── SEO (consumed by the apps' root metadata) ─────────────────────────────
+  seoTitle: text("seo_title"),
+  seoDescription: text("seo_description"),
+  seoKeywords: text("seo_keywords", { mode: "json" }).$type<string[]>(),
+  ogImageUrl: text("og_image_url"),
+
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

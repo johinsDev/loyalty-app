@@ -1382,7 +1382,17 @@
       "color": "Brand color",
       "preview": "Preview",
       "imgUpload": "Drag an image or click",
-      "imgRemove": "Remove"
+      "imgRemove": "Remove",
+      "description": "Description",
+      "descriptionPlaceholder": "Bubble tea & more",
+      "social": "Social links",
+      "terms": "Terms & Conditions (PDF)",
+      "logoUpload": "Upload logo",
+      "logoChange": "Change",
+      "logoCrop": "Crop logo",
+      "logoCropConfirm": "Use logo",
+      "logoUploading": "Uploading…",
+      "error": "Couldn't save. Try again."
     },
     "hours": {
       "title": "Hours & location",
@@ -1514,7 +1524,8 @@
       "tabPreview": "Browser tab",
       "searchPreview": "Search result",
       "imgUpload": "Drag an image or click",
-      "imgRemove": "Remove"
+      "imgRemove": "Remove",
+      "keywordsHint": "Comma-separated"
     },
     "localization": {
       "title": "Language & currency",
@@ -1525,7 +1536,8 @@
       "defaultCurrency": "Default currency",
       "error": "Could not save",
       "defaultMustBeEnabled": "The default must be enabled"
-    }
+    },
+    "cancel": "Cancel"
   },
   "Purchases": {
     "title": "Purchases",
@@ -1598,7 +1610,21 @@
     "fieldHours": "Hours",
     "hoursPlaceholder": "10:00–21:00",
     "hoursFrom": "From",
-    "hoursTo": "To"
+    "hoursTo": "To",
+    "primary": "Primary",
+    "published": "Published",
+    "unpublished": "Hidden",
+    "makePrimary": "Make primary",
+    "saveError": "Couldn't save. Try again.",
+    "fieldPublished": "Visible to customers",
+    "publishedHint": "Show this branch in the app.",
+    "scopeTitle": "Loyalty wallet",
+    "scopeHint": "Stamps/points shared across stores, or per store (enforcement soon).",
+    "scopeSaved": "Updated",
+    "scope": {
+      "org": "Shared across stores",
+      "store": "Per store"
+    }
   },
   "Employees": {
     "title": "Employees",

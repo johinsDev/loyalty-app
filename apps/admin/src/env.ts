@@ -60,9 +60,13 @@ export const env = createEnv({
     // endpoint (webp/avif via `cf.image`). Loader no-ops when unset. See
     // `.claude/skills/image-loader/SKILL.md`.
     NEXT_PUBLIC_IMAGE_CDN_HOST: z.string().optional(),
+    // Google Maps key (HTTP-referrer restricted) for Places address
+    // autocomplete in the store editor. Unset → the field is a plain input.
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z.string().optional(),
   },
   experimental__runtimeEnv: {
     ...process.env,
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_PARTYKIT_HOST: process.env.NEXT_PUBLIC_PARTYKIT_HOST,

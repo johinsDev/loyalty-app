@@ -16,6 +16,7 @@ import { streaksRouter } from "../features/streaks";
 import { shortlinksRouter } from "../features/shortlinks";
 import { smsOutboxRouter } from "../features/sms-outbox";
 import { storageRouter } from "../features/storage";
+import { storesRouter } from "../features/stores";
 import { whatsappOutboxRouter } from "../features/whatsapp-outbox";
 import { router } from "../trpc";
 import { authRouter } from "./auth";
@@ -44,6 +45,7 @@ export const appRouter = router({
   shortlinks: shortlinksRouter,
   smsOutbox: smsOutboxRouter,
   storage: storageRouter,
+  stores: storesRouter,
   whatsappOutbox: whatsappOutboxRouter,
 });
 

@@ -1,12 +1,23 @@
-import { ThemeProvider } from "@loyalty/ui";
+import { brandThemeCss, ThemeProvider } from "@loyalty/ui";
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { routing } from "@/i18n/routing";
+import { trpc } from "@/lib/trpc/server";
 
 import "./globals.css";
+
+/** Org brand color (cached, public). Null when unreachable/unset → defaults. */
+async function brandColor(): Promise<string | null> {
+  try {
+    const branding = await (await trpc()).settings.branding();
+    return branding.brandColor ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -31,6 +42,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     ? cookieLocale
     : routing.defaultLocale;
 
+  const themeCss = brandThemeCss(await brandColor());
+
   return (
     <html
       lang={lang}
@@ -38,6 +51,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       suppressHydrationWarning
     >
       <body>
+        {themeCss ? (
+          <style id="brand-theme" dangerouslySetInnerHTML={{ __html: themeCss }} />
+        ) : null}
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
