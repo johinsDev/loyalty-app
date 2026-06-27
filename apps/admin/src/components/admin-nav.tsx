@@ -37,6 +37,7 @@ import {
   Users,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { NotificationsInbox } from "@/components/notifications-inbox";
@@ -264,11 +265,18 @@ function SubmenuItem({
   onNavigate?: () => void;
 }) {
   const t = useTranslations("Nav");
-  const open = item.sub!.some((s) => active(pathname, s.href));
+  const isActive = item.sub!.some((s) => active(pathname, s.href));
+  // Controlled: a derived `defaultOpen` would change as the route changes while
+  // the sidebar stays mounted, which Base UI warns about. Open on mount/whenever
+  // the active route lands inside this submenu; let the user collapse manually.
+  const [open, setOpen] = useState(isActive);
+  useEffect(() => {
+    if (isActive) setOpen(true);
+  }, [isActive]);
   return (
-    <Collapsible defaultOpen={open}>
+    <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger
-        className={`${ROW} group/sm w-full ${open ? "text-foreground" : ROW_IDLE}`}
+        className={`${ROW} group/sm w-full ${isActive ? "text-foreground" : ROW_IDLE}`}
       >
         <item.icon className="size-5 flex-none" />
         <span className="flex-1 text-left">{t(item.key)}</span>

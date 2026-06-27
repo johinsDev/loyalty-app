@@ -55,7 +55,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       className={`${fraunces.variable} ${inter.variable}`}
       suppressHydrationWarning
     >
-      <body>
+      <body suppressHydrationWarning>
         {brandCss ? (
           <style id="brand-theme" dangerouslySetInnerHTML={{ __html: brandCss }} />
         ) : null}
