@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import { organization } from "./auth";
+import type { StoreHours } from "./store";
 
 /** Brand social links (only filled keys are shown in the customer app). */
 export type SocialLinks = {
@@ -41,6 +42,11 @@ export const organizationSettings = sqliteTable("organization_settings", {
   brandColor: text("brand_color"), // hex, e.g. "#1BAD9D" → re-themes the app
   socialLinks: text("social_links", { mode: "json" }).$type<SocialLinks>(),
   termsPdfUrl: text("terms_pdf_url"), // uploaded T&C (R2)
+
+  // Org-level contact + default schedule that individual stores inherit when
+  // their own `phone` / `hours` are null (per-store override otherwise).
+  phone: text("phone"),
+  defaultHours: text("default_hours", { mode: "json" }).$type<StoreHours>(),
 
   // Wallet scope across stores: "org" = shared (today), "store" = per-branch
   // (enforcement deferred — see docs/store-config.md backlog).

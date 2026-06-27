@@ -66,6 +66,8 @@ export class SettingsService {
       ...(input.brandColor !== undefined ? { brandColor: nullable(input.brandColor) } : {}),
       ...(input.socialLinks !== undefined ? { socialLinks: input.socialLinks } : {}),
       ...(input.termsPdfUrl !== undefined ? { termsPdfUrl: nullable(input.termsPdfUrl) } : {}),
+      ...(input.phone !== undefined ? { phone: nullable(input.phone) } : {}),
+      ...(input.defaultHours !== undefined ? { defaultHours: input.defaultHours } : {}),
     });
     await invalidateBranding(orgId);
     return getBranding(this.db, orgId);

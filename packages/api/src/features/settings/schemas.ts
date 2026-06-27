@@ -1,6 +1,8 @@
+import type { StoreHours } from "@loyalty/db/schema";
 import { z } from "zod";
 
 import { SUPPORTED_CURRENCIES, SUPPORTED_LOCALES } from "../_shared/localize";
+import { hoursSchema } from "../stores/schemas";
 
 export const localeSchema = z.enum(SUPPORTED_LOCALES);
 export const currencySchema = z.enum(SUPPORTED_CURRENCIES);
@@ -55,6 +57,9 @@ export const updateBrandingInputSchema = z.object({
     .or(z.literal("")),
   socialLinks: socialLinksSchema.optional(),
   termsPdfUrl: optionalUrl,
+  // Org-level contact + default schedule (stores inherit these when unset).
+  phone: z.string().max(40).optional().or(z.literal("")),
+  defaultHours: hoursSchema.nullish(),
 });
 export type UpdateBrandingInput = z.infer<typeof updateBrandingInputSchema>;
 
@@ -77,6 +82,8 @@ export interface BrandingView {
   brandColor: string | null;
   socialLinks: Record<string, string>;
   termsPdfUrl: string | null;
+  phone: string | null;
+  defaultHours: StoreHours | null;
   loyaltyScope: string;
   seo: {
     title: string | null;

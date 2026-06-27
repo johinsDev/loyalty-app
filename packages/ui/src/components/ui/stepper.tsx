@@ -15,8 +15,14 @@ export interface StepperProps {
   current: string
   /** Completed step keys (the backend's `state.completed`). */
   completed: string[]
-  /** Optional navigation — only completed/current steps are clickable. */
+  /** Optional navigation — completed/current steps are clickable. */
   onSelect?: (key: string) => void
+  /**
+   * Extra step keys the user may jump to even if not completed (e.g. a step whose
+   * prerequisites are already valid). When omitted, only completed + current are
+   * clickable.
+   */
+  navigable?: string[]
   className?: string
 }
 
@@ -47,9 +53,11 @@ export function Stepper({
   current,
   completed,
   onSelect,
+  navigable,
   className,
 }: StepperProps) {
   const done = new Set(completed)
+  const reach = new Set(navigable)
 
   return (
     <ol
@@ -64,7 +72,8 @@ export function Stepper({
           : isCompleted
             ? "completed"
             : "upcoming"
-        const clickable = !!onSelect && (isCompleted || isCurrent)
+        const clickable =
+          !!onSelect && (isCompleted || isCurrent || reach.has(step.key))
 
         return (
           <li key={step.key} className="flex min-w-0 flex-1 items-center gap-2">

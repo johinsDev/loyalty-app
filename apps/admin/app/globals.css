@@ -139,6 +139,16 @@
   border-color: transparent;
 }
 
+/* Input-group controls (TimeInput, etc.) match the filled input look. */
+[data-slot="input-group"] {
+  border-radius: var(--radius-3xl);
+  background-color: color-mix(in oklab, var(--input) 50%, transparent);
+}
+
+[data-slot="input-group"]:not(:focus-within):not(:has([aria-invalid="true"])) {
+  border-color: transparent;
+}
+
 /* Luma pill tabs (segmented control). */
 [data-slot="tabs-list"],
 [data-slot="tabs-trigger"] {

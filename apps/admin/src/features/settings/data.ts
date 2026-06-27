@@ -35,12 +35,6 @@ export type DayHours = {
   closed: boolean;
 };
 export const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
-export const hours: DayHours[] = DAYS.map((day) => ({
-  day,
-  open: "10:00",
-  close: day === "sat" || day === "sun" ? "22:00" : "21:00",
-  closed: false,
-}));
 
 // ── Loyalty rules ───────────────────────────────────────────────────────────
 export type LoyaltyMode = "stamps" | "points" | "both";

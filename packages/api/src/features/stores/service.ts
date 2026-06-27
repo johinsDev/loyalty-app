@@ -1,9 +1,11 @@
 import { formatAddress, type StoreAddress } from "@loyalty/address";
 import type { db as Db } from "@loyalty/db";
 import type { StoreRow } from "@loyalty/db/schema";
+import { TRPCError } from "@trpc/server";
 
+import { getBranding } from "../_shared/localize";
 import type { StoresRepository } from "./repository";
-import type { CreateStoreInput, StoreView, UpdateStoreInput } from "./schemas";
+import type { StoreView, UpdateStoreInput } from "./schemas";
 import { directionsUrl, generateStoreMap } from "./static-map";
 
 /** Expand the structured address input into the persisted store columns:
@@ -37,8 +39,13 @@ export interface MapDeps {
   mapsKey?: string;
 }
 
-/** Stores business logic: admin CRUD + the customer's published reads. On
- *  create/update with coordinates it regenerates the Static Maps screenshot. */
+/**
+ * Stores business logic: a wizard create/edit lifecycle (entity-as-draft) +
+ * the customer's published reads. Branding/contact/schedule fields are stored
+ * `null` to inherit the org's value, resolved at read time. Soft delete keeps
+ * rows recoverable. On create/update with coordinates it regenerates the
+ * Static Maps screenshot.
+ */
 export class StoresService {
   constructor(
     private readonly db: typeof Db,
@@ -49,29 +56,40 @@ export class StoresService {
     return this.repo.list(orgId, false);
   }
 
-  publicList(orgId: string): Promise<StoreView[]> {
-    return this.repo.list(orgId, true).then((rows) => rows.map((r) => this.#toView(r)));
+  async publicList(orgId: string): Promise<StoreView[]> {
+    const [rows, branding] = await Promise.all([
+      this.repo.list(orgId, true),
+      getBranding(this.db, orgId),
+    ]);
+    return rows.map((r) => this.#toView(r, branding));
   }
 
   async primary(orgId: string): Promise<StoreView | null> {
-    const row = await this.repo.findPrimary(orgId, true);
-    return row ? this.#toView(row) : null;
+    const [row, branding] = await Promise.all([
+      this.repo.findPrimary(orgId, true),
+      getBranding(this.db, orgId),
+    ]);
+    return row ? this.#toView(row, branding) : null;
   }
 
-  async get(orgId: string, id: string): Promise<StoreRow | null> {
+  get(orgId: string, id: string): Promise<StoreRow | null> {
     return this.repo.get(orgId, id);
   }
 
-  async create(orgId: string, input: CreateStoreInput, deps: MapDeps): Promise<StoreRow> {
-    const { address, ...rest } = input;
-    const row = await this.repo.create(orgId, { ...rest, ...addressColumns(address) });
-    return this.#regenMap(orgId, row, deps);
+  /** Start an empty draft; the wizard fills it step by step, then publishes. */
+  create(orgId: string): Promise<StoreRow> {
+    return this.repo.create(orgId, { name: "", status: "draft" });
   }
 
   async update(orgId: string, input: UpdateStoreInput, deps: MapDeps): Promise<StoreRow> {
-    const { id, address, ...rest } = input;
+    const { id, address, logo, ...rest } = input;
     const cols = addressColumns(address);
-    const row = await this.repo.patch(orgId, id, { ...rest, ...cols });
+    const row = await this.repo.patch(orgId, id, {
+      ...rest,
+      // "" clears the logo → inherit the org's.
+      ...(logo !== undefined ? { logo: logo || null } : {}),
+      ...cols,
+    });
     // Regenerate the map only when this update set coordinates; if the address
     // was cleared, drop the stale screenshot.
     if (cols.lat != null && cols.lng != null) return this.#regenMap(orgId, row, deps);
@@ -81,13 +99,30 @@ export class StoresService {
     return row;
   }
 
+  /** Validate the minimum + flip the draft live. */
+  async publish(orgId: string, id: string): Promise<StoreRow> {
+    const row = await this.repo.get(orgId, id);
+    if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+    if (!row.name.trim()) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Store needs a name" });
+    }
+    return this.repo.patch(orgId, id, { status: "published" });
+  }
+
   async setPrimary(orgId: string, id: string): Promise<{ ok: true }> {
     await this.repo.setPrimary(orgId, id);
     return { ok: true };
   }
 
+  /** Soft delete. Refuses the last store; promotes another to primary first. */
   async remove(orgId: string, id: string): Promise<{ ok: true }> {
-    await this.repo.remove(orgId, id);
+    const row = await this.repo.get(orgId, id);
+    if (!row) return { ok: true };
+    if ((await this.repo.countActive(orgId)) <= 1) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Cannot delete the last store" });
+    }
+    if (row.isPrimary) await this.repo.promoteAnotherPrimary(orgId, id);
+    await this.repo.softDelete(orgId, id);
     return { ok: true };
   }
 
@@ -104,18 +139,21 @@ export class StoresService {
     return this.repo.patch(orgId, row.id, { mapStaticUrl: url });
   }
 
-  #toView(r: StoreRow): StoreView {
+  /** Resolve org-inherited fields (store value ?? org default). */
+  #toView(r: StoreRow, branding: Awaited<ReturnType<typeof getBranding>>): StoreView {
     return {
       id: r.id,
       name: r.name,
       address: r.address,
       lat: r.lat,
       lng: r.lng,
-      phone: r.phone,
-      hours: (r.hours ?? null) as StoreView["hours"],
+      phone: r.phone ?? branding.phone,
+      hours: (r.hours ?? branding.defaultHours ?? null) as StoreView["hours"],
       timezone: r.timezone,
       mapStaticUrl: r.mapStaticUrl,
       directionsUrl: directionsUrl(r),
+      logo: r.logo ?? branding.logoUrl,
+      socialLinks: (r.socialLinks ?? branding.socialLinks ?? {}) as Record<string, string>,
       isPrimary: r.isPrimary,
     };
   }

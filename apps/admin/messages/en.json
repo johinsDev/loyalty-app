@@ -1418,7 +1418,10 @@
       "locationSaved": "Location updated",
       "locationError": "Couldn't save the location",
       "previewTitle": "How your customers will see it",
-      "previewEmpty": "Add an address to see the preview"
+      "previewEmpty": "Add an address to see the preview",
+      "phone": "Organization phone",
+      "save": "Save schedule",
+      "saved": "Schedule saved"
     },
     "loyalty": {
       "title": "Loyalty rules",
@@ -1630,7 +1633,44 @@
       "store": "Per store"
     },
     "previewTitle": "How your customers will see it",
-    "previewEmpty": "Add an address to see the preview"
+    "previewEmpty": "Add an address to see the preview",
+    "step": {
+      "datos": "Details",
+      "horarios": "Hours",
+      "marca": "Brand",
+      "review": "Review"
+    },
+    "day": {
+      "mon": "Monday",
+      "tue": "Tuesday",
+      "wed": "Wednesday",
+      "thu": "Thursday",
+      "fri": "Friday",
+      "sat": "Saturday",
+      "sun": "Sunday"
+    },
+    "inheritHours": "Use the organization's hours",
+    "inheritHoursHint": "This store will show the organization's default schedule.",
+    "fieldTimezone": "Time zone",
+    "closed": "Closed",
+    "inheritLogo": "Use the organization's logo",
+    "inheritSocial": "Use the organization's social links",
+    "inheritPhone": "Use the organization's phone",
+    "reviewTitle": "Review & publish",
+    "fieldPrimary": "Primary store",
+    "primaryHint": "The one shown to customers by default.",
+    "yes": "Yes",
+    "no": "No",
+    "publish": "Publish",
+    "publishError": "Couldn't publish",
+    "previewOpenDays": "{n} open days",
+    "leaveTitle": "Leave without saving?",
+    "leaveDescription": "You have unsaved changes in this step. Leaving will discard them.",
+    "leaveStay": "Keep editing",
+    "leaveConfirm": "Leave",
+    "draft": "Draft",
+    "deleteTypeHint": "Type the store's exact name (\"{name}\") to confirm.",
+    "deleteLastError": "Can't delete the last store."
   },
   "Employees": {
     "title": "Employees",

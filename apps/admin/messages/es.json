@@ -1418,7 +1418,10 @@
       "locationSaved": "Ubicación actualizada",
       "locationError": "No se pudo guardar la ubicación",
       "previewTitle": "Así lo verán tus clientes",
-      "previewEmpty": "Agregá una dirección para ver la vista previa"
+      "previewEmpty": "Agregá una dirección para ver la vista previa",
+      "phone": "Teléfono de la organización",
+      "save": "Guardar horario",
+      "saved": "Horario guardado"
     },
     "loyalty": {
       "title": "Reglas de lealtad",
@@ -1630,7 +1633,44 @@
       "store": "Por tienda"
     },
     "previewTitle": "Así lo verán tus clientes",
-    "previewEmpty": "Agregá una dirección para ver la vista previa"
+    "previewEmpty": "Agregá una dirección para ver la vista previa",
+    "step": {
+      "datos": "Datos",
+      "horarios": "Horarios",
+      "marca": "Marca",
+      "review": "Revisar"
+    },
+    "day": {
+      "mon": "Lunes",
+      "tue": "Martes",
+      "wed": "Miércoles",
+      "thu": "Jueves",
+      "fri": "Viernes",
+      "sat": "Sábado",
+      "sun": "Domingo"
+    },
+    "inheritHours": "Usar el horario de la organización",
+    "inheritHoursHint": "Esta tienda mostrará el horario por defecto de la organización.",
+    "fieldTimezone": "Zona horaria",
+    "closed": "Cerrado",
+    "inheritLogo": "Usar el logo de la organización",
+    "inheritSocial": "Usar las redes de la organización",
+    "inheritPhone": "Usar el teléfono de la organización",
+    "reviewTitle": "Revisá y publicá",
+    "fieldPrimary": "Tienda principal",
+    "primaryHint": "La que se muestra por defecto a los clientes.",
+    "yes": "Sí",
+    "no": "No",
+    "publish": "Publicar",
+    "publishError": "No se pudo publicar",
+    "previewOpenDays": "{n} días abiertos",
+    "leaveTitle": "¿Salir sin guardar?",
+    "leaveDescription": "Tenés cambios sin guardar en este paso. Si salís se perderán.",
+    "leaveStay": "Seguir editando",
+    "leaveConfirm": "Salir",
+    "draft": "Borrador",
+    "deleteTypeHint": "Escribí el nombre exacto de la tienda (\"{name}\") para confirmar.",
+    "deleteLastError": "No se puede eliminar la última tienda."
   },
   "Employees": {
     "title": "Empleados",

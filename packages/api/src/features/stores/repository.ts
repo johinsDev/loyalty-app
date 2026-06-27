@@ -1,16 +1,19 @@
 import type { db as Db } from "@loyalty/db";
 import { store, type StoreRow } from "@loyalty/db/schema";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne } from "drizzle-orm";
 
 type StorePatch = Partial<typeof store.$inferInsert>;
 
-/** Drizzle access for `store`. Only layer that touches the db; org-scoped. */
+/** Drizzle access for `store`. Only layer that touches the db; org-scoped.
+ *  Every read excludes soft-deleted rows (`deletedAt IS NOT NULL`). */
 export class StoresRepository {
   constructor(private readonly db: typeof Db) {}
 
   async list(orgId: string, publishedOnly = false): Promise<StoreRow[]> {
-    const conds = [eq(store.organizationId, orgId)];
-    if (publishedOnly) conds.push(eq(store.isPublished, true));
+    const conds = [eq(store.organizationId, orgId), isNull(store.deletedAt)];
+    if (publishedOnly) {
+      conds.push(eq(store.status, "published"), eq(store.isPublished, true));
+    }
     return this.db
       .select()
       .from(store)
@@ -22,7 +25,7 @@ export class StoresRepository {
     const rows = await this.db
       .select()
       .from(store)
-      .where(and(eq(store.id, id), eq(store.organizationId, orgId)))
+      .where(and(eq(store.id, id), eq(store.organizationId, orgId), isNull(store.deletedAt)))
       .limit(1);
     return rows[0] ?? null;
   }
@@ -32,16 +35,17 @@ export class StoresRepository {
     return rows.find((s) => s.isPrimary) ?? rows[0] ?? null;
   }
 
-  async count(orgId: string): Promise<number> {
+  /** Count of non-deleted stores (drafts included). */
+  async countActive(orgId: string): Promise<number> {
     const rows = await this.db
       .select({ id: store.id })
       .from(store)
-      .where(eq(store.organizationId, orgId));
+      .where(and(eq(store.organizationId, orgId), isNull(store.deletedAt)));
     return rows.length;
   }
 
   async create(orgId: string, values: StorePatch & { name: string }): Promise<StoreRow> {
-    const isFirst = (await this.count(orgId)) === 0;
+    const isFirst = (await this.countActive(orgId)) === 0;
     const rows = await this.db
       .insert(store)
       .values({ ...values, organizationId: orgId, isPrimary: values.isPrimary ?? isFirst })
@@ -53,7 +57,7 @@ export class StoresRepository {
     const rows = await this.db
       .update(store)
       .set({ ...values, updatedAt: new Date() })
-      .where(and(eq(store.id, id), eq(store.organizationId, orgId)))
+      .where(and(eq(store.id, id), eq(store.organizationId, orgId), isNull(store.deletedAt)))
       .returning();
     return rows[0]!;
   }
@@ -64,7 +68,7 @@ export class StoresRepository {
       await tx
         .update(store)
         .set({ isPrimary: false, updatedAt: new Date() })
-        .where(eq(store.organizationId, orgId));
+        .where(and(eq(store.organizationId, orgId), isNull(store.deletedAt)));
       await tx
         .update(store)
         .set({ isPrimary: true, updatedAt: new Date() })
@@ -72,7 +76,27 @@ export class StoresRepository {
     });
   }
 
-  async remove(orgId: string, id: string): Promise<void> {
-    await this.db.delete(store).where(and(eq(store.id, id), eq(store.organizationId, orgId)));
+  /** Promote the next non-deleted store (other than `excludeId`) to primary. */
+  async promoteAnotherPrimary(orgId: string, excludeId: string): Promise<void> {
+    const rows = await this.db
+      .select({ id: store.id })
+      .from(store)
+      .where(and(eq(store.organizationId, orgId), isNull(store.deletedAt), ne(store.id, excludeId)))
+      .orderBy(asc(store.sortOrder), asc(store.createdAt))
+      .limit(1);
+    const next = rows[0];
+    if (next) {
+      await this.db
+        .update(store)
+        .set({ isPrimary: true, updatedAt: new Date() })
+        .where(and(eq(store.id, next.id), eq(store.organizationId, orgId)));
+    }
+  }
+
+  async softDelete(orgId: string, id: string): Promise<void> {
+    await this.db
+      .update(store)
+      .set({ deletedAt: new Date(), isPrimary: false, updatedAt: new Date() })
+      .where(and(eq(store.id, id), eq(store.organizationId, orgId)));
   }
 }

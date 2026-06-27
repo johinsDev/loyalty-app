@@ -3,9 +3,10 @@ export { StoresRepository } from "./repository";
 export { StoresService } from "./service";
 export { directionsUrl, generateStoreMap, staticMapUrl } from "./static-map";
 export {
-  createStoreInputSchema,
+  hoursSchema,
+  storeSocialLinksSchema,
   updateStoreInputSchema,
-  type CreateStoreInput,
+  type StoreSocialLinks,
   type StoreView,
   type UpdateStoreInput,
 } from "./schemas";

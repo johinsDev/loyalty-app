@@ -1,18 +1,15 @@
 "use client";
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
   Badge,
   Button,
+  Input,
   Label,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
   Select,
   SelectContent,
   SelectItem,
@@ -23,6 +20,8 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Pencil, Plus, Star, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { useRouter } from "@/i18n/navigation";
@@ -42,9 +41,6 @@ export function StoresView() {
   const { data: stores, isLoading } = useQuery(trpc.stores.list.queryOptions());
   const invalidate = () => queryClient.invalidateQueries(trpc.stores.list.queryFilter());
 
-  const remove = useMutation(
-    trpc.stores.remove.mutationOptions({ onSuccess: () => invalidate() }),
-  );
   const setPrimary = useMutation(
     trpc.stores.setPrimary.mutationOptions({ onSuccess: () => invalidate() }),
   );
@@ -89,11 +85,15 @@ export function StoresView() {
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="truncate font-semibold">{s.name}</span>
+                  <span className="truncate font-semibold">{s.name || t("namePlaceholder")}</span>
                   {s.isPrimary ? <Badge variant="secondary">{t("primary")}</Badge> : null}
-                  <Badge variant={s.isPublished ? "default" : "outline"}>
-                    {s.isPublished ? t("published") : t("unpublished")}
-                  </Badge>
+                  {s.status === "draft" ? (
+                    <Badge variant="outline">{t("draft")}</Badge>
+                  ) : (
+                    <Badge variant={s.isPublished ? "default" : "outline"}>
+                      {s.isPublished ? t("published") : t("unpublished")}
+                    </Badge>
+                  )}
                 </div>
                 {s.address ? (
                   <p className="text-muted-foreground mt-0.5 flex items-center gap-1 truncate text-xs">
@@ -121,46 +121,93 @@ export function StoresView() {
                   <Pencil className="size-3.5" />
                   {t("edit")}
                 </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger
-                    render={
-                      <Button
-                        variant="outline"
-                        className="text-destructive size-9 rounded-xl p-0"
-                        aria-label={t("delete")}
-                      />
-                    }
-                  >
-                    <Trash2 className="size-4" />
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {t("deleteDescription", { name: s.name })}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() =>
-                          remove.mutate(
-                            { id: s.id },
-                            { onSuccess: () => toast.success(t("deleted", { name: s.name })) },
-                          )
-                        }
-                      >
-                        {t("deleteConfirm")}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <DeleteStoreButton store={s} onDeleted={invalidate} />
               </div>
             </div>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+/** Destructive delete behind a type-the-exact-name confirmation (RHF). The BE
+ *  soft-deletes and refuses the last store (surfaced as an error toast). */
+function DeleteStoreButton({
+  store,
+  onDeleted,
+}: {
+  store: { id: string; name: string };
+  onDeleted: () => void;
+}) {
+  const t = useTranslations("Stores");
+  const trpc = useTRPC();
+  const [open, setOpen] = useState(false);
+  const { register, handleSubmit, watch, reset } = useForm<{ confirm: string }>({
+    defaultValues: { confirm: "" },
+  });
+  const remove = useMutation(trpc.stores.remove.mutationOptions());
+  const matches = watch("confirm").trim() === store.name.trim() && store.name.trim().length > 0;
+
+  const onSubmit = handleSubmit(() => {
+    if (!matches) return;
+    remove.mutate(
+      { id: store.id },
+      {
+        onSuccess: () => {
+          toast.success(t("deleted", { name: store.name }));
+          setOpen(false);
+          reset();
+          onDeleted();
+        },
+        onError: () => toast.error(t("deleteLastError")),
+      },
+    );
+  });
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        className="text-destructive size-9 rounded-xl p-0"
+        aria-label={t("delete")}
+        onClick={() => setOpen(true)}
+      >
+        <Trash2 className="size-4" />
+      </Button>
+      <ResponsiveModal open={open} onOpenChange={setOpen}>
+        <ResponsiveModalContent>
+          <form onSubmit={onSubmit}>
+            <ResponsiveModalHeader>
+              <ResponsiveModalTitle>{t("deleteTitle")}</ResponsiveModalTitle>
+            </ResponsiveModalHeader>
+            <div className="space-y-2 px-4 pb-2">
+              <p className="text-muted-foreground text-sm">
+                {t("deleteTypeHint", { name: store.name })}
+              </p>
+              <Input className="h-10" placeholder={store.name} autoFocus {...register("confirm")} />
+            </div>
+            <ResponsiveModalFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 rounded-full"
+                onClick={() => setOpen(false)}
+              >
+                {t("cancel")}
+              </Button>
+              <Button
+                type="submit"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 rounded-full font-semibold"
+                disabled={!matches || remove.isPending}
+              >
+                {t("deleteConfirm")}
+              </Button>
+            </ResponsiveModalFooter>
+          </form>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
+    </>
   );
 }
 

@@ -2,7 +2,10 @@
 
 import {
   AddressField,
+  Button,
   createGooglePlacesProvider,
+  InputPhone,
+  Label,
   type StoreAddress,
   StoreAddressPreview,
   Switch,
@@ -10,26 +13,66 @@ import {
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useAddressLabels } from "@/components/use-address-labels";
 import { env } from "@/env";
 import { useTRPC } from "@/lib/trpc/client";
 
-import { type DayHours, DAYS, hours } from "../data";
+import { type DayHours, DAYS } from "../data";
+
+/** Day-name (mon…sun) ↔ numeric storage key (0=Sun…6=Sat). */
+const DAY_TO_NUM: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+type HoursRecord = Record<string, { open: string; close: string; closed: boolean }>;
+
+function daysFromRecord(rec: HoursRecord | null | undefined): DayHours[] {
+  return DAYS.map((day) => {
+    const d = rec?.[String(DAY_TO_NUM[day])];
+    return { day, open: d?.open ?? "10:00", close: d?.close ?? "21:00", closed: d?.closed ?? false };
+  });
+}
+function recordFromDays(days: DayHours[]): HoursRecord {
+  return Object.fromEntries(
+    days.map((d) => [String(DAY_TO_NUM[d.day]), { open: d.open, close: d.close, closed: d.closed }]),
+  );
+}
 
 /**
- * Opening hours + store location. Hours are design-first (local state; seam is
- * a future `settings.hours` mutation). The location block edits the **primary
- * store** directly via `stores.update` — the store model is the single source
- * of truth for a branch's address (structured + map screenshot).
+ * Organization default schedule + contact phone. These are the values a store
+ * inherits when its own `hours` / `phone` are unset. (The address below edits
+ * the **primary store** — the org has no address.)
  */
 export function HoursSection() {
   const t = useTranslations("Settings");
-  const [days, setDays] = useState<DayHours[]>(hours);
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
 
-  const update = (day: string, patch: Partial<DayHours>) =>
+  const { data } = useQuery(trpc.settings.branding.queryOptions());
+  const [days, setDays] = useState<DayHours[]>(daysFromRecord(null));
+  const [phone, setPhone] = useState("");
+  const [seeded, setSeeded] = useState(false);
+
+  useEffect(() => {
+    if (!data || seeded) return;
+    setDays(daysFromRecord(data.defaultHours as HoursRecord | null));
+    setPhone(data.phone ?? "");
+    setSeeded(true);
+  }, [data, seeded]);
+
+  const update = useMutation(
+    trpc.settings.updateBranding.mutationOptions({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries(trpc.settings.branding.queryFilter());
+        toast.success(t("hours.saved"));
+      },
+    }),
+  );
+
+  const onSave = () =>
+    update.mutate({ defaultHours: recordFromDays(days), phone: phone || "" });
+
+  const updateDay = (day: string, patch: Partial<DayHours>) =>
     setDays((prev) => prev.map((d) => (d.day === day ? { ...d, ...patch } : d)));
 
   return (
@@ -49,7 +92,7 @@ export function HoursSection() {
             >
               <Switch
                 checked={!d.closed}
-                onCheckedChange={(open) => update(dayKey, { closed: !open })}
+                onCheckedChange={(open) => updateDay(dayKey, { closed: !open })}
               />
               <span className="w-20 flex-none text-sm font-semibold">
                 {t(`hours.day.${dayKey}`)}
@@ -60,23 +103,28 @@ export function HoursSection() {
                 </span>
               ) : (
                 <div className="flex items-center gap-2">
-                  <TimeInput
-                    value={d.open}
-                    onChange={(open) => update(dayKey, { open })}
-                    disabled={d.closed}
-                  />
+                  <TimeInput value={d.open} onChange={(open) => updateDay(dayKey, { open })} />
                   <span className="text-muted-foreground text-sm">–</span>
-                  <TimeInput
-                    value={d.close}
-                    onChange={(close) => update(dayKey, { close })}
-                    disabled={d.closed}
-                  />
+                  <TimeInput value={d.close} onChange={(close) => updateDay(dayKey, { close })} />
                 </div>
               )}
             </div>
           );
         })}
       </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs">{t("hours.phone")}</Label>
+        <InputPhone size="sm" value={phone} onChange={(v) => setPhone(v.e164)} />
+      </div>
+
+      <Button
+        className="h-10 rounded-xl font-semibold"
+        onClick={onSave}
+        disabled={update.isPending}
+      >
+        {t("hours.save")}
+      </Button>
 
       <div className="border-border space-y-4 border-t pt-4">
         <h3 className="font-display text-base font-semibold tracking-tight">
@@ -88,7 +136,7 @@ export function HoursSection() {
   );
 }
 
-/** Edits the primary store's structured address inline. */
+/** Edits the primary store's structured address inline (the org has no address). */
 function PrimaryStoreLocation() {
   const t = useTranslations("Settings");
   const trpc = useTRPC();

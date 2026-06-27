@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm";
 import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import { organization } from "./auth";
+import type { SocialLinks } from "./organization-settings";
 
 /** Weekly opening hours: 0 (Sun) – 6 (Sat). `closed` overrides open/close. */
 export type StoreHours = Record<
@@ -34,14 +35,23 @@ export const store = sqliteTable(
     lat: real("lat"),
     lng: real("lng"),
     placeId: text("place_id"), // Google Places id (from autocomplete)
-    phone: text("phone"),
-    hours: text("hours", { mode: "json" }).$type<StoreHours>(),
+    // Branding — null = inherit the org's value (org.logo / org_settings.socialLinks).
+    logo: text("logo"),
+    socialLinks: text("social_links", { mode: "json" }).$type<SocialLinks>(),
+    phone: text("phone"), // null = inherit org_settings.phone
+    hours: text("hours", { mode: "json" }).$type<StoreHours>(), // null = inherit org_settings.defaultHours
     timezone: text("timezone").notNull().default("America/Bogota"),
     mapStaticUrl: text("map_static_url"), // R2 Static Maps screenshot
 
+    // Wizard lifecycle (entity-as-draft). Column default is "published" so the
+    // ADD-COLUMN migration leaves existing stores live; the wizard's `create`
+    // sets "draft" explicitly. The customer only sees published + visible +
+    // non-deleted stores.
+    status: text("status").notNull().default("published"),
     isPrimary: integer("is_primary", { mode: "boolean" }).notNull().default(false),
     isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(0),
+    deletedAt: integer("deleted_at", { mode: "timestamp" }), // soft delete
 
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()

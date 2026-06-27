@@ -17,6 +17,7 @@ export function WizardShell({
   steps,
   current,
   completed,
+  navigable,
   onStepSelect,
   onBack,
   onNext,
@@ -24,12 +25,17 @@ export function WizardShell({
   isLast,
   finishLabel,
   preview,
+  maxWidthClassName = "max-w-6xl",
+  onExit,
+  exitLabel,
   children,
 }: {
   title: string;
   steps: StepperStep[];
   current: string;
   completed: string[];
+  /** Step keys reachable by clicking even if not completed (forward nav). */
+  navigable?: string[];
   onStepSelect?: (key: string) => void;
   onBack: () => void;
   onNext: () => void;
@@ -37,12 +43,27 @@ export function WizardShell({
   isLast: boolean;
   finishLabel: string;
   preview: ReactNode;
+  /** Page content width (default `max-w-6xl`; stores use `max-w-7xl`). */
+  maxWidthClassName?: string;
+  /** Optional back-to-list affordance (with the unsaved-changes guard). */
+  onExit?: () => void;
+  exitLabel?: string;
   children: ReactNode;
 }) {
   const t = useTranslations("Wizard");
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-5 py-6 lg:px-8">
+    <div className={`mx-auto w-full px-5 py-6 lg:px-8 ${maxWidthClassName}`}>
+      {onExit ? (
+        <button
+          type="button"
+          onClick={onExit}
+          className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1.5 text-sm font-semibold"
+        >
+          <ChevronLeft className="size-4" />
+          {exitLabel ?? t("back")}
+        </button>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-semibold tracking-tight">
           {title}
@@ -58,6 +79,7 @@ export function WizardShell({
           steps={steps}
           current={current}
           completed={completed}
+          {...(navigable ? { navigable } : {})}
           onSelect={onStepSelect}
         />
       </div>
