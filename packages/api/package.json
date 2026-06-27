@@ -36,6 +36,7 @@
     "clean": "rm -rf .turbo node_modules"
   },
   "dependencies": {
+    "@loyalty/address": "workspace:*",
     "@loyalty/analytics": "workspace:*",
     "@loyalty/auth": "workspace:*",
     "@loyalty/cache": "workspace:*",

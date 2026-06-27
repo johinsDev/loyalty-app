@@ -26,7 +26,8 @@ export const SECTIONS: SettingsSection[] = [
 // Brand + SEO are now wired to real data (`settings.branding` / `settings.seo`),
 // so their mock constants were removed. The sections below stay design-first.
 
-// ── Hours & location ────────────────────────────────────────────────────────
+// ── Hours ───────────────────────────────────────────────────────────────────
+// (Location now lives on the `store` model — edited inline via stores.update.)
 export type DayHours = {
   day: string; // i18n key: mon..sun
   open: string;
@@ -40,12 +41,6 @@ export const hours: DayHours[] = DAYS.map((day) => ({
   close: day === "sat" || day === "sun" ? "22:00" : "21:00",
   closed: false,
 }));
-export type StoreLocation = { address: string; city: string; mapsUrl: string };
-export const location: StoreLocation = {
-  address: "Cra 13 #85-32",
-  city: "Bogotá",
-  mapsUrl: "https://maps.google.com/?q=T4+Lovers",
-};
 
 // ── Loyalty rules ───────────────────────────────────────────────────────────
 export type LoyaltyMode = "stamps" | "points" | "both";

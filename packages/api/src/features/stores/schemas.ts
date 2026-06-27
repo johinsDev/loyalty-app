@@ -1,3 +1,4 @@
+import { storeAddressSchema } from "@loyalty/address";
 import { z } from "zod";
 
 const time = z.string().regex(/^\d{2}:\d{2}$/);
@@ -11,10 +12,10 @@ export const hoursSchema = z.record(z.string().regex(/^[0-6]$/), dayHoursSchema)
 
 export const createStoreInputSchema = z.object({
   name: z.string().min(1).max(120),
-  address: z.string().max(300).optional(),
-  lat: z.number().optional(),
-  lng: z.number().optional(),
-  placeId: z.string().max(300).optional(),
+  /** Structured address (a single field; the service derives the formatted
+   *  string + lat/lng/placeId columns from it). `undefined` = no change,
+   *  `null` = clear it. */
+  address: storeAddressSchema.nullish(),
   phone: z.string().max(40).optional(),
   hours: hoursSchema.optional(),
   timezone: z.string().max(64).optional(),
