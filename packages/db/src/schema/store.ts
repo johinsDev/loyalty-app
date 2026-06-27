@@ -1,3 +1,4 @@
+import type { StoreAddress } from "@loyalty/address";
 import { relations } from "drizzle-orm";
 import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -28,7 +29,8 @@ export const store = sqliteTable(
 
     name: text("name").notNull(), // display name, e.g. "T4 Colina"
     slug: text("slug"),
-    address: text("address"),
+    address: text("address"), // denormalized single-line form (customer display)
+    addressParts: text("address_parts", { mode: "json" }).$type<StoreAddress>(), // structured
     lat: real("lat"),
     lng: real("lng"),
     placeId: text("place_id"), // Google Places id (from autocomplete)

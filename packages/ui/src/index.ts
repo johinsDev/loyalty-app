@@ -80,7 +80,12 @@ export * from "./components/ui/toggle-group";
 export * from "./components/ui/tooltip";
 
 export { useIsMobile } from "./hooks/use-mobile";
-export * from "./components/ui/address-autocomplete";
+export * from "./components/ui/address-field";
+export * from "./components/ui/address-provider";
+export * from "./components/ui/store-address-preview";
+// Re-export the shared address shape so consumers import it from @loyalty/ui
+// (they already depend on it) without a direct @loyalty/address dependency.
+export type { StoreAddress } from "@loyalty/address";
 export * from "./components/ui/background-picker";
 export * from "./components/ui/color-picker";
 export * from "./components/ui/icon-picker";

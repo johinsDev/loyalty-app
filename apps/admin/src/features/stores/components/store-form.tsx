@@ -1,29 +1,31 @@
 "use client";
 
 import {
-  AddressAutocomplete,
+  AddressField,
   Button,
+  createGooglePlacesProvider,
   Input,
   InputPhone,
   Label,
+  type StoreAddress,
+  StoreAddressPreview,
   Switch,
   TimeInput,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { useAddressLabels } from "@/components/use-address-labels";
+import { env } from "@/env";
 import { useRouter } from "@/i18n/navigation";
 import { useTRPC } from "@/lib/trpc/client";
 
 type Draft = {
   name: string;
-  address: string;
-  lat?: number;
-  lng?: number;
-  placeId?: string;
+  address: StoreAddress | null;
   phone: string;
   hoursFrom: string;
   hoursTo: string;
@@ -32,7 +34,7 @@ type Draft = {
 
 const EMPTY: Draft = {
   name: "",
-  address: "",
+  address: null,
   phone: "",
   hoursFrom: "10:00",
   hoursTo: "21:00",
@@ -51,9 +53,9 @@ function buildHours(
 
 /**
  * Create / edit a store — `<form onSubmit>` so Enter submits. Address uses the
- * Places autocomplete (captures lat/lng + placeId → the server generates a Static
- * Maps shot), phone uses `InputPhone`, hours a single open/close. Wired to
- * `stores.create` / `stores.update`.
+ * structured `AddressField` (autocomplete → confirm modal with a draggable pin),
+ * which carries one `StoreAddress` object; the server derives the formatted
+ * string + lat/lng/placeId + the Static Maps shot. Phone uses `InputPhone`.
  */
 export function StoreForm({ id }: { id?: string }) {
   const t = useTranslations("Stores");
@@ -61,6 +63,12 @@ export function StoreForm({ id }: { id?: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const isEdit = id !== undefined;
+  const addressLabels = useAddressLabels();
+
+  const provider = useMemo(() => {
+    const key = env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    return key ? createGooglePlacesProvider({ apiKey: key }) : undefined;
+  }, []);
 
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [seeded, setSeeded] = useState(false);
@@ -74,12 +82,21 @@ export function StoreForm({ id }: { id?: string }) {
     if (!data || seeded) return;
     const h = (data.hours ?? {}) as Record<string, { open: string; close: string }>;
     const first = h["1"] ?? h["0"];
+    // Prefer the structured parts; fall back to the legacy single-line address.
+    const address: StoreAddress | null =
+      data.addressParts ??
+      (data.address
+        ? {
+            line1: data.address,
+            ...(data.lat != null ? { lat: data.lat } : {}),
+            ...(data.lng != null ? { lng: data.lng } : {}),
+            ...(data.placeId ? { placeId: data.placeId } : {}),
+            formatted: data.address,
+          }
+        : null);
     setDraft({
       name: data.name,
-      address: data.address ?? "",
-      lat: data.lat ?? undefined,
-      lng: data.lng ?? undefined,
-      placeId: data.placeId ?? undefined,
+      address,
       phone: data.phone ?? "",
       hoursFrom: first?.open ?? "10:00",
       hoursTo: first?.close ?? "21:00",
@@ -95,12 +112,10 @@ export function StoreForm({ id }: { id?: string }) {
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const name = draft.name.trim() || t("namePlaceholder");
     const payload = {
-      name: draft.name.trim() || t("namePlaceholder"),
-      address: draft.address || undefined,
-      lat: draft.lat,
-      lng: draft.lng,
-      placeId: draft.placeId,
+      name,
+      address: draft.address,
       phone: draft.phone || undefined,
       hours: buildHours(draft.hoursFrom, draft.hoursTo),
       isPublished: draft.isPublished,
@@ -108,9 +123,7 @@ export function StoreForm({ id }: { id?: string }) {
     const opts = {
       onSuccess: async () => {
         await invalidate();
-        toast.success(
-          isEdit ? t("updated", { name: payload.name }) : t("created", { name: payload.name }),
-        );
+        toast.success(isEdit ? t("updated", { name }) : t("created", { name }));
         router.push("/stores");
       },
       onError: () => toast.error(t("saveError")),
@@ -151,15 +164,26 @@ export function StoreForm({ id }: { id?: string }) {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="store-address">{t("fieldAddress")}</Label>
-          <AddressAutocomplete
+          <Label>{t("fieldAddress")}</Label>
+          <AddressField
             value={draft.address}
-            onValueChange={(v) => set({ address: v })}
-            onSelect={(p) =>
-              set({ address: p.description, lat: p.lat, lng: p.lng, placeId: p.placeId })
-            }
+            onChange={(address) => set({ address })}
+            {...(provider ? { provider } : {})}
+            {...(env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+              ? { mapsApiKey: env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }
+              : {})}
+            labels={addressLabels}
           />
         </div>
+
+        {draft.address ? (
+          <StoreAddressPreview
+            address={draft.address}
+            name={draft.name || t("namePlaceholder")}
+            mapStaticUrl={data?.mapStaticUrl}
+            labels={{ title: t("previewTitle"), empty: t("previewEmpty") }}
+          />
+        ) : null}
 
         <div className="space-y-1.5">
           <Label htmlFor="store-phone">{t("fieldPhone")}</Label>

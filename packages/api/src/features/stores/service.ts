@@ -1,9 +1,31 @@
+import { formatAddress, type StoreAddress } from "@loyalty/address";
 import type { db as Db } from "@loyalty/db";
 import type { StoreRow } from "@loyalty/db/schema";
 
 import type { StoresRepository } from "./repository";
 import type { CreateStoreInput, StoreView, UpdateStoreInput } from "./schemas";
 import { directionsUrl, generateStoreMap } from "./static-map";
+
+/** Expand the structured address input into the persisted store columns:
+ *  `address` (denormalized formatted string), `addressParts` (the object,
+ *  with `formatted` recomputed), plus the `lat/lng/placeId` columns the map +
+ *  directions read. `undefined` → no change; `null` → clear everything. */
+function addressColumns(
+  address: StoreAddress | null | undefined,
+): Partial<StoreRow> {
+  if (address === undefined) return {};
+  if (address === null) {
+    return { address: null, addressParts: null, lat: null, lng: null, placeId: null };
+  }
+  const formatted = formatAddress(address);
+  return {
+    address: formatted || null,
+    addressParts: { ...address, formatted },
+    lat: address.lat ?? null,
+    lng: address.lng ?? null,
+    placeId: address.placeId ?? null,
+  };
+}
 
 /** Static-map generation deps, injected by the router from the request ctx. */
 export interface MapDeps {
@@ -41,15 +63,21 @@ export class StoresService {
   }
 
   async create(orgId: string, input: CreateStoreInput, deps: MapDeps): Promise<StoreRow> {
-    const row = await this.repo.create(orgId, input);
+    const { address, ...rest } = input;
+    const row = await this.repo.create(orgId, { ...rest, ...addressColumns(address) });
     return this.#regenMap(orgId, row, deps);
   }
 
   async update(orgId: string, input: UpdateStoreInput, deps: MapDeps): Promise<StoreRow> {
-    const { id, ...patch } = input;
-    const row = await this.repo.patch(orgId, id, patch);
-    // Regenerate the map only when coordinates are part of this update.
-    if (patch.lat != null && patch.lng != null) return this.#regenMap(orgId, row, deps);
+    const { id, address, ...rest } = input;
+    const cols = addressColumns(address);
+    const row = await this.repo.patch(orgId, id, { ...rest, ...cols });
+    // Regenerate the map only when this update set coordinates; if the address
+    // was cleared, drop the stale screenshot.
+    if (cols.lat != null && cols.lng != null) return this.#regenMap(orgId, row, deps);
+    if (address === null && row.mapStaticUrl != null) {
+      return this.repo.patch(orgId, id, { mapStaticUrl: null });
+    }
     return row;
   }
 

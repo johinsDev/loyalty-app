@@ -1405,11 +1405,6 @@
       "close": "Closes",
       "closed": "Closed",
       "locationTitle": "Location",
-      "address": "Address",
-      "addressPlaceholder": "Cra 13 #85-32",
-      "city": "City",
-      "cityPlaceholder": "Bogota",
-      "maps": "Google Maps link",
       "day": {
         "mon": "Monday",
         "tue": "Tuesday",
@@ -1418,7 +1413,12 @@
         "fri": "Friday",
         "sat": "Saturday",
         "sun": "Sunday"
-      }
+      },
+      "noStore": "Create a store first to set its location.",
+      "locationSaved": "Location updated",
+      "locationError": "Couldn't save the location",
+      "previewTitle": "How your customers will see it",
+      "previewEmpty": "Add an address to see the preview"
     },
     "loyalty": {
       "title": "Loyalty rules",
@@ -1628,7 +1628,9 @@
     "scope": {
       "org": "Shared across stores",
       "store": "Per store"
-    }
+    },
+    "previewTitle": "How your customers will see it",
+    "previewEmpty": "Add an address to see the preview"
   },
   "Employees": {
     "title": "Employees",
@@ -1797,5 +1799,21 @@
     "emptyHint": "Adjust the filters to see more.",
     "clearFilters": "Clear filters",
     "count": "{n} entries"
+  },
+  "Address": {
+    "searchPlaceholder": "Search for the address…",
+    "manualEntry": "Enter manually",
+    "edit": "Edit address",
+    "clear": "Remove address",
+    "modalTitle": "Confirm address",
+    "line1": "Address",
+    "line2": "Suite / Building / Interior",
+    "city": "City",
+    "state": "State / Province / Region",
+    "postalCode": "Postal code",
+    "country": "Country",
+    "mapHint": "Drag the pin to adjust the location",
+    "save": "Save",
+    "cancel": "Cancel"
   }
 }
