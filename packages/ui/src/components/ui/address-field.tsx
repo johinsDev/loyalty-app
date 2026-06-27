@@ -7,7 +7,7 @@ import {
   type MapMouseEvent,
   Marker,
 } from "@vis.gl/react-google-maps";
-import { MapPin, Pencil, X } from "lucide-react";
+import { MapPin, Pencil, Search } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "../../cn";
@@ -27,7 +27,6 @@ export interface AddressFieldLabels {
   searchPlaceholder: string;
   manualEntry: string;
   edit: string;
-  clear: string;
   modalTitle: string;
   line1: string;
   line2: string;
@@ -44,7 +43,6 @@ const DEFAULT_LABELS: AddressFieldLabels = {
   searchPlaceholder: "Buscá la dirección…",
   manualEntry: "Ingresar manualmente",
   edit: "Editar dirección",
-  clear: "Quitar dirección",
   modalTitle: "Confirmar dirección",
   line1: "Dirección",
   line2: "Local / Edificio / Interior",
@@ -164,58 +162,54 @@ export function AddressField({
   };
 
   // ── Render ──────────────────────────────────────────────────────────────
+  // The search stays visible above the chosen address, so "buscar otra" is
+  // always obvious (typing replaces the selection). ✏️ opens the modal to
+  // refine fields / pin; a store always has an address, so there's no destructive
+  // clear — searching again is the way to change it.
   return (
-    <div className={cn("w-full", className)}>
-      {current ? (
-        <CollapsedAddress
-          address={current}
-          editLabel={l.edit}
-          clearLabel={l.clear}
-          onEdit={() => openModal(current)}
-          onClear={() => commit(null)}
-        />
-      ) : (
-        <div className="space-y-1.5">
-          <div className="relative w-full">
-            <MapPin className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onBlur={() => window.setTimeout(() => setOpen(false), 120)}
-              placeholder={l.searchPlaceholder}
-              className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-10 w-full min-w-0 rounded-xl border bg-transparent pr-4 pl-9 text-base transition-colors outline-none focus-visible:ring-3 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-            />
-            {open && suggestions.length > 0 ? (
-              <ul
-                role="listbox"
-                className="bg-popover text-popover-foreground ring-foreground/10 absolute top-full left-0 z-50 mt-1 flex w-full flex-col gap-0.5 rounded-xl p-1 shadow-md ring-1"
-              >
-                {suggestions.map((s) => (
-                  <li key={s.id} role="option" aria-selected={false}>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        void handleSelect(s);
-                      }}
-                      className="hover:bg-accent hover:text-accent-foreground flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors"
-                    >
-                      <MapPin className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">{s.primary}</span>
-                        {s.secondary ? (
-                          <span className="text-muted-foreground block truncate text-xs">
-                            {s.secondary}
-                          </span>
-                        ) : null}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
+    <div className={cn("w-full space-y-2", className)}>
+      <div className="space-y-1.5">
+        <div className="relative w-full">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+            placeholder={l.searchPlaceholder}
+            className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-10 w-full min-w-0 rounded-xl border bg-transparent pr-4 pl-9 text-base transition-colors outline-none focus-visible:ring-3 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+          />
+          {open && suggestions.length > 0 ? (
+            <ul
+              role="listbox"
+              className="bg-popover text-popover-foreground ring-foreground/10 absolute top-full left-0 z-50 mt-1 flex w-full flex-col gap-0.5 rounded-xl p-1 shadow-md ring-1"
+            >
+              {suggestions.map((s) => (
+                <li key={s.id} role="option" aria-selected={false}>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      void handleSelect(s);
+                    }}
+                    className="hover:bg-accent hover:text-accent-foreground flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors"
+                  >
+                    <MapPin className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{s.primary}</span>
+                      {s.secondary ? (
+                        <span className="text-muted-foreground block truncate text-xs">
+                          {s.secondary}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+        {!current ? (
           <button
             type="button"
             onClick={() => openModal(null)}
@@ -223,8 +217,25 @@ export function AddressField({
           >
             {l.manualEntry}
           </button>
+        ) : null}
+      </div>
+
+      {current ? (
+        <div className="border-input flex items-start gap-2 rounded-xl border p-3">
+          <MapPin className="text-primary mt-0.5 size-4 shrink-0" />
+          <span className="min-w-0 flex-1 text-sm">{current.formatted || formatAddress(current)}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0"
+            aria-label={l.edit}
+            onClick={() => openModal(current)}
+          >
+            <Pencil className="size-4" />
+          </Button>
         </div>
-      )}
+      ) : null}
 
       <AddressModal
         open={modalOpen}
@@ -235,49 +246,6 @@ export function AddressField({
         mapsApiKey={mapsApiKey}
         labels={l}
       />
-    </div>
-  );
-}
-
-function CollapsedAddress({
-  address,
-  editLabel,
-  clearLabel,
-  onEdit,
-  onClear,
-}: {
-  address: StoreAddress;
-  editLabel: string;
-  clearLabel: string;
-  onEdit: () => void;
-  onClear: () => void;
-}) {
-  return (
-    <div className="border-input flex items-center gap-2 rounded-xl border p-2 pl-3">
-      <MapPin className="text-primary size-4 shrink-0" />
-      <span className="min-w-0 flex-1 truncate text-sm">
-        {address.formatted || formatAddress(address)}
-      </span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-8 shrink-0"
-        aria-label={editLabel}
-        onClick={onEdit}
-      >
-        <Pencil className="size-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-8 shrink-0"
-        aria-label={clearLabel}
-        onClick={onClear}
-      >
-        <X className="size-4" />
-      </Button>
     </div>
   );
 }

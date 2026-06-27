@@ -10,7 +10,6 @@ export function useAddressLabels(): AddressFieldLabels {
     searchPlaceholder: t("searchPlaceholder"),
     manualEntry: t("manualEntry"),
     edit: t("edit"),
-    clear: t("clear"),
     modalTitle: t("modalTitle"),
     line1: t("line1"),
     line2: t("line2"),
