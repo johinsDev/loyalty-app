@@ -42,7 +42,12 @@ export function StoreAddressPreview({
 }) {
   const l = { ...DEFAULT_LABELS, ...labels };
   const formatted = address ? address.formatted || formatAddress(address) : "";
-  const query = [name, formatted].filter(Boolean).join(", ");
+  // Prefer exact coordinates (the confirmed pin) so the embed lands on the real
+  // spot — geocoding the text (esp. with the store name) drifts to a wrong POI.
+  const mapQuery =
+    address?.lat != null && address.lng != null
+      ? `${address.lat},${address.lng}`
+      : [name, formatted].filter(Boolean).join(", ");
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -52,11 +57,11 @@ export function StoreAddressPreview({
           {mapStaticUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={mapStaticUrl} alt={name ?? formatted} className="size-full object-cover" />
-          ) : query ? (
+          ) : mapQuery ? (
             // oxlint-disable react/iframe-missing-sandbox
             <iframe
               title={name ?? formatted}
-              src={embedUrl(query)}
+              src={embedUrl(mapQuery)}
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
               sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"

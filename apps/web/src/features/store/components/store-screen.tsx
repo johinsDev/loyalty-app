@@ -51,6 +51,10 @@ export function StoreScreen({
   const hours = toHoursMap(store.hours);
   const status = getStoreStatus({ timezone: store.timezone, hours }, new Date());
   const query = `${store.name}, ${store.address ?? ""}`;
+  // The embed centers on exact coordinates when known (geocoding the name drifts
+  // to a wrong POI); the search/directions links keep the human query.
+  const mapEmbedQuery =
+    store.lat != null && store.lng != null ? `${store.lat},${store.lng}` : query;
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const statusHint =
     status.hint.kind === "closesAt"
@@ -92,7 +96,7 @@ export function StoreScreen({
           // oxlint-disable react/iframe-missing-sandbox
           <iframe
             title={t("mapTitle", { name: store.name })}
-            src={mapsEmbedUrl(query)}
+            src={mapsEmbedUrl(mapEmbedQuery)}
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
             sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
