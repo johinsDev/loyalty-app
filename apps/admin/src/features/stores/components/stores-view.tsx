@@ -187,18 +187,18 @@ function DeleteStoreButton({
               </p>
               <Input className="h-10" placeholder={store.name} autoFocus {...register("confirm")} />
             </div>
-            <ResponsiveModalFooter>
+            <ResponsiveModalFooter className="gap-3">
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-full"
+                className="h-10 rounded-full px-5"
                 onClick={() => setOpen(false)}
               >
                 {t("cancel")}
               </Button>
               <Button
                 type="submit"
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 rounded-full font-semibold"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 rounded-full px-6 font-semibold"
                 disabled={!matches || remove.isPending}
               >
                 {t("deleteConfirm")}

@@ -33,7 +33,7 @@ import { WizardShell } from "@/components/wizard-shell";
 import { FileUpload } from "@/features/storage/components/file-upload";
 import { env } from "@/env";
 import { useRouter } from "@/i18n/navigation";
-import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
+import { useNavigationGuard } from "@/lib/use-unsaved-guard";
 import { useTRPC } from "@/lib/trpc/client";
 
 const STEPS = ["datos", "horarios", "marca", "review"] as const;
@@ -69,6 +69,29 @@ function defaultHours(): Hours {
   return Object.fromEntries(
     Array.from({ length: 7 }, (_, d) => [String(d), { open: "10:00", close: "21:00", closed: false }]),
   );
+}
+
+const URL_SOCIALS = ["instagram", "facebook", "tiktok", "x", "website"] as const;
+
+/** A real http(s) URL with a dotted hostname (rejects "foo", "https://foo"). */
+function isValidHttpUrl(u: string): boolean {
+  if (!u) return true;
+  try {
+    const url = new URL(u);
+    return (url.protocol === "http:" || url.protocol === "https:") && /\.[a-z]{2,}$/i.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+/** Day keys with close ≤ open (invalid) among the open days. */
+function badHourDays(hours: Hours): string[] {
+  return Object.keys(hours).filter((k) => {
+    const d = hours[k]!;
+    return !d.closed && d.close <= d.open;
+  });
+}
+function invalidSocialKeys(s: SocialLinks): string[] {
+  return URL_SOCIALS.filter((k) => !isValidHttpUrl(s[k] ?? ""));
 }
 
 type Form = {
@@ -126,6 +149,8 @@ export function StoreWizard({ id }: { id?: string }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [attempted, setAttempted] = useState(false);
   const seeded = useRef(false);
   const creating = useRef(false);
 
@@ -134,7 +159,17 @@ export function StoreWizard({ id }: { id?: string }) {
     setDirty(true);
   };
 
-  useUnsavedGuard(dirty);
+  // Guard every attempt to navigate away with unsaved edits (links + tab close).
+  const bypass = useNavigationGuard(dirty, (href) => {
+    setPendingHref(href);
+    setExitOpen(true);
+  });
+  const confirmLeave = () => {
+    bypass.current = true;
+    setDirty(false);
+    if (pendingHref) window.location.href = pendingHref;
+    else router.push("/stores");
+  };
 
   // Org defaults (shown as the inherited value).
   const org = useQuery(trpc.settings.branding.queryOptions());
@@ -195,11 +230,14 @@ export function StoreWizard({ id }: { id?: string }) {
 
   // Per-step validity → which steps you may jump to (req: click forward to a
   // step whose prerequisites are all valid).
+  const badDays = form.inheritHours ? [] : badHourDays(form.hours);
+  const badSocials = form.inheritSocial ? [] : invalidSocialKeys(form.socialLinks);
+  const datosOk = form.name.trim().length > 0 && Boolean(form.address?.line1);
   const valid: Record<Step, boolean> = {
-    datos: form.name.trim().length > 0 && Boolean(form.address?.line1),
-    horarios: true,
-    marca: true,
-    review: form.name.trim().length > 0 && Boolean(form.address?.line1),
+    datos: datosOk,
+    horarios: badDays.length === 0,
+    marca: badSocials.length === 0,
+    review: datosOk,
   };
   const navigable: string[] = [];
   for (let i = 0; i < STEPS.length; i++) {
@@ -243,16 +281,25 @@ export function StoreWizard({ id }: { id?: string }) {
 
   async function goTo(targetIndex: number) {
     if (targetIndex === stepIndex) return;
-    if (!(await persistStep(step))) return;
+    setAttempted(false);
+    // Don't persist an invalid step (e.g. going back) — just navigate.
+    if (valid[step] && !(await persistStep(step))) return;
     setStepIndex(targetIndex);
   }
 
   async function onNext() {
+    setAttempted(true);
+    if (!valid[step]) {
+      toast.error(t("fixErrors"));
+      return;
+    }
     if (step === "review") {
       if (!storeId) return;
       if (!(await persistStep("review"))) return;
       try {
         await publishMut.mutateAsync({ id: storeId });
+        bypass.current = true;
+        setDirty(false);
         await queryClient.invalidateQueries(trpc.stores.list.queryFilter());
         toast.success(id ? t("updated", { name: form.name }) : t("created", { name: form.name }));
         router.push("/stores");
@@ -261,10 +308,20 @@ export function StoreWizard({ id }: { id?: string }) {
       }
       return;
     }
-    if (await persistStep(step)) setStepIndex((n) => n + 1);
+    if (await persistStep(step)) {
+      setAttempted(false);
+      setStepIndex((n) => n + 1);
+    }
   }
 
-  const tryExit = () => (dirty ? setExitOpen(true) : router.push("/stores"));
+  const tryExit = () => {
+    if (dirty) {
+      setPendingHref(null);
+      setExitOpen(true);
+    } else {
+      router.push("/stores");
+    }
+  };
   const busy = createMut.isPending && !storeId;
   const saving = updateMut.isPending || publishMut.isPending;
 
@@ -300,8 +357,10 @@ export function StoreWizard({ id }: { id?: string }) {
                 onChange={(e) => set("name", e.target.value)}
                 placeholder={t("namePlaceholder")}
                 className="h-10"
+                aria-invalid={attempted && !form.name.trim() ? true : undefined}
                 autoFocus
               />
+              {attempted && !form.name.trim() ? <ErrorText>{t("errorName")}</ErrorText> : null}
             </Field>
             <Field label={t("fieldAddress")}>
               <AddressField
@@ -313,6 +372,7 @@ export function StoreWizard({ id }: { id?: string }) {
                   : {})}
                 labels={addressLabels}
               />
+              {attempted && !form.address?.line1 ? <ErrorText>{t("errorAddress")}</ErrorText> : null}
             </Field>
           </div>
         ) : step === "horarios" ? (
@@ -364,6 +424,11 @@ export function StoreWizard({ id }: { id?: string }) {
                           />
                         </div>
                       )}
+                      {!dh.closed && dh.close <= dh.open ? (
+                        <span className="text-destructive w-full text-xs font-medium">
+                          {t("errorHours")}
+                        </span>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -422,12 +487,16 @@ export function StoreWizard({ id }: { id?: string }) {
                         }
                       />
                     ) : (
-                      <UrlInput
-                        key={s}
-                        value={form.socialLinks[s] ?? ""}
-                        onChange={(v) => set("socialLinks", { ...form.socialLinks, [s]: v })}
-                        placeholder={`… (${s})`}
-                      />
+                      <div key={s} className="space-y-1">
+                        <UrlInput
+                          value={form.socialLinks[s] ?? ""}
+                          onChange={(v) => set("socialLinks", { ...form.socialLinks, [s]: v })}
+                          placeholder={`… (${s})`}
+                        />
+                        {!isValidHttpUrl(form.socialLinks[s] ?? "") ? (
+                          <ErrorText>{t("errorUrl")}</ErrorText>
+                        ) : null}
+                      </div>
                     ),
                   )}
                 </div>
@@ -479,19 +548,19 @@ export function StoreWizard({ id }: { id?: string }) {
             <ResponsiveModalTitle>{t("leaveTitle")}</ResponsiveModalTitle>
           </ResponsiveModalHeader>
           <p className="text-muted-foreground px-4 pb-2 text-sm">{t("leaveDescription")}</p>
-          <ResponsiveModalFooter>
+          <ResponsiveModalFooter className="gap-3">
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-full"
+              className="h-10 rounded-full px-5"
               onClick={() => setExitOpen(false)}
             >
               {t("leaveStay")}
             </Button>
             <Button
               type="button"
-              className="h-10 rounded-full font-semibold"
-              onClick={() => router.push("/stores")}
+              className="h-10 rounded-full px-6 font-semibold"
+              onClick={confirmLeave}
             >
               {t("leaveConfirm")}
             </Button>
@@ -561,6 +630,10 @@ function ToggleRow({
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
+}
+
+function ErrorText({ children }: { children: React.ReactNode }) {
+  return <p className="text-destructive text-xs font-medium">{children}</p>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

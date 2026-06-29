@@ -1671,7 +1671,12 @@
     "leaveConfirm": "Leave",
     "draft": "Draft",
     "deleteTypeHint": "Type the store's exact name (\"{name}\") to confirm.",
-    "deleteLastError": "Can't delete the last store."
+    "deleteLastError": "Can't delete the last store.",
+    "fixErrors": "Check the highlighted fields.",
+    "errorName": "Enter a name.",
+    "errorAddress": "Pick an address.",
+    "errorHours": "Closing time must be later than opening time.",
+    "errorUrl": "Enter a valid URL (e.g. https://instagram.com/your-store)."
   },
   "Employees": {
     "title": "Employees",

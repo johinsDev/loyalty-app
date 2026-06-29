@@ -1671,7 +1671,12 @@
     "leaveConfirm": "Salir",
     "draft": "Borrador",
     "deleteTypeHint": "Escribí el nombre exacto de la tienda (\"{name}\") para confirmar.",
-    "deleteLastError": "No se puede eliminar la última tienda."
+    "deleteLastError": "No se puede eliminar la última tienda.",
+    "fixErrors": "Revisá los campos marcados.",
+    "errorName": "Ingresá un nombre.",
+    "errorAddress": "Elegí una dirección.",
+    "errorHours": "La hora de cierre debe ser mayor que la de apertura.",
+    "errorUrl": "Ingresá una URL válida (ej. https://instagram.com/tu-tienda)."
   },
   "Employees": {
     "title": "Empleados",

@@ -178,14 +178,16 @@
   background-color: color-mix(in oklab, var(--input) 50%, transparent);
 }
 
+/* Render the country chip and the number as two separate filled pills with a
+   small gap (instead of one seamless control). */
 [data-slot="input-phone-country"] {
-  border-top-left-radius: var(--radius-3xl);
-  border-bottom-left-radius: var(--radius-3xl);
+  border-radius: var(--radius-3xl);
 }
 
 [data-slot="input-phone-number"] {
-  border-top-right-radius: var(--radius-3xl);
-  border-bottom-right-radius: var(--radius-3xl);
+  border-radius: var(--radius-3xl);
+  border-left-width: 1px;
+  margin-left: 0.375rem;
 }
 
 [data-slot="input-phone-country"]:not(:focus-visible):not([aria-expanded="true"]),
