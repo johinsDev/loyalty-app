@@ -12,6 +12,11 @@ import {
   ResponsiveModalFooter,
   ResponsiveModalHeader,
   ResponsiveModalTitle,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   type StoreAddress,
   StoreAddressPreview,
   Switch,
@@ -41,6 +46,24 @@ type Hours = Record<string, DayHours>;
 /** Display order Mon→Sun; storage keys are "0" (Sun)…"6" (Sat). */
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 const DAY_KEY = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+
+/** Curated IANA timezones (LatAm-first); covers the pilot + nearby SaaS markets. */
+const TIMEZONES = [
+  "America/Bogota",
+  "America/Lima",
+  "America/Mexico_City",
+  "America/Guayaquil",
+  "America/Caracas",
+  "America/Santiago",
+  "America/Argentina/Buenos_Aires",
+  "America/Sao_Paulo",
+  "America/Panama",
+  "America/Costa_Rica",
+  "America/New_York",
+  "America/Los_Angeles",
+  "America/Chicago",
+  "Europe/Madrid",
+] as const;
 
 function defaultHours(): Hours {
   return Object.fromEntries(
@@ -243,6 +266,7 @@ export function StoreWizard({ id }: { id?: string }) {
 
   const tryExit = () => (dirty ? setExitOpen(true) : router.push("/stores"));
   const busy = createMut.isPending && !storeId;
+  const saving = updateMut.isPending || publishMut.isPending;
 
   return (
     <>
@@ -252,12 +276,15 @@ export function StoreWizard({ id }: { id?: string }) {
         current={step}
         completed={completed}
         navigable={navigable}
-        onStepSelect={(key) => goTo(STEPS.indexOf(key as Step))}
+        onStepSelect={(key) => {
+          if (!saving) void goTo(STEPS.indexOf(key as Step));
+        }}
         onBack={() => goTo(Math.max(0, stepIndex - 1))}
         onNext={onNext}
         isFirst={stepIndex === 0}
         isLast={step === "review"}
         finishLabel={id ? t("saveChanges") : t("publish")}
+        saving={saving}
         maxWidthClassName="max-w-7xl"
         onExit={tryExit}
         exitLabel={t("title")}
@@ -343,11 +370,18 @@ export function StoreWizard({ id }: { id?: string }) {
               </div>
             )}
             <Field label={t("fieldTimezone")}>
-              <Input
-                value={form.timezone}
-                onChange={(e) => set("timezone", e.target.value)}
-                className="h-10"
-              />
+              <Select value={form.timezone} onValueChange={(v) => set("timezone", v ?? form.timezone)}>
+                <SelectTrigger size="lg" className="h-10 w-full text-sm">
+                  <SelectValue>{(v) => (v as string) || form.timezone}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEZONES.map((tz) => (
+                    <SelectItem key={tz} value={tz}>
+                      {tz.replace(/_/g, " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
           </div>
         ) : step === "marca" ? (

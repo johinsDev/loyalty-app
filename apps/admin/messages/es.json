@@ -928,7 +928,8 @@
     "back": "Atrás",
     "next": "Siguiente",
     "draftSaved": "Borrador guardado",
-    "preview": "Vista previa"
+    "preview": "Vista previa",
+    "saving": "Guardando…"
   },
   "Products": {
     "title": "Productos",

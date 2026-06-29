@@ -928,7 +928,8 @@
     "back": "Back",
     "next": "Next",
     "draftSaved": "Draft saved",
-    "preview": "Preview"
+    "preview": "Preview",
+    "saving": "Saving…"
   },
   "Products": {
     "title": "Products",

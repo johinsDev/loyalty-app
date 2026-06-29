@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Stepper, type StepperStep } from "@loyalty/ui";
-import { Check, ChevronLeft } from "lucide-react";
+import { Check, ChevronLeft, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
@@ -28,6 +28,7 @@ export function WizardShell({
   maxWidthClassName = "max-w-6xl",
   onExit,
   exitLabel,
+  saving = false,
   children,
 }: {
   title: string;
@@ -48,6 +49,8 @@ export function WizardShell({
   /** Optional back-to-list affordance (with the unsaved-changes guard). */
   onExit?: () => void;
   exitLabel?: string;
+  /** Persisting the current step — shows a "saving…" state + blocks nav. */
+  saving?: boolean;
   children: ReactNode;
 }) {
   const t = useTranslations("Wizard");
@@ -69,8 +72,17 @@ export function WizardShell({
           {title}
         </h1>
         <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-bold">
-          <Check className="size-3.5 text-emerald-600" />
-          {t("draftSaved")}
+          {saving ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin" />
+              {t("saving")}
+            </>
+          ) : (
+            <>
+              <Check className="size-3.5 text-emerald-600" />
+              {t("draftSaved")}
+            </>
+          )}
         </span>
       </div>
 
@@ -92,16 +104,26 @@ export function WizardShell({
               variant="outline"
               className="h-10 gap-1.5 rounded-xl"
               onClick={onBack}
-              disabled={isFirst}
+              disabled={isFirst || saving}
             >
               <ChevronLeft className="size-4" />
               {t("back")}
             </Button>
             <Button
-              className="h-10 rounded-xl px-6 font-semibold"
+              className="h-10 gap-1.5 rounded-xl px-6 font-semibold"
               onClick={onNext}
+              disabled={saving}
             >
-              {isLast ? finishLabel : t("next")}
+              {saving ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  {t("saving")}
+                </>
+              ) : isLast ? (
+                finishLabel
+              ) : (
+                t("next")
+              )}
             </Button>
           </div>
         </div>
