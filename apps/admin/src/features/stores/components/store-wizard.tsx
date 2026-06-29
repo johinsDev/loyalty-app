@@ -167,7 +167,8 @@ export function StoreWizard({ id }: { id?: string }) {
   const confirmLeave = () => {
     bypass.current = true;
     setDirty(false);
-    if (pendingHref) window.location.href = pendingHref;
+    // A real link destination → go there; Back-button / exit → the list.
+    if (pendingHref && pendingHref !== "__back__") window.location.href = pendingHref;
     else router.push("/stores");
   };
 
