@@ -149,6 +149,18 @@
   border-color: transparent;
 }
 
+/* TimeInput already shows a leading clock; drop the browser's own picker glyph
+   so it doesn't double up / overflow the pill. (Mobile still opens the OS
+   picker on tap.) */
+[data-slot="input-group"] input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+/* Switches read a touch chunky in the denser admin — scale them down a bit. */
+[data-slot="switch"] {
+  scale: 0.85;
+}
+
 /* Luma pill tabs (segmented control). */
 [data-slot="tabs-list"],
 [data-slot="tabs-trigger"] {
