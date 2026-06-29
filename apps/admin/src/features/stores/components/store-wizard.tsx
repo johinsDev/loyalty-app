@@ -392,41 +392,43 @@ export function StoreWizard({ id }: { id?: string }) {
                   const dh = form.hours[key] ?? { open: "10:00", close: "21:00", closed: false };
                   return (
                     <div key={key} className="border-border space-y-2 rounded-2xl border p-3">
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          checked={!dh.closed}
-                          onCheckedChange={(open) =>
-                            set("hours", { ...form.hours, [key]: { ...dh, closed: !open } })
-                          }
-                        />
-                        <span className="flex-1 text-sm font-semibold">
-                          {t(`day.${DAY_KEY[d]}`)}
-                        </span>
+                      {/* Single row on desktop; stacks (toggle over times) on mobile. */}
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <div className="flex items-center gap-3">
+                          <Switch
+                            checked={!dh.closed}
+                            onCheckedChange={(open) =>
+                              set("hours", { ...form.hours, [key]: { ...dh, closed: !open } })
+                            }
+                          />
+                          <span className="flex-1 text-sm font-semibold sm:w-24 sm:flex-none">
+                            {t(`day.${DAY_KEY[d]}`)}
+                          </span>
+                        </div>
                         {dh.closed ? (
                           <span className="text-muted-foreground text-sm font-semibold">
                             {t("closed")}
                           </span>
-                        ) : null}
+                        ) : (
+                          <div className="flex flex-1 items-center gap-2">
+                            <TimeInput
+                              className="min-w-0 flex-1"
+                              value={dh.open}
+                              onChange={(open) =>
+                                set("hours", { ...form.hours, [key]: { ...dh, open } })
+                              }
+                            />
+                            <span className="text-muted-foreground shrink-0 text-sm">–</span>
+                            <TimeInput
+                              className="min-w-0 flex-1"
+                              value={dh.close}
+                              onChange={(close) =>
+                                set("hours", { ...form.hours, [key]: { ...dh, close } })
+                              }
+                            />
+                          </div>
+                        )}
                       </div>
-                      {!dh.closed ? (
-                        <div className="flex items-center gap-2">
-                          <TimeInput
-                            className="min-w-0 flex-1"
-                            value={dh.open}
-                            onChange={(open) =>
-                              set("hours", { ...form.hours, [key]: { ...dh, open } })
-                            }
-                          />
-                          <span className="text-muted-foreground shrink-0 text-sm">–</span>
-                          <TimeInput
-                            className="min-w-0 flex-1"
-                            value={dh.close}
-                            onChange={(close) =>
-                              set("hours", { ...form.hours, [key]: { ...dh, close } })
-                            }
-                          />
-                        </div>
-                      ) : null}
                       {!dh.closed && dh.close <= dh.open ? (
                         <span className="text-destructive text-xs font-medium">
                           {t("errorHours")}
