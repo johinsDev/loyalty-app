@@ -61,6 +61,7 @@ function SearchBox({
  */
 export function FilterSelect<T extends string>({
   allLabel,
+  label,
   value,
   onValueChange,
   options,
@@ -68,6 +69,9 @@ export function FilterSelect<T extends string>({
   searchPlaceholder = "Buscar…",
 }: {
   allLabel: string;
+  /** Filter name shown on the trigger when nothing is selected (so two
+   *  unset filters don't both read "Todas"). Defaults to `allLabel`. */
+  label?: string;
   value: T | null;
   onValueChange: (value: T | null) => void;
   options: FilterOption<T>[];
@@ -88,9 +92,7 @@ export function FilterSelect<T extends string>({
                 style={{ background: selected.dot }}
               />
             ) : null}
-            <span className="max-w-40 truncate">
-              {selected?.label ?? allLabel}
-            </span>
+            <span className="max-w-40 truncate">{selected?.label ?? label ?? allLabel}</span>
             <ChevronDown className="size-4 opacity-60" />
           </Button>
         }
@@ -245,3 +247,4 @@ export function FilterMultiSelect<T extends string>({
     </Popover>
   );
 }
+

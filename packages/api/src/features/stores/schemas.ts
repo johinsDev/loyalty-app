@@ -1,6 +1,8 @@
 import { storeAddressSchema } from "@loyalty/address";
 import { z } from "zod";
 
+import { listQueryBase } from "../_shared/list";
+
 const time = z.string().regex(/^\d{2}:\d{2}$/);
 export const dayHoursSchema = z.object({
   open: time,
@@ -44,6 +46,36 @@ export type UpdateStoreInput = z.infer<typeof updateStoreInputSchema>;
 export const idInputSchema = z.object({ id: z.string().uuid() });
 
 export type StoreSocialLinks = z.infer<typeof storeSocialLinksSchema>;
+
+// ── Admin data-table list + bulk ──────────────────────────────────────────────
+export const storeStatusSchema = z.enum(["draft", "published"]);
+
+/** Server-driven list query for the admin data-table (URL-driven via nuqs). */
+export const storesListInputSchema = listQueryBase.extend({
+  status: z.array(storeStatusSchema).optional(),
+  visible: z.array(z.boolean()).optional(),
+  primary: z.enum(["primary", "secondary"]).optional(),
+  createdFrom: z.coerce.date().optional(),
+  createdTo: z.coerce.date().optional(),
+});
+export type StoresListInput = z.infer<typeof storesListInputSchema>;
+
+/** Lean row for the admin table (the heavy JSON columns stay out of the list). */
+export interface StoreListItem {
+  id: string;
+  name: string;
+  address: string | null;
+  status: string;
+  isPrimary: boolean;
+  isPublished: boolean;
+  createdAt: Date;
+}
+
+export const bulkIdsSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(500) });
+export type BulkIdsInput = z.infer<typeof bulkIdsSchema>;
+
+export const bulkSetPublishedSchema = bulkIdsSchema.extend({ isPublished: z.boolean() });
+export type BulkSetPublishedInput = z.infer<typeof bulkSetPublishedSchema>;
 
 /** Customer-facing view with org-inherited fields already resolved. */
 export interface StoreView {

@@ -25,6 +25,7 @@
     "./features/settings": "./src/features/settings/index.ts",
     "./features/storage": "./src/features/storage/index.ts",
     "./features/stores": "./src/features/stores/index.ts",
+    "./features/stores/schemas": "./src/features/stores/schemas.ts",
     "./features/promotions": "./src/features/promotions/index.ts",
     "./features/promotions/schemas": "./src/features/promotions/schemas.ts"
   },

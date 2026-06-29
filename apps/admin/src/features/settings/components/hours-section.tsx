@@ -148,8 +148,7 @@ function PrimaryStoreLocation() {
     return key ? createGooglePlacesProvider({ apiKey: key }) : undefined;
   }, []);
 
-  const { data: stores } = useQuery(trpc.stores.list.queryOptions());
-  const store = stores?.find((s) => s.isPrimary) ?? stores?.[0];
+  const { data: store } = useQuery(trpc.stores.primaryRow.queryOptions());
   const update = useMutation(trpc.stores.update.mutationOptions());
 
   if (!store) {
@@ -173,7 +172,7 @@ function PrimaryStoreLocation() {
       { id: store.id, address },
       {
         onSuccess: async () => {
-          await queryClient.invalidateQueries(trpc.stores.list.queryFilter());
+          await queryClient.invalidateQueries(trpc.stores.primaryRow.queryFilter());
           toast.success(t("hours.locationSaved"));
         },
         onError: () => toast.error(t("hours.locationError")),

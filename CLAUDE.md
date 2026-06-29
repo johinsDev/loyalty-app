@@ -137,13 +137,14 @@ Most error-prone area for agents. Read the `next-intl` skill before touching any
 | Any overlay (dialog/drawer/sheet/confirm) — drawer on mobile, dialog on desktop, standardized close | `responsive-modal` |
 | Build/polish any admin screen — control sizing (40px), create/edit wizard + live preview, list patterns (empty/undo/⌘K), confirm dialogs | `admin-ui` |
 | Filter an admin resource list (single / searchable / multi-select, Vercel-style) — the one pattern for every list | `admin-filters` |
+| Build/migrate any admin list — server-driven data table (URL/nuqs pagination, multi-sort, search, facet/date/range filters, column visibility, grid/list, bulk export/delete, skeletons, RSC prefetch) | `data-table` |
 | Shared client state across components (Zustand + Immer, selectors, perf), refactor prop-drilling/context | `zustand` |
 | Build/refactor a form (RHF + zodResolver, Controller for Base UI, field arrays, server errors) | `react-hook-form` |
 | Phone field (`InputPhone`): country picker + flags + masking + libphonenumber validation, add a country, RHF/auth wiring | `input-phone` |
 | Commit scopes, oxlint, lefthook, commitlint | `tooling` |
 | Drizzle migrations, Neon, tRPC patterns, Next 16 patterns | `drizzle`, `neon-postgres`, `trpc`, `next-best-practices` |
 
-Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `shortlinks`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `sentry`, `log`, `slack`, `auth`, `tooling`, `zod`, `zustand`, `react-hook-form`, `input-phone`, `trpc-perf`, `wizard`, `ui-motion`, `responsive-modal`, `admin-filters`, `admin-ui`. The rest are framework references from the broader Claude Code skills ecosystem.
+Skills authored locally for this repo: `architecture-guard`, `next-intl`, `ui`, `pwa`, `whatsapp`, `sms`, `cache`, `analytics`, `email`, `feature-flags`, `image-loader`, `icons`, `push`, `notifications`, `rate-limit`, `realtime`, `shortlinks`, `storage`, `file-upload`, `api-filters`, `env-deploy`, `ci-cd`, `vercel`, `better-stack`, `sentry`, `log`, `slack`, `auth`, `tooling`, `zod`, `zustand`, `react-hook-form`, `input-phone`, `trpc-perf`, `wizard`, `ui-motion`, `responsive-modal`, `admin-filters`, `admin-ui`, `data-table`. The rest are framework references from the broader Claude Code skills ecosystem.
 
 ---
 

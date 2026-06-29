@@ -4,8 +4,9 @@ import type { StoreRow } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
 
 import { getBranding } from "../_shared/localize";
+import type { ListResult } from "../_shared/list";
 import type { StoresRepository } from "./repository";
-import type { StoreView, UpdateStoreInput } from "./schemas";
+import type { StoreListItem, StoresListInput, StoreView, UpdateStoreInput } from "./schemas";
 import { directionsUrl, generateStoreMap } from "./static-map";
 
 /** Expand the structured address input into the persisted store columns:
@@ -52,8 +53,17 @@ export class StoresService {
     private readonly repo: StoresRepository,
   ) {}
 
-  adminList(orgId: string): Promise<StoreRow[]> {
-    return this.repo.list(orgId, false);
+  adminList(orgId: string, input: StoresListInput): Promise<ListResult<StoreListItem>> {
+    return this.repo.adminList(orgId, input);
+  }
+
+  listByIds(orgId: string, ids: string[]): Promise<StoreListItem[]> {
+    return this.repo.listByIds(orgId, ids);
+  }
+
+  /** The primary store row (admin editing — e.g. the Settings location block). */
+  primaryRow(orgId: string): Promise<StoreRow | null> {
+    return this.repo.findPrimary(orgId, false);
   }
 
   async publicList(orgId: string): Promise<StoreView[]> {
@@ -123,6 +133,29 @@ export class StoresService {
     }
     if (row.isPrimary) await this.repo.promoteAnotherPrimary(orgId, id);
     await this.repo.softDelete(orgId, id);
+    return { ok: true };
+  }
+
+  /** Bulk soft-delete. Refuses to wipe every store; keeps a primary. */
+  async bulkRemove(orgId: string, ids: string[]): Promise<{ ok: true; deleted: number }> {
+    const active = await this.repo.countActive(orgId);
+    if (ids.length >= active) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Cannot delete every store — at least one must remain",
+      });
+    }
+    await this.repo.bulkSoftDelete(orgId, ids);
+    await this.repo.ensurePrimary(orgId);
+    return { ok: true, deleted: ids.length };
+  }
+
+  async bulkSetPublished(
+    orgId: string,
+    ids: string[],
+    isPublished: boolean,
+  ): Promise<{ ok: true }> {
+    await this.repo.bulkSetPublished(orgId, ids, isPublished);
     return { ok: true };
   }
 

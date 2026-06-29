@@ -4,7 +4,13 @@ import { TRPCError } from "@trpc/server";
 import { managerProcedure, publicProcedure, router } from "../../trpc";
 import type { MapDeps } from "./service";
 import { StoresRepository } from "./repository";
-import { idInputSchema, updateStoreInputSchema } from "./schemas";
+import {
+  bulkIdsSchema,
+  bulkSetPublishedSchema,
+  idInputSchema,
+  storesListInputSchema,
+  updateStoreInputSchema,
+} from "./schemas";
 import { StoresService } from "./service";
 
 function makeService(db: typeof Db): StoresService {
@@ -38,7 +44,15 @@ export const storesRouter = router({
   primary: publicProcedure.query(async ({ ctx }) => makeService(ctx.db).primary(await orgId())),
 
   // ── Admin (managers) ───────────────────────────────────────────────────────
-  list: managerProcedure.query(async ({ ctx }) => makeService(ctx.db).adminList(await requireOrg())),
+  list: managerProcedure
+    .input(storesListInputSchema)
+    .query(async ({ ctx, input }) => makeService(ctx.db).adminList(await requireOrg(), input)),
+  listByIds: managerProcedure
+    .input(bulkIdsSchema)
+    .query(async ({ ctx, input }) => makeService(ctx.db).listByIds(await requireOrg(), input.ids)),
+  primaryRow: managerProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).primaryRow(await requireOrg()),
+  ),
   get: managerProcedure
     .input(idInputSchema)
     .query(async ({ ctx, input }) => makeService(ctx.db).get(await requireOrg(), input.id)),
@@ -59,4 +73,12 @@ export const storesRouter = router({
   remove: managerProcedure
     .input(idInputSchema)
     .mutation(async ({ ctx, input }) => makeService(ctx.db).remove(await requireOrg(), input.id)),
+  bulkRemove: managerProcedure
+    .input(bulkIdsSchema)
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).bulkRemove(await requireOrg(), input.ids)),
+  bulkSetPublished: managerProcedure
+    .input(bulkSetPublishedSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).bulkSetPublished(await requireOrg(), input.ids, input.isPublished),
+    ),
 });
