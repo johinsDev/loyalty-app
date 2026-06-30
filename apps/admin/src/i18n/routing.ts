@@ -43,6 +43,7 @@ export const routing = defineRouting({
     "/stores": { es: "/tiendas", en: "/stores" },
     "/stores/new": { es: "/tiendas/nueva", en: "/stores/new" },
     "/stores/[id]": { es: "/tiendas/[id]", en: "/stores/[id]" },
+    "/stores/[id]/edit": { es: "/tiendas/[id]/editar", en: "/stores/[id]/edit" },
     "/employees": { es: "/empleados", en: "/employees" },
     "/employees/new": { es: "/empleados/nuevo", en: "/employees/new" },
     "/employees/audit": { es: "/empleados/actividad", en: "/employees/audit" },

@@ -66,6 +66,23 @@ confirmation.
 4. **RSC page**: `loadXSearchParams` → `buildXInput` → `await trpc()` prefetch → `initialData`.
 5. i18n: reuse the `DataTable` namespace (pagination/sort/view/bulk) + add column/facet/bulk labels under the feature.
 
+## Detail view (intercepting modal — optional per CRUD)
+A read-only detail that opens as a modal over the list on in-app nav, and as a full
+page on hard load / reload / share. Mirrors the customer web `/compras/[id]` flow.
+The **bare `[id]` route is the DETAIL**; the edit wizard moves to `[id]/edit`.
+- **Shared view** (`<X>DetailView`, `"use client"`): read-only summary; takes
+  `{ entity, variant: "page" | "modal" }`. "Editar" routes to `/<x>/[id]/edit`.
+- **Modal** (`<X>DetailModal`, `"use client"`): fetches `x.get` via react-query,
+  wraps `<X>DetailView variant="modal"` in `ResponsiveModal open onOpenChange={(o)=>!o && router.back()}`, skeleton while loading.
+- **Routes** (under the `(dashboard)` group, so `(.)` resolves to `(dashboard)/<x>/[id]`):
+  - `(dashboard)/layout.tsx` declares the parallel slot: `modal: ReactNode` prop, render `{modal}` after `{children}` (one-time setup per app).
+  - `(dashboard)/@modal/default.tsx` → `return null`.
+  - `(dashboard)/@modal/(.)<x>/[id]/page.tsx` → `<X>DetailModal`.
+  - `(dashboard)/<x>/[id]/page.tsx` → RSC: `await trpc()` → `x.get` → `notFound()` → `<X>DetailView variant="page">` (back link).
+  - `(dashboard)/<x>/[id]/edit/page.tsx` → the wizard; add `/<x>/[id]/edit` to `i18n/routing.ts` `pathnames`.
+- **Triggers**: name cell + grid card click → `/<x>/[id]` (card stops propagation on its checkbox/actions wrapper); row `⋯` menu gets "Ver detalle" → `/<x>/[id]` and "Editar" → `/<x>/[id]/edit`.
+- Stores is the reference (`store-detail-view.tsx` + `store-detail-modal.tsx`).
+
 ## Gotchas
 - `manualPagination/Sorting/Filtering` — the server is the source of truth; tanstack only renders + holds selection/visibility.
 - Reset `page` to 1 whenever a facet/search changes.

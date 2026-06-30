@@ -145,7 +145,13 @@ export function StoresView({ initialData }: { initialData?: StoreListResult }) {
         meta: { label: t("colName") },
         header: ({ column }) => <DataTableColumnHeader column={column} title={t("colName")} />,
         cell: ({ row }) => (
-          <span className="font-semibold">{row.original.name || t("namePlaceholder")}</span>
+          <button
+            type="button"
+            className="hover:text-primary cursor-pointer text-left font-semibold hover:underline"
+            onClick={() => router.push({ pathname: "/stores/[id]", params: { id: row.original.id } })}
+          >
+            {row.original.name || t("namePlaceholder")}
+          </button>
         ),
       },
       {
@@ -210,7 +216,7 @@ export function StoresView({ initialData }: { initialData?: StoreListResult }) {
         cell: ({ row }) => <StoreRowActions store={row.original} />,
       },
     ],
-    [t, locale],
+    [t, locale, router],
   );
 
   const { table, selectedIds, resetSelection } = useDataTable<StoreListItem>({
@@ -394,8 +400,24 @@ export function StoresView({ initialData }: { initialData?: StoreListResult }) {
           renderGrid={(items) => (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {items.map((s) => (
-                <div key={s.id} className="bg-card border-border rounded-3xl border p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-2">
+                <div
+                  key={s.id}
+                  role="button"
+                  tabIndex={0}
+                  className="bg-card border-border hover:border-primary/40 cursor-pointer rounded-3xl border p-4 shadow-sm transition-colors"
+                  onClick={() => router.push({ pathname: "/stores/[id]", params: { id: s.id } })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push({ pathname: "/stores/[id]", params: { id: s.id } });
+                    }
+                  }}
+                >
+                  <div
+                    className="flex items-start justify-between gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
                     <Checkbox
                       checked={table.getRow(s.id)?.getIsSelected() ?? false}
                       onCheckedChange={(v) => table.getRow(s.id)?.toggleSelected(!!v)}

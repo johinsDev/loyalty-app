@@ -1585,6 +1585,7 @@
     "empty": "No stores found.",
     "emptyHint": "Adjust the search or filters.",
     "clearFilters": "Clear filters",
+    "viewDetail": "View detail",
     "edit": "Edit",
     "delete": "Delete",
     "cancel": "Cancel",

@@ -15,7 +15,7 @@ import {
   ResponsiveModalTitle,
 } from "@loyalty/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, Pencil, Star, Trash2 } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, Star, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -68,6 +68,12 @@ export function StoreRowActions({ store }: { store: { id: string; name: string; 
         <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuItem
             onClick={() => router.push({ pathname: "/stores/[id]", params: { id: store.id } })}
+          >
+            <Eye className="size-4" />
+            {t("viewDetail")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => router.push({ pathname: "/stores/[id]/edit", params: { id: store.id } })}
           >
             <Pencil className="size-4" />
             {t("edit")}
