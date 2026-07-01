@@ -11,7 +11,6 @@ import {
 } from "@loyalty/ui";
 import {
   BarChart3,
-  Bell,
   Gift,
   Image as ImageIcon,
   LayoutDashboard,
@@ -40,7 +39,6 @@ const NAV: { key: string; href: Href; icon: typeof Users }[] = [
   { key: "rewards", href: "/rewards", icon: Gift },
   { key: "promotions", href: "/promotions", icon: Sparkles },
   { key: "campaigns", href: "/campaigns", icon: Send },
-  { key: "notifications", href: "/notifications", icon: Bell },
   { key: "banners", href: "/banners", icon: ImageIcon },
   { key: "analytics", href: "/analytics", icon: BarChart3 },
   { key: "stores", href: "/stores", icon: Store },

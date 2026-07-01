@@ -34,7 +34,6 @@ export const routing = defineRouting({
     "/campaigns/[id]/edit": { es: "/campanas/[id]/editar", en: "/campaigns/[id]/edit" },
     "/campaigns/rules": { es: "/campanas/reglas", en: "/campaigns/rules" },
     "/campaigns/automated": { es: "/campanas/automatizadas", en: "/campaigns/automated" },
-    "/notifications": { es: "/notificaciones", en: "/notifications" },
     "/banners": { es: "/banners", en: "/banners" },
     "/banners/new": { es: "/banners/nuevo", en: "/banners/new" },
     "/banners/[id]": { es: "/banners/[id]", en: "/banners/[id]" },
