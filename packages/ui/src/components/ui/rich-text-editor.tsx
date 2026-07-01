@@ -24,6 +24,11 @@ export interface RichTextEditorProps {
   onValueChange?: (html: string) => void;
   placeholder?: string;
   className?: string;
+  /**
+   * Optional merge-variable names. When provided, a pill row is shown that
+   * inserts `{{var}}` at the cursor (for campaign templating).
+   */
+  variables?: string[];
 }
 
 /**
@@ -36,6 +41,7 @@ export function RichTextEditor({
   onValueChange,
   placeholder,
   className,
+  variables,
 }: RichTextEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
@@ -95,6 +101,20 @@ export function RichTextEditor({
         <Tool icon={Undo2} onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} />
         <Tool icon={Redo2} onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} />
       </div>
+      {variables && variables.length > 0 ? (
+        <div className="border-border flex flex-wrap items-center gap-1.5 border-b px-2 py-1.5">
+          {variables.map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => editor.chain().focus().insertContent(`{{${v}}}`).run()}
+              className="bg-primary/10 text-primary hover:bg-primary/20 rounded-full px-2 py-0.5 font-mono text-xs transition-colors"
+            >
+              {`{{${v}}}`}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <EditorContent editor={editor} />
     </div>
   );

@@ -120,9 +120,17 @@ function Card({ channel, message }: { channel: Channel; message: PreviewMessage 
             </div>
           </div>
           <div className="space-y-2 p-3">
-            <p className="text-muted-foreground text-sm leading-snug">
-              {renderCopy(message.email.body, t("previewBodyPlaceholder"))}
-            </p>
+            {message.email.body ? (
+              <div
+                className="prose prose-sm text-muted-foreground max-w-none text-sm leading-snug [&_a]:text-primary [&_a]:underline"
+                // TipTap-authored HTML (admin-only preview).
+                dangerouslySetInnerHTML={{ __html: message.email.body }}
+              />
+            ) : (
+              <p className="text-muted-foreground text-sm leading-snug">
+                {t("previewBodyPlaceholder")}
+              </p>
+            )}
           </div>
         </div>
       );

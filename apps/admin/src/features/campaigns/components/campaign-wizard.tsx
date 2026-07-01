@@ -12,6 +12,7 @@ import {
   ResponsiveModalFooter,
   ResponsiveModalHeader,
   ResponsiveModalTitle,
+  RichTextEditor,
   Select,
   SelectContent,
   SelectItem,
@@ -587,12 +588,14 @@ export function CampaignWizard({ id }: { id?: string }) {
                 placeholder={t("emailSubjectPlaceholder")}
                 className="h-10"
               />
-              <Textarea
+              <RichTextEditor
                 value={form.message.email.body}
-                onChange={(e) => setMsg("email", "body", e.target.value)}
-                onFocus={() => setActiveField({ channel: "email", key: "body" })}
+                // Treat an empty editor (`<p></p>`) as no content.
+                onValueChange={(html) =>
+                  setMsg("email", "body", html.replace(/<[^>]*>/g, "").trim() ? html : "")
+                }
                 placeholder={t("emailBodyPlaceholder")}
-                rows={3}
+                variables={[...MERGE_VARS]}
               />
             </ChannelBlock>
 

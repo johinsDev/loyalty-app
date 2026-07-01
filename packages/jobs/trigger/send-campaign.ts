@@ -64,10 +64,12 @@ function renderContent(
     };
   }
   if (channel === "email" && message.email) {
+    // The email body is rich HTML from the wizard editor; render vars into it
+    // as-is (no extra wrapping).
     return {
       mail: {
         subject: renderVars(message.email.subject, vars),
-        html: `<p>${renderVars(message.email.body, vars)}</p>`,
+        html: renderVars(message.email.body, vars),
       },
     };
   }
