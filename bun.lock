@@ -655,6 +655,7 @@
       "dependencies": {
         "@base-ui/react": "^1.4.1",
         "@loyalty/address": "workspace:*",
+        "@tiptap/core": "^3.27.1",
         "@tiptap/extension-link": "^3.27.1",
         "@tiptap/pm": "^3.27.1",
         "@tiptap/react": "^3.27.1",

@@ -60,7 +60,14 @@ const CHANNEL_ICON: Record<Channel, LucideIcon> = {
 };
 const TIERS = ["hoja", "flor", "oro"] as const;
 type Tier = (typeof TIERS)[number];
-const MERGE_VARS = ["nombre", "nivel", "puntos", "sucursal", "short_link"] as const;
+// Dynamic (per-recipient / per-org) variables. Entity variables (promo/product/
+// reward with a picker) arrive in V3.
+const CAMPAIGN_VARS = [
+  { token: "{{user.name}}", label: "Nombre" },
+  { token: "{{user.tier}}", label: "Nivel" },
+  { token: "{{store.name}}", label: "Sucursal" },
+  { token: "{{short_link}}", label: "Enlace corto" },
+] as const;
 
 type Offer = { kind: "promo" | "reward"; id: string };
 
@@ -197,7 +204,7 @@ export function CampaignWizard({ id }: { id?: string }) {
     setForm((f) => {
       const current = (f.message[channel] as Record<string, string>)[key] ?? "";
       const sep = current && !current.endsWith(" ") ? " " : "";
-      const next = `${current}${sep}{{${token}}}`;
+      const next = `${current}${sep}${token}`;
       return {
         ...f,
         message: { ...f.message, [channel]: { ...f.message[channel], [key]: next } },
@@ -530,16 +537,16 @@ export function CampaignWizard({ id }: { id?: string }) {
             <div className="space-y-1.5">
               <Label className="text-xs">{t("tokensLabel")}</Label>
               <div className="flex flex-wrap gap-1.5">
-                {MERGE_VARS.map((v) => (
+                {CAMPAIGN_VARS.map((v) => (
                   <Button
-                    key={v}
+                    key={v.token}
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className="h-8 rounded-full font-mono text-xs"
-                    onClick={() => insertToken(v)}
+                    className="h-8 rounded-full text-xs font-semibold"
+                    onClick={() => insertToken(v.token)}
                   >
-                    {`{{${v}}}`}
+                    {v.label}
                   </Button>
                 ))}
               </div>
@@ -595,7 +602,7 @@ export function CampaignWizard({ id }: { id?: string }) {
                   setMsg("email", "body", html.replace(/<[^>]*>/g, "").trim() ? html : "")
                 }
                 placeholder={t("emailBodyPlaceholder")}
-                variables={[...MERGE_VARS]}
+                variables={[...CAMPAIGN_VARS]}
               />
             </ChannelBlock>
 

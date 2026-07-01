@@ -1,5 +1,6 @@
 "use client";
 
+import { Node, mergeAttributes } from "@tiptap/core";
 import Link from "@tiptap/extension-link";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -18,6 +19,73 @@ import { useEffect } from "react";
 
 import { cn } from "../../cn";
 
+/** A merge variable the editor can insert as a chip. */
+export interface EditorVariable {
+  /** The token serialized into the HTML, e.g. `{{user.name}}`. */
+  token: string;
+  /** The friendly label shown on the chip, e.g. `Nombre`. */
+  label: string;
+}
+
+/**
+ * Inline atom node that shows a friendly chip in the editor but serializes to
+ * its `{{token}}` text, so the backend template renderer can substitute it.
+ */
+const Variable = Node.create({
+  name: "variable",
+  group: "inline",
+  inline: true,
+  atom: true,
+  selectable: true,
+
+  addAttributes() {
+    return {
+      token: { default: "" },
+      label: { default: "" },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: "span[data-variable]",
+        getAttrs: (el) => {
+          const node = el as HTMLElement;
+          const token = node.getAttribute("data-token") ?? node.textContent ?? "";
+          return { token, label: node.getAttribute("data-label") ?? token };
+        },
+      },
+    ];
+  },
+
+  renderHTML({ node, HTMLAttributes }) {
+    // The text content is the token so `{{...}}` survives into getHTML() and the
+    // send-time renderer replaces it (attributes carry the label for re-parsing).
+    return [
+      "span",
+      mergeAttributes(HTMLAttributes, {
+        "data-variable": "",
+        "data-token": node.attrs.token,
+        "data-label": node.attrs.label,
+        class: "variable-chip",
+      }),
+      node.attrs.token,
+    ];
+  },
+
+  addNodeView() {
+    return ({ node }) => {
+      const dom = document.createElement("span");
+      dom.className =
+        "variable-chip bg-primary/10 text-primary rounded px-1 py-0.5 font-mono text-xs";
+      dom.textContent = String(node.attrs.label || node.attrs.token);
+      dom.setAttribute("title", String(node.attrs.token));
+      dom.contentEditable = "false";
+      return { dom };
+    };
+  },
+});
+
 export interface RichTextEditorProps {
   /** Controlled HTML value. */
   value?: string;
@@ -25,10 +93,10 @@ export interface RichTextEditorProps {
   placeholder?: string;
   className?: string;
   /**
-   * Optional merge-variable names. When provided, a pill row is shown that
-   * inserts `{{var}}` at the cursor (for campaign templating).
+   * Optional merge variables. When provided, a pill row inserts each as a chip
+   * (friendly label in the editor, `{{token}}` in the serialized HTML).
    */
-  variables?: string[];
+  variables?: EditorVariable[];
 }
 
 /**
@@ -48,6 +116,7 @@ export function RichTextEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3] } }),
       Link.configure({ openOnClick: false }),
+      Variable,
     ],
     content: value,
     editorProps: {
@@ -105,12 +174,21 @@ export function RichTextEditor({
         <div className="border-border flex flex-wrap items-center gap-1.5 border-b px-2 py-1.5">
           {variables.map((v) => (
             <button
-              key={v}
+              key={v.token}
               type="button"
-              onClick={() => editor.chain().focus().insertContent(`{{${v}}}`).run()}
-              className="bg-primary/10 text-primary hover:bg-primary/20 rounded-full px-2 py-0.5 font-mono text-xs transition-colors"
+              onClick={() =>
+                editor
+                  .chain()
+                  .focus()
+                  .insertContent([
+                    { type: "variable", attrs: { token: v.token, label: v.label } },
+                    { type: "text", text: " " },
+                  ])
+                  .run()
+              }
+              className="bg-primary/10 text-primary hover:bg-primary/20 rounded-full px-2 py-0.5 text-xs font-semibold transition-colors"
             >
-              {`{{${v}}}`}
+              {v.label}
             </button>
           ))}
         </div>
