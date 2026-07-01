@@ -1,8 +1,12 @@
 "use client";
 
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useDebounce } from "ahooks";
 import { Bell, Mail, MessageCircle, MessageSquare } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+
+import { useTRPC } from "@/lib/trpc/client";
 
 type Channel = "push" | "email" | "sms" | "whatsapp";
 
@@ -61,6 +65,38 @@ export function CampaignMessagePreview({
   channelPriority: Channel[];
 }) {
   const t = useTranslations("Campaigns");
+  const trpc = useTRPC();
+
+  // Resolve tokens/chips to sample/real values via the backend (debounced), so
+  // the preview shows real entity names + example dynamic values.
+  const debounced = useDebounce(message, { wait: 350 });
+  const input = useMemo(() => {
+    const m: {
+      push?: { title: string; body: string };
+      email?: { subject: string; body: string };
+      sms?: { text: string };
+      whatsapp?: { text: string };
+    } = {};
+    if (hasContent(debounced, "push")) m.push = debounced.push;
+    if (hasContent(debounced, "email")) m.email = debounced.email;
+    if (hasContent(debounced, "sms")) m.sms = debounced.sms;
+    if (hasContent(debounced, "whatsapp")) m.whatsapp = debounced.whatsapp;
+    return m;
+  }, [debounced]);
+
+  const query = useQuery({
+    ...trpc.campaigns.renderPreview.queryOptions({ message: input }),
+    enabled: Object.keys(input).length > 0,
+    placeholderData: keepPreviousData,
+  });
+
+  // Resolved values fall back to the raw copy while the query is in flight.
+  const display: PreviewMessage = {
+    push: query.data?.push ?? message.push,
+    email: query.data?.email ?? message.email,
+    sms: query.data?.sms ?? message.sms,
+    whatsapp: query.data?.whatsapp ?? message.whatsapp,
+  };
 
   const order = (channelPriority.length > 0 ? channelPriority : DEFAULT_ORDER).filter(
     (c, i, arr) => arr.indexOf(c) === i,
@@ -78,7 +114,7 @@ export function CampaignMessagePreview({
   return (
     <div className="space-y-4">
       {active.map((c) => (
-        <Card key={c} channel={c} message={message} />
+        <Card key={c} channel={c} message={display} />
       ))}
     </div>
   );

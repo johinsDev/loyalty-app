@@ -18,7 +18,10 @@ import type {
   CampaignStepKey,
   CampaignsListInput,
   CountReachInput,
+  RenderPreviewInput,
+  RenderedPreview,
 } from "./schemas";
+import { entityRefs, renderTemplate, type Token } from "./templating";
 import { campaignWizard } from "./wizard";
 
 // Untyped trigger payload — typing it would make @loyalty/api depend on
@@ -159,6 +162,49 @@ export class CampaignsService {
   async funnel(orgId: string, id: string): Promise<CampaignFunnel> {
     const row = await this.loadDraft(orgId, id);
     return this.repo.funnel(orgId, row);
+  }
+
+  // ── Live preview: resolve tokens to sample/real values ────────────────────
+  async renderPreview(
+    orgId: string,
+    input: RenderPreviewInput,
+  ): Promise<RenderedPreview> {
+    const m = input.message;
+    const texts = [
+      m.push?.title,
+      m.push?.body,
+      m.email?.subject,
+      m.email?.body,
+      m.sms?.text,
+      m.whatsapp?.text,
+    ].filter((s): s is string => !!s);
+    const [entityMap, storeName] = await Promise.all([
+      this.repo.resolveEntityRefs(orgId, entityRefs(...texts)),
+      this.repo.storeName(orgId),
+    ]);
+    // Sample values for dynamic vars; real values for bound entities.
+    const resolve = (t: Token): string => {
+      if (t.scope === "user") {
+        if (t.field === "name") return "Ana";
+        if (t.field === "tier") return "Oro";
+        if (t.field === "points") return "1.200";
+        if (t.field === "short_link") return "t4.co/abc";
+        return "";
+      }
+      if (t.scope === "store") return t.field === "name" ? storeName : "";
+      const ent = entityMap.get(`${t.scope}#${t.id}`);
+      if (!ent) return "";
+      if (t.field === "name") return ent.name;
+      if (t.field === "href") return `t4.co/${(t.id ?? "").slice(0, 6)}`;
+      return "";
+    };
+    const r = (s: string) => renderTemplate(s, resolve);
+    const out: RenderedPreview = {};
+    if (m.push) out.push = { title: await r(m.push.title), body: await r(m.push.body) };
+    if (m.email) out.email = { subject: await r(m.email.subject), body: await r(m.email.body) };
+    if (m.sms) out.sms = { text: await r(m.sms.text) };
+    if (m.whatsapp) out.whatsapp = { text: await r(m.whatsapp.text) };
+    return out;
   }
 
   // ── Reach preview ───────────────────────────────────────────────────────────

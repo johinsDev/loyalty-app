@@ -12,6 +12,7 @@ import {
   pauseInputSchema,
   publishInputSchema,
   removeInputSchema,
+  renderPreviewInputSchema,
   retryInputSchema,
 } from "./schemas";
 import { CampaignsService } from "./service";
@@ -82,6 +83,11 @@ export const campaignsRouter = router({
     .input(countReachInputSchema)
     .query(async ({ ctx, input }) =>
       makeService(ctx.db).countReach(await requireOrg(), input),
+    ),
+  renderPreview: managerProcedure
+    .input(renderPreviewInputSchema)
+    .query(async ({ ctx, input }) =>
+      makeService(ctx.db).renderPreview(await requireOrg(), input),
     ),
   pause: managerProcedure
     .input(pauseInputSchema)

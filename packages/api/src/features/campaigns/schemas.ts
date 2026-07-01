@@ -186,3 +186,21 @@ export interface CampaignFailureRow {
   error: string | null;
   createdAt: Date;
 }
+
+// ─── Live preview (resolve tokens to sample/real values) ─────────────────────
+export const previewMessageSchema = z.object({
+  push: z.object({ title: z.string(), body: z.string() }).optional(),
+  email: z.object({ subject: z.string(), body: z.string() }).optional(),
+  sms: z.object({ text: z.string() }).optional(),
+  whatsapp: z.object({ text: z.string() }).optional(),
+});
+export const renderPreviewInputSchema = z.object({ message: previewMessageSchema });
+export type RenderPreviewInput = z.infer<typeof renderPreviewInputSchema>;
+
+/** Per-channel content with every token resolved to a sample/real value. */
+export interface RenderedPreview {
+  push?: { title: string; body: string };
+  email?: { subject: string; body: string };
+  sms?: { text: string };
+  whatsapp?: { text: string };
+}
