@@ -59,6 +59,11 @@ const Variable = Node.create({
     };
   },
 
+  // Serialize to the raw token in `getText()` (plain-text channels).
+  renderText({ node }) {
+    return String(node.attrs.token);
+  },
+
   parseHTML() {
     return [
       {
@@ -121,6 +126,33 @@ const VariableSuggestion = Extension.create<{
     return [Suggestion({ editor: this.editor, ...this.options.suggestion })];
   },
 });
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/**
+ * Plain-text (with `{{tokens}}`) → HTML the editor can load, wrapping each token
+ * in a variable-chip span so it round-trips. Used by the `plain` channels whose
+ * stored value is text, not HTML.
+ */
+function plainToHtml(text: string, variables?: EditorVariable[]): string {
+  if (!text) return "";
+  const labelOf = (token: string) =>
+    variables?.find((v) => v.token === token)?.label ??
+    token.replace(/^\{\{|\}\}$/g, "");
+  const re = /\{\{[^}]+\}\}/g;
+  let out = "";
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    out += escapeHtml(text.slice(last, m.index));
+    const token = m[0];
+    out += `<span data-variable data-token="${escapeHtml(token)}" data-label="${escapeHtml(labelOf(token))}">${escapeHtml(token)}</span>`;
+    last = m.index + token.length;
+  }
+  out += escapeHtml(text.slice(last));
+  return `<p>${out.replace(/\n/g, "<br>")}</p>`;
+}
 
 const insertVariableChip = (editor: Editor, token: string, label: string) =>
   editor
@@ -309,6 +341,12 @@ export interface RichTextEditorProps {
    * hooks out of this generic component. URL-paste stays as a fallback.
    */
   onUploadImage?: (file: File) => Promise<string | null>;
+  /**
+   * Plain-text mode for channels that don't support rich HTML (SMS/push/
+   * WhatsApp). Hides formatting/link/image tools (keeps emoji + variables +
+   * `{{`), and emits/loads plain text (with `{{tokens}}`) instead of HTML.
+   */
+  plain?: boolean;
 }
 
 /**
@@ -325,6 +363,7 @@ export function RichTextEditor({
   entities,
   onRequestEntity,
   onUploadImage,
+  plain = false,
 }: RichTextEditorProps) {
   // Refs keep the `{{`-suggestion (built once for the editor) reading current
   // props, since the extension array is only evaluated on mount.
@@ -335,13 +374,36 @@ export function RichTextEditor({
   entitiesRef.current = entities;
   onRequestEntityRef.current = onRequestEntity;
 
+  // Plain channels store text; serialize/parse via `{{tokens}}`.
+  const readValue = (ed: Editor) =>
+    plain ? ed.getText({ blockSeparator: "\n" }) : ed.getHTML();
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit.configure({ heading: { levels: [2, 3] } }),
-      // `inclusive: false` so typing after a link doesn't keep extending it.
-      Link.extend({ inclusive: false }).configure({ openOnClick: false }),
-      Image.configure({ inline: false }),
+      plain
+        ? StarterKit.configure({
+            heading: false,
+            bold: false,
+            italic: false,
+            strike: false,
+            code: false,
+            bulletList: false,
+            orderedList: false,
+            listItem: false,
+            blockquote: false,
+            codeBlock: false,
+            horizontalRule: false,
+          })
+        : StarterKit.configure({ heading: { levels: [2, 3] } }),
+      // Link/Image only in rich mode.
+      ...(plain
+        ? []
+        : [
+            // `inclusive: false` so typing after a link doesn't keep extending it.
+            Link.extend({ inclusive: false }).configure({ openOnClick: false }),
+            Image.configure({ inline: false }),
+          ]),
       Variable,
       VariableSuggestion.configure({
         suggestion: buildVariableSuggestion({
@@ -351,7 +413,7 @@ export function RichTextEditor({
         }),
       }),
     ],
-    content: value,
+    content: plain ? plainToHtml(value, variables) : value,
     editorProps: {
       attributes: {
         class: cn(
@@ -361,15 +423,18 @@ export function RichTextEditor({
         ...(placeholder ? { "data-placeholder": placeholder } : {}),
       },
     },
-    onUpdate: ({ editor }) => onValueChange?.(editor.getHTML()),
+    onUpdate: ({ editor }) => onValueChange?.(readValue(editor)),
   });
 
   // Sync external value changes (e.g. resetting the form) without clobbering
   // the cursor while typing.
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value, { emitUpdate: false });
+    if (editor && value !== readValue(editor)) {
+      editor.commands.setContent(plain ? plainToHtml(value, variables) : value, {
+        emitUpdate: false,
+      });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, value]);
 
   const [linkPop, setLinkPop] = useState(false);
@@ -458,6 +523,8 @@ export function RichTextEditor({
       )}
     >
       <div className="border-border flex flex-wrap items-center gap-0.5 border-b p-1.5">
+        {plain ? null : (
+          <>
         <Tool icon={Bold} active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} />
         <Tool icon={Italic} active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} />
         <Tool icon={Strikethrough} active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()} />
@@ -584,6 +651,8 @@ export function RichTextEditor({
             </div>
           </PopoverContent>
         </Popover>
+          </>
+        )}
 
         <Popover>
           <PopoverTrigger className={triggerClass()} title="Emoji">

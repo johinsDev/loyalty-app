@@ -598,12 +598,14 @@ export function CampaignWizard({ id }: { id?: string }) {
                 placeholder={t("pushTitlePlaceholder")}
                 className="h-10"
               />
-              <Textarea
+              <RichTextEditor
+                plain
                 value={form.message.push.body}
-                onChange={(e) => setMsg("push", "body", e.target.value)}
-                onFocus={() => setActiveField({ channel: "push", key: "body" })}
+                onValueChange={(text) => setMsg("push", "body", text.trim() ? text : "")}
                 placeholder={t("pushBodyPlaceholder")}
-                rows={2}
+                variables={[...CAMPAIGN_VARS]}
+                entities={ENTITY_KINDS}
+                onRequestEntity={onRequestEntity}
               />
             </ChannelBlock>
 
@@ -630,22 +632,26 @@ export function CampaignWizard({ id }: { id?: string }) {
             </ChannelBlock>
 
             <ChannelBlock label={t("channel.sms")}>
-              <Textarea
+              <RichTextEditor
+                plain
                 value={form.message.sms.text}
-                onChange={(e) => setMsg("sms", "text", e.target.value)}
-                onFocus={() => setActiveField({ channel: "sms", key: "text" })}
+                onValueChange={(text) => setMsg("sms", "text", text.trim() ? text : "")}
                 placeholder={t("smsPlaceholder")}
-                rows={2}
+                variables={[...CAMPAIGN_VARS]}
+                entities={ENTITY_KINDS}
+                onRequestEntity={onRequestEntity}
               />
             </ChannelBlock>
 
             <ChannelBlock label={t("channel.whatsapp")}>
-              <Textarea
+              <RichTextEditor
+                plain
                 value={form.message.whatsapp.text}
-                onChange={(e) => setMsg("whatsapp", "text", e.target.value)}
-                onFocus={() => setActiveField({ channel: "whatsapp", key: "text" })}
+                onValueChange={(text) => setMsg("whatsapp", "text", text.trim() ? text : "")}
                 placeholder={t("whatsappPlaceholder")}
-                rows={2}
+                variables={[...CAMPAIGN_VARS]}
+                entities={ENTITY_KINDS}
+                onRequestEntity={onRequestEntity}
               />
             </ChannelBlock>
           </div>
