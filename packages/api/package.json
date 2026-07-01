@@ -22,6 +22,8 @@
     "./features/products": "./src/features/products/index.ts",
     "./features/banners": "./src/features/banners/index.ts",
     "./features/banners/schemas": "./src/features/banners/schemas.ts",
+    "./features/campaigns": "./src/features/campaigns/index.ts",
+    "./features/campaigns/schemas": "./src/features/campaigns/schemas.ts",
     "./features/settings": "./src/features/settings/index.ts",
     "./features/settings/schemas": "./src/features/settings/schemas.ts",
     "./features/employees": "./src/features/employees/index.ts",

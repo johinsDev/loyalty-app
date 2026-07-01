@@ -79,15 +79,7 @@ const GROUPS: Group[] = [
     label: "groupMarketing",
     min: "manager",
     items: [
-      {
-        href: "/campaigns",
-        key: "campaigns",
-        icon: Send,
-        sub: [
-          { href: "/campaigns", key: "campaignsList" },
-          { href: "/campaigns/templates", key: "templates" },
-        ],
-      },
+      { href: "/campaigns", key: "campaigns", icon: Send },
       { href: "/notifications", key: "notifications", icon: Bell },
       { href: "/banners", key: "banners", icon: ImageIcon },
     ],

@@ -1,349 +1,531 @@
 "use client";
 
+import type {
+  CampaignDisplayState,
+  CampaignListItem,
+  CampaignsListInput,
+} from "@loyalty/api/features/campaigns/schemas";
+import { formatDate, localeFromCode } from "@loyalty/date";
 import {
   Badge,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Calendar,
+  Checkbox,
+  Input,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
 } from "@loyalty/ui";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
-  ArrowUpRight,
   Bell,
+  Download,
   Mail,
   MessageCircle,
   MessageSquare,
-  Megaphone,
   Plus,
-  Search,
-  Zap,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { parseAsArrayOf, parseAsIsoDate, parseAsString, useQueryState } from "nuqs";
+import { useLocale, useTranslations } from "next-intl";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { EmptyState } from "@/components/empty-state";
-import { type FilterOption, FilterMultiSelect } from "@/components/filters";
-import { type ViewMode, ViewToggle } from "@/components/view-toggle";
-import { useFadeUp } from "@/lib/animate";
-import { useRouter } from "@/i18n/navigation";
-
 import {
-  type Campaign,
-  type CampaignType,
-  campaignKpis,
-  campaigns,
-  type Channel,
-  type Status,
-} from "../data";
+  DataTable,
+  DataTableBulkBar,
+  DataTableColumnHeader,
+  DataTableFilters,
+  DataTablePagination,
+  DataTableSortList,
+  DataTableViewOptions,
+  FilterSection,
+  tableParsers,
+} from "@/components/data-table";
+import { useDataTable } from "@/components/data-table/use-data-table";
+import { ViewToggle } from "@/components/view-toggle";
+import { downloadCsv, rowsToCsv } from "@/lib/csv";
+import { useRouter } from "@/i18n/navigation";
+import { useTRPC } from "@/lib/trpc/client";
 
-const STATUSES: Status[] = ["active", "paused", "draft"];
-const TYPES: CampaignType[] = ["automated", "manual"];
-const CHANNEL_ICON: Record<Channel, LucideIcon> = {
+import { buildCampaignsInput } from "../list-params";
+import { CampaignDetailModal } from "./campaign-detail-modal";
+import { CampaignRowActions } from "./campaign-row-actions";
+
+const TYPE_VALUES = ["promotional", "automated", "transactional"] as const;
+const STATE_VALUES: CampaignDisplayState[] = [
+  "draft",
+  "scheduled",
+  "sending",
+  "sent",
+  "paused",
+];
+
+const STATE_STYLE: Record<CampaignDisplayState, string> = {
+  sent: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  scheduled: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  sending: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+  paused: "bg-muted text-muted-foreground",
+  draft: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+};
+
+const CHANNEL_ICON: Record<string, LucideIcon> = {
   push: Bell,
   email: Mail,
   sms: MessageSquare,
   whatsapp: MessageCircle,
 };
 
-/**
- * Campañas — KPI row + a data table (channels, trigger, sent/open/click, type)
- * with status/type filters, Quick push + New campaign, pagination-free for now.
- * Rows open the campaign wizard. Design-first / hardcoded (../data).
- */
-export function CampaignsView() {
-  const t = useTranslations("Campaigns");
-  const tCommon = useTranslations("Common");
-  const router = useRouter();
-  const fade = useFadeUp({ step: 35 });
+type CampaignsListResult = { rows: CampaignListItem[]; total: number; pageCount: number };
 
-  const [query, setQuery] = useState("");
-  const [statuses, setStatuses] = useState<Status[]>([...STATUSES]);
-  const [types, setTypes] = useState<CampaignType[]>([...TYPES]);
-  const [view, setView] = useState<ViewMode>("list");
-
-  const statusOptions: FilterOption<Status>[] = [
-    { value: "active", label: t("status.active"), dot: "#1f9d68" },
-    { value: "paused", label: t("status.paused"), dot: "#c98a00" },
-    { value: "draft", label: t("status.draft"), dot: "#9aa1ab" },
-  ];
-  const typeOptions: FilterOption<CampaignType>[] = [
-    { value: "automated", label: t("type.automated") },
-    { value: "manual", label: t("type.manual") },
-  ];
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return campaigns.filter((c) => {
-      if (!statuses.includes(c.status)) return false;
-      if (!types.includes(c.type)) return false;
-      if (q && !c.name.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [query, statuses, types]);
-
-  const clearFilters = () => {
-    setQuery("");
-    setStatuses([...STATUSES]);
-    setTypes([...TYPES]);
-  };
-
-  let i = 0;
-
+function ChannelIcons({ channels }: { channels: string[] }) {
+  if (channels.length === 0) return <span className="text-muted-foreground">—</span>;
   return (
-    <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground/80 mt-0.5 text-sm font-semibold">
-            {t("subtitle")}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            className="h-10 gap-2 rounded-xl"
-            onClick={() => toast.success(t("quickPushSent"))}
+    <div className="flex items-center gap-1">
+      {channels.map((c) => {
+        const Icon = CHANNEL_ICON[c];
+        if (!Icon) return null;
+        return (
+          <span
+            key={c}
+            className="bg-muted text-muted-foreground grid size-6 place-items-center rounded-md"
           >
-            <Zap className="size-4" />
-            {t("quickPush")}
-          </Button>
-          <Button
-            className="h-10 gap-2 rounded-xl font-semibold"
-            onClick={() => router.push("/campaigns/new")}
-          >
-            <Plus className="size-4" />
-            {t("add")}
-          </Button>
-        </div>
-      </div>
-
-      {/* KPI row */}
-      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {campaignKpis.map((k) => (
-          <div
-            key={k.key}
-            style={fade(i++)}
-            className="bg-card border-border min-w-0 rounded-3xl border p-5 shadow-sm"
-          >
-            <span className="text-muted-foreground/70 text-xs font-extrabold tracking-wider uppercase">
-              {t(`kpi.${k.key}`)}
-            </span>
-            <div className="font-display mt-1 text-3xl font-semibold tracking-tight">
-              {k.value}
-            </div>
-            <span className="mt-1.5 inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600">
-              <ArrowUpRight className="size-3.5" />
-              {k.delta}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Table card */}
-      <div
-        style={fade(i++)}
-        className="bg-card border-border mt-5 overflow-hidden rounded-3xl border shadow-sm"
-      >
-        <div className="border-border flex flex-wrap items-center gap-2 border-b p-4">
-          <div className="relative min-w-52 flex-1">
-            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("searchPlaceholder")}
-              className="border-border bg-muted/40 placeholder:text-muted-foreground h-10 w-full rounded-xl border pr-3 pl-9 text-sm outline-none"
-            />
-          </div>
-          <FilterMultiSelect
-            label={t("statusFilter")}
-            options={statusOptions}
-            selected={statuses}
-            onChange={setStatuses}
-          />
-          <FilterMultiSelect
-            label={t("typeFilter")}
-            options={typeOptions}
-            selected={types}
-            onChange={setTypes}
-          />
-          <ViewToggle
-            value={view}
-            onValueChange={setView}
-            ariaLabel={tCommon("viewToggle")}
-          />
-        </div>
-
-        {filtered.length === 0 ? (
-          <EmptyState
-            icon={Megaphone}
-            title={t("empty")}
-            hint={t("emptyHint")}
-            action={
-              <Button variant="outline" className="rounded-xl" onClick={clearFilters}>
-                {t("clearFilters")}
-              </Button>
-            }
-          />
-        ) : view === "list" ? (
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("col.campaign")}</TableHead>
-                <TableHead>{t("col.channels")}</TableHead>
-                <TableHead className="text-right">{t("col.sent")}</TableHead>
-                <TableHead className="text-right">{t("col.open")}</TableHead>
-                <TableHead className="text-right">{t("col.click")}</TableHead>
-                <TableHead>{t("col.status")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((c) => (
-                <Row key={c.id} campaign={c} router={router} t={t} />
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                style={fade(i++)}
-                onClick={() =>
-                  router.push({ pathname: "/campaigns/[id]", params: { id: c.id } })
-                }
-                className="bg-card border-border cursor-pointer rounded-3xl border p-5 text-left shadow-sm"
-              >
-                <div className="font-bold">{c.name}</div>
-                <div className="text-muted-foreground/70 mt-0.5 text-xs font-semibold">
-                  {t(c.trigger)} · {t(`type.${c.type}`)}
-                </div>
-
-                <div className="mt-3 flex items-center gap-1">
-                  {c.channels.map((ch) => {
-                    const Icon = CHANNEL_ICON[ch];
-                    return (
-                      <span
-                        key={ch}
-                        className="bg-muted text-muted-foreground grid size-6 place-items-center rounded-md"
-                      >
-                        <Icon className="size-3" />
-                      </span>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-4 flex items-center gap-5">
-                  <div>
-                    <div className="font-bold">{c.sent.toLocaleString()}</div>
-                    <div className="text-muted-foreground/70 text-xs font-semibold">
-                      {t("col.sent")}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-bold">{c.open}%</div>
-                    <div className="text-muted-foreground/70 text-xs font-semibold">
-                      {t("col.open")}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-primary font-extrabold">{c.click}%</div>
-                    <div className="text-muted-foreground/70 text-xs font-semibold">
-                      {t("col.click")}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <Badge
-                    variant="secondary"
-                    className={
-                      c.status === "active"
-                        ? "text-emerald-600"
-                        : c.status === "paused"
-                          ? "text-amber-600"
-                          : "text-muted-foreground"
-                    }
-                  >
-                    {t(`status.${c.status}`)}
-                  </Badge>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+            <Icon className="size-3" />
+          </span>
+        );
+      })}
     </div>
   );
 }
 
-function Row({
-  campaign: c,
-  router,
-  t,
-}: {
-  campaign: Campaign;
-  router: ReturnType<typeof useRouter>;
-  t: ReturnType<typeof useTranslations>;
-}) {
+export function CampaignsView({ initialData }: { initialData?: CampaignsListResult }) {
+  const t = useTranslations("Campaigns");
+  const locale = useLocale();
+  const trpc = useTRPC();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const [q, setQ] = useQueryState("q", tableParsers.q);
+  const [type, setType] = useQueryState("type", parseAsArrayOf(parseAsString).withDefault([]));
+  const [state, setState] = useQueryState("state", parseAsArrayOf(parseAsString).withDefault([]));
+  const [from, setFrom] = useQueryState("from", parseAsIsoDate);
+  const [to, setTo] = useQueryState("to", parseAsIsoDate);
+  const [, setPage] = useQueryState("page", tableParsers.page);
+  const [sort] = useQueryState("sort", tableParsers.sort);
+  const [page] = useQueryState("page", tableParsers.page);
+  const [perPage] = useQueryState("perPage", tableParsers.perPage);
+  const [view, setView] = useQueryState("view", tableParsers.view);
+  const [detailId, setDetailId] = useQueryState("detalle", parseAsString);
+
+  const resetPage = () => void setPage(1);
+
+  const [search, setSearch] = useState(q);
+  const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const onSearch = (value: string) => {
+    setSearch(value);
+    clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => {
+      void setQ(value || null);
+      resetPage();
+    }, 350);
+  };
+
+  const activeFacets =
+    (type.length > 0 && type.length < TYPE_VALUES.length ? 1 : 0) +
+    (state.length > 0 && state.length < STATE_VALUES.length ? 1 : 0) +
+    (from || to ? 1 : 0);
+  const clearFilters = () => {
+    void setType([]);
+    void setState([]);
+    void setFrom(null);
+    void setTo(null);
+    resetPage();
+  };
+  const toggleType = (v: string) => {
+    void setType(type.includes(v) ? type.filter((x) => x !== v) : [...type, v]);
+    resetPage();
+  };
+  const toggleState = (v: string) => {
+    void setState(state.includes(v) ? state.filter((x) => x !== v) : [...state, v]);
+    resetPage();
+  };
+
+  const input: CampaignsListInput = useMemo(
+    () => buildCampaignsInput({ q, page, perPage, sort, type, state, from, to }),
+    [q, page, perPage, sort, type, state, from, to],
+  );
+
+  const initialKey = useRef(JSON.stringify(input));
+  const useInitial = initialData && JSON.stringify(input) === initialKey.current;
+  const query = useQuery(
+    trpc.campaigns.adminList.queryOptions(input, {
+      placeholderData: keepPreviousData,
+      ...(useInitial ? { initialData } : {}),
+    }),
+  );
+  const rows = query.data?.rows ?? [];
+  const pageCount = query.data?.pageCount ?? 1;
+  const total = query.data?.total ?? 0;
+
+  const columns = useMemo<ColumnDef<CampaignListItem, unknown>[]>(
+    () => [
+      {
+        id: "select",
+        enableSorting: false,
+        enableHiding: false,
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            indeterminate={table.getIsSomePageRowsSelected()}
+            onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+            aria-label={t("selectAll")}
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(v) => row.toggleSelected(!!v)}
+            aria-label={t("selectRow")}
+          />
+        ),
+      },
+      {
+        accessorKey: "name",
+        meta: { label: t("colName") },
+        header: ({ column }) => <DataTableColumnHeader column={column} title={t("colName")} />,
+        cell: ({ row }) => (
+          <button
+            type="button"
+            className="hover:text-primary flex cursor-pointer items-center gap-2.5 text-left font-semibold hover:underline"
+            onClick={() => void setDetailId(row.original.id)}
+          >
+            <span className="line-clamp-1">{row.original.name || t("namePlaceholder")}</span>
+          </button>
+        ),
+      },
+      {
+        accessorKey: "type",
+        enableSorting: false,
+        meta: { label: t("colType") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("colType")}</span>,
+        cell: ({ row }) => (
+          <Badge variant="outline">{t(`type.${row.original.type}`)}</Badge>
+        ),
+      },
+      {
+        accessorKey: "displayState",
+        enableSorting: false,
+        meta: { label: t("colState") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("colState")}</span>,
+        cell: ({ row }) => (
+          <Badge className={`border-0 ${STATE_STYLE[row.original.displayState]}`}>
+            {t(`state.${row.original.displayState}`)}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "channelPriority",
+        enableSorting: false,
+        meta: { label: t("colChannels") },
+        header: () => (
+          <span className="text-muted-foreground text-xs font-bold">{t("colChannels")}</span>
+        ),
+        cell: ({ row }) => <ChannelIcons channels={row.original.channelPriority} />,
+      },
+      {
+        accessorKey: "sent",
+        meta: { label: t("colSent") },
+        header: ({ column }) => <DataTableColumnHeader column={column} title={t("colSent")} />,
+        cell: ({ row }) =>
+          row.original.sent > 0 ? (
+            <span className="font-semibold">{row.original.sent.toLocaleString()}</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+      },
+      {
+        accessorKey: "createdAt",
+        meta: { label: t("colCreated") },
+        header: ({ column }) => <DataTableColumnHeader column={column} title={t("colCreated")} />,
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm">
+            {formatDate(row.original.createdAt, { locale })}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => <CampaignRowActions campaign={row.original} />,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, locale, setDetailId],
+  );
+
+  const { table, selectedIds, resetSelection } = useDataTable<CampaignListItem>({
+    data: rows,
+    columns,
+    pageCount,
+    getRowId: (r) => r.id,
+  });
+
+  const invalidate = () => queryClient.invalidateQueries(trpc.campaigns.adminList.queryFilter());
+  const bulkRemove = useMutation(trpc.campaigns.bulkRemove.mutationOptions());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const onExport = async () => {
+    const data = await queryClient.fetchQuery(
+      trpc.campaigns.listByIds.queryOptions({ ids: selectedIds }),
+    );
+    downloadCsv(
+      rowsToCsv(data, [
+        { header: t("colName"), value: (c) => c.name },
+        { header: t("colType"), value: (c) => c.type },
+        { header: t("colState"), value: (c) => c.displayState },
+        { header: t("colChannels"), value: (c) => c.channelPriority.join(" · ") },
+        { header: t("colSent"), value: (c) => String(c.sent) },
+        { header: t("colCreated"), value: (c) => formatDate(c.createdAt, { locale }) },
+      ]),
+      `campaigns-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+    toast.success(t("exported", { n: selectedIds.length }));
+  };
+
+  const onBulkDelete = () =>
+    bulkRemove.mutate(
+      { ids: selectedIds },
+      {
+        onSuccess: async () => {
+          await invalidate();
+          resetSelection();
+          setConfirmDelete(false);
+          toast.success(t("bulkDeleteOk", { n: selectedIds.length }));
+        },
+        onError: () => toast.error(t("saveError")),
+      },
+    );
+
   return (
-    <TableRow
-      className="cursor-pointer"
-      onClick={() =>
-        router.push({ pathname: "/campaigns/[id]", params: { id: c.id } })
-      }
-    >
-      <TableCell>
-        <div className="font-bold">{c.name}</div>
-        <div className="text-muted-foreground/70 text-xs font-semibold">
-          {t(c.trigger)} · {t(`type.${c.type}`)}
+    <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
         </div>
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-1">
-          {c.channels.map((ch) => {
-            const Icon = CHANNEL_ICON[ch];
-            return (
-              <span
-                key={ch}
-                className="bg-muted text-muted-foreground grid size-6 place-items-center rounded-md"
+        <Button className="h-10 gap-1.5 rounded-xl" onClick={() => router.push("/campaigns/new")}>
+          <Plus className="size-4" />
+          {t("add")}
+        </Button>
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <Input
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          placeholder={t("searchPlaceholder")}
+          className="h-10 w-full sm:w-64"
+        />
+        <DataTableFilters activeCount={activeFacets} onClear={clearFilters}>
+          <FilterSection label={t("colType")}>
+            {TYPE_VALUES.map((v) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox checked={type.includes(v)} onCheckedChange={() => toggleType(v)} />
+                {t(`type.${v}`)}
+              </label>
+            ))}
+          </FilterSection>
+
+          <FilterSection label={t("colState")}>
+            {STATE_VALUES.map((v) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox checked={state.includes(v)} onCheckedChange={() => toggleState(v)} />
+                {t(`state.${v}`)}
+              </label>
+            ))}
+          </FilterSection>
+
+          <FilterSection label={t("colCreated")}>
+            <div className="border-border flex justify-center rounded-2xl border p-1.5">
+              <Calendar
+                mode="range"
+                className="[--cell-size:--spacing(9)]"
+                locale={localeFromCode(locale)}
+                selected={{ from: from ?? undefined, to: to ?? undefined }}
+                onSelect={(r: { from?: Date; to?: Date } | undefined) => {
+                  void setFrom(r?.from ?? null);
+                  void setTo(r?.to ?? null);
+                  resetPage();
+                }}
+                disabled={{ after: new Date() }}
+              />
+            </div>
+            {from || to ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 rounded-lg"
+                onClick={() => {
+                  void setFrom(null);
+                  void setTo(null);
+                  resetPage();
+                }}
               >
-                <Icon className="size-3" />
-              </span>
-            );
-          })}
+                {t("clearDate")}
+              </Button>
+            ) : null}
+          </FilterSection>
+        </DataTableFilters>
+        <div className="ml-auto flex items-center gap-2">
+          <DataTableSortList table={table} />
+          <DataTableViewOptions table={table} />
+          <ViewToggle value={view} onValueChange={(v) => setView(v)} ariaLabel={t("viewToggle")} />
         </div>
-      </TableCell>
-      <TableCell className="text-right font-bold">
-        {c.sent.toLocaleString()}
-      </TableCell>
-      <TableCell className="text-muted-foreground text-right font-semibold">
-        {c.open}%
-      </TableCell>
-      <TableCell className="text-primary text-right font-extrabold">
-        {c.click}%
-      </TableCell>
-      <TableCell>
-        <Badge
-          variant="secondary"
-          className={
-            c.status === "active"
-              ? "text-emerald-600"
-              : c.status === "paused"
-                ? "text-amber-600"
-                : "text-muted-foreground"
+      </div>
+
+      <div className="mt-4">
+        <DataTable
+          table={table}
+          view={view}
+          isFetching={query.isFetching}
+          emptyState={
+            <div className="text-muted-foreground grid h-40 place-items-center px-6 text-center">
+              <div>
+                <p className="text-foreground font-semibold">{t("empty")}</p>
+                <p className="mt-1 text-sm">{t("emptyHint")}</p>
+              </div>
+            </div>
           }
+          renderGrid={(items) => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((c) => (
+                <div
+                  key={c.id}
+                  role="button"
+                  tabIndex={0}
+                  className="bg-card border-border hover:border-primary/40 flex cursor-pointer flex-col rounded-3xl border p-5 shadow-sm transition-colors"
+                  onClick={() => void setDetailId(c.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      void setDetailId(c.id);
+                    }
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold">{c.name || t("namePlaceholder")}</p>
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <CampaignRowActions campaign={c} />
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <Badge className={`border-0 ${STATE_STYLE[c.displayState]}`}>
+                      {t(`state.${c.displayState}`)}
+                    </Badge>
+                    <Badge variant="outline">{t(`type.${c.type}`)}</Badge>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <ChannelIcons channels={c.channelPriority} />
+                    <span className="text-muted-foreground text-xs font-semibold">
+                      {c.sent > 0 ? t("sentN", { n: c.sent }) : formatDate(c.createdAt, { locale })}
+                    </span>
+                  </div>
+                  <div
+                    className="mt-3"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={table.getRow(c.id)?.getIsSelected() ?? false}
+                      onCheckedChange={(v) => table.getRow(c.id)?.toggleSelected(!!v)}
+                      aria-label={t("selectRow")}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        />
+        <DataTablePagination table={table} total={total} selectedCount={selectedIds.length} />
+      </div>
+
+      <DataTableBulkBar count={selectedIds.length} onClear={resetSelection}>
+        <Button variant="ghost" size="sm" className="h-9 gap-1.5 rounded-full" onClick={onExport}>
+          <Download className="size-4" />
+          {t("bulkExport")}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive h-9 gap-1.5 rounded-full"
+          onClick={() => setConfirmDelete(true)}
         >
-          {t(`status.${c.status}`)}
-        </Badge>
-      </TableCell>
-    </TableRow>
+          <Trash2 className="size-4" />
+          {t("bulkDelete")}
+        </Button>
+      </DataTableBulkBar>
+
+      <BulkDeleteDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        count={selectedIds.length}
+        busy={bulkRemove.isPending}
+        onConfirm={onBulkDelete}
+      />
+
+      <CampaignDetailModal id={detailId} onClose={() => void setDetailId(null)} />
+    </div>
+  );
+}
+
+function BulkDeleteDialog({
+  open,
+  onOpenChange,
+  count,
+  busy,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  count: number;
+  busy: boolean;
+  onConfirm: () => void;
+}) {
+  const t = useTranslations("Campaigns");
+  return (
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent>
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>{t("bulkDeleteTitle", { n: count })}</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
+        <p className="text-muted-foreground px-4 pb-2 text-sm">{t("bulkDeleteHint")}</p>
+        <ResponsiveModalFooter className="gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 rounded-full px-5"
+            onClick={() => onOpenChange(false)}
+          >
+            {t("cancel")}
+          </Button>
+          <Button
+            type="button"
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 rounded-full px-6 font-semibold"
+            onClick={onConfirm}
+            disabled={busy}
+          >
+            {t("deleteConfirm")}
+          </Button>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

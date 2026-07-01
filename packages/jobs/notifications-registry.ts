@@ -855,6 +855,51 @@ export class PromoAnnouncementNotification
 }
 
 /**
+ * Promotional campaign — marketing (respects opt-out). Built by the
+ * `send-campaign` job with content ALREADY rendered for the single channel the
+ * reachability resolver picked (so `via()` returns exactly that channel and the
+ * matching `toX()` supplies the pre-rendered copy). See the campaigns feature.
+ */
+export class CampaignNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "marketing" as const;
+
+  constructor(
+    private readonly channel: ChannelName,
+    private readonly content: {
+      push?: { title: string; body: string; clickAction?: string };
+      mail?: { subject: string; html: string };
+      sms?: { body: string };
+      whatsapp?: { body: string };
+    },
+  ) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return [this.channel];
+  }
+
+  toPush() {
+    return this.content.push ?? { title: "", body: "" };
+  }
+
+  toMail() {
+    return this.content.mail ?? { subject: "", html: "" };
+  }
+
+  toSms() {
+    return this.content.sms ?? { body: "" };
+  }
+
+  toWhatsApp() {
+    return this.content.whatsapp ?? { body: "" };
+  }
+}
+
+/**
  * Security alert when a customer changes their phone. Transactional (always
  * sends). WhatsApp is dispatched with an explicit recipient override (the OLD
  * contact) so it reaches the previous number even though the `customer` row
