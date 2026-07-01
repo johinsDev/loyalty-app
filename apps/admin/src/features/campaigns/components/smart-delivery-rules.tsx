@@ -57,7 +57,7 @@ export function SmartDeliveryRules() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-5 py-6 lg:px-8">
+    <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
       <Link
         href="/campaigns"
         className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm font-bold"
@@ -68,7 +68,7 @@ export function SmartDeliveryRules() {
       <h1 className="font-display text-2xl font-semibold tracking-tight">{t("rulesTitle")}</h1>
       <p className="text-muted-foreground text-sm">{t("rulesSubtitle")}</p>
 
-      <div className="mt-6 space-y-5">
+      <div className="mt-6 max-w-2xl space-y-5">
         <section className="bg-card border-border space-y-3 rounded-3xl border p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>

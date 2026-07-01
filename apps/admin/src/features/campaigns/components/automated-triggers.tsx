@@ -1,9 +1,10 @@
 "use client";
 
-import { Badge, Button, Switch } from "@loyalty/ui";
+import { Badge, Button, Input, Switch } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Link } from "@/i18n/navigation";
@@ -24,6 +25,7 @@ export function AutomatedTriggers() {
 
   const query = useQuery(trpc.notifications.configList.queryOptions());
   const setConfig = useMutation(trpc.notifications.setConfig.mutationOptions());
+  const [search, setSearch] = useState("");
 
   const save = (
     key: string,
@@ -40,8 +42,13 @@ export function AutomatedTriggers() {
     );
   };
 
+  const q = search.trim().toLowerCase();
+  const rows = (query.data ?? []).filter(
+    (row) => !q || t(`triggers.${row.notificationKey}`).toLowerCase().includes(q),
+  );
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 py-6 lg:px-8">
+    <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
       <Link
         href="/campaigns"
         className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm font-bold"
@@ -54,8 +61,23 @@ export function AutomatedTriggers() {
       </h1>
       <p className="text-muted-foreground text-sm">{t("automatedSubtitle")}</p>
 
-      <div className="mt-6 space-y-2.5">
-        {(query.data ?? []).map((row) => {
+      <div className="relative mt-6 max-w-sm">
+        <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t("automatedSearchPlaceholder")}
+          className="h-10 pl-9"
+        />
+      </div>
+
+      <div className="mt-4 max-w-3xl space-y-2.5">
+        {query.data && rows.length === 0 ? (
+          <p className="text-muted-foreground py-8 text-center text-sm">
+            {t("automatedNoResults")}
+          </p>
+        ) : null}
+        {rows.map((row) => {
           // null channels behave as "all declared"; show all checked.
           const active = new Set(row.channels ?? CONFIG_CHANNELS);
           const toggleChannel = (ch: string) => {

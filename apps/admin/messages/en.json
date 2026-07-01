@@ -1284,6 +1284,8 @@
     "rulesSaved": "Rules saved",
     "automatedTitle": "Automated",
     "automatedSubtitle": "Turn automated messages on or off and choose their channels.",
+    "automatedSearchPlaceholder": "Search automation…",
+    "automatedNoResults": "No automations match.",
     "triggerAlwaysOn": "Always on",
     "cfgChannel": {
       "push": "Push",
