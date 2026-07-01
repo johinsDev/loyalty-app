@@ -7,6 +7,8 @@ import {
   pointsAccount,
   purchase,
   pushToken,
+  promoRedemption,
+  redemption,
   shortlink,
   shortlinkClick,
   type CampaignAudienceFilter,
@@ -18,7 +20,11 @@ import { TRPCError } from "@trpc/server";
 import { and, countDistinct, count, desc, eq, gte, inArray, isNotNull, like, lte, max } from "drizzle-orm";
 
 import { pageCountOf, pageOffset, type ListResult } from "../_shared/list";
-import type { CampaignChannel } from "./message";
+import {
+  ATTRIBUTION_WINDOW_DAYS,
+  countRedeemed,
+  type CampaignChannel,
+} from "./message";
 import type {
   CampaignDisplayState,
   CampaignFailureRow,
@@ -429,7 +435,8 @@ export class CampaignsRepository {
   }
 
   // ── Funnel + failures ───────────────────────────────────────────────────────
-  async funnel(orgId: string, campaignId: string): Promise<CampaignFunnel> {
+  async funnel(orgId: string, campaign: CampaignRow): Promise<CampaignFunnel> {
+    const campaignId = campaign.id;
     const rows = await this.db
       .select({
         status: campaignSend.status,
@@ -449,6 +456,7 @@ export class CampaignsRepository {
     const funnel: CampaignFunnel = {
       sent: 0,
       clicked: 0,
+      redeemed: null,
       skipped: 0,
       failed: 0,
       skipReasons: {},
@@ -467,8 +475,73 @@ export class CampaignsRepository {
         funnel.skipReasons[reason] = (funnel.skipReasons[reason] ?? 0) + n;
       }
     }
-    funnel.clicked = await this.clickedCount(orgId, campaignId);
+    [funnel.clicked, funnel.redeemed] = await Promise.all([
+      this.clickedCount(orgId, campaignId),
+      this.redeemedCount(orgId, campaign),
+    ]);
     return funnel;
+  }
+
+  /**
+   * Distinct recipients who redeemed the campaign's linked offer within the
+   * attribution window after their send. Inferred (offer + customer + time) —
+   * no attribution column on the redemption write path. Null when no offer.
+   */
+  async redeemedCount(orgId: string, campaign: CampaignRow): Promise<number | null> {
+    const offer = campaign.offer;
+    if (!offer) return null;
+
+    const sentRows = await this.db
+      .select({ customerId: campaignSend.customerId, sentAt: campaignSend.sentAt })
+      .from(campaignSend)
+      .where(
+        and(
+          eq(campaignSend.organizationId, orgId),
+          eq(campaignSend.campaignId, campaign.id),
+          eq(campaignSend.status, "sent"),
+        ),
+      );
+    const sentAtByCustomer = new Map<string, Date>();
+    for (const r of sentRows) {
+      if (!r.sentAt) continue;
+      const prev = sentAtByCustomer.get(r.customerId);
+      if (!prev || r.sentAt < prev) sentAtByCustomer.set(r.customerId, r.sentAt);
+    }
+    if (sentAtByCustomer.size === 0) return 0;
+
+    const redemptions =
+      offer.kind === "promo"
+        ? (
+            await this.db
+              .select({
+                customerId: promoRedemption.customerId,
+                at: promoRedemption.appliedAt,
+              })
+              .from(promoRedemption)
+              .where(eq(promoRedemption.promoId, offer.id))
+          ).map((r) => ({ customerId: r.customerId, at: r.at }))
+        : (
+            await this.db
+              .select({
+                customerId: redemption.customerId,
+                at: redemption.createdAt,
+              })
+              .from(redemption)
+              .where(
+                and(
+                  eq(redemption.organizationId, orgId),
+                  eq(redemption.rewardId, offer.id),
+                ),
+              )
+          )
+            .filter((r): r is { customerId: string; at: Date } => r.customerId != null)
+            .map((r) => ({ customerId: r.customerId, at: r.at }));
+
+    return countRedeemed(
+      sentAtByCustomer,
+      redemptions,
+      ATTRIBUTION_WINDOW_DAYS * 86_400_000,
+    );
   }
 
   /** Distinct recipients who clicked a per-recipient shortlink of this campaign. */

@@ -2,6 +2,7 @@ import type { CampaignRow } from "@loyalty/db/schema";
 import { describe, expect, it } from "vitest";
 
 import {
+  countRedeemed,
   hasChannelContent,
   renderVars,
   resolveChannel,
@@ -73,6 +74,53 @@ describe("renderVars", () => {
     expect(renderVars("Hola {{nombre}}", {})).toBe("Hola ");
     expect(renderVars("{{ short_link }}", { short_link: "t4.co/x" })).toBe("t4.co/x");
     expect(renderVars("sin tokens", {})).toBe("sin tokens");
+  });
+});
+
+describe("countRedeemed", () => {
+  const WINDOW = 14 * 86_400_000;
+  const day = (n: number) => new Date(2026, 0, n);
+  const sent = new Map([
+    ["a", day(1)],
+    ["b", day(1)],
+    ["c", day(1)],
+  ]);
+
+  it("counts recipients who redeemed within the window, after their send", () => {
+    const n = countRedeemed(
+      sent,
+      [
+        { customerId: "a", at: day(5) }, // in window
+        { customerId: "b", at: day(20) }, // after window (>14d)
+        { customerId: "c", at: day(1) }, // same day, in window
+      ],
+      WINDOW,
+    );
+    expect(n).toBe(2); // a + c
+  });
+
+  it("ignores redemptions before the send and non-recipients", () => {
+    const n = countRedeemed(
+      sent,
+      [
+        { customerId: "a", at: new Date(2025, 11, 20) }, // before send
+        { customerId: "z", at: day(2) }, // never sent
+      ],
+      WINDOW,
+    );
+    expect(n).toBe(0);
+  });
+
+  it("dedupes multiple redemptions by the same recipient", () => {
+    const n = countRedeemed(
+      sent,
+      [
+        { customerId: "a", at: day(3) },
+        { customerId: "a", at: day(6) },
+      ],
+      WINDOW,
+    );
+    expect(n).toBe(1);
   });
 });
 

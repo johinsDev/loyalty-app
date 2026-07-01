@@ -34,6 +34,7 @@ import { useTRPC } from "@/lib/trpc/client";
 
 import { CAMPAIGN_PRESETS, type CampaignPreset } from "../presets";
 import { CampaignMessagePreview, type PreviewMessage } from "./campaign-message-preview";
+import { CampaignOfferPicker } from "./campaign-offer-picker";
 
 const STEPS = ["definition", "message", "channels", "audience", "schedule"] as const;
 type Step = (typeof STEPS)[number];
@@ -44,9 +45,12 @@ const TIERS = ["hoja", "flor", "oro"] as const;
 type Tier = (typeof TIERS)[number];
 const MERGE_VARS = ["nombre", "nivel", "puntos", "sucursal", "short_link"] as const;
 
+type Offer = { kind: "promo" | "reward"; id: string };
+
 type Form = {
   name: string;
   objective: string;
+  offer: Offer | null;
   message: PreviewMessage;
   linkUrl: string;
   channelPriority: Channel[];
@@ -70,6 +74,7 @@ const EMPTY_MESSAGE: PreviewMessage = {
 const EMPTY: Form = {
   name: "",
   objective: "",
+  offer: null,
   message: EMPTY_MESSAGE,
   linkUrl: "",
   channelPriority: [],
@@ -243,6 +248,7 @@ export function CampaignWizard({ id }: { id?: string }) {
       setForm({
         name: c.name ?? "",
         objective: c.objective ?? "",
+        offer: c.offer ?? null,
         message: toFormMessage(c.message),
         linkUrl: c.linkUrl ?? "",
         channelPriority: (c.channelPriority ?? []).filter((x): x is Channel =>
@@ -311,7 +317,12 @@ export function CampaignWizard({ id }: { id?: string }) {
         await advanceMut.mutateAsync({
           id: campaignId,
           step: "definition",
-          input: { name: form.name, objective: form.objective || undefined },
+          input: {
+            name: form.name,
+            objective: form.objective || undefined,
+            // Only persist a fully-chosen offer (kind + entity).
+            offer: form.offer?.id ? form.offer : null,
+          },
         });
       } else if (step === "message") {
         await advanceMut.mutateAsync({
@@ -447,6 +458,12 @@ export function CampaignWizard({ id }: { id?: string }) {
                 onChange={(e) => set("objective", e.target.value)}
                 placeholder={t("fieldObjectivePlaceholder")}
                 rows={3}
+              />
+            </Field>
+            <Field label={t("offerLabel")} hint={t("offerHint")}>
+              <CampaignOfferPicker
+                value={form.offer}
+                onChange={(offer) => set("offer", offer)}
               />
             </Field>
           </div>

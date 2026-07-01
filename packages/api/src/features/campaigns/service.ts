@@ -132,7 +132,7 @@ export class CampaignsService {
   async detail(orgId: string, id: string) {
     const row = await this.loadDraft(orgId, id);
     const [funnel, failures] = await Promise.all([
-      this.repo.funnel(orgId, id),
+      this.repo.funnel(orgId, row),
       this.repo.listFailures(orgId, id),
     ]);
     return {
@@ -144,6 +144,7 @@ export class CampaignsService {
       objective: row.objective,
       message: row.message,
       linkUrl: row.linkUrl,
+      offer: row.offer,
       channelPriority: row.channelPriority ?? [],
       audienceFilter: row.audienceFilter,
       scheduledAt: row.scheduledAt,
@@ -155,8 +156,9 @@ export class CampaignsService {
     };
   }
 
-  funnel(orgId: string, id: string): Promise<CampaignFunnel> {
-    return this.repo.funnel(orgId, id);
+  async funnel(orgId: string, id: string): Promise<CampaignFunnel> {
+    const row = await this.loadDraft(orgId, id);
+    return this.repo.funnel(orgId, row);
   }
 
   // ── Reach preview ───────────────────────────────────────────────────────────

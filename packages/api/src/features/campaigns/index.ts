@@ -8,8 +8,10 @@ export {
 export { CampaignsService, type CampaignStateResult } from "./service";
 export { campaignWizard } from "./wizard";
 export {
+  ATTRIBUTION_WINDOW_DAYS,
   CAMPAIGN_CHANNELS,
   MERGE_VARS,
+  countRedeemed,
   hasChannelContent,
   renderVars,
   resolveChannel,
@@ -39,4 +41,6 @@ export {
   type CountReachInput,
   type DefinitionStepInput,
   type MessageStepInput,
+  type OfferInput,
 } from "./schemas";
+export { offerSchema } from "./schemas";

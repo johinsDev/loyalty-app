@@ -1,7 +1,9 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { z } from "zod";
 
 import {
   type CacheBinding,
+  managerProcedure,
   protectedProcedure,
   type RealtimeBinding,
   rateLimit,
@@ -42,6 +44,18 @@ export function buildRewardsService(ctx: {
 }
 
 export const rewardsRouter = router({
+  // ---- Admin ----------------------------------------------------------
+  /** Lightweight active-reward catalog for admin pickers (campaign offer link). */
+  catalog: managerProcedure
+    .input(z.object({ search: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const { rows } = await new RewardsRepository(ctx.db).listCatalog(
+        await orgId(),
+        { search: input?.search, limit: 20 },
+      );
+      return rows.map((r) => ({ id: r.id, name: r.name }));
+    }),
+
   // ---- Customer (self) ------------------------------------------------
   list: protectedProcedure
     .input(listInputSchema)

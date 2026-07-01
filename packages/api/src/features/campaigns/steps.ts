@@ -35,6 +35,7 @@ export class DefinitionStep extends WizardStep<
     return ctx.services.repo.patch(ctx.organizationId, d.id, {
       name: input.name,
       objective: input.objective ?? null,
+      offer: input.offer ?? null,
     });
   }
 }

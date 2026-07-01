@@ -1197,6 +1197,12 @@
     "nameRequired": "Enter a name.",
     "fieldObjective": "Objective",
     "fieldObjectivePlaceholder": "What do you want this campaign to achieve?",
+    "offerLabel": "Linked offer",
+    "offerHint": "Link a promo or reward to measure redemptions.",
+    "offerNone": "No offer",
+    "offerPromo": "Promotion",
+    "offerReward": "Reward",
+    "offerSelectPlaceholder": "Choose…",
     "messageLabel": "Message",
     "presetsLabel": "Quick presets",
     "tokensLabel": "Insert variable",
@@ -1243,6 +1249,7 @@
     "funnel": {
       "sent": "Sent",
       "clicked": "Clicks",
+      "redeemed": "Redeemed",
       "skipped": "Skipped",
       "failed": "Failed"
     },

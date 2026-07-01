@@ -1197,6 +1197,12 @@
     "nameRequired": "Escribe un nombre.",
     "fieldObjective": "Objetivo",
     "fieldObjectivePlaceholder": "¿Qué quieres lograr con esta campaña?",
+    "offerLabel": "Oferta vinculada",
+    "offerHint": "Vincula una promo o recompensa para medir los canjes.",
+    "offerNone": "Sin oferta",
+    "offerPromo": "Promoción",
+    "offerReward": "Recompensa",
+    "offerSelectPlaceholder": "Elegir…",
     "messageLabel": "Mensaje",
     "presetsLabel": "Plantillas rápidas",
     "tokensLabel": "Insertar variable",
@@ -1243,6 +1249,7 @@
     "funnel": {
       "sent": "Enviados",
       "clicked": "Clic",
+      "redeemed": "Canjeados",
       "skipped": "Omitidos",
       "failed": "Fallidos"
     },

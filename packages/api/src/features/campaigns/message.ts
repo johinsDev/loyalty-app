@@ -55,6 +55,30 @@ export function resolveChannel(
   return null;
 }
 
+/** Attribution window for the "Canjeados" funnel stage. */
+export const ATTRIBUTION_WINDOW_DAYS = 14;
+
+/**
+ * Count distinct recipients who redeemed the linked offer within the
+ * attribution window after their send. Pure so it's unit-testable; the repo
+ * feeds it the sent times + the offer's redemptions.
+ */
+export function countRedeemed(
+  sentAtByCustomer: ReadonlyMap<string, Date>,
+  redemptions: ReadonlyArray<{ customerId: string; at: Date }>,
+  windowMs: number,
+): number {
+  const redeemed = new Set<string>();
+  for (const r of redemptions) {
+    if (redeemed.has(r.customerId)) continue;
+    const sentAt = sentAtByCustomer.get(r.customerId);
+    if (!sentAt) continue;
+    const delta = r.at.getTime() - sentAt.getTime();
+    if (delta >= 0 && delta <= windowMs) redeemed.add(r.customerId);
+  }
+  return redeemed.size;
+}
+
 /** Whether the message has any content for the given channel. */
 export function hasChannelContent(
   message: CampaignMessage | null | undefined,

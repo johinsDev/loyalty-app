@@ -29,9 +29,17 @@ export const campaignDisplayStateSchema = z.enum([
 ]);
 
 // ─── Per-step input schemas (reused verbatim by the FE forms) ────────────────
+/** Optional linked redeemable offer (drives the "Canjeados" funnel stage). */
+export const offerSchema = z.object({
+  kind: z.enum(["promo", "reward"]),
+  id: z.string().min(1),
+});
+export type OfferInput = z.infer<typeof offerSchema>;
+
 export const definitionStepSchema = z.object({
   name: z.string().min(1).max(120),
   objective: z.string().max(500).optional(),
+  offer: offerSchema.nullish(),
 });
 
 const pushContentSchema = z.object({
@@ -157,6 +165,11 @@ export interface CampaignFunnel {
   sent: number;
   /** Distinct recipients who clicked a per-recipient `{{short_link}}`. */
   clicked: number;
+  /**
+   * Distinct recipients who redeemed the linked offer within the attribution
+   * window after their send. `null` when the campaign has no linked offer.
+   */
+  redeemed: number | null;
   /** Recipients skipped (with per-reason breakdown). */
   skipped: number;
   /** Ledger rows with status = failed (retryable). */
@@ -164,7 +177,6 @@ export interface CampaignFunnel {
   skipReasons: Record<string, number>;
   /** Per-channel breakdown of successful sends. */
   byChannel: Record<string, number>;
-  // Canjeados (P3) fills in a later phase.
 }
 
 export interface CampaignFailureRow {

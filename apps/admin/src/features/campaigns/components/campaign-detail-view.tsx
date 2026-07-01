@@ -246,10 +246,21 @@ export function CampaignDetailView({
 
 function FunnelBars({ funnel }: { funnel: CampaignDetail["funnel"] }) {
   const t = useTranslations("Campaigns");
-  const max = Math.max(1, funnel.sent, funnel.clicked, funnel.skipped, funnel.failed);
+  const max = Math.max(
+    1,
+    funnel.sent,
+    funnel.clicked,
+    funnel.redeemed ?? 0,
+    funnel.skipped,
+    funnel.failed,
+  );
   const stages: { key: string; value: number; bar: string; text: string }[] = [
     { key: "sent", value: funnel.sent, bar: "bg-emerald-500", text: "text-emerald-600" },
     { key: "clicked", value: funnel.clicked, bar: "bg-blue-500", text: "text-blue-600" },
+    // Canjeados — only when the campaign links a redeemable offer.
+    ...(funnel.redeemed != null
+      ? [{ key: "redeemed", value: funnel.redeemed, bar: "bg-teal-500", text: "text-teal-600" }]
+      : []),
     { key: "skipped", value: funnel.skipped, bar: "bg-muted-foreground/40", text: "text-muted-foreground" },
     { key: "failed", value: funnel.failed, bar: "bg-destructive", text: "text-destructive" },
   ];
