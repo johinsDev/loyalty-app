@@ -568,6 +568,20 @@ export function CampaignWizard({ id }: { id?: string }) {
                     {v.label}
                   </Button>
                 ))}
+                {ENTITY_KINDS.map((e) => (
+                  <Button
+                    key={e.scope}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-full border-dashed text-xs font-semibold"
+                    onClick={() =>
+                      void onRequestEntity(e.scope).then((v) => v && insertToken(v.token))
+                    }
+                  >
+                    + {e.label}
+                  </Button>
+                ))}
               </div>
             </div>
 
