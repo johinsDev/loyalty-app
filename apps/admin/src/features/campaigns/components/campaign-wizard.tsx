@@ -43,6 +43,8 @@ import { useRouter } from "@/i18n/navigation";
 import { useNavigationGuard } from "@/lib/use-unsaved-guard";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
+
 import { CAMPAIGN_PRESETS, type CampaignPreset } from "../presets";
 import { CampaignEntityModal } from "./campaign-entity-modal";
 import { CampaignMessagePreview, type PreviewMessage } from "./campaign-message-preview";
@@ -458,6 +460,7 @@ export function CampaignWizard({ id }: { id?: string }) {
     new Promise<EditorVariable | null>((resolve) =>
       setEntityReq({ scope: scope as EntityScope, resolve }),
     );
+  const uploadImage = useUploadImage();
   const reorderChannel = (from: number, to: number) => {
     if (from === to) return;
     const next = [...form.channelPriority];
@@ -621,6 +624,7 @@ export function CampaignWizard({ id }: { id?: string }) {
                 variables={[...CAMPAIGN_VARS]}
                 entities={ENTITY_KINDS}
                 onRequestEntity={onRequestEntity}
+                onUploadImage={uploadImage}
               />
             </ChannelBlock>
 

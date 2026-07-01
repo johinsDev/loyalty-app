@@ -12,13 +12,15 @@ import {
   Link as LinkIcon,
   List,
   ListOrdered,
+  Loader2,
   Redo2,
   Smile,
   Strikethrough,
   Undo2,
+  Upload,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "../../cn";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
@@ -115,6 +117,13 @@ export interface RichTextEditorProps {
    */
   entities?: { scope: string; label: string }[];
   onRequestEntity?: (scope: string) => Promise<EditorVariable | null>;
+  /**
+   * Optional image uploader. When provided, the image button offers a
+   * click-to-upload zone (with a loading state) that stores the file via the
+   * app's storage integration and inserts the returned URL. Keeps the storage
+   * hooks out of this generic component. URL-paste stays as a fallback.
+   */
+  onUploadImage?: (file: File) => Promise<string | null>;
 }
 
 /**
@@ -130,6 +139,7 @@ export function RichTextEditor({
   variables,
   entities,
   onRequestEntity,
+  onUploadImage,
 }: RichTextEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
@@ -165,6 +175,8 @@ export function RichTextEditor({
   const [imgPop, setImgPop] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [imgUrl, setImgUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!editor) return null;
 
@@ -195,6 +207,17 @@ export function RichTextEditor({
     if (url) editor.chain().focus().setImage({ src: url }).run();
     setImgUrl("");
     setImgPop(false);
+  };
+  const uploadImageFile = async (file: File | undefined) => {
+    if (!file || !onUploadImage) return;
+    setUploading(true);
+    try {
+      const url = await onUploadImage(file);
+      if (url) editor.chain().focus().setImage({ src: url }).run();
+      setImgPop(false);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const triggerClass = (active?: boolean) =>
@@ -264,19 +287,55 @@ export function RichTextEditor({
           <PopoverTrigger className={triggerClass()} title="Imagen / GIF">
             <ImagePlus className="size-4" />
           </PopoverTrigger>
-          <PopoverContent className="w-72 space-y-2 p-2">
-            <input
-              value={imgUrl}
-              onChange={(e) => setImgUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && insertImage()}
-              placeholder="https://…/imagen.png · .gif"
-              className="border-input h-9 w-full rounded-lg border bg-transparent px-2.5 text-sm outline-none"
-            />
-            <div className="flex justify-end">
+          <PopoverContent className="w-72 space-y-2.5 p-2.5">
+            {onUploadImage ? (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => {
+                    void uploadImageFile(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-input text-muted-foreground hover:border-ring hover:bg-muted/50 flex h-24 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-xs font-medium transition-colors disabled:opacity-70"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="size-5 animate-spin" />
+                      Subiendo…
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="size-5" />
+                      Subir imagen o GIF
+                    </>
+                  )}
+                </button>
+                <div className="text-muted-foreground flex items-center gap-2 text-[11px]">
+                  <span className="bg-border h-px flex-1" />o pega un enlace
+                  <span className="bg-border h-px flex-1" />
+                </div>
+              </>
+            ) : null}
+            <div className="flex gap-1.5">
+              <input
+                value={imgUrl}
+                onChange={(e) => setImgUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && insertImage()}
+                placeholder="https://…/imagen.png"
+                className="border-input h-9 w-full rounded-lg border bg-transparent px-2.5 text-sm outline-none"
+              />
               <button
                 type="button"
                 onClick={insertImage}
-                className="bg-primary text-primary-foreground h-8 rounded-lg px-3 text-xs font-semibold"
+                className="bg-primary text-primary-foreground h-9 shrink-0 rounded-lg px-3 text-xs font-semibold"
               >
                 Insertar
               </button>
