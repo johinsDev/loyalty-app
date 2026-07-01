@@ -1,7 +1,15 @@
 import { z } from "zod";
 
+import { listQueryBase } from "../_shared/list";
+
 // ─── Lifecycle + enums ───────────────────────────────────────────────────────
 export const bannerStatusSchema = z.enum(["draft", "published"]);
+export const bannerDisplayStateSchema = z.enum([
+  "draft",
+  "scheduled",
+  "active",
+  "expired",
+]);
 export const ctaKindSchema = z.enum(["internal", "external"]);
 export const audienceTypeSchema = z.enum(["all", "tier", "specific"]);
 export const tierKeySchema = z.enum(["hoja", "flor", "oro"]);
@@ -87,6 +95,95 @@ export const listInputSchema = z.object({
   pageSize: z.number().int().min(1).max(100).default(25),
 });
 export type ListInput = z.infer<typeof listInputSchema>;
+
+// ─── Admin data-table list (nuqs-driven) ─────────────────────────────────────
+export const bannersListInputSchema = listQueryBase.extend({
+  state: z.array(bannerDisplayStateSchema).optional(),
+  createdFrom: z.coerce.date().optional(),
+  createdTo: z.coerce.date().optional(),
+});
+export type BannersListInput = z.infer<typeof bannersListInputSchema>;
+
+/** Lean row for the admin data-table (heavy fields stay out). */
+export interface BannerListItem {
+  id: string;
+  slug: string;
+  name: string;
+  status: string;
+  displayState: BannerDisplayState;
+  backgroundCss: string | null;
+  mainImageUrl: string | null;
+  displayFrom: Date | null;
+  displayUntil: Date | null;
+  notificationCount: number;
+  sortOrder: number;
+  createdAt: Date;
+}
+
+export const bulkIdsSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500),
+});
+export type BulkIdsInput = z.infer<typeof bulkIdsSchema>;
+
+// ─── Audience reach preview ──────────────────────────────────────────────────
+export const countByAudienceInputSchema = z
+  .object({
+    audienceType: audienceTypeSchema,
+    tierKey: tierKeySchema.optional(),
+    customerIds: z.array(z.string().min(1)).optional(),
+  })
+  .refine((v) => v.audienceType !== "tier" || !!v.tierKey, {
+    message: "tierKey required for tier audience",
+    path: ["tierKey"],
+  });
+export type CountByAudienceInput = z.infer<typeof countByAudienceInputSchema>;
+
+export interface AudienceReach {
+  /** Everyone the audience targets (before opt-outs). */
+  audience: number;
+  /** Would actually receive it — audience minus marketing opt-outs. */
+  eligible: number;
+}
+
+// ─── CTR ingest + stats ──────────────────────────────────────────────────────
+export const recordStatInputSchema = z.object({ id: z.string().uuid() });
+export type RecordStatInput = z.infer<typeof recordStatInputSchema>;
+
+export const bannerStatsInputSchema = z.object({
+  bannerId: z.string().uuid(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+export type BannerStatsInput = z.infer<typeof bannerStatsInputSchema>;
+
+export interface BannerStatPoint {
+  day: string;
+  impressions: number;
+  clicks: number;
+}
+export interface BannerStats {
+  impressions: number;
+  clicks: number;
+  ctr: number; // 0–1
+  series: BannerStatPoint[];
+  notifications: number;
+  reach: number; // recipients across sent notifications (best-effort)
+}
+
+/** One row for the Analytics "Banners" panel (org-level top list). */
+export interface BannerAnalyticsRow {
+  id: string;
+  name: string;
+  slug: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+}
+export interface BannerAnalytics {
+  totals: { impressions: number; clicks: number; ctr: number; banners: number };
+  top: BannerAnalyticsRow[];
+  series: BannerStatPoint[];
+}
 
 export const reorderInputSchema = z.object({
   ids: z.array(z.string().uuid()).min(1),

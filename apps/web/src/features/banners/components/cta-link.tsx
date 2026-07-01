@@ -21,6 +21,10 @@ function typedHref(href: string) {
     const slug = href.slice("/product/".length);
     return { pathname: "/product/[slug]", params: { slug } } as const;
   }
+  if (href.startsWith("/promos/")) {
+    const slug = href.slice("/promos/".length);
+    return { pathname: "/promos/[slug]", params: { slug } } as const;
+  }
   if (href === "/promos") return { pathname: "/promos" } as const;
   if (href === "/rewards") return { pathname: "/rewards" } as const;
   return null;
@@ -35,14 +39,22 @@ export function CtaLink({
   cta,
   className,
   children,
+  onClick,
 }: {
   cta: BannerCtaData;
   className?: string;
   children: ReactNode;
+  onClick?: () => void;
 }) {
   if (cta.kind === "external") {
     return (
-      <a href={cta.href} target="_blank" rel="noopener noreferrer" className={className}>
+      <a
+        href={cta.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+        onClick={onClick}
+      >
         {children}
       </a>
     );
@@ -50,13 +62,13 @@ export function CtaLink({
   const internal = typedHref(cta.href);
   if (internal) {
     return (
-      <Link href={internal} className={className}>
+      <Link href={internal} className={className} onClick={onClick}>
         {children}
       </Link>
     );
   }
   return (
-    <a href={cta.href} className={className}>
+    <a href={cta.href} className={className} onClick={onClick}>
       {children}
     </a>
   );

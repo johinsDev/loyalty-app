@@ -11,15 +11,32 @@ import {
   type AdminListResult,
   type BannersRepository,
 } from "./repository";
+import type { ListResult } from "../_shared/list";
 import type {
+  AudienceReach,
+  BannerAnalytics,
   BannerCard,
   BannerDetail,
+  BannerListItem,
   BannerNotificationView,
+  BannersListInput,
+  BannerStats,
+  CountByAudienceInput,
   CreateNotificationInput,
   ListInput,
   BannerStepKey,
 } from "./schemas";
 import { bannerWizard } from "./wizard";
+
+/** Operating timezone for daily stat buckets (single-location pilot). */
+const STATS_TZ = "America/Bogota";
+const dayInTz = (tz: string, d = new Date()): string =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 
 // Public reads are cached (banners rarely change); admin mutations invalidate.
 const TTL_SECONDS = 600;
@@ -131,6 +148,131 @@ export class BannersService {
 
   list(orgId: string, input: ListInput): Promise<AdminListResult> {
     return this.repo.list(orgId, input);
+  }
+
+  // ── Admin data-table + detail ─────────────────────────────────────────────
+  adminList(orgId: string, input: BannersListInput): Promise<ListResult<BannerListItem>> {
+    return this.repo.adminList(orgId, input);
+  }
+
+  listByIds(orgId: string, ids: string[]): Promise<BannerListItem[]> {
+    return this.repo.listByIds(orgId, ids);
+  }
+
+  async bulkRemove(orgId: string, ids: string[]): Promise<{ ok: true }> {
+    for (const id of ids) {
+      const notifs = await this.repo.listNotifications(id).catch(() => []);
+      await Promise.all(
+        notifs
+          .filter((n) => n.status === "scheduled" && n.runId)
+          .map((n) => runs.cancel(n.runId!).catch(() => undefined)),
+      );
+    }
+    await this.repo.bulkRemove(orgId, ids);
+    await this.invalidate(orgId);
+    return { ok: true };
+  }
+
+  /** Read-only admin detail: banner fields (for the preview) + display state +
+   *  notifications + CTR stats. */
+  async detail(orgId: string, id: string) {
+    const row = await this.loadDraft(orgId, id);
+    const [notifications, stats] = await Promise.all([
+      this.listNotifications(id),
+      this.stats(orgId, id),
+    ]);
+    return {
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      status: row.status,
+      displayState: displayState(row),
+      shortDescription: row.shortDescription,
+      longDescription: row.longDescription,
+      backgroundCss: row.backgroundCss,
+      mainImageUrl: row.mainImageUrl,
+      cta: row.ctaHref
+        ? {
+            label: row.ctaLabel ?? "",
+            href: row.ctaHref,
+            kind: (row.ctaKind as "internal" | "external") ?? "external",
+          }
+        : null,
+      displayFrom: row.displayFrom,
+      displayUntil: row.displayUntil,
+      createdAt: row.createdAt,
+      notifications,
+      stats,
+    };
+  }
+
+  // ── Reach preview (audience − marketing opt-outs) ─────────────────────────
+  async countByAudience(orgId: string, input: CountByAudienceInput): Promise<AudienceReach> {
+    const optOut = await this.repo.marketingOptOutIds(orgId);
+    if (input.audienceType === "all") {
+      const audience = await this.repo.countCustomers(orgId);
+      return { audience, eligible: Math.max(0, audience - optOut.size) };
+    }
+    if (input.audienceType === "tier") {
+      const ids = await this.repo.listCustomerIdsByTier(orgId, input.tierKey!);
+      return { audience: ids.length, eligible: ids.filter((id) => !optOut.has(id)).length };
+    }
+    const ids = input.customerIds ?? [];
+    return { audience: ids.length, eligible: ids.filter((id) => !optOut.has(id)).length };
+  }
+
+  private async audienceSize(
+    orgId: string,
+    type: string,
+    audienceValue: { tierKey?: string; customerIds?: string[] },
+  ): Promise<number> {
+    if (type === "all") return this.repo.countCustomers(orgId);
+    if (type === "tier") return this.repo.countCustomersByTier(orgId, audienceValue.tierKey ?? "");
+    return audienceValue.customerIds?.length ?? 0;
+  }
+
+  // ── CTR: ingest (from the customer web app) + read ────────────────────────
+  async recordImpression(orgId: string, id: string): Promise<{ ok: true }> {
+    const row = await this.repo.findById(orgId, id);
+    if (row) await this.repo.recordStat(orgId, id, dayInTz(STATS_TZ), "impressions");
+    return { ok: true };
+  }
+
+  async recordClick(orgId: string, id: string): Promise<{ ok: true }> {
+    const row = await this.repo.findById(orgId, id);
+    if (row) await this.repo.recordStat(orgId, id, dayInTz(STATS_TZ), "clicks");
+    return { ok: true };
+  }
+
+  async stats(orgId: string, bannerId: string, from?: Date, to?: Date): Promise<BannerStats> {
+    const series = await this.repo.dailyStats(
+      orgId,
+      bannerId,
+      from ? dayInTz(STATS_TZ, from) : undefined,
+      to ? dayInTz(STATS_TZ, to) : undefined,
+    );
+    const impressions = series.reduce((s, r) => s + r.impressions, 0);
+    const clicks = series.reduce((s, r) => s + r.clicks, 0);
+    const notifs = await this.repo.listNotifications(bannerId);
+    let reach = 0;
+    for (const n of notifs) {
+      const parsed = n.audienceValue
+        ? (JSON.parse(n.audienceValue) as { tierKey?: string; customerIds?: string[] })
+        : {};
+      reach += await this.audienceSize(orgId, n.audienceType, parsed);
+    }
+    return {
+      impressions,
+      clicks,
+      ctr: impressions > 0 ? clicks / impressions : 0,
+      series,
+      notifications: notifs.length,
+      reach,
+    };
+  }
+
+  orgAnalytics(orgId: string, from?: Date): Promise<BannerAnalytics> {
+    return this.repo.orgAnalytics(orgId, from ? dayInTz(STATS_TZ, from) : undefined);
   }
 
   async remove(orgId: string, id: string): Promise<{ ok: true }> {

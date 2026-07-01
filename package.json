@@ -53,6 +53,9 @@
     "db:seed:stores": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-stores.ts",
     "db:seed:i18n": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-i18n.ts"
   },
+  "overrides": {
+    "recharts": "3.8.1"
+  },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",

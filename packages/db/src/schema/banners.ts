@@ -116,6 +116,32 @@ export const bannerNotificationRelations = relations(bannerNotification, ({ one 
   }),
 }));
 
+// Per-banner daily impression/click counters (CTR analytics). The customer web
+// app increments today's bucket on view (once per session per banner) + on CTA
+// click; the admin reads these for per-banner CTR + the Analytics panel. Kept as
+// daily aggregates (not per-event) so home-rail impressions don't bloat the table.
+export const bannerDailyStat = sqliteTable(
+  "banner_daily_stat",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    bannerId: text("banner_id")
+      .notNull()
+      .references(() => banner.id, { onDelete: "cascade" }),
+    day: text("day").notNull(), // local YYYY-MM-DD (org timezone)
+    impressions: integer("impressions").notNull().default(0),
+    clicks: integer("clicks").notNull().default(0),
+  },
+  (t) => ({
+    perBannerDay: uniqueIndex("banner_daily_stat_banner_day_uq").on(t.bannerId, t.day),
+    byOrgDay: index("banner_daily_stat_org_day_idx").on(t.organizationId, t.day),
+  }),
+);
+
 // Per-locale overrides (base columns = default-locale content). Slug canonical.
 export const bannerTranslation = sqliteTable(
   "banner_translation",
@@ -144,3 +170,4 @@ export type BannerRow = typeof banner.$inferSelect;
 export type BannerInsert = typeof banner.$inferInsert;
 export type BannerNotificationRow = typeof bannerNotification.$inferSelect;
 export type BannerNotificationInsert = typeof bannerNotification.$inferInsert;
+export type BannerDailyStatRow = typeof bannerDailyStat.$inferSelect;

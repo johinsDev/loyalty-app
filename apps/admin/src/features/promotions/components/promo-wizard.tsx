@@ -26,6 +26,7 @@ import { toast } from "sonner";
 
 import { WizardShell } from "@/components/wizard-shell";
 import { FileUpload } from "@/features/storage/components/file-upload";
+import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 import { useRouter } from "@/i18n/navigation";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -142,6 +143,7 @@ export function PromoWizard({ id }: { id?: string }) {
   const router = useRouter();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const uploadImage = useUploadImage();
 
   const [promoId, setPromoId] = useState<string | undefined>(id);
   const [form, setForm] = useState<Form>(EMPTY);
@@ -425,6 +427,7 @@ export function PromoWizard({ id }: { id?: string }) {
             <BackgroundPicker
               value={form.backgroundCss}
               onValueChange={(bg) => set("backgroundCss", bg)}
+              onUploadImage={uploadImage}
             />
           </Field>
           <Field label={t("fieldMainImage")} hint={t("optional")}>
@@ -433,7 +436,6 @@ export function PromoWizard({ id }: { id?: string }) {
               onChange={(urls) => set("mainImageUrl", urls[urls.length - 1] ?? null)}
               accept={{ "image/*": [] }}
               multiple={false}
-              disk="public"
             />
           </Field>
           <Field label={t("fieldIcon")} hint={t("optional")}>

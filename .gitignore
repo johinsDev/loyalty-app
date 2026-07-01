@@ -204,3 +204,6 @@ scripts/*
 .design-sync/*
 !.design-sync/config.json
 !.design-sync/NOTES.md
+# Local design-sync artifacts (not part of the repo)
+ds-bundle/
+.ds-sync/
