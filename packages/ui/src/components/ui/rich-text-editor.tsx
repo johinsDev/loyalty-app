@@ -1,10 +1,11 @@
 "use client";
 
-import { Node, mergeAttributes } from "@tiptap/core";
+import { type Editor, Extension, Node, mergeAttributes } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
 import {
   Bold,
   ImagePlus,
@@ -20,7 +21,7 @@ import {
   Upload,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 
 import { cn } from "../../cn";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
@@ -99,6 +100,181 @@ const Variable = Node.create({
   },
 });
 
+/** An item in the `{{` autocomplete menu: a ready variable or an entity kind. */
+type SuggestItem =
+  | { type: "var"; token: string; label: string }
+  | { type: "entity"; scope: string; label: string };
+
+/**
+ * Generic `{{`-triggered suggestion extension. Typing `{{` opens a menu built
+ * from the editor's variables + entity kinds; the app supplies the item list,
+ * the insertion command, and the async entity picker via `configure()`.
+ */
+const VariableSuggestion = Extension.create<{
+  suggestion: Omit<SuggestionOptions<SuggestItem, SuggestItem>, "editor">;
+}>({
+  name: "variableSuggestion",
+  addOptions() {
+    return { suggestion: { char: "{{" } as never };
+  },
+  addProseMirrorPlugins() {
+    return [Suggestion({ editor: this.editor, ...this.options.suggestion })];
+  },
+});
+
+const insertVariableChip = (editor: Editor, token: string, label: string) =>
+  editor
+    .chain()
+    .focus()
+    .insertContent([
+      { type: "variable", attrs: { token, label } },
+      { type: "text", text: " " },
+    ])
+    .run();
+
+/**
+ * Builds the `{{` suggestion config from live refs. Items = matching variables
+ * first, then entity kinds (which open the app's search modal on select).
+ * Renders a plain-DOM menu positioned at the caret (no extra popup lib).
+ */
+function buildVariableSuggestion(refs: {
+  variablesRef: RefObject<EditorVariable[] | undefined>;
+  entitiesRef: RefObject<{ scope: string; label: string }[] | undefined>;
+  onRequestEntityRef: RefObject<
+    ((scope: string) => Promise<EditorVariable | null>) | undefined
+  >;
+}): Omit<SuggestionOptions<SuggestItem, SuggestItem>, "editor"> {
+  const { variablesRef, entitiesRef, onRequestEntityRef } = refs;
+  return {
+    char: "{{",
+    allowedPrefixes: null,
+    startOfLine: false,
+    items: ({ query }) => {
+      const q = query.toLowerCase();
+      const vars: SuggestItem[] = (variablesRef.current ?? [])
+        .filter(
+          (v) =>
+            !q ||
+            v.label.toLowerCase().includes(q) ||
+            v.token.toLowerCase().includes(q),
+        )
+        .map((v) => ({ type: "var", token: v.token, label: v.label }));
+      const ents: SuggestItem[] = (entitiesRef.current ?? [])
+        .filter((e) => !q || e.label.toLowerCase().includes(q))
+        .map((e) => ({ type: "entity", scope: e.scope, label: e.label }));
+      return [...vars, ...ents];
+    },
+    command: ({ editor, range, props }) => {
+      editor.chain().focus().deleteRange(range).run();
+      if (props.type === "var") {
+        insertVariableChip(editor, props.token, props.label);
+      } else {
+        const req = onRequestEntityRef.current;
+        if (req)
+          void req(props.scope).then((v) => {
+            if (v) insertVariableChip(editor, v.token, v.label);
+          });
+      }
+    },
+    render: () => {
+      let root: HTMLDivElement | null = null;
+      let items: SuggestItem[] = [];
+      let run: (item: SuggestItem) => void = () => {};
+      let getRect: (() => DOMRect | null) | null | undefined;
+      let active = 0;
+
+      const position = () => {
+        if (!root || !getRect) return;
+        const rect = getRect();
+        if (!rect) return;
+        const maxLeft = window.innerWidth - root.offsetWidth - 8;
+        root.style.top = `${rect.bottom + 6}px`;
+        root.style.left = `${Math.min(rect.left, Math.max(8, maxLeft))}px`;
+      };
+      const paint = () => {
+        if (!root) return;
+        root.replaceChildren();
+        if (items.length === 0) {
+          root.style.display = "none";
+          return;
+        }
+        root.style.display = "block";
+        items.forEach((it, i) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = cn(
+            "flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-1.5 text-left text-sm",
+            i === active
+              ? "bg-accent text-accent-foreground"
+              : "text-foreground hover:bg-muted",
+          );
+          const label = document.createElement("span");
+          label.className = "truncate font-medium";
+          label.textContent = it.label;
+          const hint = document.createElement("span");
+          hint.className = "text-muted-foreground shrink-0 text-[11px]";
+          hint.textContent = it.type === "var" ? it.token : "Buscar…";
+          btn.append(label, hint);
+          btn.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            run(it);
+          });
+          root?.appendChild(btn);
+        });
+        position();
+      };
+      return {
+        onStart: (props) => {
+          items = props.items;
+          run = props.command;
+          getRect = props.clientRect;
+          active = 0;
+          root = document.createElement("div");
+          root.className =
+            "bg-popover border-border fixed z-50 max-h-64 w-56 overflow-auto rounded-xl border p-1 shadow-lg";
+          document.body.appendChild(root);
+          paint();
+        },
+        onUpdate: (props) => {
+          items = props.items;
+          run = props.command;
+          getRect = props.clientRect;
+          if (active >= items.length) active = 0;
+          paint();
+        },
+        onKeyDown: ({ event }) => {
+          if (!root || items.length === 0) return false;
+          if (event.key === "ArrowDown") {
+            active = (active + 1) % items.length;
+            paint();
+            return true;
+          }
+          if (event.key === "ArrowUp") {
+            active = (active - 1 + items.length) % items.length;
+            paint();
+            return true;
+          }
+          if (event.key === "Enter") {
+            const it = items[active];
+            if (it) run(it);
+            return true;
+          }
+          if (event.key === "Escape") {
+            root.remove();
+            root = null;
+            return true;
+          }
+          return false;
+        },
+        onExit: () => {
+          root?.remove();
+          root = null;
+        },
+      };
+    },
+  };
+}
+
 export interface RichTextEditorProps {
   /** Controlled HTML value. */
   value?: string;
@@ -141,6 +317,15 @@ export function RichTextEditor({
   onRequestEntity,
   onUploadImage,
 }: RichTextEditorProps) {
+  // Refs keep the `{{`-suggestion (built once for the editor) reading current
+  // props, since the extension array is only evaluated on mount.
+  const variablesRef = useRef(variables);
+  const entitiesRef = useRef(entities);
+  const onRequestEntityRef = useRef(onRequestEntity);
+  variablesRef.current = variables;
+  entitiesRef.current = entities;
+  onRequestEntityRef.current = onRequestEntity;
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -149,6 +334,13 @@ export function RichTextEditor({
       Link.extend({ inclusive: false }).configure({ openOnClick: false }),
       Image.configure({ inline: false }),
       Variable,
+      VariableSuggestion.configure({
+        suggestion: buildVariableSuggestion({
+          variablesRef,
+          entitiesRef,
+          onRequestEntityRef,
+        }),
+      }),
     ],
     content: value,
     editorProps: {
