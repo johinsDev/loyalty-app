@@ -1,5 +1,5 @@
 import type { db as Db } from "@loyalty/db";
-import { customer } from "@loyalty/db/schema";
+import { customer, pointsAccount } from "@loyalty/db/schema";
 import { and, desc, eq, like, or } from "drizzle-orm";
 
 export interface CustomerSearchItem {
@@ -7,10 +7,12 @@ export interface CustomerSearchItem {
   name: string | null;
   phone: string;
   email: string | null;
+  nickname: string | null;
+  tierKey: string | null;
 }
 
-/** Drizzle access for customer lookups (the cashier picker). Only layer that
- *  touches the db; org-scoped. */
+/** Drizzle access for customer lookups (the cashier picker + banner audience).
+ *  Only layer that touches the db; org-scoped. */
 export class CustomersRepository {
   constructor(private readonly db: typeof Db) {}
 
@@ -27,6 +29,7 @@ export class CustomersRepository {
             like(customer.name, `%${q}%`),
             like(customer.phone, `%${q}%`),
             like(customer.email, `%${q}%`),
+            like(customer.nickname, `%${q}%`),
           ),
         )
       : eq(customer.organizationId, organizationId);
@@ -37,8 +40,11 @@ export class CustomersRepository {
         name: customer.name,
         phone: customer.phone,
         email: customer.email,
+        nickname: customer.nickname,
+        tierKey: pointsAccount.currentTierKey,
       })
       .from(customer)
+      .leftJoin(pointsAccount, eq(pointsAccount.customerId, customer.id))
       .where(where)
       .orderBy(desc(customer.createdAt))
       .limit(limit);

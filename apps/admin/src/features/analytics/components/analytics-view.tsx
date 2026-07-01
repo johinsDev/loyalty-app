@@ -1,10 +1,11 @@
 "use client";
 
 import { Badge } from "@loyalty/ui";
-import { Filter, Grid3x3, TrendingUp, Trophy, type LucideIcon } from "lucide-react";
+import { Filter, Grid3x3, Image, TrendingUp, Trophy, type LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { BannersAnalyticsPanel } from "@/features/banners/components/banners-analytics-panel";
 import { AreaChart, Bars, Donut } from "@/features/dashboard/components/charts";
 import { TeamLeaderboardPanel } from "@/features/employees/components/team-leaderboard-panel";
 import { useFadeUp } from "@/lib/animate";
@@ -21,12 +22,13 @@ import {
 
 const PERIODS = ["24h", "7d", "30d", "90d", "ytd"] as const;
 
-const SECTIONS = ["overview", "team", "cohorts", "funnel"] as const;
+const SECTIONS = ["overview", "team", "banners", "cohorts", "funnel"] as const;
 type Section = (typeof SECTIONS)[number];
 
 const ICON: Record<Section, LucideIcon> = {
   overview: TrendingUp,
   team: Trophy,
+  banners: Image,
   cohorts: Grid3x3,
   funnel: Filter,
 };
@@ -105,6 +107,8 @@ export function AnalyticsView({ section = "overview" }: { section?: Section }) {
             <Overview fade={fade} />
           ) : active === "team" ? (
             <TeamLeaderboardPanel />
+          ) : active === "banners" ? (
+            <BannersAnalyticsPanel />
           ) : active === "cohorts" ? (
             <Cohorts fade={fade} />
           ) : (

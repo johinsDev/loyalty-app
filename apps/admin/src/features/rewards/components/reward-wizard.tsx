@@ -15,6 +15,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { WizardShell } from "@/components/wizard-shell";
+import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 import { useRouter } from "@/i18n/navigation";
 
 import {
@@ -36,6 +37,7 @@ type Step = (typeof STEPS)[number];
 export function RewardWizard({ id }: { id?: string }) {
   const t = useTranslations("Rewards");
   const router = useRouter();
+  const uploadImage = useUploadImage();
   const [draft, setDraft] = useState<RewardDraft>(
     id ? getRewardDraft(id) : emptyRewardDraft,
   );
@@ -107,6 +109,7 @@ export function RewardWizard({ id }: { id?: string }) {
             <BackgroundPicker
               value={draft.bg}
               onValueChange={(bg) => set("bg", bg)}
+              onUploadImage={uploadImage}
               uploadLabel={t("imgUpload")}
               removeLabel={t("imgRemove")}
             />

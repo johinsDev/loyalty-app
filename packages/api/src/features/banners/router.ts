@@ -6,12 +6,17 @@ import { managerProcedure, publicProcedure, router } from "../../trpc";
 import { BannersRepository } from "./repository";
 import {
   advanceInputSchema,
+  bannersListInputSchema,
+  bannerStatsInputSchema,
+  bulkIdsSchema,
   cancelNotificationInputSchema,
+  countByAudienceInputSchema,
   createNotificationInputSchema,
   getStateInputSchema,
   listInputSchema,
   listNotificationsInputSchema,
   publishInputSchema,
+  recordStatInputSchema,
   removeInputSchema,
   reorderInputSchema,
   slugAvailableInputSchema,
@@ -53,6 +58,18 @@ export const bannersRouter = router({
       return makeService(ctx.db).bannerBySlug(id, input.slug, lc);
     }),
 
+  // ── CTR ingest (called by the customer web app) ────────────────────────────
+  recordImpression: publicProcedure
+    .input(recordStatInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).recordImpression(await orgId(), input.id),
+    ),
+  recordClick: publicProcedure
+    .input(recordStatInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).recordClick(await orgId(), input.id),
+    ),
+
   // ── Admin wizard (managers + owners) ───────────────────────────────────────
   create: managerProcedure.mutation(async ({ ctx }) =>
     makeService(ctx.db).create(await requireOrg()),
@@ -82,6 +99,41 @@ export const bannersRouter = router({
     .input(listInputSchema)
     .query(async ({ ctx, input }) =>
       makeService(ctx.db).list(await requireOrg(), input),
+    ),
+  adminList: managerProcedure
+    .input(bannersListInputSchema)
+    .query(async ({ ctx, input }) =>
+      makeService(ctx.db).adminList(await requireOrg(), input),
+    ),
+  listByIds: managerProcedure
+    .input(bulkIdsSchema)
+    .query(async ({ ctx, input }) =>
+      makeService(ctx.db).listByIds(await requireOrg(), input.ids),
+    ),
+  detail: managerProcedure
+    .input(getStateInputSchema)
+    .query(async ({ ctx, input }) =>
+      makeService(ctx.db).detail(await requireOrg(), input.id),
+    ),
+  countByAudience: managerProcedure
+    .input(countByAudienceInputSchema)
+    .query(async ({ ctx, input }) =>
+      makeService(ctx.db).countByAudience(await requireOrg(), input),
+    ),
+  stats: managerProcedure
+    .input(bannerStatsInputSchema)
+    .query(async ({ ctx, input }) =>
+      makeService(ctx.db).stats(await requireOrg(), input.bannerId, input.from, input.to),
+    ),
+  analytics: managerProcedure
+    .input(bannerStatsInputSchema.pick({ from: true }).partial())
+    .query(async ({ ctx, input }) =>
+      makeService(ctx.db).orgAnalytics(await requireOrg(), input.from),
+    ),
+  bulkRemove: managerProcedure
+    .input(bulkIdsSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).bulkRemove(await requireOrg(), input.ids),
     ),
   remove: managerProcedure
     .input(removeInputSchema)

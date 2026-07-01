@@ -9,23 +9,36 @@ import {
   DatePicker,
   Input,
   Label,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
   RichTextEditor,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
+  TimeInput,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, X } from "lucide-react";
+import { useDebounce } from "ahooks";
+import { Bell, Check, Users, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { WizardShell } from "@/components/wizard-shell";
 import { FileUpload } from "@/features/storage/components/file-upload";
+import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 import { useRouter } from "@/i18n/navigation";
+import { useNavigationGuard } from "@/lib/use-unsaved-guard";
 import { useTRPC } from "@/lib/trpc/client";
+
+import { CtaEntityPicker } from "./cta-entity-picker";
+import { CustomerCombobox } from "./customer-combobox";
 
 const STEPS = ["content", "design", "schedule", "review"] as const;
 type Step = (typeof STEPS)[number];
@@ -63,23 +76,28 @@ const EMPTY: Form = {
   displayUntil: null,
 };
 
-/** Reverse a stored ctaHref into the editor's target + value. */
+/** Reverse a stored ctaHref into the editor's target + value (a slug for
+ *  product/promo). */
 function parseCta(href: string | null): { ctaTarget: CtaTarget; ctaValue: string } {
   if (!href) return { ctaTarget: "none", ctaValue: "" };
   if (/^https?:\/\//i.test(href)) return { ctaTarget: "external", ctaValue: href };
   if (href.startsWith("/product/"))
     return { ctaTarget: "product", ctaValue: href.slice("/product/".length) };
+  if (href.startsWith("/promos/"))
+    return { ctaTarget: "promo", ctaValue: href.slice("/promos/".length) };
   if (href === "/promos") return { ctaTarget: "promo", ctaValue: "" };
   if (href === "/rewards") return { ctaTarget: "reward", ctaValue: "" };
   return { ctaTarget: "external", ctaValue: href };
 }
 
-/** Build the stored ctaHref + kind from the editor's target + value. */
+/** Build the stored ctaHref + kind from the editor's target + value. A
+ *  product/promo target deep-links to the selected entity (`value` = its slug);
+ *  an empty promo value falls back to the promos list. Rewards → the list. */
 function buildCta(target: CtaTarget, value: string): { href?: string; kind?: "internal" | "external" } {
   if (target === "none") return {};
   if (target === "external") return { href: value, kind: "external" };
-  if (target === "product") return { href: `/product/${slugify(value)}`, kind: "internal" };
-  if (target === "promo") return { href: "/promos", kind: "internal" };
+  if (target === "product") return value ? { href: `/product/${value}`, kind: "internal" } : {};
+  if (target === "promo") return { href: value ? `/promos/${value}` : "/promos", kind: "internal" };
   return { href: "/rewards", kind: "internal" };
 }
 
@@ -107,16 +125,44 @@ export function BannerWizard({ id }: { id?: string }) {
   const router = useRouter();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const uploadImage = useUploadImage();
 
   const [bannerId, setBannerId] = useState<string | undefined>(id);
   const [form, setForm] = useState<Form>(EMPTY);
-  const [slugTouched, setSlugTouched] = useState(Boolean(id));
+  const [slugAuto, setSlugAuto] = useState(!id);
   const [stepIndex, setStepIndex] = useState(0);
+  const [dirty, setDirty] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const seeded = useRef(false);
   const creating = useRef(false);
 
-  const set = <K extends keyof Form>(key: K, value: Form[K]) =>
+  const set = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
+    setDirty(true);
+  };
+
+  // Guard every attempt to navigate away with unsaved edits (links + tab close).
+  const bypass = useNavigationGuard(dirty, (href) => {
+    setPendingHref(href);
+    setExitOpen(true);
+  });
+  const confirmLeave = () => {
+    bypass.current = true;
+    setDirty(false);
+    setExitOpen(false);
+    if (pendingHref && pendingHref !== "__back__") window.location.href = pendingHref;
+    else router.push("/banners");
+  };
+  const tryExit = () => {
+    if (dirty) {
+      setPendingHref(null);
+      setExitOpen(true);
+    } else {
+      router.push("/banners");
+    }
+  };
 
   function seed(b: {
     name: string;
@@ -176,7 +222,27 @@ export function BannerWizard({ id }: { id?: string }) {
 
   const step = STEPS[stepIndex]!;
   const steps = STEPS.map((key) => ({ key, label: t(`step.${key}`) }));
-  const completed = STEPS.slice(0, stepIndex);
+
+  // Per-step validity (mirrors the zod schemas). Only `content` can be invalid;
+  // the rest are always satisfiable. A step is reachable once every prior step is
+  // valid — so in edit, where everything is filled, all steps are clickable.
+  const valid: Record<Step, boolean> = {
+    content:
+      form.name.trim().length > 0 &&
+      form.slug.trim().length > 0 &&
+      form.shortDescription.trim().length > 0 &&
+      // A "product" CTA must point at a specific product (no product-list page
+      // to fall back to). Promo/reward can fall back to their list.
+      (form.ctaTarget !== "product" || form.ctaValue.trim().length > 0),
+    design: true,
+    schedule: true,
+    review: true,
+  };
+  const navigable: string[] = [];
+  for (let i = 0; i < STEPS.length; i++) {
+    if (STEPS.slice(0, i).every((s) => valid[s])) navigable.push(STEPS[i]!);
+  }
+  const completed = STEPS.slice(0, stepIndex).filter((s) => valid[s]);
 
   async function persistStep(): Promise<boolean> {
     if (!bannerId) return false;
@@ -222,11 +288,28 @@ export function BannerWizard({ id }: { id?: string }) {
     }
   }
 
+  /** Jump to any reachable step (stepper click / Back). Persists the current
+   *  step first (each step saves on leave) unless it's invalid — then it just
+   *  navigates without saving, so you can move off a half-filled step. */
+  async function goTo(targetIndex: number) {
+    if (targetIndex === stepIndex) return;
+    setAttempted(false);
+    if (valid[step] && !(await persistStep())) return;
+    setStepIndex(targetIndex);
+  }
+
   async function onNext() {
+    if (step !== "review" && !valid[step]) {
+      setAttempted(true);
+      return;
+    }
     if (step === "review") {
       if (!bannerId) return;
       try {
         await publishMut.mutateAsync({ id: bannerId });
+        bypass.current = true;
+        setDirty(false);
+        await queryClient.invalidateQueries(trpc.banners.adminList.queryFilter());
         await queryClient.invalidateQueries(trpc.banners.list.queryFilter());
         toast.success(id ? t("updated", { name: form.name }) : t("created", { name: form.name }));
         router.push("/banners");
@@ -236,26 +319,34 @@ export function BannerWizard({ id }: { id?: string }) {
       return;
     }
     const ok = await persistStep();
-    if (ok) setStepIndex((n) => n + 1);
+    if (ok) {
+      setAttempted(false);
+      setStepIndex((n) => n + 1);
+    }
   }
 
   const busy = createMut.isPending && !bannerId;
+  const saving = advanceMut.isPending || publishMut.isPending;
 
   return (
+    <>
     <WizardShell
       title={id ? t("editTitle") : t("newTitle")}
       steps={steps}
       current={step}
       completed={completed}
+      navigable={navigable}
       onStepSelect={(key) => {
-        const idx = STEPS.indexOf(key as Step);
-        if (idx <= stepIndex) setStepIndex(idx);
+        if (!saving) void goTo(STEPS.indexOf(key as Step));
       }}
-      onBack={() => setStepIndex((n) => Math.max(0, n - 1))}
+      onBack={() => goTo(Math.max(0, stepIndex - 1))}
       onNext={onNext}
       isFirst={stepIndex === 0}
       isLast={step === "review"}
       finishLabel={id ? t("saveChanges") : t("publish")}
+      saving={saving}
+      onExit={tryExit}
+      exitLabel={t("title")}
       preview={<BannerPreview form={form} />}
     >
       {busy ? (
@@ -267,31 +358,37 @@ export function BannerWizard({ id }: { id?: string }) {
               value={form.name}
               onChange={(e) => {
                 set("name", e.target.value);
-                if (!slugTouched) set("slug", slugify(e.target.value));
+                if (slugAuto) set("slug", slugify(e.target.value));
               }}
               placeholder={t("fieldTitlePlaceholder")}
               className="h-10"
+              aria-invalid={attempted && !form.name.trim() ? true : undefined}
               autoFocus
             />
+            {attempted && !form.name.trim() ? <ErrorText>{t("saveError")}</ErrorText> : null}
           </Field>
-          <Field label={t("fieldSlug")}>
-            <Input
-              value={form.slug}
-              onChange={(e) => {
-                setSlugTouched(true);
-                set("slug", slugify(e.target.value));
-              }}
-              placeholder="spring-drop"
-              className="h-10"
-            />
-          </Field>
+          <SlugField
+            slug={form.slug}
+            auto={slugAuto}
+            excludeId={bannerId}
+            invalid={attempted && !form.slug.trim()}
+            onAutoChange={(on) => {
+              setSlugAuto(on);
+              if (on) set("slug", slugify(form.name));
+            }}
+            onChange={(v) => set("slug", slugify(v))}
+          />
           <Field label={t("fieldSubtitle")}>
             <Input
               value={form.shortDescription}
               onChange={(e) => set("shortDescription", e.target.value)}
               placeholder={t("fieldSubtitlePlaceholder")}
               className="h-10"
+              aria-invalid={attempted && !form.shortDescription.trim() ? true : undefined}
             />
+            {attempted && !form.shortDescription.trim() ? (
+              <ErrorText>{t("saveError")}</ErrorText>
+            ) : null}
           </Field>
           <Field label={t("fieldLong")} hint={t("optional")}>
             <RichTextEditor
@@ -302,7 +399,10 @@ export function BannerWizard({ id }: { id?: string }) {
           <Field label={t("fieldCtaTarget")} hint={t("optional")}>
             <Select
               value={form.ctaTarget}
-              onValueChange={(v) => set("ctaTarget", (v as CtaTarget) ?? "none")}
+              onValueChange={(v) => {
+                set("ctaTarget", (v as CtaTarget) ?? "none");
+                set("ctaValue", "");
+              }}
             >
               <SelectTrigger size="lg" className="w-full text-sm">
                 <SelectValue>{(v) => t(`ctaTarget.${v as string}`)}</SelectValue>
@@ -317,7 +417,7 @@ export function BannerWizard({ id }: { id?: string }) {
             </Select>
           </Field>
           {form.ctaTarget !== "none" ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-4">
               <Field label={t("fieldCta")}>
                 <Input
                   value={form.ctaLabel}
@@ -326,20 +426,41 @@ export function BannerWizard({ id }: { id?: string }) {
                   className="h-10"
                 />
               </Field>
-              {form.ctaTarget === "external" || form.ctaTarget === "product" ? (
-                <Field
-                  label={
-                    form.ctaTarget === "external" ? t("ctaValueUrl") : t("ctaValueProduct")
-                  }
-                >
+              {form.ctaTarget === "external" ? (
+                <Field label={t("ctaValueUrl")}>
                   <Input
                     value={form.ctaValue}
                     onChange={(e) => set("ctaValue", e.target.value)}
-                    placeholder={form.ctaTarget === "external" ? "https://…" : "spring-drop"}
+                    placeholder="https://…"
                     className="h-10"
                   />
                 </Field>
-              ) : null}
+              ) : form.ctaTarget === "product" ? (
+                <Field label={t("ctaValueProduct")}>
+                  <CtaEntityPicker
+                    kind="product"
+                    value={form.ctaValue}
+                    onChange={(slug) => set("ctaValue", slug)}
+                    placeholder={t("ctaPickProduct")}
+                    emptyLabel={t("empty")}
+                  />
+                  {attempted && !form.ctaValue.trim() ? (
+                    <ErrorText>{t("ctaProductRequired")}</ErrorText>
+                  ) : null}
+                </Field>
+              ) : form.ctaTarget === "promo" ? (
+                <Field label={t("ctaValuePromo")} hint={t("optional")}>
+                  <CtaEntityPicker
+                    kind="promo"
+                    value={form.ctaValue}
+                    onChange={(slug) => set("ctaValue", slug)}
+                    placeholder={t("ctaPickPromo")}
+                    emptyLabel={t("empty")}
+                  />
+                </Field>
+              ) : (
+                <p className="text-muted-foreground text-sm">{t("ctaRewardHint")}</p>
+              )}
             </div>
           ) : null}
         </div>
@@ -349,6 +470,9 @@ export function BannerWizard({ id }: { id?: string }) {
             <BackgroundPicker
               value={form.backgroundCss}
               onValueChange={(bg) => set("backgroundCss", bg)}
+              onUploadImage={uploadImage}
+              uploadLabel={t("imgUpload")}
+              removeLabel={t("imgRemove")}
             />
           </Field>
           <Field label={t("fieldMainImage")} hint={t("optional")}>
@@ -357,7 +481,6 @@ export function BannerWizard({ id }: { id?: string }) {
               onChange={(urls) => set("mainImageUrl", urls[urls.length - 1] ?? null)}
               accept={{ "image/*": [] }}
               multiple={false}
-              disk="public"
             />
           </Field>
         </div>
@@ -412,6 +535,33 @@ export function BannerWizard({ id }: { id?: string }) {
         </div>
       )}
     </WizardShell>
+
+    <ResponsiveModal open={exitOpen} onOpenChange={setExitOpen}>
+      <ResponsiveModalContent>
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>{t("unsavedTitle")}</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
+        <p className="text-muted-foreground px-4 pb-2 text-sm">{t("unsavedHint")}</p>
+        <ResponsiveModalFooter className="gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 rounded-full px-5"
+            onClick={() => setExitOpen(false)}
+          >
+            {t("stay")}
+          </Button>
+          <Button
+            type="button"
+            className="h-10 rounded-full px-6 font-semibold"
+            onClick={confirmLeave}
+          >
+            {t("leave")}
+          </Button>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
+    </>
   );
 }
 
@@ -437,18 +587,38 @@ function NotificationsPanel({ bannerId }: { bannerId: string }) {
   const [tierKey, setTierKey] = useState<(typeof TIERS)[number]>("oro");
   const [channels, setChannels] = useState<string[]>(["push", "database", "realtime"]);
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
-  const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
 
-  const customers = useQuery({
-    ...trpc.customers.search.queryOptions({ query, limit: 10 }),
-    enabled: audienceType === "specific",
+  // Live reach = audience for the current selection minus marketing opt-outs.
+  const reach = useQuery({
+    ...trpc.banners.countByAudience.queryOptions({
+      audienceType,
+      ...(audienceType === "tier" ? { tierKey } : {}),
+      ...(audienceType === "specific" ? { customerIds: selected } : {}),
+    }),
+    enabled: audienceType !== "specific" || selected.length > 0,
   });
 
   const toggleChannel = (c: string) =>
     setChannels((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
-  const toggleCustomer = (cid: string) =>
-    setSelected((cur) => (cur.includes(cid) ? cur.filter((x) => x !== cid) : [...cur, cid]));
+
+  // Schedule = one Date holding day + time. Picking a day keeps the chosen time
+  // (defaults to 09:00); clearing it → null = "send now".
+  const timeStr = scheduledAt
+    ? `${String(scheduledAt.getHours()).padStart(2, "0")}:${String(scheduledAt.getMinutes()).padStart(2, "0")}`
+    : "09:00";
+  const setDate = (d: Date | undefined) => {
+    if (!d) return setScheduledAt(null);
+    const next = new Date(d);
+    next.setHours(scheduledAt?.getHours() ?? 9, scheduledAt?.getMinutes() ?? 0, 0, 0);
+    setScheduledAt(next);
+  };
+  const setTime = (value: string) => {
+    const [h, m] = value.split(":").map(Number);
+    const base = scheduledAt ? new Date(scheduledAt) : new Date();
+    base.setHours(h ?? 0, m ?? 0, 0, 0);
+    setScheduledAt(base);
+  };
 
   const onAdd = () => {
     if (channels.length === 0) {
@@ -556,40 +726,60 @@ function NotificationsPanel({ bannerId }: { bannerId: string }) {
               </Select>
             </Field>
           ) : null}
-          <Field label={t("notify.when")} hint={t("notify.now")}>
-            <DatePicker
-              value={scheduledAt ?? undefined}
-              onValueChange={(d) => setScheduledAt(d ?? null)}
-              placeholder={t("notify.now")}
-              formatLabel={(d) => formatDate(d, { locale })}
-            />
+          <Field label={t("notify.when")} hint={scheduledAt ? undefined : t("notify.now")}>
+            <div className="flex items-center gap-2">
+              <DatePicker
+                value={scheduledAt ?? undefined}
+                onValueChange={setDate}
+                placeholder={t("notify.now")}
+                formatLabel={(d) => formatDate(d, { locale })}
+                className="flex-1"
+              />
+              {scheduledAt ? (
+                <>
+                  <TimeInput value={timeStr} onChange={setTime} className="h-10 w-24" />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="size-9 shrink-0 rounded-lg p-0"
+                    aria-label={t("notify.now")}
+                    onClick={() => setScheduledAt(null)}
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </>
+              ) : null}
+            </div>
           </Field>
         </div>
 
         {audienceType === "specific" ? (
           <Field label={t("notify.audSpecific")}>
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+            <CustomerCombobox
+              value={selected}
+              onChange={setSelected}
               placeholder={t("notify.searchCustomers")}
-              className="h-10"
+              emptyLabel={t("empty")}
             />
-            <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
-              {(customers.data ?? []).map((c) => (
-                <label
-                  key={c.id}
-                  className="hover:bg-muted/50 flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm"
-                >
-                  <Checkbox
-                    checked={selected.includes(c.id)}
-                    onCheckedChange={() => toggleCustomer(c.id)}
-                  />
-                  <span className="truncate">{c.name ?? c.phone}</span>
-                </label>
-              ))}
-            </div>
           </Field>
         ) : null}
+
+        {/* Reach preview — how many would actually receive it (minus opt-outs). */}
+        <div className="bg-muted/40 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm">
+          <Users className="text-muted-foreground size-4 shrink-0" />
+          {reach.data ? (
+            <p>
+              <span className="font-semibold">{reach.data.eligible}</span>
+              <span className="text-muted-foreground"> / {reach.data.audience} · {t("reachEligible")}</span>
+            </p>
+          ) : (
+            <p className="text-muted-foreground">
+              {audienceType === "specific" && selected.length === 0
+                ? t("notify.searchCustomers")
+                : "…"}
+            </p>
+          )}
+        </div>
 
         <Field label={t("notify.channels")}>
           <div className="flex flex-wrap gap-3">
@@ -620,8 +810,17 @@ function BannerPreview({ form }: { form: Form }) {
       className="preview-customer relative h-44 overflow-hidden rounded-3xl shadow-sm"
       style={{ background: form.backgroundCss }}
     >
+      {/* Foreground main image — mirrors the customer card (right-anchored). */}
+      {form.mainImageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={form.mainImageUrl}
+          alt=""
+          className="absolute inset-y-3 right-3 z-10 w-2/5 object-contain object-right"
+        />
+      ) : null}
       <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/10 to-transparent" />
-      <div className="relative z-10 flex h-full max-w-[70%] flex-col justify-center p-5 text-white">
+      <div className="relative z-10 flex h-full max-w-[62%] flex-col justify-center p-5 text-white">
         <p className="font-display text-xl leading-tight font-semibold">
           {form.name || "—"}
         </p>
@@ -660,6 +859,70 @@ function Field({
         ) : null}
       </div>
       {children}
+    </div>
+  );
+}
+
+function ErrorText({ children }: { children: React.ReactNode }) {
+  return <p className="text-destructive text-xs font-semibold">{children}</p>;
+}
+
+/** Slug input with an auto-generate toggle + a debounced live availability check. */
+function SlugField({
+  slug,
+  auto,
+  excludeId,
+  invalid,
+  onAutoChange,
+  onChange,
+}: {
+  slug: string;
+  auto: boolean;
+  excludeId?: string;
+  invalid: boolean;
+  onAutoChange: (on: boolean) => void;
+  onChange: (v: string) => void;
+}) {
+  const t = useTranslations("Banners");
+  const trpc = useTRPC();
+  const debounced = useDebounce(slug, { wait: 350 });
+  const check = useQuery({
+    ...trpc.banners.slugAvailable.queryOptions({
+      slug: debounced,
+      ...(excludeId ? { excludeId } : {}),
+    }),
+    enabled: debounced.trim().length > 0,
+  });
+  const available = check.data;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">{t("fieldSlug")}</Label>
+        <label className="text-muted-foreground flex cursor-pointer items-center gap-2 text-xs font-semibold">
+          {t("slugAuto")}
+          <Switch checked={auto} onCheckedChange={onAutoChange} />
+        </label>
+      </div>
+      <div className="relative">
+        <Input
+          value={slug}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="spring-drop"
+          className="h-10 font-mono"
+          readOnly={auto}
+          disabled={auto}
+          aria-invalid={invalid || available === false ? true : undefined}
+        />
+        {!auto && available === true ? (
+          <Check className="absolute top-1/2 right-3 size-4 -translate-y-1/2 text-emerald-500" />
+        ) : null}
+      </div>
+      {available === false ? (
+        <ErrorText>{t("slugTaken")}</ErrorText>
+      ) : !auto && available === true ? (
+        <p className="text-xs font-semibold text-emerald-600">{t("slugAvailable")}</p>
+      ) : null}
     </div>
   );
 }

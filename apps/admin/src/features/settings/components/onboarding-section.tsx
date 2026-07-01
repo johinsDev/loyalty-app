@@ -111,7 +111,7 @@ export function OnboardingSection() {
                 <BackgroundPicker
                   value={slide.bg}
                   onValueChange={(bg) => update(slide.id, { bg })}
-                  customLabel={t("onboarding.customColor")}
+                  colorLabel={t("onboarding.customColor")}
                   uploadLabel={t("onboarding.imgUpload")}
                   removeLabel={t("onboarding.imgRemove")}
                 />

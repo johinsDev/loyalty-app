@@ -468,7 +468,6 @@ export function StoreWizard({ id }: { id?: string }) {
                   onChange={(urls) => set("logo", urls[urls.length - 1] ?? null)}
                   accept={{ "image/*": [] }}
                   multiple={false}
-                  disk="public"
                 />
               )}
             </div>

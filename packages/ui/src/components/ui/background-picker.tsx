@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Upload, X } from "lucide-react"
 
 import { cn } from "../../cn"
@@ -8,10 +9,52 @@ import { Dropzone, DropzoneArea, DropzoneLabel } from "./dropzone"
 
 export type BackgroundPreset = { key: string; css: string }
 
-/** Brand-safe gradient templates shared by rewards, promos and banners. The
- * value a consumer stores is the raw CSS background string, so a preset, a
- * custom solid color and an uploaded image are interchangeable at the point of
- * use (style.background). */
+// ─── Hex helpers (recolor gradients from one base color) ─────────────────────
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "")
+  const v = h.length === 3 ? h.split("").map((c) => c + c).join("") : h
+  return [
+    parseInt(v.slice(0, 2), 16) || 0,
+    parseInt(v.slice(2, 4), 16) || 0,
+    parseInt(v.slice(4, 6), 16) || 0,
+  ]
+}
+function rgbToHex(r: number, g: number, b: number): string {
+  const c = (n: number) =>
+    Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0")
+  return `#${c(r)}${c(g)}${c(b)}`
+}
+function darken(hex: string, amt: number): string {
+  const [r, g, b] = hexToRgb(hex)
+  return rgbToHex(r * (1 - amt), g * (1 - amt), b * (1 - amt))
+}
+function lighten(hex: string, amt: number): string {
+  const [r, g, b] = hexToRgb(hex)
+  return rgbToHex(r + (255 - r) * amt, g + (255 - g) * amt, b + (255 - b) * amt)
+}
+
+/** A background "style" parametrized by one base color → a CSS `background`
+ *  string. Includes a plain solid fill. Recoloring 'a template with X color'. */
+export type GradientStyle = { key: string; make: (color: string) => string }
+
+export const GRADIENT_STYLES: GradientStyle[] = [
+  { key: "solid", make: (c) => c },
+  { key: "diagonal", make: (c) => `linear-gradient(135deg, ${c}, ${darken(c, 0.45)})` },
+  { key: "vertical", make: (c) => `linear-gradient(180deg, ${c}, ${darken(c, 0.45)})` },
+  {
+    key: "radial",
+    make: (c) =>
+      `radial-gradient(circle at 30% 20%, ${lighten(c, 0.25)}, ${c} 55%, ${darken(c, 0.4)})`,
+  },
+  { key: "soft", make: (c) => `linear-gradient(135deg, ${lighten(c, 0.22)}, ${darken(c, 0.3)})` },
+  {
+    key: "glow",
+    make: (c) =>
+      `radial-gradient(circle at 30% 20%, rgba(255,255,255,0.28), transparent 42%), linear-gradient(135deg, ${c}, ${darken(c, 0.5)})`,
+  },
+]
+
+/** Legacy fixed gradient presets (kept for existing seeds / defaults). */
 export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   { key: "mint", css: "linear-gradient(135deg, #1BAD9D, #0e6f64)" },
   { key: "grape", css: "linear-gradient(135deg, #7c5cff, #4527a0)" },
@@ -21,9 +64,7 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   { key: "ink", css: "linear-gradient(135deg, #1f2937, #000323)" },
 ]
 
-/** Decorative patterns — a layered CSS `background` (texture over a gradient).
- * Pure CSS so they stay a plain string (no asset upload) and render anywhere
- * via style.background, just like the gradient presets. */
+/** Decorative patterns — a layered CSS `background` (texture over a gradient). */
 export const BACKGROUND_PATTERNS: BackgroundPreset[] = [
   {
     key: "dots",
@@ -41,85 +82,115 @@ export const BACKGROUND_PATTERNS: BackgroundPreset[] = [
     key: "mesh",
     css: "radial-gradient(at 18% 22%, #f0a868 0, transparent 45%), radial-gradient(at 82% 28%, #e0467c 0, transparent 45%), radial-gradient(at 50% 82%, #7c5cff 0, transparent 45%), #1f2937",
   },
-  {
-    key: "sunburst",
-    css: "repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,0.08) 0deg 6deg, transparent 6deg 12deg), linear-gradient(135deg, #e0467c, #7c1d3f)",
-  },
-  {
-    key: "glow",
-    css: "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.28), transparent 42%), linear-gradient(135deg, #1f2937, #000323)",
-  },
 ]
 
 /** A background value is an uploaded image when it's a CSS `url(...)`. */
 function isImageBackground(value: string): boolean {
   return value.startsWith("url(")
 }
+/** First `#rrggbb` in a CSS string (to seed the base color from an existing value). */
+function firstHex(value: string): string | null {
+  return /#[0-9a-fA-F]{6}/.exec(value)?.[0] ?? null
+}
 
 interface BackgroundPickerProps {
-  /** A CSS background string — a preset's `css`, a custom hex color, or a
-   *  `url(...)` for an uploaded image. */
+  /** A CSS background string — a recolored style, a solid hex, a pattern, or a
+   *  `url(...)` image. */
   value: string
   onValueChange: (background: string) => void
-  presets?: BackgroundPreset[]
   /** Decorative patterns shown as a second grid. Pass `[]` to hide them. */
   patterns?: BackgroundPreset[]
   swatches?: string[]
-  /** Label shown next to the custom color when the value isn't a preset. */
-  customLabel?: string
   /** Hint shown inside the image drop area. */
   uploadLabel?: string
   /** Accessible label for the "remove uploaded image" button. */
   removeLabel?: string
+  /** Optional label for the base color control. */
+  colorLabel?: string
+  /**
+   * Upload the dropped image and return its URL. When provided, the image is
+   * stored via the app's pipeline (R2) instead of an inline data-URI (which
+   * overflows a CSS length limit). Falls back to a data-URI when omitted.
+   */
+  onUploadImage?: (file: File) => Promise<string | null>
   className?: string
 }
 
 function BackgroundPicker({
   value,
   onValueChange,
-  presets = BACKGROUND_PRESETS,
   patterns = BACKGROUND_PATTERNS,
   swatches,
-  customLabel,
   uploadLabel = "Drag an image or click",
   removeLabel = "Remove",
+  colorLabel,
+  onUploadImage,
   className,
 }: BackgroundPickerProps) {
-  const matchesPreset =
-    presets.some((p) => p.css === value) || patterns.some((p) => p.css === value)
   const isImage = isImageBackground(value)
-  // Seed the custom picker with a brand hex unless the value already is one.
-  const customColor = matchesPreset || isImage ? "#1BAD9D" : value
+  const [baseColor, setBaseColor] = React.useState<string>(
+    () => firstHex(value) ?? "#7c5cff",
+  )
+  // The active style is whichever one reproduces the current value with the
+  // current base color (else default to the first gradient).
+  const activeStyle =
+    GRADIENT_STYLES.find((s) => s.make(baseColor) === value)?.key ?? null
 
-  const onDrop = (files: File[]) => {
+  const applyStyle = (key: string) => {
+    const s = GRADIENT_STYLES.find((x) => x.key === key)
+    if (s) onValueChange(s.make(baseColor))
+  }
+  const onColor = (c: string) => {
+    setBaseColor(c)
+    const s = GRADIENT_STYLES.find((x) => x.key === (activeStyle ?? "diagonal"))
+    if (s) onValueChange(s.make(c))
+  }
+
+  const onDrop = async (files: File[]) => {
     const file = files[0]
     if (!file) return
+    if (onUploadImage) {
+      const url = await onUploadImage(file)
+      if (url) onValueChange(`url("${url}") center/cover no-repeat`)
+      return
+    }
     const reader = new FileReader()
     reader.addEventListener("load", () =>
-      onValueChange(`url("${String(reader.result)}") center/cover no-repeat`)
+      onValueChange(`url("${String(reader.result)}") center/cover no-repeat`),
     )
     reader.readAsDataURL(file)
   }
 
   return (
     <div className={cn("space-y-2.5", className)}>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {presets.map((p) => (
-          <button
-            key={p.key}
-            type="button"
-            aria-label={p.key}
-            onClick={() => onValueChange(p.css)}
-            style={{ background: p.css }}
-            className={cn(
-              "h-12 rounded-xl outline-none transition-transform",
-              value === p.css
-                ? "ring-foreground ring-offset-card ring-2 ring-offset-2"
-                : "hover:scale-105"
-            )}
-          />
-        ))}
+      {/* Base color + recolorable styles */}
+      <div className="flex items-center gap-2">
+        <ColorPicker value={baseColor} onValueChange={onColor} swatches={swatches} />
+        {colorLabel ? (
+          <span className="text-muted-foreground text-xs font-semibold">{colorLabel}</span>
+        ) : null}
       </div>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+        {GRADIENT_STYLES.map((s) => {
+          const css = s.make(baseColor)
+          return (
+            <button
+              key={s.key}
+              type="button"
+              aria-label={s.key}
+              onClick={() => applyStyle(s.key)}
+              style={{ background: css }}
+              className={cn(
+                "h-12 rounded-xl outline-none transition-transform",
+                activeStyle === s.key
+                  ? "ring-foreground ring-offset-card ring-2 ring-offset-2"
+                  : "hover:scale-105",
+              )}
+            />
+          )
+        })}
+      </div>
+
       {patterns.length > 0 ? (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
           {patterns.map((p) => (
@@ -133,37 +204,22 @@ function BackgroundPicker({
                 "h-12 rounded-xl outline-none transition-transform",
                 value === p.css
                   ? "ring-foreground ring-offset-card ring-2 ring-offset-2"
-                  : "hover:scale-105"
+                  : "hover:scale-105",
               )}
             />
           ))}
         </div>
       ) : null}
-      <div className="flex items-center gap-2">
-        <ColorPicker
-          value={customColor}
-          onValueChange={onValueChange}
-          swatches={swatches}
-        />
-        {!matchesPreset && !isImage && customLabel ? (
-          <span className="text-muted-foreground text-xs font-semibold">
-            {customLabel}
-          </span>
-        ) : null}
-      </div>
 
       {isImage ? (
         <div className="border-border flex items-center gap-2 rounded-xl border p-2">
-          <span
-            className="size-10 rounded-lg"
-            style={{ background: value }}
-          />
+          <span className="size-10 rounded-lg" style={{ background: value }} />
           <span className="text-muted-foreground flex-1 truncate text-xs font-semibold">
-            {customLabel ?? uploadLabel}
+            {uploadLabel}
           </span>
           <button
             type="button"
-            onClick={() => onValueChange(presets[0]?.css ?? "#1BAD9D")}
+            onClick={() => onValueChange(GRADIENT_STYLES[1]!.make(baseColor))}
             aria-label={removeLabel}
             className="text-muted-foreground hover:text-destructive grid size-7 place-items-center rounded-lg"
           >
@@ -171,12 +227,7 @@ function BackgroundPicker({
           </button>
         </div>
       ) : (
-        <Dropzone
-          accept={{ "image/*": [] }}
-          maxFiles={1}
-          multiple={false}
-          onDrop={onDrop}
-        >
+        <Dropzone accept={{ "image/*": [] }} maxFiles={1} multiple={false} onDrop={onDrop}>
           <DropzoneArea className="flex-row gap-2 p-4">
             <Upload className="text-muted-foreground size-4" />
             <DropzoneLabel className="text-xs">{uploadLabel}</DropzoneLabel>

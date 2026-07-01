@@ -338,7 +338,12 @@ export function DropzoneListItem({
       ) : onRemove ? (
         <button
           type="button"
-          onClick={onRemove}
+          onClick={(e) => {
+            // The list renders inside the Dropzone root (which opens the file
+            // dialog on click); stop the bubble so removing doesn't reopen it.
+            e.stopPropagation();
+            onRemove();
+          }}
           className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label={`Quitar ${name}`}
         >

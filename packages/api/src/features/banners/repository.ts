@@ -1,9 +1,11 @@
 import type { db as Db } from "@loyalty/db";
 import {
   banner,
+  bannerDailyStat,
   bannerNotification,
   bannerTranslation,
   customer,
+  notificationPreference,
   pointsAccount,
   type BannerInsert,
   type BannerNotificationInsert,
@@ -14,12 +16,17 @@ import {
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, gte, inArray, isNull, like, lte, or, sql } from "drizzle-orm";
 
+import { type ListResult, pageCountOf, pageOffset } from "../_shared/list";
 import type { LocaleContext } from "../_shared/localize";
 import { slugify, slugSuffix } from "../_shared/slugify";
 import type {
+  BannerAnalytics,
   BannerCard,
   BannerDetail,
   BannerDisplayState,
+  BannerListItem,
+  BannersListInput,
+  BannerStatPoint,
   ListInput,
 } from "./schemas";
 
@@ -376,6 +383,252 @@ export class BannersRepository {
         ),
       );
     return rows.map((r) => r.id);
+  }
+
+  // ── Admin data-table list ─────────────────────────────────────────────────
+  /** Paginated/filtered/sorted list for the admin data-table. Banner counts per
+   *  org are small, so derived-state filter + sort + pagination run in memory. */
+  async adminList(
+    orgId: string,
+    input: BannersListInput,
+  ): Promise<ListResult<BannerListItem>> {
+    const conds = [eq(banner.organizationId, orgId)];
+    if (input.q) {
+      const term = `%${input.q}%`;
+      conds.push(or(like(banner.name, term), like(banner.slug, term))!);
+    }
+    if (input.createdFrom) conds.push(gte(banner.createdAt, input.createdFrom));
+    if (input.createdTo) conds.push(lte(banner.createdAt, input.createdTo));
+
+    const all = await this.db.select().from(banner).where(and(...conds));
+    const counts = await this.#notificationCounts(all.map((r) => r.id));
+    const now = new Date();
+
+    let items: BannerListItem[] = all.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      status: r.status,
+      displayState: displayState(r, now),
+      backgroundCss: r.backgroundCss,
+      mainImageUrl: r.mainImageUrl,
+      displayFrom: r.displayFrom,
+      displayUntil: r.displayUntil,
+      notificationCount: counts.get(r.id) ?? 0,
+      sortOrder: r.sortOrder,
+      createdAt: r.createdAt,
+    }));
+
+    if (input.state?.length) {
+      const set = new Set(input.state);
+      items = items.filter((i) => set.has(i.displayState));
+    }
+
+    const primary = input.sort[0];
+    items.sort((a, b) => {
+      const dir = primary?.desc ? -1 : 1;
+      if (primary?.id === "name") return a.name.localeCompare(b.name) * dir;
+      if (primary?.id === "createdAt")
+        return (a.createdAt.getTime() - b.createdAt.getTime()) * dir;
+      // default: home order (sortOrder asc) then newest
+      return a.sortOrder - b.sortOrder || b.createdAt.getTime() - a.createdAt.getTime();
+    });
+
+    const total = items.length;
+    const start = pageOffset(input.page, input.perPage);
+    return {
+      rows: items.slice(start, start + input.perPage),
+      total,
+      pageCount: pageCountOf(total, input.perPage),
+    };
+  }
+
+  async listByIds(orgId: string, ids: string[]): Promise<BannerListItem[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db
+      .select()
+      .from(banner)
+      .where(and(eq(banner.organizationId, orgId), inArray(banner.id, ids)));
+    const counts = await this.#notificationCounts(rows.map((r) => r.id));
+    const now = new Date();
+    return rows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      status: r.status,
+      displayState: displayState(r, now),
+      backgroundCss: r.backgroundCss,
+      mainImageUrl: r.mainImageUrl,
+      displayFrom: r.displayFrom,
+      displayUntil: r.displayUntil,
+      notificationCount: counts.get(r.id) ?? 0,
+      sortOrder: r.sortOrder,
+      createdAt: r.createdAt,
+    }));
+  }
+
+  async #notificationCounts(ids: string[]): Promise<Map<string, number>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .select({ bannerId: bannerNotification.bannerId, n: sql<number>`count(*)` })
+      .from(bannerNotification)
+      .where(inArray(bannerNotification.bannerId, ids))
+      .groupBy(bannerNotification.bannerId);
+    return new Map(rows.map((c) => [c.bannerId, Number(c.n)]));
+  }
+
+  async bulkRemove(orgId: string, ids: string[]): Promise<void> {
+    await this.db
+      .delete(banner)
+      .where(and(eq(banner.organizationId, orgId), inArray(banner.id, ids)));
+  }
+
+  // ── Reach (audience count − marketing opt-outs) ───────────────────────────
+  async countCustomers(orgId: string): Promise<number> {
+    const rows = await this.db
+      .select({ n: sql<number>`count(*)` })
+      .from(customer)
+      .where(eq(customer.organizationId, orgId));
+    return Number(rows[0]?.n ?? 0);
+  }
+
+  async countCustomersByTier(orgId: string, tierKey: string): Promise<number> {
+    const rows = await this.db
+      .select({ n: sql<number>`count(*)` })
+      .from(pointsAccount)
+      .where(
+        and(
+          eq(pointsAccount.organizationId, orgId),
+          eq(pointsAccount.currentTierKey, tierKey),
+        ),
+      );
+    return Number(rows[0]?.n ?? 0);
+  }
+
+  /** Distinct customers in the org who opted out of marketing on any channel. */
+  async marketingOptOutIds(orgId: string): Promise<Set<string>> {
+    const rows = await this.db
+      .selectDistinct({ id: notificationPreference.customerId })
+      .from(notificationPreference)
+      .where(
+        and(
+          eq(notificationPreference.organizationId, orgId),
+          eq(notificationPreference.marketingEnabled, false),
+        ),
+      );
+    return new Set(rows.map((r) => r.id));
+  }
+
+  // ── CTR stats ─────────────────────────────────────────────────────────────
+  async recordStat(
+    orgId: string,
+    bannerId: string,
+    day: string,
+    field: "impressions" | "clicks",
+  ): Promise<void> {
+    await this.db
+      .insert(bannerDailyStat)
+      .values({
+        organizationId: orgId,
+        bannerId,
+        day,
+        impressions: field === "impressions" ? 1 : 0,
+        clicks: field === "clicks" ? 1 : 0,
+      })
+      .onConflictDoUpdate({
+        target: [bannerDailyStat.bannerId, bannerDailyStat.day],
+        set: { [field]: sql`${bannerDailyStat[field]} + 1` },
+      });
+  }
+
+  async dailyStats(
+    orgId: string,
+    bannerId: string,
+    from?: string,
+    to?: string,
+  ): Promise<BannerStatPoint[]> {
+    const conds = [
+      eq(bannerDailyStat.organizationId, orgId),
+      eq(bannerDailyStat.bannerId, bannerId),
+    ];
+    if (from) conds.push(gte(bannerDailyStat.day, from));
+    if (to) conds.push(lte(bannerDailyStat.day, to));
+    const rows = await this.db
+      .select({
+        day: bannerDailyStat.day,
+        impressions: bannerDailyStat.impressions,
+        clicks: bannerDailyStat.clicks,
+      })
+      .from(bannerDailyStat)
+      .where(and(...conds))
+      .orderBy(asc(bannerDailyStat.day));
+    return rows.map((r) => ({
+      day: r.day,
+      impressions: Number(r.impressions),
+      clicks: Number(r.clicks),
+    }));
+  }
+
+  /** Org-level CTR analytics: totals, daily series, and top banners by CTR. */
+  async orgAnalytics(orgId: string, from?: string): Promise<BannerAnalytics> {
+    const conds = [eq(bannerDailyStat.organizationId, orgId)];
+    if (from) conds.push(gte(bannerDailyStat.day, from));
+
+    const perBanner = await this.db
+      .select({
+        bannerId: bannerDailyStat.bannerId,
+        name: banner.name,
+        slug: banner.slug,
+        impressions: sql<number>`coalesce(sum(${bannerDailyStat.impressions}), 0)`,
+        clicks: sql<number>`coalesce(sum(${bannerDailyStat.clicks}), 0)`,
+      })
+      .from(bannerDailyStat)
+      .innerJoin(banner, eq(banner.id, bannerDailyStat.bannerId))
+      .where(and(...conds))
+      .groupBy(bannerDailyStat.bannerId);
+
+    const byDay = await this.db
+      .select({
+        day: bannerDailyStat.day,
+        impressions: sql<number>`coalesce(sum(${bannerDailyStat.impressions}), 0)`,
+        clicks: sql<number>`coalesce(sum(${bannerDailyStat.clicks}), 0)`,
+      })
+      .from(bannerDailyStat)
+      .where(and(...conds))
+      .groupBy(bannerDailyStat.day)
+      .orderBy(asc(bannerDailyStat.day));
+
+    const top = perBanner
+      .map((r) => {
+        const impressions = Number(r.impressions);
+        const clicks = Number(r.clicks);
+        return {
+          id: r.bannerId,
+          name: r.name,
+          slug: r.slug,
+          impressions,
+          clicks,
+          ctr: impressions > 0 ? clicks / impressions : 0,
+        };
+      })
+      .sort((a, b) => b.impressions - a.impressions);
+
+    const impressions = top.reduce((s, r) => s + r.impressions, 0);
+    const clicks = top.reduce((s, r) => s + r.clicks, 0);
+    return {
+      totals: {
+        impressions,
+        clicks,
+        ctr: impressions > 0 ? clicks / impressions : 0,
+        banners: top.length,
+      },
+      top: top.slice(0, 10),
+      series: byDay.map((r) => ({
+        day: r.day,
+        impressions: Number(r.impressions),
+        clicks: Number(r.clicks),
+      })),
+    };
   }
 
   #first(rows: BannerRow[], op: string): BannerRow {

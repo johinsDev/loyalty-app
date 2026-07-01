@@ -18,6 +18,16 @@ import {
   type FileUploadEntry,
 } from "../hooks/use-file-upload";
 
+/** Best-effort filename for a stored URL (drops query string). */
+function fileNameFromUrl(url: string): string {
+  try {
+    const path = new URL(url, "https://x").pathname;
+    return decodeURIComponent(path.split("/").pop() || "archivo");
+  } catch {
+    return "archivo";
+  }
+}
+
 interface FileUploadProps {
   /** Currently-stored URLs. Pass an empty array to start fresh. */
   value: string[] | null | undefined;
@@ -78,6 +88,15 @@ export function FileUpload({
 
   const isFull = maxFiles !== undefined && fu.entries.length >= maxFiles;
 
+  // Already-saved URLs (from `value` on edit) that aren't a fresh in-session
+  // upload — rendered as removable thumbnails so the stored image shows and
+  // can be cleared. Removing one drops it from the caller's `value`.
+  const persistedUrls = (value ?? []).filter(
+    (u) => !fu.entries.some((e) => e.url === u),
+  );
+  const removePersisted = (url: string) =>
+    onChange?.((value ?? []).filter((u) => u !== url));
+
   return (
     <Dropzone
       {...(accept && { accept })}
@@ -96,21 +115,39 @@ export function FileUpload({
         {description && <DropzoneDescription>{description}</DropzoneDescription>}
       </DropzoneArea>
       <DropzoneRejections />
-      {fu.entries.length > 0 && (
+      {(persistedUrls.length > 0 || fu.entries.length > 0) && (
         <DropzoneList>
-          {fu.entries.map((entry: FileUploadEntry) => (
+          {persistedUrls.map((url) => (
             <DropzoneListItem
-              key={entry.id}
-              name={entry.file.name}
-              size={entry.file.size}
-              contentType={entry.file.type}
-              progress={entry.progress}
-              status={entry.status}
-              {...(entry.error && { errorMessage: entry.error })}
-              {...(entry.previewUrl ? { thumbnailUrl: entry.previewUrl } : entry.url ? { thumbnailUrl: entry.url } : {})}
-              onRemove={() => fu.remove(entry.id)}
+              key={url}
+              name={fileNameFromUrl(url)}
+              contentType="image/*"
+              status="success"
+              thumbnailUrl={url}
+              onRemove={() => removePersisted(url)}
             />
           ))}
+          {fu.entries.map((entry: FileUploadEntry) => {
+            // Prefer the final download URL once uploaded — the blob preview
+            // URL is revoked on unmount and renders broken.
+            const thumb =
+              entry.status === "success" && entry.url
+                ? entry.url
+                : (entry.previewUrl ?? entry.url);
+            return (
+              <DropzoneListItem
+                key={entry.id}
+                name={entry.file.name}
+                size={entry.file.size}
+                contentType={entry.file.type}
+                progress={entry.progress}
+                status={entry.status}
+                {...(entry.error && { errorMessage: entry.error })}
+                {...(thumb ? { thumbnailUrl: thumb } : {})}
+                onRemove={() => fu.remove(entry.id)}
+              />
+            );
+          })}
         </DropzoneList>
       )}
     </Dropzone>

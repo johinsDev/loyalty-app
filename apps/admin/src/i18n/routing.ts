@@ -36,6 +36,7 @@ export const routing = defineRouting({
     "/banners": { es: "/banners", en: "/banners" },
     "/banners/new": { es: "/banners/nuevo", en: "/banners/new" },
     "/banners/[id]": { es: "/banners/[id]", en: "/banners/[id]" },
+    "/banners/[id]/edit": { es: "/banners/[id]/editar", en: "/banners/[id]/edit" },
     "/products": { es: "/productos", en: "/products" },
     "/products/new": { es: "/productos/nuevo", en: "/products/new" },
     "/products/categories": { es: "/productos/categorias", en: "/products/categories" },
