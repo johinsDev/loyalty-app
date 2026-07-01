@@ -8,6 +8,7 @@ import {
   router,
   staffProcedure,
 } from "../../trpc";
+import { resolveActiveStoreId } from "../_shared/store-context";
 import { RewardsRepository } from "./repository";
 import { RewardsService } from "./service";
 import {
@@ -120,9 +121,21 @@ export const rewardsRouter = router({
       rateLimit({ name: "rewards.claim", limit: 30, window: "1m", by: "user" }),
     )
     .input(claimInputSchema)
-    .mutation(async ({ ctx, input }) =>
-      buildRewardsService(ctx).claim(await orgId(), ctx.session.user.id, input.token),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const org = await orgId();
+      const storeId = await resolveActiveStoreId(
+        ctx.db,
+        org,
+        ctx.session.user.id,
+        input.storeId,
+      );
+      return buildRewardsService(ctx).claim(
+        org,
+        ctx.session.user.id,
+        input.token,
+        storeId,
+      );
+    }),
 
   // Code-based claim (the "no scanner" path): request a 6-digit code bound to
   // this staff member + customer, then confirm it. Keyed per (staff, customer)
@@ -163,14 +176,22 @@ export const rewardsRouter = router({
       }),
     )
     .input(confirmClaimWithCodeInputSchema)
-    .mutation(async ({ ctx, input }) =>
-      buildRewardsService(ctx).confirmClaimWithCode(
-        await orgId(),
+    .mutation(async ({ ctx, input }) => {
+      const org = await orgId();
+      const storeId = await resolveActiveStoreId(
+        ctx.db,
+        org,
+        ctx.session.user.id,
+        input.storeId,
+      );
+      return buildRewardsService(ctx).confirmClaimWithCode(
+        org,
         ctx.session.user.id,
         input.pendingId,
         input.code,
-      ),
-    ),
+        storeId,
+      );
+    }),
 
   availableForCustomer: staffProcedure
     .input(customerIdInputSchema)

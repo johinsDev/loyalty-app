@@ -1,6 +1,6 @@
 import { CacheManager } from "@loyalty/cache";
 import type { db as Db } from "@loyalty/db";
-import { organization, organizationSettings } from "@loyalty/db/schema";
+import { organization, organizationSettings, type StoreHours } from "@loyalty/db/schema";
 import { eq } from "drizzle-orm";
 
 // v1 supported sets. Enabled values are clamped to these in the settings service.
@@ -72,12 +72,16 @@ export interface Branding {
   brandColor: string | null;
   socialLinks: Record<string, string>;
   termsPdfUrl: string | null;
+  /** Org-level contact + default schedule that stores inherit when unset. */
+  phone: string | null;
+  defaultHours: StoreHours | null;
   loyaltyScope: string;
   seo: {
     title: string | null;
     description: string | null;
     keywords: string[];
     ogImageUrl: string | null;
+    faviconUrl: string | null;
   };
 }
 
@@ -104,12 +108,15 @@ export function getBranding(db: typeof Db, orgId: string): Promise<Branding> {
         brandColor: s?.brandColor ?? null,
         socialLinks: (s?.socialLinks ?? {}) as Record<string, string>,
         termsPdfUrl: s?.termsPdfUrl ?? null,
+        phone: s?.phone ?? null,
+        defaultHours: s?.defaultHours ?? null,
         loyaltyScope: s?.loyaltyScope ?? "org",
         seo: {
           title: s?.seoTitle ?? null,
           description: s?.seoDescription ?? null,
           keywords: s?.seoKeywords ?? [],
           ogImageUrl: s?.ogImageUrl ?? null,
+          faviconUrl: s?.faviconUrl ?? null,
         },
       };
     },

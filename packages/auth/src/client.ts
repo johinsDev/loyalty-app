@@ -1,4 +1,5 @@
 import {
+  adminClient,
   magicLinkClient,
   organizationClient,
   phoneNumberClient,
@@ -17,7 +18,12 @@ const baseURL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787";
 export const authClient = createAuthClient({
   baseURL,
   fetchOptions: { credentials: "include" },
-  plugins: [organizationClient(), phoneNumberClient(), magicLinkClient()],
+  plugins: [
+    organizationClient(),
+    phoneNumberClient(),
+    magicLinkClient(),
+    adminClient(),
+  ],
 });
 
 export const { signIn, signUp, signOut, useSession } = authClient;

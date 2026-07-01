@@ -23,6 +23,8 @@ import { toast } from "sonner";
 import { useFadeUp } from "@/lib/animate";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { useActiveStoreId } from "../use-active-store";
+
 import { ItemizedPurchase } from "./itemized-purchase";
 import { QrScanner } from "./qr-scanner";
 
@@ -106,6 +108,7 @@ export function ScanView() {
   );
   const streakPending = streak.data?.rewardPending ?? false;
 
+  const activeStoreId = useActiveStoreId();
   const recordPurchase = useMutation(
     trpc.stamps.recordPurchase.mutationOptions(),
   );
@@ -188,6 +191,7 @@ export function ScanView() {
         const result = await confirmRewardClaim.mutateAsync({
           pendingId: pendingClaim.pendingId,
           code,
+          storeId: activeStoreId ?? undefined,
         });
         setClaimResult(result);
       } else {
@@ -233,6 +237,7 @@ export function ScanView() {
     try {
       const view = await recordPurchase.mutateAsync({
         customerId: selected.id,
+        storeId: activeStoreId ?? undefined,
         priceCents: Math.round(priceCop * 100),
         idempotencyKey: crypto.randomUUID(),
       });
@@ -258,7 +263,7 @@ export function ScanView() {
           await claimStreak.mutateAsync({ token });
           setClaimResult(null);
         } else {
-          const result = await claim.mutateAsync({ token });
+          const result = await claim.mutateAsync({ token, storeId: activeStoreId ?? undefined });
           setClaimResult(result);
         }
         setStep("claim-success");

@@ -2,12 +2,18 @@ import {
   db,
   getPrimaryOrganizationId,
   provisionCustomerForUser,
+  recordAudit,
   schema,
 } from "@loyalty/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError } from "better-auth/api";
-import { magicLink, organization, phoneNumber } from "better-auth/plugins";
+import { APIError, createAuthMiddleware } from "better-auth/api";
+import {
+  admin,
+  magicLink,
+  organization,
+  phoneNumber,
+} from "better-auth/plugins";
 import { and, eq, gte, sql } from "drizzle-orm";
 
 import { coerceRole, ROLES, type Role } from "./roles";
@@ -170,8 +176,50 @@ export function createAuth(
         updateUserInfoOnLink: true,
       },
     },
+    // Append-only activity trail for the Empleados feature. Login is captured
+    // when a session is created (skipping impersonation sessions, which the
+    // employees service logs as `impersonation_start`); logout is captured on
+    // the sign-out endpoint. Loyalty events (venta/sello/canje) are NOT stored
+    // here — they're derived from the purchase/stamp/redemption tables.
+    databaseHooks: {
+      session: {
+        create: {
+          after: async (createdSession) => {
+            if (createdSession.impersonatedBy) return;
+            const organizationId = await getPrimaryOrganizationId();
+            await recordAudit({
+              organizationId,
+              actorUserId: createdSession.userId,
+              targetUserId: createdSession.userId,
+              type: "login",
+              ip: createdSession.ipAddress ?? null,
+              userAgent: createdSession.userAgent ?? null,
+            });
+          },
+        },
+      },
+    },
+    hooks: {
+      after: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/sign-out") return;
+        const sessionUser = ctx.context.session?.user;
+        if (!sessionUser) return;
+        const organizationId = await getPrimaryOrganizationId();
+        await recordAudit({
+          organizationId,
+          actorUserId: sessionUser.id,
+          targetUserId: sessionUser.id,
+          type: "logout",
+        });
+      }),
+    },
     plugins: [
       organization(),
+      // Impersonation + ban ("Inhabilitado") + session listing/revocation for
+      // the Empleados feature. Capability is gated on `user.role === "admin"`
+      // (only the owner — see seed-helpers); every endpoint is additionally
+      // wrapped behind our own `ownerProcedure` + role-hierarchy guard.
+      admin(),
       // Admin passwordless sign-in. `disableSignUp` → a magic-link to an
       // unknown email is refused (staff are seeded/invited, never self-serve),
       // which is what keeps this safe to leave enabled in prod.

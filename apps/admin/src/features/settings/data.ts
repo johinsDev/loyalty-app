@@ -35,28 +35,8 @@ export type DayHours = {
   closed: boolean;
 };
 export const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
-export const hours: DayHours[] = DAYS.map((day) => ({
-  day,
-  open: "10:00",
-  close: day === "sat" || day === "sun" ? "22:00" : "21:00",
-  closed: false,
-}));
 
 // ── Loyalty rules ───────────────────────────────────────────────────────────
-export type LoyaltyMode = "stamps" | "points" | "both";
-export type LoyaltyRules = {
-  mode: LoyaltyMode;
-  stampsPerReward: number;
-  pointsPerCurrency: number;
-  expiryDays: number;
-};
-export const loyalty: LoyaltyRules = {
-  mode: "stamps",
-  stampsPerReward: 10,
-  pointsPerCurrency: 1,
-  expiryDays: 365,
-};
-
 // ── Onboarding slides ───────────────────────────────────────────────────────
 export type OnboardingSlide = {
   id: string;
@@ -70,28 +50,3 @@ export const onboardingSlides: OnboardingSlide[] = [
   { id: "o3", emoji: "🎁", title: "Premios que amas", body: "Bubble teas gratis, toppings y más." },
 ];
 export const SLIDE_EMOJIS = ["🧋", "📱", "🎁", "⭐", "🎉", "💚", "🥤", "🧁"];
-
-// ── Team ────────────────────────────────────────────────────────────────────
-export type Role = "owner" | "manager" | "staff";
-export const ROLES: Role[] = ["owner", "manager", "staff"];
-export type Member = { id: string; name: string; email: string; role: Role };
-export const team: Member[] = [
-  { id: "m1", name: "Johan Villamil", email: "johan@t4lovers.com", role: "owner" },
-  { id: "m2", name: "Ana Gómez", email: "ana@t4lovers.com", role: "manager" },
-  { id: "m3", name: "Luis Pérez", email: "luis@t4lovers.com", role: "staff" },
-  { id: "m4", name: "Sofía Ruiz", email: "sofia@t4lovers.com", role: "staff" },
-];
-
-// ── Integrations ────────────────────────────────────────────────────────────
-export type Integration = {
-  id: string;
-  emoji: string;
-  connected: boolean;
-};
-export const integrations: Integration[] = [
-  { id: "whatsapp", emoji: "💬", connected: true },
-  { id: "instagram", emoji: "📸", connected: true },
-  { id: "google", emoji: "🔎", connected: false },
-  { id: "resend", emoji: "✉️", connected: true },
-  { id: "posthog", emoji: "📊", connected: false },
-];

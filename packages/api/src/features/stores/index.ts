@@ -3,9 +3,18 @@ export { StoresRepository } from "./repository";
 export { StoresService } from "./service";
 export { directionsUrl, generateStoreMap, staticMapUrl } from "./static-map";
 export {
-  createStoreInputSchema,
+  bulkIdsSchema,
+  bulkSetPublishedSchema,
+  hoursSchema,
+  storeSocialLinksSchema,
+  storeStatusSchema,
+  storesListInputSchema,
   updateStoreInputSchema,
-  type CreateStoreInput,
+  type BulkIdsInput,
+  type BulkSetPublishedInput,
+  type StoreListItem,
+  type StoreSocialLinks,
+  type StoresListInput,
   type StoreView,
   type UpdateStoreInput,
 } from "./schemas";

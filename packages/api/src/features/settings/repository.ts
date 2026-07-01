@@ -21,6 +21,7 @@ type SettingsPatch = Partial<
     | "seoDescription"
     | "seoKeywords"
     | "ogImageUrl"
+    | "faviconUrl"
   >
 >;
 

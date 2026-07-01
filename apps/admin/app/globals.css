@@ -139,6 +139,28 @@
   border-color: transparent;
 }
 
+/* Input-group controls (TimeInput, etc.) match the filled input look. */
+[data-slot="input-group"] {
+  border-radius: var(--radius-3xl);
+  background-color: color-mix(in oklab, var(--input) 50%, transparent);
+}
+
+[data-slot="input-group"]:not(:focus-within):not(:has([aria-invalid="true"])) {
+  border-color: transparent;
+}
+
+/* TimeInput already shows a leading clock; drop the browser's own picker glyph
+   so it doesn't double up / overflow the pill. (Mobile still opens the OS
+   picker on tap.) */
+[data-slot="input-group"] input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+/* Switches read a touch chunky in the denser admin — scale them down a bit. */
+[data-slot="switch"] {
+  scale: 0.85;
+}
+
 /* Luma pill tabs (segmented control). */
 [data-slot="tabs-list"],
 [data-slot="tabs-trigger"] {
@@ -168,14 +190,16 @@
   background-color: color-mix(in oklab, var(--input) 50%, transparent);
 }
 
+/* Render the country chip and the number as two separate filled pills with a
+   small gap (instead of one seamless control). */
 [data-slot="input-phone-country"] {
-  border-top-left-radius: var(--radius-3xl);
-  border-bottom-left-radius: var(--radius-3xl);
+  border-radius: var(--radius-3xl);
 }
 
 [data-slot="input-phone-number"] {
-  border-top-right-radius: var(--radius-3xl);
-  border-bottom-right-radius: var(--radius-3xl);
+  border-radius: var(--radius-3xl);
+  border-left-width: 1px;
+  margin-left: 0.375rem;
 }
 
 [data-slot="input-phone-country"]:not(:focus-visible):not([aria-expanded="true"]),

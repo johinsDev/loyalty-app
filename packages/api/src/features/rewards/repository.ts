@@ -406,6 +406,7 @@ export class RewardsRepository {
     reward: RewardRow;
     currency: "stamps" | "points" | "both";
     claimedByUserId: string;
+    storeId: string;
   }): Promise<ClaimTxResult> {
     return this.db.transaction((tx) =>
       redeemWithinTx(tx, { ...input, purchaseId: undefined }),

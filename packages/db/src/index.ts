@@ -8,3 +8,4 @@ export {
 } from "./customer-provision";
 export { getPrimaryOrganizationId } from "./primary-org";
 export { promoteOwnerByEmail } from "./seed-helpers";
+export { recordAudit, type RecordAuditInput } from "./audit";

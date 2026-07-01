@@ -6,6 +6,7 @@ import type { WalletView } from "../schemas";
 
 const ORG = "org_1";
 const STAFF = "staff_1";
+const STORE = "store_1";
 const CUSTOMER = "cust_1";
 
 function view(over: Partial<WalletView> = {}): WalletView {
@@ -51,7 +52,7 @@ describe("StampsService.recordPurchase", () => {
   it("fires a first-purchase notification on the very first stamp", async () => {
     // Default FakeRepo result = wallet seq 1, currentStamps 1 → first ever.
     const { service, realtime, enqueue } = build(repo);
-    const { wallet } = await service.recordPurchase(ORG, STAFF, {
+    const { wallet } = await service.recordPurchase(ORG, STAFF, STORE, {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-12345678",
@@ -76,7 +77,7 @@ describe("StampsService.recordPurchase", () => {
       purchaseId: "p2",
     };
     const { service, realtime, enqueue } = build(repo);
-    await service.recordPurchase(ORG, STAFF, {
+    await service.recordPurchase(ORG, STAFF, STORE, {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-87654321",
@@ -97,7 +98,7 @@ describe("StampsService.recordPurchase", () => {
       purchaseId: "p15",
     };
     const { service, realtime, enqueue } = build(repo);
-    const { wallet } = await service.recordPurchase(ORG, STAFF, {
+    const { wallet } = await service.recordPurchase(ORG, STAFF, STORE, {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-accrues",
@@ -119,7 +120,7 @@ describe("StampsService.recordPurchase", () => {
       purchaseId: "p1",
     };
     const { service, realtime, enqueue } = build(repo);
-    const { wallet } = await service.recordPurchase(ORG, STAFF, {
+    const { wallet } = await service.recordPurchase(ORG, STAFF, STORE, {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-retry",
@@ -131,7 +132,7 @@ describe("StampsService.recordPurchase", () => {
 
   it("threads inlineReward into the repo with redeemedByUserId = staff id", async () => {
     const { service } = build(repo);
-    await service.recordPurchase(ORG, STAFF, {
+    await service.recordPurchase(ORG, STAFF, STORE, {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-inline-1",
@@ -150,7 +151,7 @@ describe("StampsService.recordPurchase", () => {
 
   it("omits inlineReward when not provided", async () => {
     const { service } = build(repo);
-    await service.recordPurchase(ORG, STAFF, {
+    await service.recordPurchase(ORG, STAFF, STORE, {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-inline-2",

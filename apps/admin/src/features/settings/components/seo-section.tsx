@@ -1,5 +1,6 @@
 "use client";
 
+import { updateSeoInputSchema } from "@loyalty/api/features/settings/schemas";
 import { Button, Input, Label, type Tag, TagInput, Textarea } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -24,6 +25,7 @@ export function SeoSection() {
   const [description, setDescription] = useState("");
   const [keywords, setKeywords] = useState<Tag[]>([]);
   const [ogImageUrl, setOgImageUrl] = useState<string | null>(null);
+  const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
   const [seeded, setSeeded] = useState(false);
 
   useEffect(() => {
@@ -32,6 +34,7 @@ export function SeoSection() {
       setDescription(data.seo.description ?? "");
       setKeywords((data.seo.keywords ?? []).map((text, i) => ({ id: `k${i}`, text })));
       setOgImageUrl(data.seo.ogImageUrl ?? null);
+      setFaviconUrl(data.seo.faviconUrl ?? null);
       setSeeded(true);
     }
   }, [data, seeded]);
@@ -46,13 +49,22 @@ export function SeoSection() {
     }),
   );
 
-  const onSave = () =>
-    update.mutate({
+  const onSave = () => {
+    const payload = {
       seoTitle: title,
       seoDescription: description,
       seoKeywords: keywords.map((k) => k.text.trim()).filter(Boolean),
       ogImageUrl: ogImageUrl ?? "",
-    });
+      faviconUrl: faviconUrl ?? "",
+    };
+    // Validate against the shared server schema before saving (no bad data).
+    const parsed = updateSeoInputSchema.safeParse(payload);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? t("brand.error"));
+      return;
+    }
+    update.mutate(parsed.data);
+  };
 
   return (
     <section className="space-y-5">
@@ -84,14 +96,25 @@ export function SeoSection() {
           </Field>
         </div>
 
-        <Field label={t("seo.ogImage")} hint={t("seo.ogImageHint")}>
-          <FileUpload
-            value={ogImageUrl ? [ogImageUrl] : []}
-            onChange={(urls) => setOgImageUrl(urls[urls.length - 1] ?? null)}
-            accept={{ "image/*": [] }}
-            multiple={false}
-          />
-        </Field>
+        <div className="space-y-4">
+          <Field label={t("seo.ogImage")} hint={t("seo.ogImageHint")}>
+            <FileUpload
+              value={ogImageUrl ? [ogImageUrl] : []}
+              onChange={(urls) => setOgImageUrl(urls[urls.length - 1] ?? null)}
+              accept={{ "image/*": [] }}
+              multiple={false}
+            />
+          </Field>
+
+          <Field label={t("seo.favicon")} hint={t("seo.faviconHint")}>
+            <FileUpload
+              value={faviconUrl ? [faviconUrl] : []}
+              onChange={(urls) => setFaviconUrl(urls[urls.length - 1] ?? null)}
+              accept={{ "image/png": [".png"], "image/x-icon": [".ico"], "image/svg+xml": [".svg"] }}
+              multiple={false}
+            />
+          </Field>
+        </div>
       </div>
 
       <Button className="h-10 rounded-xl font-semibold" onClick={onSave} disabled={update.isPending}>

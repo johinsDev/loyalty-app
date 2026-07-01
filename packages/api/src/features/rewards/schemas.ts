@@ -30,6 +30,8 @@ export const issueClaimTokenInputSchema = z.object({
 
 export const claimInputSchema = z.object({
   token: z.string().min(1),
+  /** Active store chosen at the register (validated + resolved server-side). */
+  storeId: z.string().optional(),
 });
 
 export const requestClaimInputSchema = z.object({
@@ -44,6 +46,8 @@ export const requestClaimInputSchema = z.object({
 export const confirmClaimWithCodeInputSchema = z.object({
   pendingId: z.string().min(1),
   code: z.string().length(6),
+  /** Active store chosen at the register (validated + resolved server-side). */
+  storeId: z.string().optional(),
 });
 
 export const setClaimCurrencyInputSchema = z.object({

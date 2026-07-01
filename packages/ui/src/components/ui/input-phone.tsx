@@ -293,7 +293,12 @@ export function InputPhone({
           className={cn(TRIGGER_CLASSNAME, size === "sm" && "h-10")}
         >
           <Flag className="size-5 shrink-0 rounded-[2px]" />
-          <span className="inline-block w-12 text-left tabular-nums text-muted-foreground">
+          <span
+            className={cn(
+              "inline-block text-left tabular-nums text-muted-foreground",
+              size === "sm" ? "w-10 text-sm" : "w-12",
+            )}
+          >
             +{def.dialCode}
           </span>
         </ComboboxTrigger>

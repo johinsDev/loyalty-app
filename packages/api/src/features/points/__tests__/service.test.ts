@@ -6,6 +6,7 @@ import type { PointsRepository } from "../repository";
 import { PointsService, pointsForPrice } from "../service";
 
 const ORG = "org_1";
+const STORE = "store_1";
 const CUSTOMER = "cust_1";
 
 /** In-memory stand-in for `PointsRepository`. */
@@ -51,7 +52,7 @@ describe("PointsService.earnForPurchase", () => {
   it("inserts an earn, publishes points.earned, and recomputes", async () => {
     repo.tierPointsValue = 40;
     const { service, realtime } = build(repo);
-    const res = await service.earnForPurchase(ORG, CUSTOMER, 100_000, "p1");
+    const res = await service.earnForPurchase(ORG, CUSTOMER, 100_000, "p1", STORE);
     expect(res.earned).toBe(40);
     expect(repo.earn).toHaveBeenCalled();
     expect(realtime.publish).toHaveBeenCalledWith(
@@ -63,7 +64,7 @@ describe("PointsService.earnForPurchase", () => {
   it("is idempotent — a duplicate purchase earns nothing, no side effects", async () => {
     repo.earnInserted = false;
     const { service, realtime, enqueue } = build(repo);
-    const res = await service.earnForPurchase(ORG, CUSTOMER, 100_000, "p1");
+    const res = await service.earnForPurchase(ORG, CUSTOMER, 100_000, "p1", STORE);
     expect(res.earned).toBe(0);
     expect(realtime.publish).not.toHaveBeenCalled();
     expect(enqueue).not.toHaveBeenCalled();
@@ -71,7 +72,7 @@ describe("PointsService.earnForPurchase", () => {
 
   it("earns 0 when the price is below the rate floor", async () => {
     const { service, realtime } = build(repo);
-    const res = await service.earnForPurchase(ORG, CUSTOMER, 5_000, "p1");
+    const res = await service.earnForPurchase(ORG, CUSTOMER, 5_000, "p1", STORE);
     expect(res.earned).toBe(0);
     expect(repo.earn).not.toHaveBeenCalled();
     expect(realtime.publish).not.toHaveBeenCalled();

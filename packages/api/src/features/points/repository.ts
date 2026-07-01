@@ -25,6 +25,7 @@ export class PointsRepository {
     orgId: string;
     customerId: string;
     purchaseId: string;
+    storeId: string;
     points: number;
     reason?: string;
   }): Promise<boolean> {
@@ -37,6 +38,7 @@ export class PointsRepository {
         points: input.points,
         reason: input.reason ?? "purchase",
         purchaseId: input.purchaseId,
+        storeId: input.storeId,
       })
       .onConflictDoNothing()
       .returning({ id: pointsTransaction.id });

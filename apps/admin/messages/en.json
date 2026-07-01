@@ -928,7 +928,8 @@
     "back": "Back",
     "next": "Next",
     "draftSaved": "Draft saved",
-    "preview": "Preview"
+    "preview": "Preview",
+    "saving": "Saving…"
   },
   "Products": {
     "title": "Products",
@@ -1364,6 +1365,11 @@
     "subtitle": "Configure your brand, loyalty and team.",
     "save": "Save changes",
     "saved": "Changes saved",
+    "soon": "Soon",
+    "comingSoon": {
+      "title": "Coming soon",
+      "hint": "This section isn't available yet. Team & roles are managed under Employees."
+    },
     "nav": {
       "brand": "Brand & store",
       "hours": "Hours & location",
@@ -1396,7 +1402,9 @@
       "logoCrop": "Crop logo",
       "logoCropConfirm": "Use logo",
       "logoUploading": "Uploading…",
-      "error": "Couldn't save. Try again."
+      "error": "Couldn't save. Try again.",
+      "invalidData": "Check the fields before saving.",
+      "invalidField": "Check the “{field}” field."
     },
     "hours": {
       "title": "Hours & location",
@@ -1418,7 +1426,10 @@
       "locationSaved": "Location updated",
       "locationError": "Couldn't save the location",
       "previewTitle": "How your customers will see it",
-      "previewEmpty": "Add an address to see the preview"
+      "previewEmpty": "Add an address to see the preview",
+      "phone": "Organization phone",
+      "save": "Save schedule",
+      "saved": "Schedule saved"
     },
     "loyalty": {
       "title": "Loyalty rules",
@@ -1521,7 +1532,7 @@
       "canonical": "Canonical URL",
       "canonicalPlaceholder": "https://t4lovers.app",
       "favicon": "Favicon",
-      "faviconHint": "Emoji or image",
+      "faviconHint": ".png, .ico or .svg",
       "ogImage": "Share image (Open Graph)",
       "ogImageHint": "1200×630 recommended",
       "preview": "Preview",
@@ -1581,6 +1592,7 @@
     "empty": "No stores found.",
     "emptyHint": "Adjust the search or filters.",
     "clearFilters": "Clear filters",
+    "viewDetail": "View detail",
     "edit": "Edit",
     "delete": "Delete",
     "cancel": "Cancel",
@@ -1630,7 +1642,72 @@
       "store": "Per store"
     },
     "previewTitle": "How your customers will see it",
-    "previewEmpty": "Add an address to see the preview"
+    "previewEmpty": "Add an address to see the preview",
+    "step": {
+      "datos": "Details",
+      "horarios": "Hours",
+      "marca": "Brand",
+      "review": "Review"
+    },
+    "day": {
+      "mon": "Monday",
+      "tue": "Tuesday",
+      "wed": "Wednesday",
+      "thu": "Thursday",
+      "fri": "Friday",
+      "sat": "Saturday",
+      "sun": "Sunday"
+    },
+    "inheritHours": "Use the organization's hours",
+    "inheritHoursHint": "This store will show the organization's default schedule.",
+    "fieldTimezone": "Time zone",
+    "closed": "Closed",
+    "inheritLogo": "Use the organization's logo",
+    "inheritSocial": "Use the organization's social links",
+    "inheritPhone": "Use the organization's phone",
+    "reviewTitle": "Review & publish",
+    "fieldPrimary": "Primary store",
+    "primaryHint": "The one shown to customers by default.",
+    "yes": "Yes",
+    "no": "No",
+    "publish": "Publish",
+    "publishError": "Couldn't publish",
+    "previewOpenDays": "{n} open days",
+    "leaveTitle": "Leave without saving?",
+    "leaveDescription": "You have unsaved changes in this step. Leaving will discard them.",
+    "leaveStay": "Keep editing",
+    "leaveConfirm": "Leave",
+    "draft": "Draft",
+    "deleteTypeHint": "Type the store's exact name (\"{name}\") to confirm.",
+    "deleteLastError": "Can't delete the last store.",
+    "fixErrors": "Check the highlighted fields.",
+    "errorName": "Enter a name.",
+    "errorAddress": "Pick an address.",
+    "errorHours": "Closing time must be later than opening time.",
+    "errorUrl": "Enter a valid URL (e.g. https://instagram.com/your-store).",
+    "selectAll": "Select all",
+    "selectRow": "Select row",
+    "colName": "Name",
+    "colAddress": "Address",
+    "colStatus": "Status",
+    "colPrimary": "Primary",
+    "colVisible": "Visible",
+    "colCreated": "Created",
+    "notPrimary": "Not primary",
+    "allPrimary": "All",
+    "viewToggle": "Toggle view",
+    "bulkExport": "Export",
+    "bulkPublish": "Publish",
+    "bulkUnpublish": "Unpublish",
+    "bulkDelete": "Delete",
+    "bulkDeleteTitle": "Delete {n} stores?",
+    "bulkDeleteHint": "This can be undone (soft delete). The last store can't be deleted.",
+    "bulkPublishOk": "{n} stores updated",
+    "bulkDeleteOk": "{n} stores deleted",
+    "exported": "{n} stores exported",
+    "allVisible": "All",
+    "onlyVisible": "Only visible",
+    "clearDate": "Clear date"
   },
   "Employees": {
     "title": "Employees",
@@ -1648,22 +1725,81 @@
     "inviteSent": "Invitation sent",
     "resent": "Invitation resent",
     "removed": "{name} removed",
+    "actions": "Actions",
+    "inviteError": "Couldn't send the invitation.",
+    "enable": "Enable",
+    "disable": "Disable",
+    "enabled": "Employee enabled",
+    "disabled": "Employee disabled",
+    "removeTitle": "Remove employee?",
+    "removeHint": "{name} will be removed from the team. Their history is kept.",
+    "removeConfirm": "Remove",
+    "removeError": "Couldn't remove the employee.",
+    "impersonateError": "Couldn't start impersonation.",
+    "backToMyAccount": "Back to my account",
+    "accept": {
+      "title": "Team invitation",
+      "invalid": "This invitation link is invalid.",
+      "signInFirst": "Sign in with the invited email to accept.",
+      "signIn": "Sign in",
+      "checkEmail": "We sent an access link to {email}. Click it to join.",
+      "working": "Accepting…",
+      "done": "You're in! Redirecting…",
+      "error": "Couldn't accept the invitation."
+    },
+    "cancel": "Cancel",
+    "pageOf": "Page {page} of {total}",
+    "prev": "Previous",
+    "next": "Next",
+    "activityType": {
+      "login": "Login",
+      "logout": "Logout",
+      "role_change": "Role change",
+      "invite_sent": "Invite sent",
+      "invite_accepted": "Invite accepted",
+      "disable": "Disabled",
+      "enable": "Enabled",
+      "delete": "Removed",
+      "restore": "Restored",
+      "email_change": "Email changed",
+      "rating_change": "Rating changed",
+      "stores_change": "Stores changed",
+      "impersonation_start": "Impersonation started",
+      "impersonation_stop": "Impersonation stopped",
+      "session_revoke": "Session revoked",
+      "sale": "Sale",
+      "stamp": "Stamp",
+      "redemption": "Redemption"
+    },
     "col": {
       "employee": "Employee",
       "email": "Email",
       "role": "Role",
+      "stores": "Stores",
+      "rating": "Rating",
       "stamps": "Stamps given",
       "redemptions": "Redemptions",
-      "status": "Status"
+      "status": "Status",
+      "created": "Created"
     },
+    "selectAll": "Select all",
+    "selectRow": "Select row",
+    "viewToggle": "View",
+    "bulkExport": "Export",
+    "bulkDelete": "Delete",
+    "bulkDeleteTitle": "Delete {n} employees?",
+    "bulkDeleteHint": "The selected employees will be removed. Their history is kept.",
+    "bulkDeleteOk": "{n} deleted",
+    "exported": "{n} exported",
     "role": {
       "owner": "Owner",
       "manager": "Manager",
-      "staff": "Staff"
+      "staff": "Cashier"
     },
     "status": {
       "active": "Active",
-      "invited": "Invited"
+      "invited": "Invited",
+      "disabled": "Disabled"
     },
     "detail": {
       "activity": "Activity",
@@ -1685,7 +1821,52 @@
       "close": "Close",
       "searchLog": "Search activity...",
       "stampsGiven": "Stamps given",
-      "redemptions": "Redemptions"
+      "redemptions": "Redemptions",
+      "monthStats": "This month",
+      "sales": "Sales",
+      "stamps": "Stamps",
+      "rewards": "Rewards",
+      "points": "Points",
+      "contact": "Contact",
+      "noStores": "No stores assigned",
+      "viewActivity": "View all activity",
+      "perStoreLine": "{sales} sales · {stamps} stamps · {rewards} rewards",
+      "activityCount": "{n} events",
+      "detailCol": "Detail",
+      "dateRange": "Date"
+    },
+    "activityDetail": {
+      "sale": "Sale for {amount}",
+      "redemption": "Redeemed {reward}",
+      "inviteSent": "Invited {email}"
+    },
+    "leaderboard": {
+      "link": "Performance",
+      "title": "Team performance",
+      "subtitle": "Ranked by revenue",
+      "thisMonth": "This month",
+      "seeAll": "See all",
+      "salesCount": "{n} sales",
+      "others": "Others",
+      "teamAvgTicket": "Team avg ticket",
+      "topSeller": "Top seller",
+      "rankingBy": "Ranking by {metric}",
+      "share": "Revenue share",
+      "period": {
+        "month": "This month",
+        "lastMonth": "Last month",
+        "range": "Range"
+      },
+      "metric": {
+        "sales": "Sales",
+        "revenueCents": "Revenue",
+        "avgTicketCents": "Avg ticket",
+        "maxTicketCents": "Max ticket",
+        "uniqueCustomers": "Customers",
+        "stamps": "Stamps",
+        "redemptions": "Rewards",
+        "points": "Points"
+      }
     },
     "add": "New employee",
     "auditLink": "Activity log",
@@ -1705,13 +1886,19 @@
       "phone": "Phone",
       "role": "Role",
       "status": "Status",
+      "stores": "Stores",
+      "rating": "Rating",
       "dailyCap": "Daily stamp cap",
       "notes": "Notes"
     },
     "namePlaceholder": "Full name",
     "emailPlaceholder": "name@example.com",
     "notesPlaceholder": "Internal notes...",
-    "dailyCapHint": "stamps / day"
+    "dailyCapHint": "stamps / day",
+    "noStores": "No stores yet",
+    "saveError": "Couldn't save the changes.",
+    "emailRequired": "Enter an email.",
+    "inviteEmailHint": "They'll get an invite link"
   },
   "Analytics": {
     "title": "Analytics",
@@ -1719,6 +1906,7 @@
     "ytd": "YTD",
     "nav": {
       "overview": "Overview",
+      "team": "Team",
       "cohorts": "Cohorts",
       "funnel": "Funnel"
     },
@@ -1814,5 +2002,32 @@
     "mapHint": "Drag the pin to adjust the location",
     "save": "Save",
     "cancel": "Cancel"
+  },
+  "DataTable": {
+    "selected": "{n} of {total} selected",
+    "selectedCount": "{n} selected",
+    "clearSelection": "Clear selection",
+    "rowsPerPage": "Rows per page",
+    "pageOf": "Page {page} of {pages}",
+    "first": "First",
+    "prev": "Previous",
+    "next": "Next",
+    "last": "Last",
+    "view": "View",
+    "toggleColumns": "Toggle columns",
+    "sort": "Sort",
+    "sortBy": "Sort by",
+    "noSort": "No sorting",
+    "addSort": "Add sort",
+    "resetSort": "Reset sorting",
+    "removeSort": "Remove",
+    "dir": {
+      "asc": "Asc",
+      "desc": "Desc"
+    },
+    "clear": "Clear",
+    "filters": "Filters",
+    "clearAll": "Clear all",
+    "done": "Done"
   }
 }

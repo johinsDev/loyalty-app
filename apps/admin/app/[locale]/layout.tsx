@@ -7,8 +7,20 @@ import type { ReactNode } from "react";
 
 import { FloatingChrome } from "@/components/floating-chrome";
 import { routing } from "@/i18n/routing";
+import { trpc } from "@/lib/trpc/server";
 
 import { Providers } from "./providers";
+
+/** Tenant-configurable favicon (Settings → SEO). Null when unset/unreachable →
+ *  the app's default icon. */
+async function faviconUrl(): Promise<string | null> {
+  try {
+    const branding = await (await trpc()).settings.branding();
+    return branding.seo.faviconUrl ?? null;
+  } catch {
+    return null;
+  }
+}
 
 type Props = {
   children: ReactNode;
@@ -22,9 +34,11 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Metadata" });
+  const favicon = await faviconUrl();
   return {
     title: t("title"),
     description: t("description"),
+    ...(favicon ? { icons: { icon: favicon } } : {}),
   };
 }
 

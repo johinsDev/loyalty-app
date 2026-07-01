@@ -928,7 +928,8 @@
     "back": "Atrás",
     "next": "Siguiente",
     "draftSaved": "Borrador guardado",
-    "preview": "Vista previa"
+    "preview": "Vista previa",
+    "saving": "Guardando…"
   },
   "Products": {
     "title": "Productos",
@@ -1364,6 +1365,11 @@
     "subtitle": "Configura tu marca, lealtad y equipo.",
     "save": "Guardar cambios",
     "saved": "Cambios guardados",
+    "soon": "Pronto",
+    "comingSoon": {
+      "title": "Próximamente",
+      "hint": "Esta sección aún no está disponible. El equipo y los roles se gestionan en Empleados."
+    },
     "nav": {
       "brand": "Marca y tienda",
       "hours": "Horarios y ubicación",
@@ -1396,7 +1402,9 @@
       "logoCrop": "Recortar logo",
       "logoCropConfirm": "Usar logo",
       "logoUploading": "Subiendo…",
-      "error": "No se pudo guardar. Inténtalo de nuevo."
+      "error": "No se pudo guardar. Inténtalo de nuevo.",
+      "invalidData": "Revisá los datos antes de guardar.",
+      "invalidField": "Revisá el campo “{field}”."
     },
     "hours": {
       "title": "Horarios y ubicación",
@@ -1418,7 +1426,10 @@
       "locationSaved": "Ubicación actualizada",
       "locationError": "No se pudo guardar la ubicación",
       "previewTitle": "Así lo verán tus clientes",
-      "previewEmpty": "Agregá una dirección para ver la vista previa"
+      "previewEmpty": "Agregá una dirección para ver la vista previa",
+      "phone": "Teléfono de la organización",
+      "save": "Guardar horario",
+      "saved": "Horario guardado"
     },
     "loyalty": {
       "title": "Reglas de lealtad",
@@ -1521,7 +1532,7 @@
       "canonical": "URL canónica",
       "canonicalPlaceholder": "https://t4lovers.app",
       "favicon": "Favicon",
-      "faviconHint": "Emoji o imagen",
+      "faviconHint": ".png, .ico o .svg",
       "ogImage": "Imagen para compartir (Open Graph)",
       "ogImageHint": "1200×630 recomendado",
       "preview": "Vista previa",
@@ -1581,6 +1592,7 @@
     "empty": "No se encontraron tiendas.",
     "emptyHint": "Ajusta la búsqueda o los filtros.",
     "clearFilters": "Limpiar filtros",
+    "viewDetail": "Ver detalle",
     "edit": "Editar",
     "delete": "Eliminar",
     "cancel": "Cancelar",
@@ -1630,7 +1642,72 @@
       "store": "Por tienda"
     },
     "previewTitle": "Así lo verán tus clientes",
-    "previewEmpty": "Agregá una dirección para ver la vista previa"
+    "previewEmpty": "Agregá una dirección para ver la vista previa",
+    "step": {
+      "datos": "Datos",
+      "horarios": "Horarios",
+      "marca": "Marca",
+      "review": "Revisar"
+    },
+    "day": {
+      "mon": "Lunes",
+      "tue": "Martes",
+      "wed": "Miércoles",
+      "thu": "Jueves",
+      "fri": "Viernes",
+      "sat": "Sábado",
+      "sun": "Domingo"
+    },
+    "inheritHours": "Usar el horario de la organización",
+    "inheritHoursHint": "Esta tienda mostrará el horario por defecto de la organización.",
+    "fieldTimezone": "Zona horaria",
+    "closed": "Cerrado",
+    "inheritLogo": "Usar el logo de la organización",
+    "inheritSocial": "Usar las redes de la organización",
+    "inheritPhone": "Usar el teléfono de la organización",
+    "reviewTitle": "Revisá y publicá",
+    "fieldPrimary": "Tienda principal",
+    "primaryHint": "La que se muestra por defecto a los clientes.",
+    "yes": "Sí",
+    "no": "No",
+    "publish": "Publicar",
+    "publishError": "No se pudo publicar",
+    "previewOpenDays": "{n} días abiertos",
+    "leaveTitle": "¿Salir sin guardar?",
+    "leaveDescription": "Tenés cambios sin guardar en este paso. Si salís se perderán.",
+    "leaveStay": "Seguir editando",
+    "leaveConfirm": "Salir",
+    "draft": "Borrador",
+    "deleteTypeHint": "Escribí el nombre exacto de la tienda (\"{name}\") para confirmar.",
+    "deleteLastError": "No se puede eliminar la última tienda.",
+    "fixErrors": "Revisá los campos marcados.",
+    "errorName": "Ingresá un nombre.",
+    "errorAddress": "Elegí una dirección.",
+    "errorHours": "La hora de cierre debe ser mayor que la de apertura.",
+    "errorUrl": "Ingresá una URL válida (ej. https://instagram.com/tu-tienda).",
+    "selectAll": "Seleccionar todo",
+    "selectRow": "Seleccionar fila",
+    "colName": "Nombre",
+    "colAddress": "Dirección",
+    "colStatus": "Estado",
+    "colPrimary": "Principal",
+    "colVisible": "Visible",
+    "colCreated": "Creada",
+    "notPrimary": "No principal",
+    "allPrimary": "Todas",
+    "viewToggle": "Cambiar vista",
+    "bulkExport": "Exportar",
+    "bulkPublish": "Publicar",
+    "bulkUnpublish": "Despublicar",
+    "bulkDelete": "Eliminar",
+    "bulkDeleteTitle": "¿Eliminar {n} tiendas?",
+    "bulkDeleteHint": "Esta acción se puede deshacer (borrado suave). No se puede eliminar la última tienda.",
+    "bulkPublishOk": "{n} tiendas actualizadas",
+    "bulkDeleteOk": "{n} tiendas eliminadas",
+    "exported": "{n} tiendas exportadas",
+    "allVisible": "Todas",
+    "onlyVisible": "Solo visibles",
+    "clearDate": "Limpiar fecha"
   },
   "Employees": {
     "title": "Empleados",
@@ -1648,14 +1725,72 @@
     "inviteSent": "Invitación enviada",
     "resent": "Invitación reenviada",
     "removed": "{name} eliminado",
+    "actions": "Acciones",
+    "inviteError": "No se pudo enviar la invitación.",
+    "enable": "Habilitar",
+    "disable": "Inhabilitar",
+    "enabled": "Empleado habilitado",
+    "disabled": "Empleado inhabilitado",
+    "removeTitle": "¿Eliminar empleado?",
+    "removeHint": "{name} será eliminado del equipo. Se conserva su historial.",
+    "removeConfirm": "Eliminar",
+    "removeError": "No se pudo eliminar al empleado.",
+    "impersonateError": "No se pudo iniciar la suplantación.",
+    "backToMyAccount": "Volver a mi cuenta",
+    "accept": {
+      "title": "Invitación al equipo",
+      "invalid": "Este enlace de invitación no es válido.",
+      "signInFirst": "Iniciá sesión con el correo invitado para aceptar.",
+      "signIn": "Iniciar sesión",
+      "checkEmail": "Te enviamos un enlace de acceso a {email}. Hacé click para unirte.",
+      "working": "Aceptando…",
+      "done": "¡Listo! Redirigiendo…",
+      "error": "No se pudo aceptar la invitación."
+    },
+    "cancel": "Cancelar",
+    "pageOf": "Página {page} de {total}",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "activityType": {
+      "login": "Inicio de sesión",
+      "logout": "Cierre de sesión",
+      "role_change": "Cambio de rol",
+      "invite_sent": "Invitación enviada",
+      "invite_accepted": "Invitación aceptada",
+      "disable": "Inhabilitado",
+      "enable": "Habilitado",
+      "delete": "Eliminado",
+      "restore": "Restaurado",
+      "email_change": "Correo cambiado",
+      "rating_change": "Calificación cambiada",
+      "stores_change": "Tiendas cambiadas",
+      "impersonation_start": "Suplantación iniciada",
+      "impersonation_stop": "Suplantación finalizada",
+      "session_revoke": "Sesión revocada",
+      "sale": "Venta",
+      "stamp": "Sello",
+      "redemption": "Canje"
+    },
     "col": {
       "employee": "Empleado",
       "email": "Correo",
       "role": "Rol",
+      "stores": "Tiendas",
+      "rating": "Calificación",
       "stamps": "Sellos dados",
       "redemptions": "Canjes",
-      "status": "Estado"
+      "status": "Estado",
+      "created": "Creado"
     },
+    "selectAll": "Seleccionar todo",
+    "selectRow": "Seleccionar fila",
+    "viewToggle": "Vista",
+    "bulkExport": "Exportar",
+    "bulkDelete": "Eliminar",
+    "bulkDeleteTitle": "¿Eliminar {n} empleados?",
+    "bulkDeleteHint": "Los empleados seleccionados serán eliminados. Se conserva su historial.",
+    "bulkDeleteOk": "{n} eliminados",
+    "exported": "{n} exportados",
     "role": {
       "owner": "Dueño",
       "manager": "Gerente",
@@ -1663,7 +1798,8 @@
     },
     "status": {
       "active": "Activo",
-      "invited": "Invitado"
+      "invited": "Invitado",
+      "disabled": "Inhabilitado"
     },
     "detail": {
       "activity": "Actividad",
@@ -1685,7 +1821,52 @@
       "close": "Cerrar",
       "searchLog": "Buscar en actividad...",
       "stampsGiven": "Sellos dados",
-      "redemptions": "Canjes"
+      "redemptions": "Canjes",
+      "monthStats": "Este mes",
+      "sales": "Ventas",
+      "stamps": "Sellos",
+      "rewards": "Premios",
+      "points": "Puntos",
+      "contact": "Contacto",
+      "noStores": "Sin tiendas asignadas",
+      "viewActivity": "Ver toda la actividad",
+      "perStoreLine": "{sales} ventas · {stamps} sellos · {rewards} premios",
+      "activityCount": "{n} eventos",
+      "detailCol": "Detalle",
+      "dateRange": "Fecha"
+    },
+    "activityDetail": {
+      "sale": "Venta por {amount}",
+      "redemption": "Canjeó {reward}",
+      "inviteSent": "Invitó a {email}"
+    },
+    "leaderboard": {
+      "link": "Rendimiento",
+      "title": "Rendimiento del equipo",
+      "subtitle": "Ranking por ingresos",
+      "thisMonth": "Este mes",
+      "seeAll": "Ver todo",
+      "salesCount": "{n} ventas",
+      "others": "Otros",
+      "teamAvgTicket": "Ticket prom. equipo",
+      "topSeller": "Top vendedor",
+      "rankingBy": "Ranking por {metric}",
+      "share": "Participación de ingresos",
+      "period": {
+        "month": "Este mes",
+        "lastMonth": "Mes pasado",
+        "range": "Rango"
+      },
+      "metric": {
+        "sales": "Ventas",
+        "revenueCents": "Ingresos",
+        "avgTicketCents": "Ticket prom.",
+        "maxTicketCents": "Ticket máx.",
+        "uniqueCustomers": "Clientes",
+        "stamps": "Sellos",
+        "redemptions": "Premios",
+        "points": "Puntos"
+      }
     },
     "add": "Nuevo empleado",
     "auditLink": "Registro de actividad",
@@ -1705,13 +1886,19 @@
       "phone": "Teléfono",
       "role": "Rol",
       "status": "Estado",
+      "stores": "Tiendas",
+      "rating": "Calificación",
       "dailyCap": "Límite diario de sellos",
       "notes": "Notas"
     },
     "namePlaceholder": "Nombre completo",
     "emailPlaceholder": "correo@ejemplo.com",
     "notesPlaceholder": "Notas internas...",
-    "dailyCapHint": "sellos / día"
+    "dailyCapHint": "sellos / día",
+    "noStores": "Aún no hay tiendas",
+    "saveError": "No se pudieron guardar los cambios.",
+    "emailRequired": "Ingresá un correo.",
+    "inviteEmailHint": "Recibirá un enlace de invitación"
   },
   "Analytics": {
     "title": "Analítica",
@@ -1719,6 +1906,7 @@
     "ytd": "YTD",
     "nav": {
       "overview": "Resumen",
+      "team": "Equipo",
       "cohorts": "Cohortes",
       "funnel": "Embudo"
     },
@@ -1814,5 +2002,32 @@
     "mapHint": "Arrastrá el pin para ajustar la ubicación",
     "save": "Guardar",
     "cancel": "Cancelar"
+  },
+  "DataTable": {
+    "selected": "{n} de {total} seleccionadas",
+    "selectedCount": "{n} seleccionadas",
+    "clearSelection": "Limpiar selección",
+    "rowsPerPage": "Filas por página",
+    "pageOf": "Página {page} de {pages}",
+    "first": "Primera",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "last": "Última",
+    "view": "Vista",
+    "toggleColumns": "Mostrar columnas",
+    "sort": "Ordenar",
+    "sortBy": "Ordenar por",
+    "noSort": "Sin orden",
+    "addSort": "Agregar orden",
+    "resetSort": "Limpiar orden",
+    "removeSort": "Quitar",
+    "dir": {
+      "asc": "Asc",
+      "desc": "Desc"
+    },
+    "clear": "Limpiar",
+    "filters": "Filtros",
+    "clearAll": "Limpiar todo",
+    "done": "Listo"
   }
 }

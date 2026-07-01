@@ -11,6 +11,7 @@ import {
 import { tasks } from "@trigger.dev/sdk/v3";
 
 import { loadLocaleContext } from "../_shared/localize";
+import { resolveActiveStoreId } from "../_shared/store-context";
 import { buildPointsService } from "../points";
 import { PromoRepository, PromoService } from "../promotions";
 import { buildRewardsService, RewardsRepository } from "../rewards";
@@ -50,6 +51,13 @@ export const stampsRouter = router({
     .input(recordPurchaseInputSchema)
     .mutation(async ({ ctx, input }) => {
       const org = await orgId();
+      // The store this sale is attributed to (register store-switcher).
+      const storeId = await resolveActiveStoreId(
+        ctx.db,
+        org,
+        ctx.session.user.id,
+        input.storeId,
+      );
 
       // Itemized sale → resolve the net price + chosen-promo discount
       // server-side (never trust a client-sent discount). Points earn on net.
@@ -97,11 +105,12 @@ export const stampsRouter = router({
       const { wallet, purchaseId } = await buildService(ctx).recordPurchase(
         org,
         ctx.session.user.id,
+        storeId,
         resolved,
       );
       // Points + streak: best-effort, idempotent; never fail the purchase.
       const points = await buildPointsService(ctx)
-        .earnForPurchase(org, input.customerId, netPrice, purchaseId)
+        .earnForPurchase(org, input.customerId, netPrice, purchaseId, storeId)
         .catch(() => ({ earned: 0, balance: 0, tierUp: null }));
       await buildStreaksService(ctx)
         .advanceForPurchase(org, input.customerId)

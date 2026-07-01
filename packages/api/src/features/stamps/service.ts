@@ -52,6 +52,8 @@ export class StampsService {
   async recordPurchase(
     organizationId: string,
     addedByUserId: string,
+    // The store the sale happened at (resolved from the register store-switcher).
+    storeId: string,
     // The router resolves net price + discount server-side for itemized sales.
     input: RecordPurchaseInput & { subtotalCents?: number; discountCents?: number },
   ): Promise<{ wallet: WalletView; purchaseId: string }> {
@@ -59,6 +61,7 @@ export class StampsService {
       orgId: organizationId,
       customerId: input.customerId,
       addedByUserId,
+      storeId,
       priceCents: input.priceCents,
       idempotencyKey: input.idempotencyKey,
       subtotalCents: input.subtotalCents,

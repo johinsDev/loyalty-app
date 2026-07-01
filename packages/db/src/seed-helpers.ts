@@ -67,6 +67,16 @@ export async function promoteOwnerByEmail(email: string): Promise<void> {
     );
   }
 
+  // The Better Auth `admin` plugin gates impersonation / ban / list-sessions on
+  // `user.role === "admin"` (distinct from the org `member.role`). The owner is
+  // the only operator who impersonates, so mirror "admin" onto their user row.
+  if (user.role !== "admin") {
+    await db
+      .update(schema.user)
+      .set({ role: "admin" })
+      .where(eq(schema.user.id, user.id));
+  }
+
   // 3. Upsert the member row with role=owner.
   const [existing] = await db
     .select()

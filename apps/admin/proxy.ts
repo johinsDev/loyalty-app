@@ -6,10 +6,18 @@ import { routing } from "./src/i18n/routing";
 
 const intl = createMiddleware(routing);
 
-const SIGN_IN_PATHS = ["/iniciar-sesion", "/sign-in"];
+// Paths reachable while signed out: the sign-in screen and the invitation-accept
+// page (the invitee lands here before they have a session — it sends them a
+// magic-link, then they return authenticated to accept).
+const PUBLIC_PATHS = [
+  "/iniciar-sesion",
+  "/sign-in",
+  "/aceptar-invitacion",
+  "/accept-invitation",
+];
 
-function isSignInPath(pathname: string): boolean {
-  for (const path of SIGN_IN_PATHS) {
+function isPublicPath(pathname: string): boolean {
+  for (const path of PUBLIC_PATHS) {
     if (pathname === path || pathname.endsWith(path)) return true;
   }
   return false;
@@ -20,7 +28,7 @@ export default function proxy(request: NextRequest) {
 
   const intlResponse = intl(request);
 
-  if (isSignInPath(pathname)) return intlResponse;
+  if (isPublicPath(pathname)) return intlResponse;
 
   const session = getSessionCookie(request);
   if (session) return intlResponse;

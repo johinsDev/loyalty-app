@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Stepper, type StepperStep } from "@loyalty/ui";
-import { Check, ChevronLeft } from "lucide-react";
+import { Check, ChevronLeft, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
@@ -17,6 +17,7 @@ export function WizardShell({
   steps,
   current,
   completed,
+  navigable,
   onStepSelect,
   onBack,
   onNext,
@@ -24,12 +25,18 @@ export function WizardShell({
   isLast,
   finishLabel,
   preview,
+  maxWidthClassName = "max-w-6xl",
+  onExit,
+  exitLabel,
+  saving = false,
   children,
 }: {
   title: string;
   steps: StepperStep[];
   current: string;
   completed: string[];
+  /** Step keys reachable by clicking even if not completed (forward nav). */
+  navigable?: string[];
   onStepSelect?: (key: string) => void;
   onBack: () => void;
   onNext: () => void;
@@ -37,19 +44,45 @@ export function WizardShell({
   isLast: boolean;
   finishLabel: string;
   preview: ReactNode;
+  /** Page content width (default `max-w-6xl`; stores use `max-w-7xl`). */
+  maxWidthClassName?: string;
+  /** Optional back-to-list affordance (with the unsaved-changes guard). */
+  onExit?: () => void;
+  exitLabel?: string;
+  /** Persisting the current step — shows a "saving…" state + blocks nav. */
+  saving?: boolean;
   children: ReactNode;
 }) {
   const t = useTranslations("Wizard");
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-5 py-6 lg:px-8">
+    <div className={`mx-auto w-full px-5 py-6 lg:px-8 ${maxWidthClassName}`}>
+      {onExit ? (
+        <button
+          type="button"
+          onClick={onExit}
+          className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1.5 text-sm font-semibold"
+        >
+          <ChevronLeft className="size-4" />
+          {exitLabel ?? t("back")}
+        </button>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-semibold tracking-tight">
           {title}
         </h1>
         <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-bold">
-          <Check className="size-3.5 text-emerald-600" />
-          {t("draftSaved")}
+          {saving ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin" />
+              {t("saving")}
+            </>
+          ) : (
+            <>
+              <Check className="size-3.5 text-emerald-600" />
+              {t("draftSaved")}
+            </>
+          )}
         </span>
       </div>
 
@@ -58,6 +91,7 @@ export function WizardShell({
           steps={steps}
           current={current}
           completed={completed}
+          {...(navigable ? { navigable } : {})}
           onSelect={onStepSelect}
         />
       </div>
@@ -70,16 +104,26 @@ export function WizardShell({
               variant="outline"
               className="h-10 gap-1.5 rounded-xl"
               onClick={onBack}
-              disabled={isFirst}
+              disabled={isFirst || saving}
             >
               <ChevronLeft className="size-4" />
               {t("back")}
             </Button>
             <Button
-              className="h-10 rounded-xl px-6 font-semibold"
+              className="h-10 gap-1.5 rounded-xl px-6 font-semibold"
               onClick={onNext}
+              disabled={saving}
             >
-              {isLast ? finishLabel : t("next")}
+              {saving ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  {t("saving")}
+                </>
+              ) : isLast ? (
+                finishLabel
+              ) : (
+                t("next")
+              )}
             </Button>
           </div>
         </div>

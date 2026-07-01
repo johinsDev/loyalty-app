@@ -20,6 +20,8 @@ export interface RedeemWithinTxInput {
   reward: RewardRow;
   currency: "stamps" | "points" | "both";
   claimedByUserId: string;
+  /** The store the redemption happened at (register active store). */
+  storeId: string;
   /** Set when redeeming inline as part of a register sale; null for QR/OTP. */
   purchaseId?: string;
 }
@@ -43,6 +45,7 @@ export async function redeemWithinTx(
     reward: rw,
     currency,
     claimedByUserId,
+    storeId,
     purchaseId,
   } = input;
 
@@ -126,6 +129,7 @@ export async function redeemWithinTx(
       points: -pointsCost,
       reason: `reward:${rw.id}`,
       addedByUserId: claimedByUserId,
+      storeId,
     });
   }
 
@@ -141,6 +145,7 @@ export async function redeemWithinTx(
       cardId,
       rewardId: rw.id,
       redeemedByUserId: claimedByUserId,
+      storeId,
       currency: recordedCurrency,
       stampsSpent: stampsCost,
       pointsSpent: pointsCost,

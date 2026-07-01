@@ -11,6 +11,16 @@
 export { EmailLayout } from "./components/email-layout";
 export { renderEmail } from "./render";
 export {
+  EmployeeInviteEmail,
+  type EmployeeInviteEmailProps,
+  renderEmployeeInviteEmail,
+} from "./templates/employee-invite-email";
+export {
+  EmployeeEmailChangeEmail,
+  type EmployeeEmailChangeEmailProps,
+  renderEmployeeEmailChangeEmail,
+} from "./templates/employee-email-change-email";
+export {
   MagicLinkEmail,
   type MagicLinkEmailProps,
   renderMagicLinkEmail,

@@ -2,9 +2,12 @@ import { STAFF_OR_ABOVE } from "@loyalty/auth/server";
 import type { ReactNode } from "react";
 
 import { AdminShell } from "@/components/admin-shell";
+import { ImpersonationBanner } from "@/features/employees/components/impersonation-banner";
 import { requireRole } from "@/lib/auth-guard";
 
-type Props = { children: ReactNode };
+type Props = {
+  children: ReactNode;
+};
 
 /**
  * Shell for every admin CRM page: a fixed sidebar on desktop, a drawer on
@@ -17,6 +20,7 @@ export default async function DashboardLayout({ children }: Props) {
 
   return (
     <AdminShell role={role} name={name}>
+      <ImpersonationBanner />
       {children}
     </AdminShell>
   );

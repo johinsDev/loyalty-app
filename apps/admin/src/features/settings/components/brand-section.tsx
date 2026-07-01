@@ -1,5 +1,6 @@
 "use client";
 
+import { updateBrandingInputSchema } from "@loyalty/api/features/settings/schemas";
 import {
   Button,
   ColorPicker,
@@ -73,15 +74,25 @@ export function BrandSection() {
     }),
   );
 
-  const onSave = () =>
-    update.mutate({
+  const onSave = () => {
+    const payload = {
       name: name || undefined,
       description,
       logoUrl: logoUrl ?? "",
       brandColor,
       socialLinks: social as Record<Social, string>,
       termsPdfUrl: termsPdfUrl ?? "",
-    });
+    };
+    // Validate against the shared server schema before saving (catches a bad
+    // color / URL in-form instead of a server error).
+    const parsed = updateBrandingInputSchema.safeParse(payload);
+    if (!parsed.success) {
+      const field = String(parsed.error.issues[0]?.path[0] ?? "");
+      toast.error(field ? t("brand.invalidField", { field }) : t("brand.invalidData"));
+      return;
+    }
+    update.mutate(parsed.data);
+  };
 
   return (
     <section className="space-y-5">

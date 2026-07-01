@@ -12,6 +12,8 @@ import { toast } from "sonner";
 
 import { useTRPC } from "@/lib/trpc/client";
 
+import { useActiveStoreId } from "../use-active-store";
+
 type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
 
 type AvailableReward =
@@ -132,6 +134,7 @@ export function ItemizedPurchase({
   const net = Math.max(0, subtotal - discount);
 
   const recordPurchase = useMutation(trpc.stamps.recordPurchase.mutationOptions());
+  const activeStoreId = useActiveStoreId();
 
   const addProduct = (p: { id: string; name: string; priceCents: number }) => {
     setCart((c) => {
@@ -159,6 +162,7 @@ export function ItemizedPurchase({
     try {
       const view = await recordPurchase.mutateAsync({
         customerId,
+        storeId: activeStoreId ?? undefined,
         priceCents: subtotal,
         idempotencyKey: crypto.randomUUID(),
         items: cart.map((i) => ({

@@ -171,13 +171,13 @@ export function AddressField({
       <div className="space-y-1.5">
         <div className="relative w-full">
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2" />
-          <input
+          <Input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onBlur={() => window.setTimeout(() => setOpen(false), 120)}
             placeholder={l.searchPlaceholder}
-            className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-10 w-full min-w-0 rounded-xl border bg-transparent pr-4 pl-9 text-base transition-colors outline-none focus-visible:ring-3 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+            className="h-10 pl-9"
           />
           {open && suggestions.length > 0 ? (
             <ul

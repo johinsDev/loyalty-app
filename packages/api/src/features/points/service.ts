@@ -65,6 +65,7 @@ export class PointsService {
     customerId: string,
     priceCents: number,
     purchaseId: string,
+    storeId: string,
   ): Promise<{
     earned: number;
     balance: number;
@@ -82,6 +83,7 @@ export class PointsService {
       orgId: organizationId,
       customerId,
       purchaseId,
+      storeId,
       points,
     });
     const balance = await this.repo.balance(organizationId, customerId);

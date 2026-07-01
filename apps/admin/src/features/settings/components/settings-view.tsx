@@ -4,6 +4,7 @@ import {
   Clock,
   Globe,
   Languages,
+  Lock,
   Plug,
   Sparkles,
   Stamp,
@@ -12,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -20,12 +21,9 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SECTIONS, type SettingsSection } from "../data";
 import { BrandSection } from "./brand-section";
 import { HoursSection } from "./hours-section";
-import { IntegrationsSection } from "./integrations-section";
 import { LocalizationSection } from "./localization-section";
-import { LoyaltySection } from "./loyalty-section";
 import { OnboardingSection } from "./onboarding-section";
 import { SeoSection } from "./seo-section";
-import { TeamSection } from "./team-section";
 
 const ICON: Record<SettingsSection, LucideIcon> = {
   brand: Store,
@@ -38,11 +36,16 @@ const ICON: Record<SettingsSection, LucideIcon> = {
   integrations: Plug,
 };
 
+/** Sections whose editors aren't wired to a real backend yet — shown with a
+ *  "coming soon" placeholder instead of the mock content. Team/roles now live in
+ *  the Empleados feature; loyalty rules + integrations are pending. */
+const COMING_SOON = new Set<SettingsSection>(["loyalty", "team", "integrations"]);
+
 /**
- * Ajustes — a settings hub with a left section nav (brand, hours, loyalty,
- * onboarding, team, integrations) and the active section on the right, plus the
- * theme + language toggles. The /settings/team and /settings/integrations
- * routes deep-link a section via `section`. Design-first / hardcoded.
+ * Ajustes — a settings hub with a left section nav and the active section on the
+ * right, plus theme + language toggles. The active tab lives in the URL
+ * (`?tab=`, nuqs) so it's shareable + reload-safe. Not-yet-wired sections show a
+ * "coming soon" placeholder.
  */
 export function SettingsView({
   section = "brand",
@@ -50,7 +53,10 @@ export function SettingsView({
   section?: SettingsSection;
 }) {
   const t = useTranslations("Settings");
-  const [active, setActive] = useState<SettingsSection>(section);
+  const [active, setActive] = useQueryState(
+    "tab",
+    parseAsStringLiteral(SECTIONS).withDefault(section),
+  );
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-6 lg:px-8">
@@ -76,11 +82,12 @@ export function SettingsView({
             {SECTIONS.map((s) => {
               const Icon = ICON[s];
               const on = active === s;
+              const soon = COMING_SOON.has(s);
               return (
                 <button
                   key={s}
                   type="button"
-                  onClick={() => setActive(s)}
+                  onClick={() => void setActive(s)}
                   className={`flex h-10 flex-none items-center gap-2.5 rounded-xl px-3 text-sm font-semibold transition-colors ${
                     on
                       ? "bg-primary/10 text-primary"
@@ -88,7 +95,12 @@ export function SettingsView({
                   }`}
                 >
                   <Icon className="size-4" />
-                  {t(`nav.${s}`)}
+                  <span className="flex-1 text-left">{t(`nav.${s}`)}</span>
+                  {soon ? (
+                    <span className="bg-muted text-muted-foreground/70 rounded-full px-1.5 py-0.5 text-[0.625rem] font-bold">
+                      {t("soon")}
+                    </span>
+                  ) : null}
                 </button>
               );
             })}
@@ -97,7 +109,9 @@ export function SettingsView({
 
         {/* Active section */}
         <div className="bg-card border-border rounded-3xl border p-6 shadow-sm lg:col-span-3">
-          {active === "brand" ? (
+          {COMING_SOON.has(active) ? (
+            <ComingSoon />
+          ) : active === "brand" ? (
             <BrandSection />
           ) : active === "localization" ? (
             <LocalizationSection />
@@ -105,17 +119,28 @@ export function SettingsView({
             <SeoSection />
           ) : active === "hours" ? (
             <HoursSection />
-          ) : active === "loyalty" ? (
-            <LoyaltySection />
-          ) : active === "onboarding" ? (
-            <OnboardingSection />
-          ) : active === "team" ? (
-            <TeamSection />
           ) : (
-            <IntegrationsSection />
+            <OnboardingSection />
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ComingSoon() {
+  const t = useTranslations("Settings");
+  return (
+    <div className="grid place-items-center px-6 py-16 text-center">
+      <span className="bg-muted text-muted-foreground grid size-14 place-items-center rounded-2xl">
+        <Lock className="size-6" />
+      </span>
+      <h2 className="font-display mt-4 text-lg font-semibold tracking-tight">
+        {t("comingSoon.title")}
+      </h2>
+      <p className="text-muted-foreground mt-1 max-w-sm text-sm">
+        {t("comingSoon.hint")}
+      </p>
     </div>
   );
 }
