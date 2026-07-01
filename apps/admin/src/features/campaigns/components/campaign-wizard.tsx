@@ -22,7 +22,16 @@ import {
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "ahooks";
-import { ArrowDown, ArrowUp, Users, X } from "lucide-react";
+import {
+  Bell,
+  GripVertical,
+  Mail,
+  MessageCircle,
+  MessageSquare,
+  Users,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -41,6 +50,13 @@ type Step = (typeof STEPS)[number];
 
 const CHANNELS = ["push", "email", "sms", "whatsapp"] as const;
 type Channel = (typeof CHANNELS)[number];
+
+const CHANNEL_ICON: Record<Channel, LucideIcon> = {
+  push: Bell,
+  email: Mail,
+  sms: MessageSquare,
+  whatsapp: MessageCircle,
+};
 const TIERS = ["hoja", "flor", "oro"] as const;
 type Tier = (typeof TIERS)[number];
 const MERGE_VARS = ["nombre", "nivel", "puntos", "sucursal", "short_link"] as const;
@@ -411,11 +427,13 @@ export function CampaignWizard({ id }: { id?: string }) {
         ? form.channelPriority.filter((x) => x !== c)
         : [...form.channelPriority, c],
     );
-  const moveChannel = (index: number, dir: -1 | 1) => {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const reorderChannel = (from: number, to: number) => {
+    if (from === to) return;
     const next = [...form.channelPriority];
-    const target = index + dir;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target]!, next[index]!];
+    const [moved] = next.splice(from, 1);
+    if (!moved) return;
+    next.splice(to, 0, moved);
     set("channelPriority", next);
   };
   const toggleTier = (tier: Tier) =>
@@ -605,54 +623,47 @@ export function CampaignWizard({ id }: { id?: string }) {
 
             {form.channelPriority.length > 0 ? (
               <ol className="space-y-2">
-                {form.channelPriority.map((c, i) => (
-                  <li
-                    key={c}
-                    className="border-border flex items-center gap-3 rounded-2xl border px-3 py-2.5"
-                  >
-                    <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-md text-xs font-bold">
-                      {i + 1}
-                    </span>
-                    <span className="flex-1 text-sm font-semibold">{t(`channel.${c}`)}</span>
-                    {!isChannelComplete(form.message, c) ? (
-                      <span className="text-xs font-semibold text-amber-600">
-                        {t("channelNoContent")}
+                {form.channelPriority.map((c, i) => {
+                  const Icon = CHANNEL_ICON[c];
+                  return (
+                    <li
+                      key={c}
+                      draggable
+                      onDragStart={() => setDragIndex(i)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (dragIndex !== null) reorderChannel(dragIndex, i);
+                        setDragIndex(null);
+                      }}
+                      onDragEnd={() => setDragIndex(null)}
+                      className={`border-border bg-card flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-colors ${
+                        dragIndex === i ? "opacity-50" : ""
+                      } ${dragIndex !== null && dragIndex !== i ? "hover:border-primary/50" : ""}`}
+                    >
+                      <GripVertical className="text-muted-foreground/50 size-4 flex-none cursor-grab active:cursor-grabbing" />
+                      <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-md text-xs font-bold">
+                        {i + 1}
                       </span>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 rounded-lg"
-                      aria-label={t("moveUp")}
-                      disabled={i === 0}
-                      onClick={() => moveChannel(i, -1)}
-                    >
-                      <ArrowUp className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 rounded-lg"
-                      aria-label={t("moveDown")}
-                      disabled={i === form.channelPriority.length - 1}
-                      onClick={() => moveChannel(i, 1)}
-                    >
-                      <ArrowDown className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 rounded-lg"
-                      aria-label={t("remove")}
-                      onClick={() => toggleChannel(c)}
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </li>
-                ))}
+                      <Icon className="text-muted-foreground size-4 flex-none" />
+                      <span className="flex-1 text-sm font-semibold">{t(`channel.${c}`)}</span>
+                      {!isChannelComplete(form.message, c) ? (
+                        <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[0.625rem] font-bold tracking-wide text-amber-700 uppercase dark:bg-amber-900/40 dark:text-amber-300">
+                          {t("channelEmpty")}
+                        </span>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 rounded-lg"
+                        aria-label={t("remove")}
+                        onClick={() => toggleChannel(c)}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </li>
+                  );
+                })}
               </ol>
             ) : null}
 

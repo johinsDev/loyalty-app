@@ -1234,6 +1234,7 @@
     "channelsPriorityHint": "Se envía por el primer canal disponible por cliente, en este orden.",
     "channelsRequired": "Elige al menos un canal.",
     "channelNoContent": "sin contenido",
+    "channelEmpty": "Vacío",
     "addChannel": "Agregar canal",
     "allChannelsAdded": "Todos los canales agregados.",
     "moveUp": "Subir",

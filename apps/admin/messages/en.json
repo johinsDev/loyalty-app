@@ -1234,6 +1234,7 @@
     "channelsPriorityHint": "Sent on the first available channel per member, in this order.",
     "channelsRequired": "Pick at least one channel.",
     "channelNoContent": "no content",
+    "channelEmpty": "Empty",
     "addChannel": "Add channel",
     "allChannelsAdded": "All channels added.",
     "moveUp": "Move up",
