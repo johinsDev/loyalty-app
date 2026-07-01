@@ -24,6 +24,7 @@
     "@loyalty/notifications": "workspace:*",
     "@loyalty/push": "workspace:*",
     "@loyalty/realtime": "workspace:*",
+    "@loyalty/shortlinks": "workspace:*",
     "@loyalty/sms": "workspace:*",
     "@loyalty/whatsapp": "workspace:*",
     "@t3-oss/env-core": "^0.13.0",

@@ -13,6 +13,17 @@ import { logger, task } from "@trigger.dev/sdk/v3";
 
 import { notifier } from "../notifications";
 import { CampaignNotification } from "../notifications-registry";
+import { shortlinks } from "../shortlinks";
+
+const SHORT_LINK_TOKEN = /\{\{\s*short_link\s*\}\}/i;
+
+/** Concatenated raw copy for a channel, to detect the `{{short_link}}` token. */
+function channelText(channel: CampaignChannel, message: CampaignMessage): string {
+  if (channel === "push") return `${message.push?.title ?? ""} ${message.push?.body ?? ""}`;
+  if (channel === "email") return `${message.email?.subject ?? ""} ${message.email?.body ?? ""}`;
+  if (channel === "sms") return message.sms?.text ?? "";
+  return message.whatsapp?.text ?? "";
+}
 
 // Untyped at the boundary (api enqueues this by id to avoid an api → jobs
 // cycle). Stays in sync with packages/api/src/features/campaigns/service.ts.
@@ -124,12 +135,29 @@ export const sendCampaignTask = task({
         continue;
       }
 
+      // Resolve `{{short_link}}`: mint a per-recipient shortlink (attributed to
+      // campaign+customer) only when this channel's copy uses the token and the
+      // campaign has a CTA URL. Null provider (dev) returns the raw URL.
+      let shortLink = campaign.linkUrl ?? "";
+      if (campaign.linkUrl && SHORT_LINK_TOKEN.test(channelText(channel, message))) {
+        try {
+          const res = await shortlinks.shorten(campaign.linkUrl, {
+            organizationId: p.organizationId,
+            campaignId: campaign.id,
+            customerId: r.customerId,
+          });
+          shortLink = res.shortUrl;
+        } catch {
+          shortLink = campaign.linkUrl;
+        }
+      }
+
       const vars: MergeVars = {
         nombre: r.name ?? "",
         nivel: r.tier ?? "",
         puntos: "",
         sucursal: "",
-        short_link: "",
+        short_link: shortLink,
       };
       const content = renderContent(channel, message, vars);
 

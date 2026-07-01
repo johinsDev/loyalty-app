@@ -24,6 +24,7 @@ const base: CampaignRow = {
   objective: null,
   message: null,
   offer: null,
+  linkUrl: null,
   channelPriority: null,
   audienceFilter: null,
   scheduledAt: null,

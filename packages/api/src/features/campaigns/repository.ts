@@ -7,13 +7,15 @@ import {
   pointsAccount,
   purchase,
   pushToken,
+  shortlink,
+  shortlinkClick,
   type CampaignAudienceFilter,
   type CampaignInsert,
   type CampaignRow,
   type CampaignSendInsert,
 } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, gte, inArray, like, lte, max } from "drizzle-orm";
+import { and, countDistinct, count, desc, eq, gte, inArray, isNotNull, like, lte, max } from "drizzle-orm";
 
 import { pageCountOf, pageOffset, type ListResult } from "../_shared/list";
 import type { CampaignChannel } from "./message";
@@ -44,6 +46,7 @@ export type CampaignPatch = Partial<
     | "objective"
     | "message"
     | "offer"
+    | "linkUrl"
     | "channelPriority"
     | "audienceFilter"
     | "scheduledAt"
@@ -445,6 +448,7 @@ export class CampaignsRepository {
 
     const funnel: CampaignFunnel = {
       sent: 0,
+      clicked: 0,
       skipped: 0,
       failed: 0,
       skipReasons: {},
@@ -463,7 +467,24 @@ export class CampaignsRepository {
         funnel.skipReasons[reason] = (funnel.skipReasons[reason] ?? 0) + n;
       }
     }
+    funnel.clicked = await this.clickedCount(orgId, campaignId);
     return funnel;
+  }
+
+  /** Distinct recipients who clicked a per-recipient shortlink of this campaign. */
+  async clickedCount(orgId: string, campaignId: string): Promise<number> {
+    const rows = await this.db
+      .select({ n: countDistinct(shortlink.customerId) })
+      .from(shortlinkClick)
+      .innerJoin(shortlink, eq(shortlink.id, shortlinkClick.shortlinkId))
+      .where(
+        and(
+          eq(shortlink.organizationId, orgId),
+          eq(shortlink.campaignId, campaignId),
+          isNotNull(shortlink.customerId),
+        ),
+      );
+    return Number(rows[0]?.n ?? 0);
   }
 
   async listFailures(orgId: string, campaignId: string): Promise<CampaignFailureRow[]> {

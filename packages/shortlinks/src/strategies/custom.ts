@@ -45,15 +45,18 @@ export class CustomStrategy implements ShortlinksStrategy {
         organizationId: opts.organizationId,
         expiresAt: opts.expiresAt,
         createdByUserId: opts.createdByUserId,
+        campaignId: opts.campaignId,
+        customerId: opts.customerId,
       });
       return this.#result(opts.slug, url, false);
     }
 
-    // Dedupe: an active slug for the same (org, target) is reused.
-    const existing = await this.#store.findActiveByTarget(
-      opts.organizationId,
-      url,
-    );
+    // Per-recipient campaign links skip dedupe so each recipient gets a unique,
+    // attributable slug; everything else reuses an active slug for (org, target).
+    const perRecipient = Boolean(opts.campaignId && opts.customerId);
+    const existing = perRecipient
+      ? null
+      : await this.#store.findActiveByTarget(opts.organizationId, url);
     if (existing) return this.#result(existing.slug, url, true);
 
     // Fresh random slug, retrying on the rare collision.
@@ -71,6 +74,8 @@ export class CustomStrategy implements ShortlinksStrategy {
       organizationId: opts.organizationId,
       expiresAt: opts.expiresAt,
       createdByUserId: opts.createdByUserId,
+      campaignId: opts.campaignId,
+      customerId: opts.customerId,
     });
     this.#logger?.info(
       { _service: "shortlinks", slug, target: url, org: opts.organizationId },

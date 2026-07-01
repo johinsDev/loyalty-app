@@ -48,6 +48,7 @@ type Form = {
   name: string;
   objective: string;
   message: PreviewMessage;
+  linkUrl: string;
   channelPriority: Channel[];
   tiers: Tier[];
   lastPurchaseOp: "gte" | "lte";
@@ -70,6 +71,7 @@ const EMPTY: Form = {
   name: "",
   objective: "",
   message: EMPTY_MESSAGE,
+  linkUrl: "",
   channelPriority: [],
   tiers: [],
   lastPurchaseOp: "gte",
@@ -242,6 +244,7 @@ export function CampaignWizard({ id }: { id?: string }) {
         name: c.name ?? "",
         objective: c.objective ?? "",
         message: toFormMessage(c.message),
+        linkUrl: c.linkUrl ?? "",
         channelPriority: (c.channelPriority ?? []).filter((x): x is Channel =>
           (CHANNELS as readonly string[]).includes(x),
         ),
@@ -314,7 +317,7 @@ export function CampaignWizard({ id }: { id?: string }) {
         await advanceMut.mutateAsync({
           id: campaignId,
           step: "message",
-          input: buildMessageInput(form.message),
+          input: { ...buildMessageInput(form.message), linkUrl: form.linkUrl || undefined },
         });
       } else if (step === "channels") {
         await advanceMut.mutateAsync({
@@ -484,6 +487,22 @@ export function CampaignWizard({ id }: { id?: string }) {
                   </Button>
                 ))}
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="campaign-link-url">
+                {t("linkUrlLabel")}
+              </Label>
+              <Input
+                id="campaign-link-url"
+                type="url"
+                inputMode="url"
+                value={form.linkUrl}
+                onChange={(e) => set("linkUrl", e.target.value)}
+                placeholder="https://…"
+                className="h-10"
+              />
+              <p className="text-muted-foreground text-xs">{t("linkUrlHint")}</p>
             </div>
 
             {attempted && !valid.message ? <ErrorText>{t("messageRequired")}</ErrorText> : null}

@@ -51,6 +51,8 @@ export const messageStepSchema = z
     email: emailContentSchema.optional(),
     sms: smsContentSchema.optional(),
     whatsapp: whatsappContentSchema.optional(),
+    /** CTA destination for `{{short_link}}` (shortened per-recipient at send). */
+    linkUrl: z.string().url().optional().or(z.literal("")),
   })
   .refine((m) => !!(m.push || m.email || m.sms || m.whatsapp), {
     message: "Escribe el mensaje para al menos un canal",
@@ -153,6 +155,8 @@ export interface CampaignReach {
 export interface CampaignFunnel {
   /** Ledger rows with status = sent. */
   sent: number;
+  /** Distinct recipients who clicked a per-recipient `{{short_link}}`. */
+  clicked: number;
   /** Recipients skipped (with per-reason breakdown). */
   skipped: number;
   /** Ledger rows with status = failed (retryable). */
@@ -160,7 +164,7 @@ export interface CampaignFunnel {
   skipReasons: Record<string, number>;
   /** Per-channel breakdown of successful sends. */
   byChannel: Record<string, number>;
-  // Clic (P2) / Canjeados (P3) fill in later phases.
+  // Canjeados (P3) fills in a later phase.
 }
 
 export interface CampaignFailureRow {

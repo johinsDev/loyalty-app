@@ -55,7 +55,11 @@ export class MessageStep extends WizardStep<
     );
   }
   persist(ctx: Ctx, d: CampaignRow, input: MessageStepInput) {
-    return ctx.services.repo.patch(ctx.organizationId, d.id, { message: input });
+    const { linkUrl, ...message } = input;
+    return ctx.services.repo.patch(ctx.organizationId, d.id, {
+      message,
+      linkUrl: linkUrl?.trim() ? linkUrl.trim() : null,
+    });
   }
 }
 

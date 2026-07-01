@@ -6,7 +6,16 @@ import type { ShortlinkStore } from "../types";
 
 /** In-memory store: slug → row, for the custom strategy under test. */
 class FakeStore implements ShortlinkStore {
-  rows = new Map<string, { slug: string; targetUrl: string; org: string }>();
+  rows = new Map<
+    string,
+    {
+      slug: string;
+      targetUrl: string;
+      org: string;
+      campaignId?: string;
+      customerId?: string;
+    }
+  >();
 
   async findActiveByTarget(org: string, targetUrl: string) {
     for (const r of this.rows.values()) {
@@ -21,11 +30,15 @@ class FakeStore implements ShortlinkStore {
     slug: string;
     targetUrl: string;
     organizationId: string;
+    campaignId?: string;
+    customerId?: string;
   }) {
     this.rows.set(input.slug, {
       slug: input.slug,
       targetUrl: input.targetUrl,
       org: input.organizationId,
+      campaignId: input.campaignId,
+      customerId: input.customerId,
     });
     return { slug: input.slug };
   }
@@ -70,6 +83,29 @@ describe("custom provider", () => {
     expect(b.slug).toBe(a.slug);
     expect(b.reused).toBe(true);
     expect(store.rows.size).toBe(1);
+  });
+
+  it("mints a fresh, attributed slug per recipient (skips dedupe)", async () => {
+    const m = manager(store);
+    const target = "https://app.t4diverclub.app/promo";
+    const a = await m.shorten(target, {
+      organizationId: ORG,
+      campaignId: "camp_1",
+      customerId: "cust_1",
+    });
+    const b = await m.shorten(target, {
+      organizationId: ORG,
+      campaignId: "camp_1",
+      customerId: "cust_2",
+    });
+    // Same target, but NOT deduped — each recipient gets a distinct slug…
+    expect(a.slug).not.toBe(b.slug);
+    expect(a.reused).toBe(false);
+    expect(b.reused).toBe(false);
+    expect(store.rows.size).toBe(2);
+    // …and the attribution is persisted.
+    expect(store.rows.get(a.slug!)?.customerId).toBe("cust_1");
+    expect(store.rows.get(b.slug!)?.customerId).toBe("cust_2");
   });
 
   it("honors a custom slug and rejects a taken one", async () => {

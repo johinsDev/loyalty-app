@@ -84,6 +84,9 @@ export const campaign = sqliteTable(
     message: text("message", { mode: "json" }).$type<CampaignMessage>(),
     // Optional linked redeemable offer (P3 "Canjeados" attribution).
     offer: text("offer", { mode: "json" }).$type<CampaignOffer>(),
+    // Optional CTA destination. `{{short_link}}` shortens this per-recipient
+    // (attributed to campaign+customer) for the "Clic" funnel stage.
+    linkUrl: text("link_url"),
     // step "channels" — ordered priority (first reachable wins per recipient).
     channelPriority: text("channel_priority", { mode: "json" }).$type<string[]>(),
     // step "audience" — inline filters (null/{} = everyone).

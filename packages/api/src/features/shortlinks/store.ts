@@ -16,5 +16,7 @@ export function createShortlinkStore(repo: ShortlinkRepository): ShortlinkStore 
       const row = await repo.create(input);
       return { slug: row.slug };
     },
+    // `input` already carries the optional campaignId/customerId; repo.create
+    // persists them for the campaign "Clic" funnel attribution.
   };
 }

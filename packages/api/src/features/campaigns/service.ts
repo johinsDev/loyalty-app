@@ -143,6 +143,7 @@ export class CampaignsService {
       displayState: displayState(row),
       objective: row.objective,
       message: row.message,
+      linkUrl: row.linkUrl,
       channelPriority: row.channelPriority ?? [],
       audienceFilter: row.audienceFilter,
       scheduledAt: row.scheduledAt,
