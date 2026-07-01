@@ -68,6 +68,7 @@ export const updateSeoInputSchema = z.object({
   seoDescription: z.string().max(320).optional(),
   seoKeywords: z.array(z.string().max(40)).max(20).optional(),
   ogImageUrl: optionalUrl,
+  faviconUrl: optionalUrl,
 });
 export type UpdateSeoInput = z.infer<typeof updateSeoInputSchema>;
 
@@ -90,5 +91,6 @@ export interface BrandingView {
     description: string | null;
     keywords: string[];
     ogImageUrl: string | null;
+    faviconUrl: string | null;
   };
 }

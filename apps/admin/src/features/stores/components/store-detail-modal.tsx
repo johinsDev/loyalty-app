@@ -9,30 +9,41 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
-import { useRouter } from "@/i18n/navigation";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { StoreDetailView } from "./store-detail-view";
 
 /**
- * Intercepted store detail — shown as a ResponsiveModal over the list. Closing
- * navigates back (the URL was `/stores/<id>`). On a hard load the real
- * `/stores/[id]` page renders the full detail instead. Mirrors `PurchaseModal`.
+ * Quick-view store detail as a ResponsiveModal over the list, driven by the
+ * `?detalle=<id>` URL param (shareable, no intercepting routes). A hard load of
+ * `/stores/[id]` renders the full page instead.
  */
-export function StoreDetailModal({ id }: { id: string }) {
-  const router = useRouter();
+export function StoreDetailModal({
+  id,
+  onClose,
+}: {
+  id: string | null;
+  onClose: () => void;
+}) {
   const t = useTranslations("Stores");
   const trpc = useTRPC();
-  const { data: store } = useQuery(trpc.stores.get.queryOptions({ id }));
+  const { data } = useQuery({
+    ...trpc.stores.get.queryOptions({ id: id ?? "" }),
+    enabled: !!id,
+  });
 
   return (
-    <ResponsiveModal open onOpenChange={(open) => !open && router.back()}>
-      <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md" desktopClassName="sm:max-w-lg">
+    <ResponsiveModal open={!!id} onOpenChange={(open) => !open && onClose()}>
+      <ResponsiveModalContent
+        showCloseButton={false}
+        mobileClassName="mx-auto w-full max-w-md"
+        desktopClassName="sm:max-w-lg"
+      >
         <ResponsiveModalTitle className="sr-only">{t("title")}</ResponsiveModalTitle>
-        {store ? (
-          <StoreDetailView store={store} variant="modal" />
+        {id && data ? (
+          <StoreDetailView store={data} variant="modal" />
         ) : (
-          <div className="flex flex-col gap-4 p-1">
+          <div className="flex flex-col gap-4 p-5">
             <Skeleton className="h-7 w-1/2" />
             <Skeleton className="h-40 w-full rounded-3xl" />
             <Skeleton className="h-5 w-2/3" />

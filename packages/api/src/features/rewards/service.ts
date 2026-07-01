@@ -400,6 +400,7 @@ export class RewardsService {
     staffId: string,
     pendingId: string,
     code: string,
+    storeId: string,
   ): Promise<ClaimResultView> {
     const cache = requireCache(this.opts.cache);
     const pending = await verifyPendingClaim(cache, pendingId, code, staffId);
@@ -428,6 +429,7 @@ export class RewardsService {
       rw,
       currency,
       staffId,
+      storeId,
     );
     await cache.delete(pendingClaimKey(pendingId));
     await cache.delete(activeClaimKey(pending.customerId));
@@ -450,6 +452,7 @@ export class RewardsService {
     organizationId: string,
     claimedByUserId: string,
     token: string,
+    storeId: string,
   ): Promise<ClaimResultView> {
     let parsed: {
       customerId: string;
@@ -473,6 +476,7 @@ export class RewardsService {
       rw,
       parsed.currency,
       claimedByUserId,
+      storeId,
     );
   }
 
@@ -657,6 +661,7 @@ export class RewardsService {
     rw: RewardRow,
     currency: "stamps" | "points" | "both",
     claimedByUserId: string,
+    storeId: string,
   ): Promise<ClaimResultView> {
     const result = await this.repo.claimTx({
       orgId: organizationId,
@@ -664,6 +669,7 @@ export class RewardsService {
       reward: rw,
       currency,
       claimedByUserId,
+      storeId,
     });
     if (result.kind === "already_claimed") {
       throw new TRPCError({ code: "CONFLICT", message: "ALREADY_CLAIMED" });

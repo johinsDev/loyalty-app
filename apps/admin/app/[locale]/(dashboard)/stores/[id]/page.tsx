@@ -21,7 +21,7 @@ export default async function StoreDetailPage({ params }: Props) {
   const t = await getTranslations({ locale, namespace: "Stores" });
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-5 py-6 lg:px-8">
+    <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
       <Link
         href="/stores"
         className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm font-bold"
@@ -29,7 +29,9 @@ export default async function StoreDetailPage({ params }: Props) {
         <ArrowLeft className="size-4" />
         {t("title")}
       </Link>
-      <StoreDetailView store={store} variant="page" />
+      <div className="mt-2">
+        <StoreDetailView store={store} variant="page" />
+      </div>
     </div>
   );
 }

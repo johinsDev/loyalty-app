@@ -78,6 +78,8 @@ export class StampsRepository {
     orgId: string;
     customerId: string;
     addedByUserId: string;
+    /** The store the sale happened at (register active store). */
+    storeId: string;
     /** The NET charged (after any promo). */
     priceCents: number;
     idempotencyKey: string;
@@ -164,6 +166,7 @@ export class StampsRepository {
           organizationId: input.orgId,
           walletId: active.id,
           addedByUserId: input.addedByUserId,
+          storeId: input.storeId,
           priceCents: input.priceCents,
           subtotalCents: input.subtotalCents ?? null,
           discountCents: input.discountCents ?? 0,
@@ -202,6 +205,7 @@ export class StampsRepository {
         cardId: active.id,
         purchaseId,
         addedByUserId: input.addedByUserId,
+        storeId: input.storeId,
         amount: 1,
       });
 
@@ -242,6 +246,7 @@ export class StampsRepository {
           reward: rw,
           currency: input.inlineReward.currency,
           claimedByUserId: input.inlineReward.redeemedByUserId,
+          storeId: input.storeId,
           purchaseId,
         });
         if (redeemed.kind !== "claimed") {

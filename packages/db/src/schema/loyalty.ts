@@ -9,6 +9,7 @@ import {
 
 import { organization, user } from "./auth";
 import { promo } from "./promotions";
+import { store } from "./store";
 
 // End customer of the loyalty program (distinct from `user`, which is the
 // staff/owner. A customer is identified by phone primarily — they don't need
@@ -107,6 +108,11 @@ export const purchase = sqliteTable(
     addedByUserId: text("added_by_user_id")
       .notNull()
       .references(() => user.id),
+    // The store where the sale happened. Backfilled to the org's primary store
+    // for legacy rows (migration 0019), then enforced notNull.
+    storeId: text("store_id")
+      .notNull()
+      .references(() => store.id),
     // `priceCents` = the NET charged (after any promo). For itemized purchases
     // `subtotalCents` + `discountCents` + `appliedPromoId` carry the breakdown.
     priceCents: integer("price_cents").notNull(),
@@ -202,6 +208,11 @@ export const stamp = sqliteTable("stamp", {
   addedByUserId: text("added_by_user_id")
     .notNull()
     .references(() => user.id),
+  // Store where the stamp was granted (mirrors the purchase). Backfilled from
+  // the purchase (migration 0019), then enforced notNull.
+  storeId: text("store_id")
+    .notNull()
+    .references(() => store.id),
   amount: integer("amount").notNull().default(1),
   note: text("note"),
   createdAt: integer("created_at", { mode: "timestamp" })
@@ -283,6 +294,10 @@ export const redemption = sqliteTable(
     redeemedByUserId: text("redeemed_by_user_id")
       .notNull()
       .references(() => user.id),
+    // Store where the reward was redeemed. Stays nullable (like
+    // organizationId/customerId) because legacy/standalone rows may have no org
+    // to attribute a store from; the claim flow always sets it on new rows.
+    storeId: text("store_id").references(() => store.id),
     currency: text("currency").notNull().default("stamps"), // "stamps" | "points"
     stampsSpent: integer("stamps_spent").notNull().default(0),
     pointsSpent: integer("points_spent").notNull().default(0),
@@ -436,6 +451,11 @@ export const pointsTransaction = sqliteTable(
       onDelete: "set null",
     }),
     addedByUserId: text("added_by_user_id").references(() => user.id),
+    // Store attribution (mirrors the earning purchase). Backfilled to primary
+    // for legacy rows (migration 0019), then enforced notNull.
+    storeId: text("store_id")
+      .notNull()
+      .references(() => store.id),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),

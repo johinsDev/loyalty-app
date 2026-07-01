@@ -81,6 +81,7 @@ export interface Branding {
     description: string | null;
     keywords: string[];
     ogImageUrl: string | null;
+    faviconUrl: string | null;
   };
 }
 
@@ -115,6 +116,7 @@ export function getBranding(db: typeof Db, orgId: string): Promise<Branding> {
           description: s?.seoDescription ?? null,
           keywords: s?.seoKeywords ?? [],
           ogImageUrl: s?.ogImageUrl ?? null,
+          faviconUrl: s?.faviconUrl ?? null,
         },
       };
     },

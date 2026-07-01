@@ -9,6 +9,7 @@ import { RewardsService } from "../service";
 const SECRET = "test-secret-min-32-chars-pad-pad-pad-pad";
 const ORG = "org_1";
 const STAFF = "staff_1";
+const STORE = "store_1";
 const CUSTOMER = "cust_1";
 
 function reward(over: Partial<RewardRow> = {}): RewardRow {
@@ -320,7 +321,7 @@ describe("RewardsService.claim", () => {
       pointsBalance: 0,
     };
     const { service, realtime, enqueue } = build(repo);
-    const res = await service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"));
+    const res = await service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"), STORE);
     expect(res.stampsSpent).toBe(9);
     expect(res.stampsBalance).toBe(1);
     expect(repo.claimTx).toHaveBeenCalledWith(
@@ -347,7 +348,7 @@ describe("RewardsService.claim", () => {
       pointsBalance: 30,
     };
     const { service } = build(repo);
-    const res = await service.claim(ORG, STAFF, await tokenFor("rw_1", "points"));
+    const res = await service.claim(ORG, STAFF, await tokenFor("rw_1", "points"), STORE);
     expect(res.currency).toBe("points");
     expect(res.pointsSpent).toBe(120);
   });
@@ -356,7 +357,7 @@ describe("RewardsService.claim", () => {
     repo.claimTxResult = { kind: "already_claimed" };
     const { service } = build(repo);
     await expect(
-      service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps")),
+      service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"), STORE),
     ).rejects.toMatchObject({ message: "ALREADY_CLAIMED" });
   });
 
@@ -364,13 +365,13 @@ describe("RewardsService.claim", () => {
     repo.claimTxResult = { kind: "insufficient" };
     const { service } = build(repo);
     await expect(
-      service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps")),
+      service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"), STORE),
     ).rejects.toMatchObject({ message: "INSUFFICIENT_BALANCE" });
   });
 
   it("rejects a forged token", async () => {
     const { service } = build(repo);
-    await expect(service.claim(ORG, STAFF, "nope")).rejects.toMatchObject({
+    await expect(service.claim(ORG, STAFF, "nope", STORE)).rejects.toMatchObject({
       message: "INVALID_TOKEN",
     });
   });
@@ -383,7 +384,7 @@ describe("RewardsService.claim", () => {
     await service.requestClaim(ORG, STAFF, CUSTOMER, "rw_1", "stamps");
     expect(await service.myActiveClaim(CUSTOMER)).not.toBeNull();
     // Path A: customer claims rw_1 via the signed-QR scanner.
-    await service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"));
+    await service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"), STORE);
     // Server state is now consistent — the active code is gone.
     expect(await service.myActiveClaim(CUSTOMER)).toBeNull();
   });
@@ -399,7 +400,7 @@ describe("RewardsService.claim", () => {
     // A code is active for rw_2.
     await service.requestClaim(ORG, STAFF, CUSTOMER, "rw_2", "stamps");
     // Claiming rw_1 via the scanner must not clear rw_2's code.
-    await service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"));
+    await service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"), STORE);
     const active = await service.myActiveClaim(CUSTOMER);
     expect(active?.rewardName).toBe("Bebida gratis");
     expect(cache.store.has(`active-claim:${CUSTOMER}`)).toBe(true);
@@ -603,7 +604,7 @@ describe("RewardsService.confirmClaimWithCode", () => {
     const { pendingId, code } = await seedPending();
     const { service, realtime, enqueue } = build(repo, { cache });
 
-    const res = await service.confirmClaimWithCode(ORG, STAFF, pendingId, code);
+    const res = await service.confirmClaimWithCode(ORG, STAFF, pendingId, code, STORE);
 
     expect(res.redemptionId).toBe("red_9");
     expect(repo.claimTx).toHaveBeenCalledWith(
@@ -624,7 +625,7 @@ describe("RewardsService.confirmClaimWithCode", () => {
     const { pendingId } = await seedPending();
     const { service } = build(repo, { cache });
     await expect(
-      service.confirmClaimWithCode(ORG, STAFF, pendingId, "000000"),
+      service.confirmClaimWithCode(ORG, STAFF, pendingId, "000000", STORE),
     ).rejects.toMatchObject({ message: "CODE_INVALID" });
     const stored = [...cache.store.values()][0] as { attempts: number };
     expect(stored.attempts).toBe(1);
@@ -636,7 +637,7 @@ describe("RewardsService.confirmClaimWithCode", () => {
     const { pendingId } = await seedPending({ attempts: 3 });
     const { service } = build(repo, { cache });
     await expect(
-      service.confirmClaimWithCode(ORG, STAFF, pendingId, "000000"),
+      service.confirmClaimWithCode(ORG, STAFF, pendingId, "000000", STORE),
     ).rejects.toMatchObject({ message: "TOO_MANY_ATTEMPTS" });
     // The pending is burned; the index lingers (harmless — TTL-expires).
     expect(cache.store.has(`claim-otp:${pendingId}`)).toBe(false);
@@ -645,7 +646,7 @@ describe("RewardsService.confirmClaimWithCode", () => {
   it("expired / missing pending → CODE_EXPIRED", async () => {
     const { service } = build(repo, { cache });
     await expect(
-      service.confirmClaimWithCode(ORG, STAFF, "no-such-id", "123456"),
+      service.confirmClaimWithCode(ORG, STAFF, "no-such-id", "123456", STORE),
     ).rejects.toMatchObject({ message: "CODE_EXPIRED" });
   });
 
@@ -653,16 +654,16 @@ describe("RewardsService.confirmClaimWithCode", () => {
     const { pendingId, code } = await seedPending();
     const { service } = build(repo, { cache });
     await expect(
-      service.confirmClaimWithCode(ORG, "other-staff", pendingId, code),
+      service.confirmClaimWithCode(ORG, "other-staff", pendingId, code, STORE),
     ).rejects.toMatchObject({ message: "NOT_YOUR_CLAIM" });
   });
 
   it("reused pendingId after success → CODE_EXPIRED", async () => {
     const { pendingId, code } = await seedPending();
     const { service } = build(repo, { cache });
-    await service.confirmClaimWithCode(ORG, STAFF, pendingId, code);
+    await service.confirmClaimWithCode(ORG, STAFF, pendingId, code, STORE);
     await expect(
-      service.confirmClaimWithCode(ORG, STAFF, pendingId, code),
+      service.confirmClaimWithCode(ORG, STAFF, pendingId, code, STORE),
     ).rejects.toMatchObject({ message: "CODE_EXPIRED" });
   });
 
@@ -687,7 +688,7 @@ describe("RewardsService.confirmClaimWithCode", () => {
     ).code;
     // Customer picks points on their phone.
     await service.setClaimCurrency(CUSTOMER, res.pendingId, "points");
-    await service.confirmClaimWithCode(ORG, STAFF, res.pendingId, code);
+    await service.confirmClaimWithCode(ORG, STAFF, res.pendingId, code, STORE);
     expect(repo.claimTx).toHaveBeenCalledWith(
       expect.objectContaining({ currency: "points" }),
     );
@@ -703,7 +704,7 @@ describe("RewardsService.confirmClaimWithCode", () => {
     const code = (
       cache.store.get(`claim-otp:${res.pendingId}`) as { code: string }
     ).code;
-    await service.confirmClaimWithCode(ORG, STAFF, res.pendingId, code);
+    await service.confirmClaimWithCode(ORG, STAFF, res.pendingId, code, STORE);
     // affordableWith = ["stamps","points"] → defaults to "stamps".
     expect(repo.claimTx).toHaveBeenCalledWith(
       expect.objectContaining({ currency: "stamps" }),
@@ -764,7 +765,7 @@ describe("RewardsService.cancelClaim (customer)", () => {
     const { service } = build(repo, { cache });
     await service.cancelClaim(CUSTOMER, pendingId);
     await expect(
-      service.confirmClaimWithCode(ORG, STAFF, pendingId, code),
+      service.confirmClaimWithCode(ORG, STAFF, pendingId, code, STORE),
     ).rejects.toMatchObject({ message: "CODE_EXPIRED" });
   });
 
@@ -841,7 +842,7 @@ describe("RewardsService.myActiveClaim (rehydrate)", () => {
     };
     const { pendingId, code } = await seedPending();
     const { service } = build(repo, { cache });
-    await service.confirmClaimWithCode(ORG, STAFF, pendingId, code);
+    await service.confirmClaimWithCode(ORG, STAFF, pendingId, code, STORE);
     await expect(service.myActiveClaim(CUSTOMER)).resolves.toBeNull();
   });
 

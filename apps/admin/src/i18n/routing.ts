@@ -47,7 +47,23 @@ export const routing = defineRouting({
     "/employees": { es: "/empleados", en: "/employees" },
     "/employees/new": { es: "/empleados/nuevo", en: "/employees/new" },
     "/employees/audit": { es: "/empleados/actividad", en: "/employees/audit" },
+    "/employees/performance": {
+      es: "/empleados/rendimiento",
+      en: "/employees/performance",
+    },
     "/employees/[id]": { es: "/empleados/[id]", en: "/employees/[id]" },
+    "/employees/[id]/edit": {
+      es: "/empleados/[id]/editar",
+      en: "/employees/[id]/edit",
+    },
+    "/employees/[id]/activity": {
+      es: "/empleados/[id]/actividad",
+      en: "/employees/[id]/activity",
+    },
+    "/accept-invitation": {
+      es: "/aceptar-invitacion",
+      en: "/accept-invitation",
+    },
     "/analytics": { es: "/analitica", en: "/analytics" },
     "/analytics/cohorts": { es: "/analitica/cohortes", en: "/analytics/cohorts" },
     "/analytics/funnel": { es: "/analitica/embudo", en: "/analytics/funnel" },

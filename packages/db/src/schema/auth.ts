@@ -12,6 +12,17 @@ export const user = sqliteTable("user", {
     .notNull()
     .default(false),
   image: text("image"),
+  // Better Auth `admin` plugin columns. NOTE: `user.role` here is ONLY the
+  // admin-plugin capability flag (admin vs user) that gates impersonation /
+  // ban / list-sessions — it is NOT the app's authorization role. The canonical
+  // operator role lives on `member.role` (see @loyalty/auth roles.ts). Only the
+  // owner carries `role: "admin"` so they can call the admin-plugin endpoints.
+  role: text("role"),
+  // `banned` is the "Inhabilitado" toggle: blocks sign-in + lets us revoke
+  // sessions, while keeping the employee visible/reversible.
+  banned: integer("banned", { mode: "boolean" }),
+  banReason: text("ban_reason"),
+  banExpires: integer("ban_expires", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -36,6 +47,9 @@ export const session = sqliteTable("session", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   activeOrganizationId: text("active_organization_id"),
+  // Better Auth `admin` plugin: set to the impersonator's user id while an
+  // impersonation session is active. The impersonation banner keys off it.
+  impersonatedBy: text("impersonated_by"),
 });
 
 export const account = sqliteTable("account", {
@@ -97,6 +111,12 @@ export const member = sqliteTable("member", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   role: text("role").notNull().default("member"),
+  // Employee-management fields (the admin "Empleados" feature). Owner-set
+  // performance rating (1–5) + free-text notes; `deletedAt` is the soft-delete
+  // marker (the user row is kept for audit/stats history).
+  rating: integer("rating"),
+  notes: text("notes"),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -114,4 +134,14 @@ export const invitation = sqliteTable("invitation", {
   inviterId: text("inviter_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  // Store ids chosen at invite time (JSON array). Applied to `store_staff` by
+  // the org plugin's invitation-accept hook once the member row exists.
+  assignedStoreIds: text("assigned_store_ids", { mode: "json" }).$type<
+    string[]
+  >(),
 });
+
+export type UserRow = typeof user.$inferSelect;
+export type SessionRow = typeof session.$inferSelect;
+export type MemberRow = typeof member.$inferSelect;
+export type InvitationRow = typeof invitation.$inferSelect;

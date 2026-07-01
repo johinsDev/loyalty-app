@@ -2,12 +2,11 @@ import { STAFF_OR_ABOVE } from "@loyalty/auth/server";
 import type { ReactNode } from "react";
 
 import { AdminShell } from "@/components/admin-shell";
+import { ImpersonationBanner } from "@/features/employees/components/impersonation-banner";
 import { requireRole } from "@/lib/auth-guard";
 
 type Props = {
   children: ReactNode;
-  /** Parallel slot for intercepted detail modals (e.g. `/stores/[id]`). */
-  modal: ReactNode;
 };
 
 /**
@@ -15,14 +14,14 @@ type Props = {
  * tablet/mobile (AdminShell). Gates the route group once — staff/manager/owner
  * pass, customers get bounced — and resolves the role server-side.
  */
-export default async function DashboardLayout({ children, modal }: Props) {
+export default async function DashboardLayout({ children }: Props) {
   const { session, role } = await requireRole(STAFF_OR_ABOVE);
   const name = (session.user as { name?: string }).name?.trim() || "Equipo";
 
   return (
     <AdminShell role={role} name={name}>
+      <ImpersonationBanner />
       {children}
-      {modal}
     </AdminShell>
   );
 }

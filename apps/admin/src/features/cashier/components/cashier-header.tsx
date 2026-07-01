@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 
 import { DAILY_CAP, STAMPS_TODAY, store } from "../data";
+import { StoreSwitcher } from "./store-switcher";
 
 /**
  * Compact cashier header — brand + shift + the per-cashier daily stamp counter
@@ -31,6 +32,8 @@ export function CashierHeader() {
       </div>
 
       <div className="flex-1" />
+
+      <StoreSwitcher />
 
       <div className="bg-muted flex items-center gap-2 rounded-xl px-3 py-1.5">
         <TrendingUp className="text-muted-foreground size-4" />

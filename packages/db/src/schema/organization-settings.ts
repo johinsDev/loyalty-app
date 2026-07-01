@@ -57,6 +57,7 @@ export const organizationSettings = sqliteTable("organization_settings", {
   seoDescription: text("seo_description"),
   seoKeywords: text("seo_keywords", { mode: "json" }).$type<string[]>(),
   ogImageUrl: text("og_image_url"),
+  faviconUrl: text("favicon_url"), // uploaded favicon (R2) → app metadata icons
 
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

@@ -1,7 +1,5 @@
 export type Role = "owner" | "manager" | "staff";
 
-export const ROLES: Role[] = ["owner", "manager", "staff"];
-
 export type Status = "active" | "invited";
 
 export type Employee = {
@@ -72,62 +70,6 @@ export const employees: Employee[] = [
   },
 ];
 
-// ── Employee profile draft (edited in the stepper) ──────────────────────
-
-/**
- * Editable employee profile — the full data an employee carries (mirrors what
- * customers will have). `initials`, `stamps`, `redemptions` are display-only in
- * the design build (shown in the wizard preview). Seam: the member + profile
- * model later.
- */
-export type EmployeeDraft = {
-  name: string;
-  email: string;
-  phone: string;
-  role: Role;
-  status: Status;
-  dailyCap: number;
-  notes: string;
-  initials: string;
-  stamps: number;
-  redemptions: number;
-};
-
-export const emptyEmployeeDraft: EmployeeDraft = {
-  name: "",
-  email: "",
-  phone: "",
-  role: "staff",
-  status: "invited",
-  dailyCap: 50,
-  notes: "",
-  initials: "",
-  stamps: 0,
-  redemptions: 0,
-};
-
-/** Resolve an employee into an editable draft. Hardcoded — unknown ids fall back
- * to the first employee so deep links never 404 in the design build. */
-export function getEmployeeDraft(id: string): EmployeeDraft {
-  const e = employees.find((x) => x.id === id) ?? employees[0]!;
-  return {
-    name: e.name,
-    email: e.email,
-    phone: "+57 320 555 0142",
-    role: e.role,
-    status: e.status,
-    dailyCap: 50,
-    notes: "",
-    initials: e.initials,
-    stamps: e.stamps,
-    redemptions: e.redemptions,
-  };
-}
-
-/** A 7-point activity series for the wizard preview chart. */
-export function getActivitySeries(_id: string): number[] {
-  return [4, 8, 6, 12, 9, 15, 11];
-}
 
 // ── Audit log (its own filterable view) ─────────────────────────────────
 

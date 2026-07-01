@@ -79,6 +79,7 @@ export class SettingsService {
       ...(input.seoDescription !== undefined ? { seoDescription: input.seoDescription } : {}),
       ...(input.seoKeywords !== undefined ? { seoKeywords: input.seoKeywords } : {}),
       ...(input.ogImageUrl !== undefined ? { ogImageUrl: nullable(input.ogImageUrl) } : {}),
+      ...(input.faviconUrl !== undefined ? { faviconUrl: nullable(input.faviconUrl) } : {}),
     });
     await invalidateBranding(orgId);
     return getBranding(this.db, orgId);

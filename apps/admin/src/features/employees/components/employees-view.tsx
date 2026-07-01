@@ -1,323 +1,533 @@
 "use client";
 
+import { authClient } from "@loyalty/auth/client";
+import { formatDate } from "@loyalty/date";
+import type {
+  EmployeeListItem,
+  EmployeesListInput,
+} from "@loyalty/api/features/employees/schemas";
 import {
   Badge,
   Button,
+  Checkbox,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
 } from "@loyalty/ui";
-import { Plus, ScrollText, Trash2, Users } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Ban, Download, Plus, ScrollText, Star, Trash2, Trophy, UserCheck } from "lucide-react";
+import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
+import { useLocale, useTranslations } from "next-intl";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { EmptyState } from "@/components/empty-state";
-import { type FilterOption, FilterMultiSelect } from "@/components/filters";
-import { useRouter } from "@/i18n/navigation";
-
 import {
-  type Employee,
-  ROLES,
-  type Role,
-  type Status,
-  employees as seed,
-} from "../data";
+  DataTable,
+  DataTableBulkBar,
+  DataTableColumnHeader,
+  DataTableFilters,
+  DataTablePagination,
+  DataTableSortList,
+  DataTableViewOptions,
+  FilterSection,
+  tableParsers,
+} from "@/components/data-table";
+import { useDataTable } from "@/components/data-table/use-data-table";
+import { ViewToggle } from "@/components/view-toggle";
+import { useRouter } from "@/i18n/navigation";
+import { downloadCsv, rowsToCsv } from "@/lib/csv";
+import { useTRPC } from "@/lib/trpc/client";
 
-const STATUSES: Status[] = ["active", "invited"];
+import { ROW_ROLES, STATUSES, displayName, initialsFor } from "../lib";
+import { buildEmployeesInput } from "../list-params";
+import { EmployeeDetailModal } from "./employee-detail-modal";
+import { EmployeeRowActions } from "./employee-row-actions";
 
-/**
- * Empleados — invite row + a polished team table (search, role/status filters,
- * per-row role change, resend invite, remove). Rows open a dedicated employee
- * page; the audit log lives in its own view.
- * Design-first / hardcoded (../data); the seam is the Better Auth organization
- * member + invitation model later.
- */
-export function EmployeesView() {
+type EmployeesResult = { rows: EmployeeListItem[]; total: number; pageCount: number };
+
+export function EmployeesView({ initialData }: { initialData?: EmployeesResult }) {
   const t = useTranslations("Employees");
+  const locale = useLocale();
+  const trpc = useTRPC();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const [rows, setRows] = useState<Employee[]>(seed);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<Role>("staff");
+  const { data: session } = authClient.useSession();
+  const currentUserId = session?.user?.id ?? null;
+  const isOwner = (session?.user as { role?: string } | undefined)?.role === "admin";
 
-  const [query, setQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<Role[]>([...ROLES]);
-  const [statusFilter, setStatusFilter] = useState<Status[]>([...STATUSES]);
+  // ── URL state (facets + q). page/perPage/sort/view/cols live in useDataTable.
+  const [q, setQ] = useQueryState("q", tableParsers.q);
+  const [role, setRole] = useQueryState("role", parseAsArrayOf(parseAsString).withDefault([]));
+  const [status, setStatus] = useQueryState("status", parseAsArrayOf(parseAsString).withDefault([]));
+  const [storeId, setStoreId] = useQueryState("storeId", parseAsArrayOf(parseAsString).withDefault([]));
+  const [detailId, setDetailId] = useQueryState("detalle", parseAsString);
+  const [, setPage] = useQueryState("page", tableParsers.page);
+  const [page] = useQueryState("page", tableParsers.page);
+  const [perPage] = useQueryState("perPage", tableParsers.perPage);
+  const [sort] = useQueryState("sort", tableParsers.sort);
+  const [view, setView] = useQueryState("view", tableParsers.view);
 
-  const roleOptions: FilterOption<Role>[] = ROLES.map((r) => ({
-    value: r,
-    label: t(`role.${r}`),
-  }));
-  const statusOptions: FilterOption<Status>[] = [
-    { value: "active", label: t("status.active"), dot: "#1f9d68" },
-    { value: "invited", label: t("status.invited"), dot: "#c98a00" },
-  ];
+  const resetPage = () => void setPage(1);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return rows.filter((e) => {
-      if (!roleFilter.includes(e.role)) return false;
-      if (!statusFilter.includes(e.status)) return false;
-      if (
-        q &&
-        !e.name.toLowerCase().includes(q) &&
-        !e.email.toLowerCase().includes(q)
-      )
-        return false;
-      return true;
-    });
-  }, [rows, query, roleFilter, statusFilter]);
-
-  const invite = () => {
-    const email = inviteEmail.trim();
-    if (!email) return;
-    setRows((prev) => [
-      ...prev,
-      {
-        id: `e${Date.now()}`,
-        name: email.split("@")[0] ?? email,
-        initials: (email.slice(0, 2) || "??").toUpperCase(),
-        email,
-        role: inviteRole,
-        stamps: 0,
-        redemptions: 0,
-        status: "invited",
-      },
-    ]);
-    toast.success(t("inviteSent"));
-    setInviteEmail("");
-    setInviteRole("staff");
+  const [search, setSearch] = useState(q);
+  const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const onSearch = (value: string) => {
+    setSearch(value);
+    clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => {
+      void setQ(value || null);
+      resetPage();
+    }, 350);
   };
 
-  const changeRole = (id: string, role: Role) => {
-    setRows((prev) => prev.map((e) => (e.id === id ? { ...e, role } : e)));
-  };
-
-  const remove = (employee: Employee) => {
-    setRows((prev) => prev.filter((e) => e.id !== employee.id));
-    toast.success(t("removed", { name: employee.name }));
-  };
-
+  const activeFacets =
+    (role.length > 0 && role.length < ROW_ROLES.length ? 1 : 0) +
+    (status.length > 0 && status.length < STATUSES.length ? 1 : 0) +
+    (storeId.length > 0 ? 1 : 0);
   const clearFilters = () => {
-    setQuery("");
-    setRoleFilter([...ROLES]);
-    setStatusFilter([...STATUSES]);
+    void setRole([]);
+    void setStatus([]);
+    void setStoreId([]);
+    resetPage();
   };
+  const toggle = (
+    values: string[],
+    set: (v: string[]) => void,
+    v: string,
+  ) => {
+    set(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+    resetPage();
+  };
+
+  // Store options for the "Tienda" facet.
+  const { data: storesData } = useQuery(
+    trpc.stores.list.queryOptions({ page: 1, perPage: 100, sort: [] }),
+  );
+  const storeOptions = storesData?.rows ?? [];
+
+  const input: EmployeesListInput = useMemo(
+    () => buildEmployeesInput({ q, page, perPage, sort, role, status, storeId }),
+    [q, page, perPage, sort, role, status, storeId],
+  );
+
+  const initialKey = useRef(JSON.stringify(input));
+  const useInitial = initialData && JSON.stringify(input) === initialKey.current;
+  const query = useQuery(
+    trpc.employees.list.queryOptions(input, {
+      placeholderData: keepPreviousData,
+      ...(useInitial ? { initialData } : {}),
+    }),
+  );
+  const rows = query.data?.rows ?? [];
+  const pageCount = query.data?.pageCount ?? 1;
+  const total = query.data?.total ?? 0;
+
+  const columns = useMemo<ColumnDef<EmployeeListItem, unknown>[]>(
+    () => [
+      {
+        id: "select",
+        enableSorting: false,
+        enableHiding: false,
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            indeterminate={table.getIsSomePageRowsSelected()}
+            onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+            aria-label={t("selectAll")}
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(v) => row.toggleSelected(!!v)}
+            aria-label={t("selectRow")}
+          />
+        ),
+      },
+      {
+        accessorKey: "name",
+        meta: { label: t("col.employee") },
+        header: ({ column }) => <DataTableColumnHeader column={column} title={t("col.employee")} />,
+        cell: ({ row }) => {
+          const r = row.original;
+          const inner = (
+            <span className="flex items-center gap-3">
+              <span className="bg-primary/10 text-primary grid size-8 flex-none place-items-center rounded-full text-xs font-bold">
+                {initialsFor(r)}
+              </span>
+              <span className="truncate font-semibold">{displayName(r)}</span>
+            </span>
+          );
+          return r.kind === "member" ? (
+            <button
+              type="button"
+              className="hover:text-primary cursor-pointer text-left hover:underline"
+              onClick={() => void setDetailId(r.id)}
+            >
+              {inner}
+            </button>
+          ) : (
+            inner
+          );
+        },
+      },
+      {
+        accessorKey: "email",
+        enableSorting: false,
+        meta: { label: t("col.email") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("col.email")}</span>,
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm">{row.original.email ?? "—"}</span>
+        ),
+      },
+      {
+        accessorKey: "role",
+        meta: { label: t("col.role") },
+        header: ({ column }) => <DataTableColumnHeader column={column} title={t("col.role")} />,
+        cell: ({ row }) => <Badge variant="secondary">{t(`role.${row.original.role}`)}</Badge>,
+      },
+      {
+        accessorKey: "stores",
+        enableSorting: false,
+        meta: { label: t("col.stores") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("col.stores")}</span>,
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm">
+            {row.original.stores.length === 0
+              ? "—"
+              : row.original.stores.map((s) => s.name).join(", ")}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "rating",
+        meta: { label: t("col.rating") },
+        header: ({ column }) => <DataTableColumnHeader column={column} title={t("col.rating")} />,
+        cell: ({ row }) =>
+          row.original.rating ? (
+            <span className="inline-flex items-center gap-1 text-sm font-bold">
+              <Star className="size-3.5 fill-amber-400 text-amber-400" />
+              {row.original.rating}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+      },
+      {
+        accessorKey: "status",
+        enableSorting: false,
+        meta: { label: t("col.status") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("col.status")}</span>,
+        cell: ({ row }) => (
+          <Badge
+            variant="secondary"
+            className={
+              row.original.status === "active"
+                ? "text-emerald-600"
+                : row.original.status === "invited"
+                  ? "text-amber-600"
+                  : "text-muted-foreground"
+            }
+          >
+            {t(`status.${row.original.status}`)}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "createdAt",
+        meta: { label: t("col.created") },
+        header: ({ column }) => <DataTableColumnHeader column={column} title={t("col.created")} />,
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm">
+            {formatDate(row.original.createdAt, { locale })}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => (
+          <EmployeeRowActions row={row.original} isOwner={isOwner} currentUserId={currentUserId} />
+        ),
+      },
+    ],
+    [t, locale, router, isOwner, currentUserId],
+  );
+
+  const { table, selectedIds, resetSelection } = useDataTable<EmployeeListItem>({
+    data: rows,
+    columns,
+    pageCount,
+    getRowId: (r) => r.id,
+  });
+
+  // ── Bulk ──────────────────────────────────────────────────────────────────
+  const invalidate = () => queryClient.invalidateQueries(trpc.employees.list.queryFilter());
+  const bulkSetDisabled = useMutation(trpc.employees.bulkSetDisabled.mutationOptions());
+  const bulkRemove = useMutation(trpc.employees.bulkRemove.mutationOptions());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const onExport = async () => {
+    const data = await queryClient.fetchQuery(trpc.employees.listByIds.queryOptions({ ids: selectedIds }));
+    downloadCsv(
+      rowsToCsv(data, [
+        { header: t("col.employee"), value: (e) => e.name ?? "" },
+        { header: t("col.email"), value: (e) => e.email ?? "" },
+        { header: t("col.role"), value: (e) => e.role },
+        { header: t("col.stores"), value: (e) => e.stores.map((s) => s.name).join(" | ") },
+        { header: t("col.rating"), value: (e) => (e.rating ? String(e.rating) : "") },
+        { header: t("col.status"), value: (e) => e.status },
+      ]),
+      `empleados-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+    toast.success(t("exported", { n: selectedIds.length }));
+  };
+
+  const onSetDisabled = (disabled: boolean) =>
+    bulkSetDisabled.mutate(
+      { ids: selectedIds, disabled },
+      {
+        onSuccess: async () => {
+          await invalidate();
+          resetSelection();
+          toast.success(disabled ? t("disabled") : t("enabled"));
+        },
+        onError: () => toast.error(t("saveError")),
+      },
+    );
+
+  const onBulkDelete = () =>
+    bulkRemove.mutate(
+      { ids: selectedIds },
+      {
+        onSuccess: async () => {
+          await invalidate();
+          resetSelection();
+          setConfirmDelete(false);
+          toast.success(t("bulkDeleteOk", { n: selectedIds.length }));
+        },
+        onError: () => toast.error(t("removeError")),
+      },
+    );
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground/80 mt-0.5 text-sm font-semibold">
-            {t("subtitle")}
-          </p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            className="h-10 gap-2 rounded-xl"
+            className="h-10 gap-1.5 rounded-xl"
+            onClick={() => router.push("/employees/performance")}
+          >
+            <Trophy className="size-4" />
+            {t("leaderboard.link")}
+          </Button>
+          <Button
+            variant="outline"
+            className="h-10 gap-1.5 rounded-xl"
             onClick={() => router.push("/employees/audit")}
           >
             <ScrollText className="size-4" />
             {t("auditLink")}
           </Button>
-          <Button
-            className="h-10 gap-2 rounded-xl font-semibold"
-            onClick={() => router.push("/employees/new")}
-          >
-            <Plus className="size-4" />
-            {t("add")}
-          </Button>
+          {isOwner ? (
+            <Button className="h-10 gap-1.5 rounded-xl" onClick={() => router.push("/employees/new")}>
+              <Plus className="size-4" />
+              {t("add")}
+            </Button>
+          ) : null}
         </div>
       </div>
 
-      {/* Invite row */}
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+      {/* Toolbar — search + Filtros drawer; Sort/View/toggle inline. */}
+      <div className="mt-5 flex flex-wrap items-center gap-2">
         <Input
-          type="email"
-          value={inviteEmail}
-          onChange={(e) => setInviteEmail(e.target.value)}
-          placeholder={t("invitePlaceholder")}
-          className="h-10 flex-1"
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          placeholder={t("searchPlaceholder")}
+          className="h-10 w-full sm:w-64"
         />
-        <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as Role)}>
-          <SelectTrigger size="lg" className="text-sm sm:w-44">
-            <SelectValue>{(value) => t(`role.${value as Role}`)}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {ROLES.map((r) => (
-              <SelectItem key={r} value={r}>
-                {t(`role.${r}`)}
-              </SelectItem>
+        <DataTableFilters activeCount={activeFacets} onClear={clearFilters}>
+          <FilterSection label={t("roleFilter")}>
+            {ROW_ROLES.map((v) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox checked={role.includes(v)} onCheckedChange={() => toggle(role, setRole, v)} />
+                {t(`role.${v}`)}
+              </label>
             ))}
-          </SelectContent>
-        </Select>
-        <Button onClick={invite} className="h-10 font-semibold">
-          {t("invite")}
-        </Button>
-      </div>
+          </FilterSection>
 
-      {/* Table card */}
-      <div className="bg-card border-border mt-5 overflow-hidden rounded-3xl border shadow-sm">
-        {/* Toolbar */}
-        <div className="border-border flex flex-wrap items-center gap-3 border-b p-4">
-          <div className="relative min-w-52 flex-1">
-            <Users className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("searchPlaceholder")}
-              className="border-border bg-muted/40 placeholder:text-muted-foreground h-10 w-full rounded-xl border pr-3 pl-9 text-sm outline-none"
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterMultiSelect
-              label={t("roleFilter")}
-              options={roleOptions}
-              selected={roleFilter}
-              onChange={setRoleFilter}
-            />
-            <FilterMultiSelect
-              label={t("statusFilter")}
-              options={statusOptions}
-              selected={statusFilter}
-              onChange={setStatusFilter}
-            />
-          </div>
-        </div>
+          <FilterSection label={t("statusFilter")}>
+            {STATUSES.map((v) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox
+                  checked={status.includes(v)}
+                  onCheckedChange={() => toggle(status, setStatus, v)}
+                />
+                {t(`status.${v}`)}
+              </label>
+            ))}
+          </FilterSection>
 
-        {filtered.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title={t("empty")}
-            hint={t("emptyHint")}
-            action={
-              <Button
-                variant="outline"
-                className="rounded-xl"
-                onClick={clearFilters}
-              >
-                {t("clearFilters")}
-              </Button>
-            }
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("col.employee")}</TableHead>
-                <TableHead>{t("col.email")}</TableHead>
-                <TableHead>{t("col.role")}</TableHead>
-                <TableHead className="text-right">{t("col.stamps")}</TableHead>
-                <TableHead className="text-right">
-                  {t("col.redemptions")}
-                </TableHead>
-                <TableHead>{t("col.status")}</TableHead>
-                <TableHead className="w-24" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((e) => (
-                <TableRow
-                  key={e.id}
-                  onClick={() =>
-                    router.push({
-                      pathname: "/employees/[id]",
-                      params: { id: e.id },
-                    })
-                  }
-                  className="cursor-pointer"
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <span className="bg-primary/10 text-primary grid size-9 flex-none place-items-center rounded-full text-xs font-bold">
-                        {e.initials}
-                      </span>
-                      <span className="truncate font-bold">{e.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground font-semibold">
-                    {e.email}
-                  </TableCell>
-                  <TableCell onClick={(ev) => ev.stopPropagation()}>
-                    <Select
-                      value={e.role}
-                      onValueChange={(v) => changeRole(e.id, v as Role)}
-                    >
-                      <SelectTrigger size="lg" className="w-36 text-sm">
-                        <SelectValue>
-                          {(value) => t(`role.${value as Role}`)}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ROLES.map((r) => (
-                          <SelectItem key={r} value={r}>
-                            {t(`role.${r}`)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {e.stamps.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {e.redemptions.toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className={
-                        e.status === "active"
-                          ? "text-emerald-600"
-                          : "text-amber-600"
-                      }
-                    >
-                      {t(`status.${e.status}`)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell onClick={(ev) => ev.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1.5">
-                      {e.status === "invited" ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-lg"
-                          onClick={() => toast.success(t("resent"))}
-                        >
-                          {t("resend")}
-                        </Button>
-                      ) : null}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => remove(e)}
-                        className="text-muted-foreground hover:text-destructive size-8"
-                        aria-label={t("remove")}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+          {storeOptions.length > 0 ? (
+            <FilterSection label={t("col.stores")}>
+              {storeOptions.map((s) => (
+                <label key={s.id} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                  <Checkbox
+                    checked={storeId.includes(s.id)}
+                    onCheckedChange={() => toggle(storeId, setStoreId, s.id)}
+                  />
+                  {s.name}
+                </label>
               ))}
-            </TableBody>
-          </Table>
-        )}
+            </FilterSection>
+          ) : null}
+        </DataTableFilters>
+        <div className="ml-auto flex items-center gap-2">
+          <DataTableSortList table={table} />
+          <DataTableViewOptions table={table} />
+          <ViewToggle value={view} onValueChange={(v) => setView(v)} ariaLabel={t("viewToggle")} />
+        </div>
       </div>
+
+      <div className="mt-4">
+        <DataTable
+          table={table}
+          view={view}
+          isFetching={query.isFetching}
+          emptyState={
+            <div className="text-muted-foreground grid h-40 place-items-center px-6 text-center">
+              <div>
+                <p className="text-foreground font-semibold">{t("empty")}</p>
+                <p className="mt-1 text-sm">{t("emptyHint")}</p>
+              </div>
+            </div>
+          }
+          renderGrid={(items) => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((e) => (
+                <div
+                  key={e.id}
+                  role={e.kind === "member" ? "button" : undefined}
+                  tabIndex={e.kind === "member" ? 0 : undefined}
+                  className="bg-card border-border hover:border-primary/40 rounded-3xl border p-4 shadow-sm transition-colors"
+                  onClick={() => e.kind === "member" && void setDetailId(e.id)}
+                  onKeyDown={(ev) => {
+                    if (e.kind === "member" && (ev.key === "Enter" || ev.key === " ")) {
+                      ev.preventDefault();
+                      void setDetailId(e.id);
+                    }
+                  }}
+                >
+                  <div
+                    className="flex items-start justify-between gap-2"
+                    onClick={(ev) => ev.stopPropagation()}
+                    onKeyDown={(ev) => ev.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={table.getRow(e.id)?.getIsSelected() ?? false}
+                      onCheckedChange={(v) => table.getRow(e.id)?.toggleSelected(!!v)}
+                      aria-label={t("selectRow")}
+                    />
+                    <EmployeeRowActions row={e} isOwner={isOwner} currentUserId={currentUserId} />
+                  </div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <span className="bg-primary/10 text-primary grid size-9 flex-none place-items-center rounded-full text-xs font-bold">
+                      {initialsFor(e)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{displayName(e)}</p>
+                      <p className="text-muted-foreground truncate text-sm">{e.email}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    <Badge variant="secondary">{t(`role.${e.role}`)}</Badge>
+                    <Badge variant="outline">{t(`status.${e.status}`)}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        />
+        <DataTablePagination table={table} total={total} selectedCount={selectedIds.length} />
+      </div>
+
+      {isOwner ? (
+        <DataTableBulkBar count={selectedIds.length} onClear={resetSelection}>
+          <Button variant="ghost" size="sm" className="h-9 gap-1.5 rounded-full" onClick={onExport}>
+            <Download className="size-4" />
+            {t("bulkExport")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 gap-1.5 rounded-full"
+            onClick={() => onSetDisabled(true)}
+            disabled={bulkSetDisabled.isPending}
+          >
+            <Ban className="size-4" />
+            {t("disable")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 gap-1.5 rounded-full"
+            onClick={() => onSetDisabled(false)}
+            disabled={bulkSetDisabled.isPending}
+          >
+            <UserCheck className="size-4" />
+            {t("enable")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive h-9 gap-1.5 rounded-full"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Trash2 className="size-4" />
+            {t("bulkDelete")}
+          </Button>
+        </DataTableBulkBar>
+      ) : null}
+
+      <ResponsiveModal open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <ResponsiveModalContent>
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>{t("bulkDeleteTitle", { n: selectedIds.length })}</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
+          <p className="text-muted-foreground px-4 pb-2 text-sm">{t("bulkDeleteHint")}</p>
+          <ResponsiveModalFooter className="gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 rounded-full px-5"
+              onClick={() => setConfirmDelete(false)}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 rounded-full px-6 font-semibold"
+              onClick={onBulkDelete}
+              disabled={bulkRemove.isPending}
+            >
+              {t("removeConfirm")}
+            </Button>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
+
+      <EmployeeDetailModal id={detailId} onClose={() => void setDetailId(null)} />
     </div>
   );
 }

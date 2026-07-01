@@ -16,6 +16,10 @@ export const purchaseLineSchema = z.object({
 
 export const recordPurchaseInputSchema = z.object({
   customerId: z.string().min(1),
+  // The active store chosen at the register (store-switcher). The server
+  // validates it against the org + cashier assignments and falls back to the
+  // primary store when omitted/invalid.
+  storeId: z.string().optional(),
   // For a non-itemized sale this is the charged total. For an itemized sale
   // (`items` present) the server computes the net from the items + promo and
   // ignores this value.

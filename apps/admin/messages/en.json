@@ -1365,6 +1365,11 @@
     "subtitle": "Configure your brand, loyalty and team.",
     "save": "Save changes",
     "saved": "Changes saved",
+    "soon": "Soon",
+    "comingSoon": {
+      "title": "Coming soon",
+      "hint": "This section isn't available yet. Team & roles are managed under Employees."
+    },
     "nav": {
       "brand": "Brand & store",
       "hours": "Hours & location",
@@ -1397,7 +1402,9 @@
       "logoCrop": "Crop logo",
       "logoCropConfirm": "Use logo",
       "logoUploading": "Uploading…",
-      "error": "Couldn't save. Try again."
+      "error": "Couldn't save. Try again.",
+      "invalidData": "Check the fields before saving.",
+      "invalidField": "Check the “{field}” field."
     },
     "hours": {
       "title": "Hours & location",
@@ -1525,7 +1532,7 @@
       "canonical": "Canonical URL",
       "canonicalPlaceholder": "https://t4lovers.app",
       "favicon": "Favicon",
-      "faviconHint": "Emoji or image",
+      "faviconHint": ".png, .ico or .svg",
       "ogImage": "Share image (Open Graph)",
       "ogImageHint": "1200×630 recommended",
       "preview": "Preview",
@@ -1718,22 +1725,81 @@
     "inviteSent": "Invitation sent",
     "resent": "Invitation resent",
     "removed": "{name} removed",
+    "actions": "Actions",
+    "inviteError": "Couldn't send the invitation.",
+    "enable": "Enable",
+    "disable": "Disable",
+    "enabled": "Employee enabled",
+    "disabled": "Employee disabled",
+    "removeTitle": "Remove employee?",
+    "removeHint": "{name} will be removed from the team. Their history is kept.",
+    "removeConfirm": "Remove",
+    "removeError": "Couldn't remove the employee.",
+    "impersonateError": "Couldn't start impersonation.",
+    "backToMyAccount": "Back to my account",
+    "accept": {
+      "title": "Team invitation",
+      "invalid": "This invitation link is invalid.",
+      "signInFirst": "Sign in with the invited email to accept.",
+      "signIn": "Sign in",
+      "checkEmail": "We sent an access link to {email}. Click it to join.",
+      "working": "Accepting…",
+      "done": "You're in! Redirecting…",
+      "error": "Couldn't accept the invitation."
+    },
+    "cancel": "Cancel",
+    "pageOf": "Page {page} of {total}",
+    "prev": "Previous",
+    "next": "Next",
+    "activityType": {
+      "login": "Login",
+      "logout": "Logout",
+      "role_change": "Role change",
+      "invite_sent": "Invite sent",
+      "invite_accepted": "Invite accepted",
+      "disable": "Disabled",
+      "enable": "Enabled",
+      "delete": "Removed",
+      "restore": "Restored",
+      "email_change": "Email changed",
+      "rating_change": "Rating changed",
+      "stores_change": "Stores changed",
+      "impersonation_start": "Impersonation started",
+      "impersonation_stop": "Impersonation stopped",
+      "session_revoke": "Session revoked",
+      "sale": "Sale",
+      "stamp": "Stamp",
+      "redemption": "Redemption"
+    },
     "col": {
       "employee": "Employee",
       "email": "Email",
       "role": "Role",
+      "stores": "Stores",
+      "rating": "Rating",
       "stamps": "Stamps given",
       "redemptions": "Redemptions",
-      "status": "Status"
+      "status": "Status",
+      "created": "Created"
     },
+    "selectAll": "Select all",
+    "selectRow": "Select row",
+    "viewToggle": "View",
+    "bulkExport": "Export",
+    "bulkDelete": "Delete",
+    "bulkDeleteTitle": "Delete {n} employees?",
+    "bulkDeleteHint": "The selected employees will be removed. Their history is kept.",
+    "bulkDeleteOk": "{n} deleted",
+    "exported": "{n} exported",
     "role": {
       "owner": "Owner",
       "manager": "Manager",
-      "staff": "Staff"
+      "staff": "Cashier"
     },
     "status": {
       "active": "Active",
-      "invited": "Invited"
+      "invited": "Invited",
+      "disabled": "Disabled"
     },
     "detail": {
       "activity": "Activity",
@@ -1755,7 +1821,52 @@
       "close": "Close",
       "searchLog": "Search activity...",
       "stampsGiven": "Stamps given",
-      "redemptions": "Redemptions"
+      "redemptions": "Redemptions",
+      "monthStats": "This month",
+      "sales": "Sales",
+      "stamps": "Stamps",
+      "rewards": "Rewards",
+      "points": "Points",
+      "contact": "Contact",
+      "noStores": "No stores assigned",
+      "viewActivity": "View all activity",
+      "perStoreLine": "{sales} sales · {stamps} stamps · {rewards} rewards",
+      "activityCount": "{n} events",
+      "detailCol": "Detail",
+      "dateRange": "Date"
+    },
+    "activityDetail": {
+      "sale": "Sale for {amount}",
+      "redemption": "Redeemed {reward}",
+      "inviteSent": "Invited {email}"
+    },
+    "leaderboard": {
+      "link": "Performance",
+      "title": "Team performance",
+      "subtitle": "Ranked by revenue",
+      "thisMonth": "This month",
+      "seeAll": "See all",
+      "salesCount": "{n} sales",
+      "others": "Others",
+      "teamAvgTicket": "Team avg ticket",
+      "topSeller": "Top seller",
+      "rankingBy": "Ranking by {metric}",
+      "share": "Revenue share",
+      "period": {
+        "month": "This month",
+        "lastMonth": "Last month",
+        "range": "Range"
+      },
+      "metric": {
+        "sales": "Sales",
+        "revenueCents": "Revenue",
+        "avgTicketCents": "Avg ticket",
+        "maxTicketCents": "Max ticket",
+        "uniqueCustomers": "Customers",
+        "stamps": "Stamps",
+        "redemptions": "Rewards",
+        "points": "Points"
+      }
     },
     "add": "New employee",
     "auditLink": "Activity log",
@@ -1775,13 +1886,19 @@
       "phone": "Phone",
       "role": "Role",
       "status": "Status",
+      "stores": "Stores",
+      "rating": "Rating",
       "dailyCap": "Daily stamp cap",
       "notes": "Notes"
     },
     "namePlaceholder": "Full name",
     "emailPlaceholder": "name@example.com",
     "notesPlaceholder": "Internal notes...",
-    "dailyCapHint": "stamps / day"
+    "dailyCapHint": "stamps / day",
+    "noStores": "No stores yet",
+    "saveError": "Couldn't save the changes.",
+    "emailRequired": "Enter an email.",
+    "inviteEmailHint": "They'll get an invite link"
   },
   "Analytics": {
     "title": "Analytics",
@@ -1789,6 +1906,7 @@
     "ytd": "YTD",
     "nav": {
       "overview": "Overview",
+      "team": "Team",
       "cohorts": "Cohorts",
       "funnel": "Funnel"
     },

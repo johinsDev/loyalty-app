@@ -19,7 +19,6 @@ export const listQueryBase = z.object({
    *  per-feature whitelist in the repository (unknown ids are ignored). */
   sort: z.array(sortItemSchema).max(5).default([]),
 });
-export type ListQueryBase = z.infer<typeof listQueryBase>;
 
 export interface ListResult<T> {
   rows: T[];

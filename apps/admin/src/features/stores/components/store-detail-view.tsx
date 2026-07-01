@@ -45,80 +45,115 @@ export function StoreDetailView({
     { open: string; close: string; closed: boolean } | undefined
   > | null;
 
-  return (
-    <div className={variant === "modal" ? "space-y-5 p-1" : "space-y-5"}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="font-display truncate text-xl font-semibold tracking-tight">
-            {store.name || t("namePlaceholder")}
-          </h2>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {store.status === "draft" ? (
-              <Badge variant="outline">{t("draft")}</Badge>
-            ) : (
-              <Badge>{t("published")}</Badge>
-            )}
-            {store.isPrimary ? <Badge variant="secondary">{t("primary")}</Badge> : null}
-          </div>
+  const header = (
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h2 className="font-display truncate text-xl font-semibold tracking-tight">
+          {store.name || t("namePlaceholder")}
+        </h2>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {store.status === "draft" ? (
+            <Badge variant="outline">{t("draft")}</Badge>
+          ) : (
+            <Badge>{t("published")}</Badge>
+          )}
+          {store.isPrimary ? <Badge variant="secondary">{t("primary")}</Badge> : null}
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-9 shrink-0 gap-1.5 rounded-xl"
-          onClick={() => router.push({ pathname: "/stores/[id]/edit", params: { id: store.id } })}
-        >
-          <Pencil className="size-4" />
-          {t("edit")}
-        </Button>
       </div>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-9 shrink-0 gap-1.5 rounded-xl"
+        onClick={() => router.push({ pathname: "/stores/[id]/edit", params: { id: store.id } })}
+      >
+        <Pencil className="size-4" />
+        {t("edit")}
+      </Button>
+    </div>
+  );
 
-      <StoreAddressPreview
-        address={store.addressParts ?? null}
-        name={store.name}
-        mapStaticUrl={store.mapStaticUrl}
-        labels={{ title: t("previewTitle"), empty: t("previewEmpty") }}
-      />
+  const addressBlock = (
+    <StoreAddressPreview
+      address={store.addressParts ?? null}
+      name={store.name}
+      mapStaticUrl={store.mapStaticUrl}
+      labels={{ title: t("previewTitle"), empty: t("previewEmpty") }}
+    />
+  );
 
-      <section className="space-y-2">
-        <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase">
-          <Clock className="size-3.5" />
-          {t("fieldHours")}
-        </p>
-        {hours ? (
-          <div className="bg-card border-border divide-border divide-y rounded-2xl border">
-            {DAY_ORDER.map((d) => {
-              const h = hours[String(d)];
-              return (
-                <div key={d} className="flex items-center justify-between px-4 py-2 text-sm">
-                  <span className="font-medium">{t(`day.${DAY_KEY[d]}`)}</span>
-                  <span className="text-muted-foreground">
-                    {!h || h.closed ? t("closed") : `${h.open}–${h.close}`}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-muted-foreground text-sm">{t("inheritHoursHint")}</p>
-        )}
-      </section>
+  const hoursBlock = (
+    <section className="space-y-2">
+      <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase">
+        <Clock className="size-3.5" />
+        {t("fieldHours")}
+      </p>
+      {hours ? (
+        <div className="bg-card border-border divide-border divide-y rounded-2xl border">
+          {DAY_ORDER.map((d) => {
+            const h = hours[String(d)];
+            return (
+              <div key={d} className="flex items-center justify-between px-4 py-2 text-sm">
+                <span className="font-medium">{t(`day.${DAY_KEY[d]}`)}</span>
+                <span className="text-muted-foreground">
+                  {!h || h.closed ? t("closed") : `${h.open}–${h.close}`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-sm">{t("inheritHoursHint")}</p>
+      )}
+    </section>
+  );
 
-      <section className="space-y-2">
-        <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase">
-          <Phone className="size-3.5" />
-          {t("fieldPhone")}
-        </p>
-        <p className="text-sm">
-          {store.phone || <span className="text-muted-foreground">{t("inheritPhone")}</span>}
-        </p>
-      </section>
+  const contactBlock = (
+    <section className="space-y-2">
+      <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase">
+        <Phone className="size-3.5" />
+        {t("fieldPhone")}
+      </p>
+      <p className="text-sm">
+        {store.phone || <span className="text-muted-foreground">{t("inheritPhone")}</span>}
+      </p>
+    </section>
+  );
 
-      <dl className="text-muted-foreground grid grid-cols-2 gap-y-1 text-sm">
-        <dt>{t("fieldPublished")}</dt>
-        <dd className="text-right">{store.isPublished ? t("yes") : t("no")}</dd>
-        <dt>{t("colCreated")}</dt>
-        <dd className="text-right">{formatDate(store.createdAt, { locale })}</dd>
-      </dl>
+  const metaBlock = (
+    <dl className="text-muted-foreground grid grid-cols-2 gap-y-1 text-sm">
+      <dt>{t("fieldPublished")}</dt>
+      <dd className="text-right">{store.isPublished ? t("yes") : t("no")}</dd>
+      <dt>{t("colCreated")}</dt>
+      <dd className="text-right">{formatDate(store.createdAt, { locale })}</dd>
+    </dl>
+  );
+
+  if (variant === "modal") {
+    return (
+      <div className="max-h-[85dvh] space-y-5 overflow-y-auto p-5">
+        {header}
+        {addressBlock}
+        {hoursBlock}
+        {contactBlock}
+        {metaBlock}
+      </div>
+    );
+  }
+
+  // Page — fills the admin container with a 2-column layout on desktop.
+  return (
+    <div className="space-y-6">
+      {header}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
+          {addressBlock}
+          {hoursBlock}
+        </div>
+        <div className="bg-card border-border h-fit space-y-5 rounded-3xl border p-5 shadow-sm">
+          {contactBlock}
+          <div className="border-border border-t pt-4">{metaBlock}</div>
+        </div>
+      </div>
     </div>
   );
 }

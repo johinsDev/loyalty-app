@@ -41,6 +41,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { buildStoresInput } from "../list-params";
+import { StoreDetailModal } from "./store-detail-modal";
 import { StoreRowActions } from "./store-row-actions";
 
 const STATUS_VALUES = ["draft", "published"] as const;
@@ -67,6 +68,7 @@ export function StoresView({ initialData }: { initialData?: StoreListResult }) {
   const [page] = useQueryState("page", tableParsers.page);
   const [perPage] = useQueryState("perPage", tableParsers.perPage);
   const [view, setView] = useQueryState("view", tableParsers.view);
+  const [detailId, setDetailId] = useQueryState("detalle", parseAsString);
 
   const resetPage = () => void setPage(1);
 
@@ -148,7 +150,7 @@ export function StoresView({ initialData }: { initialData?: StoreListResult }) {
           <button
             type="button"
             className="hover:text-primary cursor-pointer text-left font-semibold hover:underline"
-            onClick={() => router.push({ pathname: "/stores/[id]", params: { id: row.original.id } })}
+            onClick={() => void setDetailId(row.original.id)}
           >
             {row.original.name || t("namePlaceholder")}
           </button>
@@ -216,7 +218,7 @@ export function StoresView({ initialData }: { initialData?: StoreListResult }) {
         cell: ({ row }) => <StoreRowActions store={row.original} />,
       },
     ],
-    [t, locale, router],
+    [t, locale, setDetailId],
   );
 
   const { table, selectedIds, resetSelection } = useDataTable<StoreListItem>({
@@ -405,11 +407,11 @@ export function StoresView({ initialData }: { initialData?: StoreListResult }) {
                   role="button"
                   tabIndex={0}
                   className="bg-card border-border hover:border-primary/40 cursor-pointer rounded-3xl border p-4 shadow-sm transition-colors"
-                  onClick={() => router.push({ pathname: "/stores/[id]", params: { id: s.id } })}
+                  onClick={() => void setDetailId(s.id)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      router.push({ pathname: "/stores/[id]", params: { id: s.id } });
+                      void setDetailId(s.id);
                     }
                   }}
                 >
@@ -486,6 +488,8 @@ export function StoresView({ initialData }: { initialData?: StoreListResult }) {
         busy={bulkRemove.isPending}
         onConfirm={onBulkDelete}
       />
+
+      <StoreDetailModal id={detailId} onClose={() => void setDetailId(null)} />
     </div>
   );
 }

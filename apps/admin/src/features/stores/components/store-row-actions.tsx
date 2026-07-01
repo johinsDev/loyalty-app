@@ -17,6 +17,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Eye, MoreHorizontal, Pencil, Star, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { parseAsString, useQueryState } from "nuqs";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -30,6 +31,7 @@ export function StoreRowActions({ store }: { store: { id: string; name: string; 
   const trpc = useTRPC();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [, setDetailId] = useQueryState("detalle", parseAsString);
   const [open, setOpen] = useState(false);
   const { register, handleSubmit, watch, reset } = useForm<{ confirm: string }>({
     defaultValues: { confirm: "" },
@@ -66,9 +68,7 @@ export function StoreRowActions({ store }: { store: { id: string; name: string; 
           <MoreHorizontal className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-40">
-          <DropdownMenuItem
-            onClick={() => router.push({ pathname: "/stores/[id]", params: { id: store.id } })}
-          >
+          <DropdownMenuItem onClick={() => void setDetailId(store.id)}>
             <Eye className="size-4" />
             {t("viewDetail")}
           </DropdownMenuItem>
