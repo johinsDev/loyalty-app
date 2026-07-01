@@ -24,6 +24,7 @@ import type {
   CountReachInput,
   RenderPreviewInput,
   RenderedPreview,
+  SaveTemplateInput,
 } from "./schemas";
 import { entityRefs, renderTemplate, type Token } from "./templating";
 import { campaignWizard } from "./wizard";
@@ -282,6 +283,18 @@ export class CampaignsService {
 
   async bulkRemove(orgId: string, ids: string[]): Promise<{ ok: true }> {
     await this.repo.bulkRemove(orgId, ids);
+    return { ok: true };
+  }
+
+  // ─── Saved templates ──────────────────────────────────────────────────────
+  listTemplates(orgId: string) {
+    return this.repo.listTemplates(orgId);
+  }
+  saveTemplate(orgId: string, userId: string, input: SaveTemplateInput) {
+    return this.repo.createTemplate(orgId, userId, input);
+  }
+  async deleteTemplate(orgId: string, id: string): Promise<{ ok: true }> {
+    await this.repo.deleteTemplate(orgId, id);
     return { ok: true };
   }
 

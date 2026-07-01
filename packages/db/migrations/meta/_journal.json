@@ -190,6 +190,13 @@
       "when": 1782934684830,
       "tag": "0026_wandering_inhumans",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1782947915587,
+      "tag": "0027_glossy_maddog",
+      "breakpoints": true
     }
   ]
 }

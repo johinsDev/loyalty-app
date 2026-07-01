@@ -2,6 +2,7 @@ import type { db as Db } from "@loyalty/db";
 import {
   campaign,
   campaignSend,
+  campaignTemplate,
   customer,
   notificationPreference,
   organizationSettings,
@@ -37,6 +38,7 @@ import type {
   CampaignFunnel,
   CampaignListItem,
   CampaignsListInput,
+  SaveTemplateInput,
 } from "./schemas";
 
 /** Everything the send job needs per recipient to pick a channel + render vars. */
@@ -660,6 +662,56 @@ export class CampaignsRepository {
         ),
       );
     return rows.map((r) => r.id);
+  }
+
+  // ─── Saved templates ──────────────────────────────────────────────────────
+  async listTemplates(orgId: string) {
+    return this.db
+      .select({
+        id: campaignTemplate.id,
+        name: campaignTemplate.name,
+        message: campaignTemplate.message,
+        channelPriority: campaignTemplate.channelPriority,
+        updatedAt: campaignTemplate.updatedAt,
+      })
+      .from(campaignTemplate)
+      .where(eq(campaignTemplate.organizationId, orgId))
+      .orderBy(desc(campaignTemplate.updatedAt));
+  }
+
+  async createTemplate(
+    orgId: string,
+    userId: string,
+    input: SaveTemplateInput,
+  ): Promise<{ id: string }> {
+    const [row] = await this.db
+      .insert(campaignTemplate)
+      .values({
+        organizationId: orgId,
+        createdByUserId: userId,
+        name: input.name,
+        message: input.message,
+        channelPriority: input.channelPriority ?? null,
+      })
+      .returning({ id: campaignTemplate.id });
+    if (!row) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "createTemplate returned no row",
+      });
+    }
+    return row;
+  }
+
+  async deleteTemplate(orgId: string, id: string): Promise<void> {
+    await this.db
+      .delete(campaignTemplate)
+      .where(
+        and(
+          eq(campaignTemplate.organizationId, orgId),
+          eq(campaignTemplate.id, id),
+        ),
+      );
   }
 
   #first(rows: CampaignRow[], op: string): CampaignRow {

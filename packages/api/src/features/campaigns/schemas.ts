@@ -96,6 +96,24 @@ export const CAMPAIGN_STEP_KEYS = [
 ] as const;
 export type CampaignStepKey = (typeof CAMPAIGN_STEP_KEYS)[number];
 
+// ─── Saved templates (org-scoped reusable messages) ─────────────────────────
+export const templateMessageSchema = z.object({
+  push: pushContentSchema.optional(),
+  email: emailContentSchema.optional(),
+  sms: smsContentSchema.optional(),
+  whatsapp: whatsappContentSchema.optional(),
+});
+export const saveTemplateSchema = z.object({
+  name: z.string().min(1).max(80),
+  message: templateMessageSchema.refine(
+    (m) => !!(m.push || m.email || m.sms || m.whatsapp),
+    { message: "La plantilla necesita al menos un canal con contenido" },
+  ),
+  channelPriority: z.array(campaignChannelSchema).optional(),
+});
+export type SaveTemplateInput = z.infer<typeof saveTemplateSchema>;
+export const deleteTemplateSchema = z.object({ id: z.string().uuid() });
+
 // ─── Admin IO ────────────────────────────────────────────────────────────────
 export const getStateInputSchema = z.object({ id: z.string().uuid() });
 export const publishInputSchema = z.object({ id: z.string().uuid() });

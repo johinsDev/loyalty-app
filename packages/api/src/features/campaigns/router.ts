@@ -8,12 +8,14 @@ import {
   bulkIdsSchema,
   campaignsListInputSchema,
   countReachInputSchema,
+  deleteTemplateSchema,
   getStateInputSchema,
   pauseInputSchema,
   publishInputSchema,
   removeInputSchema,
   renderPreviewInputSchema,
   retryInputSchema,
+  saveTemplateSchema,
 } from "./schemas";
 import { CampaignsService } from "./service";
 
@@ -108,5 +110,20 @@ export const campaignsRouter = router({
     .input(bulkIdsSchema)
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).bulkRemove(await requireOrg(), input.ids),
+    ),
+
+  // ─── Saved templates (org-scoped reusable messages) ───────────────────────
+  templateList: managerProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).listTemplates(await requireOrg()),
+  ),
+  saveTemplate: managerProcedure
+    .input(saveTemplateSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).saveTemplate(await requireOrg(), ctx.session.user.id, input),
+    ),
+  deleteTemplate: managerProcedure
+    .input(deleteTemplateSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).deleteTemplate(await requireOrg(), input.id),
     ),
 });

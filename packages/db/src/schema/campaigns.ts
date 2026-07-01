@@ -179,6 +179,42 @@ export const campaignSend = sqliteTable(
 export type CampaignSendRow = typeof campaignSend.$inferSelect;
 export type CampaignSendInsert = typeof campaignSend.$inferInsert;
 
+/**
+ * `campaign_template` — a reusable, org-scoped saved message. The admin builds
+ * a message in the wizard, saves it by name, and later loads it into a new
+ * campaign's message step. Purely a convenience over the built-in code presets;
+ * stores the per-channel content + channel priority, nothing campaign-specific.
+ */
+export const campaignTemplate = sqliteTable(
+  "campaign_template",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    message: text("message", { mode: "json" }).$type<CampaignMessage>().notNull(),
+    channelPriority: text("channel_priority", { mode: "json" }).$type<string[]>(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    byOrg: index("campaign_template_org_idx").on(t.organizationId),
+  }),
+);
+
+export type CampaignTemplateRow = typeof campaignTemplate.$inferSelect;
+export type CampaignTemplateInsert = typeof campaignTemplate.$inferInsert;
+
 export const campaignRelations = relations(campaign, ({ one, many }) => ({
   organization: one(organization, {
     fields: [campaign.organizationId],

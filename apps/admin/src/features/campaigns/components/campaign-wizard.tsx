@@ -47,6 +47,7 @@ import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 
 import { CAMPAIGN_PRESETS, type CampaignPreset } from "../presets";
 import { CampaignEntityModal } from "./campaign-entity-modal";
+import { CampaignTemplates, type LoadedTemplate } from "./campaign-templates";
 import { CampaignMessagePreview, type PreviewMessage } from "./campaign-message-preview";
 
 const STEPS = ["definition", "message", "audience", "schedule"] as const;
@@ -226,6 +227,23 @@ export function CampaignWizard({ id }: { id?: string }) {
       channelPriority:
         f.channelPriority.length > 0
           ? f.channelPriority
+          : CHANNELS.filter((c) => isChannelComplete(message, c)),
+    }));
+    setDirty(true);
+  };
+
+  // Load a saved template — replaces the message + channel priority outright.
+  const applyTemplate = (tpl: LoadedTemplate) => {
+    const message = toFormMessage((tpl.message as CampaignPreset["message"]) ?? null);
+    const channelPriority = (tpl.channelPriority ?? []).filter((x): x is Channel =>
+      (CHANNELS as readonly string[]).includes(x),
+    );
+    setForm((f) => ({
+      ...f,
+      message,
+      channelPriority:
+        channelPriority.length > 0
+          ? channelPriority
           : CHANNELS.filter((c) => isChannelComplete(message, c)),
     }));
     setDirty(true);
@@ -621,6 +639,13 @@ export function CampaignWizard({ id }: { id?: string }) {
                 ))}
               </div>
             </div>
+
+            <CampaignTemplates
+              getMessage={() => buildMessageInput(form.message)}
+              getChannelPriority={() => form.channelPriority}
+              canSave={valid.message}
+              onLoad={applyTemplate}
+            />
 
             <div className="space-y-1.5">
               <Label className="text-xs">{t("tokensLabel")}</Label>
