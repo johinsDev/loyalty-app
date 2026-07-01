@@ -2,9 +2,7 @@
 
 import { formatDate } from "@loyalty/date";
 import {
-  Badge,
   BackgroundPicker,
-  Button,
   Checkbox,
   DatePicker,
   Input,
@@ -19,7 +17,6 @@ import {
   Switch,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -43,7 +40,6 @@ type ScopeKind = (typeof SCOPES)[number];
 const TIERS = ["hoja", "flor", "oro"] as const;
 type TierKey = (typeof TIERS)[number];
 type AudienceType = "all" | "tier" | "specific";
-const CHANNELS = ["push", "database", "realtime"] as const;
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
 const centsToUnits = (c: number | null | undefined): number | undefined =>
@@ -134,8 +130,7 @@ function slugify(s: string): string {
 /**
  * Promotion editor (content → design → benefit → rules → schedule → review). On
  * "new" it creates a draft immediately; each Next persists the relevant fields
- * via `promociones.update`, and Finish publishes. The schedule step manages
- * scheduled notifications (one-shot or weekly), delivered by Trigger.dev.
+ * via `promociones.update`, and Finish publishes.
  */
 export function PromoWizard({ id }: { id?: string }) {
   const t = useTranslations("Promotions");
@@ -657,7 +652,6 @@ export function PromoWizard({ id }: { id?: string }) {
               />
             </Field>
           </div>
-          {promoId ? <NotificationsPanel promoId={promoId} /> : null}
         </div>
       ) : (
         <div className="space-y-3">
@@ -765,178 +759,6 @@ function CustomerPicker({
           {t("selectedCount", { n: selected.length })}
         </p>
       ) : null}
-    </div>
-  );
-}
-
-/** Scheduled-notifications manager for a promo (one-shot or weekly). */
-function NotificationsPanel({ promoId }: { promoId: string }) {
-  const t = useTranslations("Promotions");
-  const locale = useLocale();
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
-
-  const list = useQuery(trpc.promociones.notifications.list.queryOptions({ promoId }));
-  const invalidate = () =>
-    queryClient.invalidateQueries(trpc.promociones.notifications.list.queryFilter({ promoId }));
-  const create = useMutation(
-    trpc.promociones.notifications.create.mutationOptions({ onSuccess: () => invalidate() }),
-  );
-  const cancel = useMutation(
-    trpc.promociones.notifications.cancel.mutationOptions({ onSuccess: () => invalidate() }),
-  );
-
-  const [audienceType, setAudienceType] = useState<AudienceType>("all");
-  const [tierKey, setTierKey] = useState<TierKey>("oro");
-  const [channels, setChannels] = useState<string[]>(["push", "database", "realtime"]);
-  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
-  const [repeat, setRepeat] = useState<"none" | "weekly">("none");
-  const [selected, setSelected] = useState<string[]>([]);
-
-  const toggleChannel = (c: string) =>
-    setChannels((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
-
-  const onAdd = () => {
-    if (channels.length === 0) return toast.error(t("notify.needChannel"));
-    if (repeat === "weekly" && !scheduledAt) return toast.error(t("notify.needSchedule"));
-    create.mutate(
-      {
-        promoId,
-        audienceType,
-        tierKey: audienceType === "tier" ? tierKey : undefined,
-        customerIds: audienceType === "specific" ? selected : undefined,
-        channels: channels as ("push" | "database" | "realtime")[],
-        scheduledAt: scheduledAt ?? undefined,
-        repeat,
-      },
-      {
-        onSuccess: () => {
-          toast.success(t("notify.added"));
-          setSelected([]);
-        },
-        onError: () => toast.error(t("notify.addError")),
-      },
-    );
-  };
-
-  return (
-    <div className="border-border space-y-4 rounded-2xl border p-4">
-      <div className="flex items-center gap-2">
-        <Bell className="text-muted-foreground size-4" />
-        <h3 className="text-sm font-bold">{t("notify.title")}</h3>
-      </div>
-
-      {(list.data ?? []).length > 0 ? (
-        <ul className="space-y-2">
-          {list.data!.map((n) => (
-            <li
-              key={n.id}
-              className="bg-muted/40 flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-semibold">
-                  {n.audienceType === "all"
-                    ? t("audience.all")
-                    : n.audienceType === "tier"
-                      ? `${t("audience.tier")} · ${n.tierKey}`
-                      : `${t("audience.specific")} · ${n.customerCount ?? 0}`}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {n.channels.join(", ")} ·{" "}
-                  {n.scheduledAt ? formatDate(n.scheduledAt, { locale }) : t("notify.now")}
-                  {n.repeat === "weekly" ? ` · ${t("notify.weekly")}` : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{t(`notify.status.${n.status}`)}</Badge>
-                {n.status === "scheduled" ? (
-                  <Button
-                    variant="ghost"
-                    className="size-7 rounded-lg p-0"
-                    aria-label={t("notify.cancel")}
-                    onClick={() => cancel.mutate({ id: n.id })}
-                  >
-                    <X className="size-4" />
-                  </Button>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-muted-foreground text-xs">{t("notify.empty")}</p>
-      )}
-
-      <div className="space-y-3 border-t border-dashed pt-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label={t("notify.audience")}>
-            <Select value={audienceType} onValueChange={(v) => setAudienceType((v as AudienceType) ?? "all")}>
-              <SelectTrigger size="lg" className="w-full text-sm">
-                <SelectValue>{(v) => t(`audience.${v as string}`)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("audience.all")}</SelectItem>
-                <SelectItem value="tier">{t("audience.tier")}</SelectItem>
-                <SelectItem value="specific">{t("audience.specific")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-          {audienceType === "tier" ? (
-            <Field label={t("tier")}>
-              <Select value={tierKey} onValueChange={(v) => setTierKey((v as TierKey) ?? "oro")}>
-                <SelectTrigger size="lg" className="w-full text-sm">
-                  <SelectValue>{(v) => v as string}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {TIERS.map((tier) => (
-                    <SelectItem key={tier} value={tier}>
-                      {tier}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          ) : null}
-          <Field label={t("notify.when")} hint={t("notify.now")}>
-            <DatePicker
-              value={scheduledAt ?? undefined}
-              onValueChange={(d) => setScheduledAt(d ?? null)}
-              placeholder={t("notify.now")}
-              formatLabel={(d) => formatDate(d, { locale })}
-            />
-          </Field>
-          <Field label={t("notify.repeat")}>
-            <Select value={repeat} onValueChange={(v) => setRepeat((v as "none" | "weekly") ?? "none")}>
-              <SelectTrigger size="lg" className="w-full text-sm">
-                <SelectValue>{(v) => t(`notify.repeat_${v as string}`)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">{t("notify.repeat_none")}</SelectItem>
-                <SelectItem value="weekly">{t("notify.repeat_weekly")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-        </div>
-
-        {audienceType === "specific" ? (
-          <CustomerPicker selected={selected} onChange={setSelected} />
-        ) : null}
-
-        <Field label={t("notify.channels")}>
-          <div className="flex flex-wrap gap-3">
-            {CHANNELS.map((c) => (
-              <label key={c} className="flex items-center gap-2 text-sm font-semibold">
-                <Checkbox checked={channels.includes(c)} onCheckedChange={() => toggleChannel(c)} />
-                {t(`notify.ch.${c}`)}
-              </label>
-            ))}
-          </div>
-        </Field>
-
-        <Button className="h-10 rounded-xl" onClick={onAdd} disabled={create.isPending}>
-          {scheduledAt ? t("notify.schedule") : t("notify.sendNow")}
-        </Button>
-      </div>
     </div>
   );
 }

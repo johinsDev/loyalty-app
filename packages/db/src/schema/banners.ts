@@ -6,10 +6,10 @@ import { organization } from "./auth";
 // Banners: first-class promotional / announcement cards (not necessarily a promo
 // — also new hours, new drinks, a new store). Multi-tenant (org-scoped). Admin
 // authors them (name, slug, background image|gradient|pattern, main image, short
-// + long tiptap description, optional CTA, display window, scheduled
-// notifications). The customer sees a home rail; tapping a banner with a CTA goes
-// straight to the target, otherwise it opens the detail (intercepted modal + RSC
-// page for SEO). v1 is auth-gated but written public-ready.
+// + long tiptap description, optional CTA, display window). The customer sees a
+// home rail; tapping a banner with a CTA goes straight to the target, otherwise
+// it opens the detail (intercepted modal + RSC page for SEO). v1 is auth-gated
+// but written public-ready.
 
 export const banner = sqliteTable(
   "banner",
@@ -68,51 +68,10 @@ export const banner = sqliteTable(
   }),
 );
 
-// Scheduled notification spec for a banner. Trigger.dev owns execution: we store
-// the spec + the delayed-run id so the admin can list/edit/cancel. `status` is a
-// lightweight mirror (the source of truth lives in Trigger).
-export const bannerNotification = sqliteTable(
-  "banner_notification",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    bannerId: text("banner_id")
-      .notNull()
-      .references(() => banner.id, { onDelete: "cascade" }),
-    audienceType: text("audience_type").notNull(), // all | tier | specific
-    // JSON: tier → "oro"; specific → ["c_1","c_2"]; all → null.
-    audienceValue: text("audience_value"),
-    // JSON array of channels, e.g. ["push","database","realtime"].
-    channels: text("channels").notNull(),
-    // null = send immediately ("now").
-    scheduledAt: integer("scheduled_at", { mode: "timestamp" }),
-    runId: text("run_id"),
-    status: text("status").notNull().default("scheduled"), // scheduled | sent | canceled | failed
-    createdAt: integer("created_at", { mode: "timestamp" })
-      .notNull()
-      .$defaultFn(() => new Date()),
-    updatedAt: integer("updated_at", { mode: "timestamp" })
-      .notNull()
-      .$defaultFn(() => new Date()),
-  },
-  (t) => ({
-    byBanner: index("banner_notification_banner_idx").on(t.bannerId),
-  }),
-);
-
-export const bannerRelations = relations(banner, ({ one, many }) => ({
+export const bannerRelations = relations(banner, ({ one }) => ({
   organization: one(organization, {
     fields: [banner.organizationId],
     references: [organization.id],
-  }),
-  notifications: many(bannerNotification),
-}));
-
-export const bannerNotificationRelations = relations(bannerNotification, ({ one }) => ({
-  banner: one(banner, {
-    fields: [bannerNotification.bannerId],
-    references: [banner.id],
   }),
 }));
 
@@ -168,6 +127,4 @@ export type BannerTranslationRow = typeof bannerTranslation.$inferSelect;
 
 export type BannerRow = typeof banner.$inferSelect;
 export type BannerInsert = typeof banner.$inferInsert;
-export type BannerNotificationRow = typeof bannerNotification.$inferSelect;
-export type BannerNotificationInsert = typeof bannerNotification.$inferInsert;
 export type BannerDailyStatRow = typeof bannerDailyStat.$inferSelect;

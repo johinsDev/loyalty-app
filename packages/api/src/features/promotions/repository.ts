@@ -4,13 +4,10 @@ import {
   pointsAccount,
   productCategory,
   promo,
-  promoNotification,
   promoRedemption,
   promoTranslation,
   purchase,
   type PromoInsert,
-  type PromoNotificationInsert,
-  type PromoNotificationRow,
   type PromoRow,
   type PromoTranslationRow,
 } from "@loyalty/db/schema";
@@ -293,83 +290,6 @@ export class PromoRepository {
       map.set(r.productId, arr);
     }
     return map;
-  }
-
-  // ── Audience resolution (for notifications) ─────────────────────────────────
-  async listActiveCustomerIds(orgId: string): Promise<string[]> {
-    const rows = await this.db
-      .select({ id: customer.id })
-      .from(customer)
-      .where(eq(customer.organizationId, orgId));
-    return rows.map((r) => r.id);
-  }
-
-  async listCustomerIdsByTier(orgId: string, tierKey: string): Promise<string[]> {
-    const rows = await this.db
-      .select({ id: pointsAccount.customerId })
-      .from(pointsAccount)
-      .where(
-        and(eq(pointsAccount.organizationId, orgId), eq(pointsAccount.currentTierKey, tierKey)),
-      );
-    return rows.map((r) => r.id);
-  }
-
-  // ── Notifications ───────────────────────────────────────────────────────────
-  async createNotification(values: PromoNotificationInsert): Promise<PromoNotificationRow> {
-    const rows = await this.db.insert(promoNotification).values(values).returning();
-    return rows[0]!;
-  }
-  async listNotifications(promoId: string): Promise<PromoNotificationRow[]> {
-    return this.db
-      .select()
-      .from(promoNotification)
-      .where(eq(promoNotification.promoId, promoId))
-      .orderBy(desc(promoNotification.createdAt));
-  }
-  async getNotification(id: string): Promise<PromoNotificationRow | null> {
-    const rows = await this.db
-      .select()
-      .from(promoNotification)
-      .where(eq(promoNotification.id, id))
-      .limit(1);
-    return rows[0] ?? null;
-  }
-  async setNotificationRun(id: string, runId: string | null): Promise<void> {
-    await this.db
-      .update(promoNotification)
-      .set({ runId, updatedAt: new Date() })
-      .where(eq(promoNotification.id, id));
-  }
-  async setNotificationStatus(id: string, status: string): Promise<void> {
-    await this.db
-      .update(promoNotification)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(promoNotification.id, id));
-  }
-  /** Weekly recurring notifications due to fire (for the daily cron). */
-  async dueRecurringNotifications(now: Date): Promise<PromoNotificationRow[]> {
-    return this.db
-      .select()
-      .from(promoNotification)
-      .where(
-        and(
-          eq(promoNotification.repeat, "weekly"),
-          eq(promoNotification.status, "scheduled"),
-          lte(promoNotification.scheduledAt, now),
-        ),
-      );
-  }
-  /** Promo by id without org scope (the recurring cron has no org on the row). */
-  async findPromoUnscoped(promoId: string): Promise<PromoRow | null> {
-    const rows = await this.db.select().from(promo).where(eq(promo.id, promoId)).limit(1);
-    return rows[0] ?? null;
-  }
-
-  async bumpNotificationSchedule(id: string, nextAt: Date): Promise<void> {
-    await this.db
-      .update(promoNotification)
-      .set({ scheduledAt: nextAt, updatedAt: new Date() })
-      .where(eq(promoNotification.id, id));
   }
 
   /** Verify a customer belongs to the org (for the apply flow). */

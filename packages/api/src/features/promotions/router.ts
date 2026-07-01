@@ -6,11 +6,8 @@ import { managerProcedure, publicProcedure, router, staffProcedure } from "../..
 import { PromoRepository } from "./repository";
 import {
   applicableInputSchema,
-  cancelNotificationInputSchema,
-  createNotificationInputSchema,
   idInputSchema,
   listInputSchema,
-  listNotificationsInputSchema,
   publicListInputSchema,
   slugInputSchema,
   updateInputSchema,
@@ -75,20 +72,5 @@ export const promocionesRouter = router({
     const id = await requireOrg();
     const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
     return makeService(ctx.db).applicable(id, input.customerId, input.cart, lc);
-  }),
-
-  // ── Notifications (managers) ───────────────────────────────────────────────
-  notifications: router({
-    list: managerProcedure
-      .input(listNotificationsInputSchema)
-      .query(async ({ ctx, input }) => makeService(ctx.db).listNotifications(input.promoId)),
-    create: managerProcedure
-      .input(createNotificationInputSchema)
-      .mutation(async ({ ctx, input }) =>
-        makeService(ctx.db).createNotification(await requireOrg(), input),
-      ),
-    cancel: managerProcedure
-      .input(cancelNotificationInputSchema)
-      .mutation(async ({ ctx, input }) => makeService(ctx.db).cancelNotification(input.id)),
   }),
 });

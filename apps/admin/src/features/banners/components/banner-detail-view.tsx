@@ -4,7 +4,7 @@ import type { AppRouter } from "@loyalty/api";
 import { formatDate } from "@loyalty/date";
 import { Badge, Button } from "@loyalty/ui";
 import type { inferRouterOutputs } from "@trpc/server";
-import { Bell, MousePointerClick, Pencil, Users } from "lucide-react";
+import { MousePointerClick, Pencil, Users } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
@@ -27,7 +27,7 @@ const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 /**
  * Read-only banner summary — rendered as the `?detalle=` modal (over the list)
  * and as the full `/banners/[id]` page. Shows the rendered banner preview,
- * schedule, CTR stats and its notifications. "Editar" → `/banners/[id]/edit`.
+ * schedule and CTR stats. "Editar" → `/banners/[id]/edit`.
  */
 export function BannerDetailView({
   banner,
@@ -111,7 +111,7 @@ export function BannerDetailView({
   );
 
   const kpis = (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
       <Kpi icon={<Users className="size-4" />} label={t("statImpressions")} value={banner.stats.impressions} />
       <Kpi
         icon={<MousePointerClick className="size-4" />}
@@ -119,7 +119,6 @@ export function BannerDetailView({
         value={banner.stats.clicks}
       />
       <Kpi label={t("statCtr")} value={pct(banner.stats.ctr)} />
-      <Kpi icon={<Bell className="size-4" />} label={t("statReach")} value={banner.stats.reach} />
     </div>
   );
 
@@ -140,40 +139,6 @@ export function BannerDetailView({
     </section>
   );
 
-  const notificationsBlock = (
-    <section className="space-y-2">
-      <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase">
-        <Bell className="size-3.5" />
-        {t("notify.title")}
-      </p>
-      {banner.notifications.length > 0 ? (
-        <div className="bg-card border-border divide-border divide-y rounded-2xl border">
-          {banner.notifications.map((n) => (
-            <div key={n.id} className="flex items-center justify-between gap-2 px-4 py-2.5 text-sm">
-              <div className="min-w-0">
-                <p className="font-medium">
-                  {n.audienceType === "all"
-                    ? t("notify.audAll")
-                    : n.audienceType === "tier"
-                      ? `${t("notify.audTier")} · ${n.tierKey ?? ""}`
-                      : `${t("notify.audSpecific")} · ${n.customerCount ?? 0}`}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {n.channels.map((c) => t(`notify.ch.${c}`)).join(" · ")}
-                  {" · "}
-                  {n.scheduledAt ? formatDate(n.scheduledAt, { locale }) : t("notify.now")}
-                </p>
-              </div>
-              <Badge variant="outline">{t(`notify.status.${n.status}`)}</Badge>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-muted-foreground text-sm">{t("notify.empty")}</p>
-      )}
-    </section>
-  );
-
   if (variant === "modal") {
     return (
       <div className="max-h-[85dvh] space-y-5 overflow-y-auto p-5">
@@ -181,7 +146,6 @@ export function BannerDetailView({
         {preview}
         {statsBlock}
         {scheduleBlock}
-        {notificationsBlock}
       </div>
     );
   }
@@ -196,7 +160,6 @@ export function BannerDetailView({
         </div>
         <div className="bg-card border-border h-fit space-y-5 rounded-3xl border p-5 shadow-sm">
           {scheduleBlock}
-          <div className="border-border border-t pt-4">{notificationsBlock}</div>
         </div>
       </div>
     </div>

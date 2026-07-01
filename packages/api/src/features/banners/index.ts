@@ -15,7 +15,6 @@ export {
   type BannerCard,
   type BannerDetail,
   type BannerDisplayState,
-  type BannerNotificationView,
   type BannerStepKey,
   type ContentStepInput,
   type DesignStepInput,

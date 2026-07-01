@@ -3,9 +3,7 @@
 import { formatDate } from "@loyalty/date";
 import {
   BackgroundPicker,
-  Badge,
   Button,
-  Checkbox,
   DatePicker,
   Input,
   Label,
@@ -21,11 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
-  TimeInput,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "ahooks";
-import { Bell, Check, Users, X } from "lucide-react";
+import { Check } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -38,13 +35,9 @@ import { useNavigationGuard } from "@/lib/use-unsaved-guard";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { CtaEntityPicker } from "./cta-entity-picker";
-import { CustomerCombobox } from "./customer-combobox";
 
 const STEPS = ["content", "design", "schedule", "review"] as const;
 type Step = (typeof STEPS)[number];
-
-const CHANNELS = ["push", "database", "realtime"] as const;
-const TIERS = ["hoja", "flor", "oro"] as const;
 
 type CtaTarget = "none" | "external" | "product" | "promo" | "reward";
 
@@ -116,8 +109,7 @@ function slugify(s: string): string {
 /**
  * Server-driven banner wizard (content → design → schedule → review). On "new"
  * it creates a draft immediately; each Next persists the step via the backend
- * `advance`, and Finish publishes. The schedule step also manages scheduled
- * notifications (Trigger.dev owns delivery).
+ * `advance`, and Finish publishes.
  */
 export function BannerWizard({ id }: { id?: string }) {
   const t = useTranslations("Banners");
@@ -504,7 +496,6 @@ export function BannerWizard({ id }: { id?: string }) {
               />
             </Field>
           </div>
-          {bannerId ? <NotificationsPanel bannerId={bannerId} /> : null}
         </div>
       ) : (
         <div className="space-y-3">
@@ -565,245 +556,6 @@ export function BannerWizard({ id }: { id?: string }) {
   );
 }
 
-/** Scheduled-notifications manager for a banner. */
-function NotificationsPanel({ bannerId }: { bannerId: string }) {
-  const t = useTranslations("Banners");
-  const locale = useLocale();
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
-
-  const list = useQuery(trpc.banners.notifications.list.queryOptions({ bannerId }));
-  const invalidate = () =>
-    queryClient.invalidateQueries(trpc.banners.notifications.list.queryFilter({ bannerId }));
-
-  const create = useMutation(
-    trpc.banners.notifications.create.mutationOptions({ onSuccess: () => invalidate() }),
-  );
-  const cancel = useMutation(
-    trpc.banners.notifications.cancel.mutationOptions({ onSuccess: () => invalidate() }),
-  );
-
-  const [audienceType, setAudienceType] = useState<"all" | "tier" | "specific">("all");
-  const [tierKey, setTierKey] = useState<(typeof TIERS)[number]>("oro");
-  const [channels, setChannels] = useState<string[]>(["push", "database", "realtime"]);
-  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
-  const [selected, setSelected] = useState<string[]>([]);
-
-  // Live reach = audience for the current selection minus marketing opt-outs.
-  const reach = useQuery({
-    ...trpc.banners.countByAudience.queryOptions({
-      audienceType,
-      ...(audienceType === "tier" ? { tierKey } : {}),
-      ...(audienceType === "specific" ? { customerIds: selected } : {}),
-    }),
-    enabled: audienceType !== "specific" || selected.length > 0,
-  });
-
-  const toggleChannel = (c: string) =>
-    setChannels((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
-
-  // Schedule = one Date holding day + time. Picking a day keeps the chosen time
-  // (defaults to 09:00); clearing it → null = "send now".
-  const timeStr = scheduledAt
-    ? `${String(scheduledAt.getHours()).padStart(2, "0")}:${String(scheduledAt.getMinutes()).padStart(2, "0")}`
-    : "09:00";
-  const setDate = (d: Date | undefined) => {
-    if (!d) return setScheduledAt(null);
-    const next = new Date(d);
-    next.setHours(scheduledAt?.getHours() ?? 9, scheduledAt?.getMinutes() ?? 0, 0, 0);
-    setScheduledAt(next);
-  };
-  const setTime = (value: string) => {
-    const [h, m] = value.split(":").map(Number);
-    const base = scheduledAt ? new Date(scheduledAt) : new Date();
-    base.setHours(h ?? 0, m ?? 0, 0, 0);
-    setScheduledAt(base);
-  };
-
-  const onAdd = () => {
-    if (channels.length === 0) {
-      toast.error(t("notify.needChannel"));
-      return;
-    }
-    create.mutate(
-      {
-        bannerId,
-        audienceType,
-        tierKey: audienceType === "tier" ? tierKey : undefined,
-        customerIds: audienceType === "specific" ? selected : undefined,
-        channels: channels as ("push" | "database" | "realtime")[],
-        scheduledAt: scheduledAt ?? undefined,
-      },
-      {
-        onSuccess: () => {
-          toast.success(t("notify.added"));
-          setSelected([]);
-        },
-        onError: () => toast.error(t("notify.addError")),
-      },
-    );
-  };
-
-  return (
-    <div className="border-border space-y-4 rounded-2xl border p-4">
-      <div className="flex items-center gap-2">
-        <Bell className="text-muted-foreground size-4" />
-        <h3 className="text-sm font-bold">{t("notify.title")}</h3>
-      </div>
-
-      {/* Existing notifications */}
-      {(list.data ?? []).length > 0 ? (
-        <ul className="space-y-2">
-          {list.data!.map((n) => (
-            <li
-              key={n.id}
-              className="bg-muted/40 flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-semibold">
-                  {n.audienceType === "all"
-                    ? t("notify.audAll")
-                    : n.audienceType === "tier"
-                      ? `${t("notify.audTier")} · ${n.tierKey}`
-                      : `${t("notify.audSpecific")} · ${n.customerCount ?? 0}`}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {n.channels.join(", ")} ·{" "}
-                  {n.scheduledAt ? formatDate(n.scheduledAt, { locale }) : t("notify.now")}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{t(`notify.status.${n.status}`)}</Badge>
-                {n.status === "scheduled" ? (
-                  <Button
-                    variant="ghost"
-                    className="size-7 rounded-lg p-0"
-                    aria-label={t("notify.cancel")}
-                    onClick={() => cancel.mutate({ id: n.id })}
-                  >
-                    <X className="size-4" />
-                  </Button>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-muted-foreground text-xs">{t("notify.empty")}</p>
-      )}
-
-      {/* Add form */}
-      <div className="space-y-3 border-t border-dashed pt-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label={t("notify.audience")}>
-            <Select
-              value={audienceType}
-              onValueChange={(v) => setAudienceType((v as typeof audienceType) ?? "all")}
-            >
-              <SelectTrigger size="lg" className="w-full text-sm">
-                <SelectValue>{(v) => t(`notify.aud${capitalize(v as string)}`)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("notify.audAll")}</SelectItem>
-                <SelectItem value="tier">{t("notify.audTier")}</SelectItem>
-                <SelectItem value="specific">{t("notify.audSpecific")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-          {audienceType === "tier" ? (
-            <Field label={t("notify.tier")}>
-              <Select value={tierKey} onValueChange={(v) => setTierKey((v as typeof tierKey) ?? "oro")}>
-                <SelectTrigger size="lg" className="w-full text-sm">
-                  <SelectValue>{(v) => v as string}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {TIERS.map((tier) => (
-                    <SelectItem key={tier} value={tier}>
-                      {tier}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          ) : null}
-          <Field label={t("notify.when")} hint={scheduledAt ? undefined : t("notify.now")}>
-            <div className="flex items-center gap-2">
-              <DatePicker
-                value={scheduledAt ?? undefined}
-                onValueChange={setDate}
-                placeholder={t("notify.now")}
-                formatLabel={(d) => formatDate(d, { locale })}
-                className="flex-1"
-              />
-              {scheduledAt ? (
-                <>
-                  <TimeInput value={timeStr} onChange={setTime} className="h-10 w-24" />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="size-9 shrink-0 rounded-lg p-0"
-                    aria-label={t("notify.now")}
-                    onClick={() => setScheduledAt(null)}
-                  >
-                    <X className="size-4" />
-                  </Button>
-                </>
-              ) : null}
-            </div>
-          </Field>
-        </div>
-
-        {audienceType === "specific" ? (
-          <Field label={t("notify.audSpecific")}>
-            <CustomerCombobox
-              value={selected}
-              onChange={setSelected}
-              placeholder={t("notify.searchCustomers")}
-              emptyLabel={t("empty")}
-            />
-          </Field>
-        ) : null}
-
-        {/* Reach preview — how many would actually receive it (minus opt-outs). */}
-        <div className="bg-muted/40 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm">
-          <Users className="text-muted-foreground size-4 shrink-0" />
-          {reach.data ? (
-            <p>
-              <span className="font-semibold">{reach.data.eligible}</span>
-              <span className="text-muted-foreground"> / {reach.data.audience} · {t("reachEligible")}</span>
-            </p>
-          ) : (
-            <p className="text-muted-foreground">
-              {audienceType === "specific" && selected.length === 0
-                ? t("notify.searchCustomers")
-                : "…"}
-            </p>
-          )}
-        </div>
-
-        <Field label={t("notify.channels")}>
-          <div className="flex flex-wrap gap-3">
-            {CHANNELS.map((c) => (
-              <label key={c} className="flex items-center gap-2 text-sm font-semibold">
-                <Checkbox checked={channels.includes(c)} onCheckedChange={() => toggleChannel(c)} />
-                {t(`notify.ch.${c}`)}
-              </label>
-            ))}
-          </div>
-        </Field>
-
-        <Button
-          className="h-10 rounded-xl"
-          onClick={onAdd}
-          disabled={create.isPending}
-        >
-          {scheduledAt ? t("notify.schedule") : t("notify.sendNow")}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function BannerPreview({ form }: { form: Form }) {
   return (
     <div
@@ -835,10 +587,6 @@ function BannerPreview({ form }: { form: Form }) {
       </div>
     </div>
   );
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function Field({

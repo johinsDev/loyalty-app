@@ -127,7 +127,6 @@ export const promoRelations = relations(promo, ({ one, many }) => ({
     references: [user.id],
   }),
   translations: many(promoTranslation),
-  notifications: many(promoNotification),
 }));
 
 // Per-locale content overrides (base columns = default locale). Slug canonical.
@@ -151,43 +150,8 @@ export const promoTranslation = sqliteTable(
   }),
 );
 
-// Scheduled notification spec for a promo (Trigger.dev owns execution). Mirrors
-// banner_notification + a `repeat` field for weekly recurrence.
-export const promoNotification = sqliteTable(
-  "promo_notification",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    promoId: text("promo_id")
-      .notNull()
-      .references(() => promo.id, { onDelete: "cascade" }),
-    audienceType: text("audience_type").notNull(), // all | tier | specific
-    audienceValue: text("audience_value"),
-    channels: text("channels").notNull(),
-    scheduledAt: integer("scheduled_at", { mode: "timestamp" }),
-    repeat: text("repeat").notNull().default("none"), // none | weekly
-    runId: text("run_id"),
-    status: text("status").notNull().default("scheduled"),
-    createdAt: integer("created_at", { mode: "timestamp" })
-      .notNull()
-      .$defaultFn(() => new Date()),
-    updatedAt: integer("updated_at", { mode: "timestamp" })
-      .notNull()
-      .$defaultFn(() => new Date()),
-  },
-  (t) => ({
-    byPromo: index("promo_notification_promo_idx").on(t.promoId),
-  }),
-);
-
 export const promoTranslationRelations = relations(promoTranslation, ({ one }) => ({
   promo: one(promo, { fields: [promoTranslation.promoId], references: [promo.id] }),
 }));
-export const promoNotificationRelations = relations(promoNotification, ({ one }) => ({
-  promo: one(promo, { fields: [promoNotification.promoId], references: [promo.id] }),
-}));
 
 export type PromoTranslationRow = typeof promoTranslation.$inferSelect;
-export type PromoNotificationRow = typeof promoNotification.$inferSelect;
-export type PromoNotificationInsert = typeof promoNotification.$inferInsert;

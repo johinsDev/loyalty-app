@@ -183,6 +183,13 @@
       "when": 1782933159304,
       "tag": "0025_shallow_blockbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1782934684830,
+      "tag": "0026_wandering_inhumans",
+      "breakpoints": true
     }
   ]
 }

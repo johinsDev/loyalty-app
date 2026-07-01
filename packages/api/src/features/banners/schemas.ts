@@ -11,9 +11,6 @@ export const bannerDisplayStateSchema = z.enum([
   "expired",
 ]);
 export const ctaKindSchema = z.enum(["internal", "external"]);
-export const audienceTypeSchema = z.enum(["all", "tier", "specific"]);
-export const tierKeySchema = z.enum(["hoja", "flor", "oro"]);
-export const bannerChannelSchema = z.enum(["push", "database", "realtime"]);
 
 /** Derived display state for the admin list (not stored). */
 export type BannerDisplayState = "draft" | "scheduled" | "active" | "expired";
@@ -115,7 +112,6 @@ export interface BannerListItem {
   mainImageUrl: string | null;
   displayFrom: Date | null;
   displayUntil: Date | null;
-  notificationCount: number;
   sortOrder: number;
   createdAt: Date;
 }
@@ -124,26 +120,6 @@ export const bulkIdsSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(500),
 });
 export type BulkIdsInput = z.infer<typeof bulkIdsSchema>;
-
-// ─── Audience reach preview ──────────────────────────────────────────────────
-export const countByAudienceInputSchema = z
-  .object({
-    audienceType: audienceTypeSchema,
-    tierKey: tierKeySchema.optional(),
-    customerIds: z.array(z.string().min(1)).optional(),
-  })
-  .refine((v) => v.audienceType !== "tier" || !!v.tierKey, {
-    message: "tierKey required for tier audience",
-    path: ["tierKey"],
-  });
-export type CountByAudienceInput = z.infer<typeof countByAudienceInputSchema>;
-
-export interface AudienceReach {
-  /** Everyone the audience targets (before opt-outs). */
-  audience: number;
-  /** Would actually receive it — audience minus marketing opt-outs. */
-  eligible: number;
-}
 
 // ─── CTR ingest + stats ──────────────────────────────────────────────────────
 export const recordStatInputSchema = z.object({ id: z.string().uuid() });
@@ -166,8 +142,6 @@ export interface BannerStats {
   clicks: number;
   ctr: number; // 0–1
   series: BannerStatPoint[];
-  notifications: number;
-  reach: number; // recipients across sent notifications (best-effort)
 }
 
 /** One row for the Analytics "Banners" panel (org-level top list). */
@@ -193,38 +167,3 @@ export const slugAvailableInputSchema = z.object({
   excludeId: z.string().uuid().optional(),
 });
 export const slugInputSchema = z.object({ slug: z.string().min(1) });
-
-// ─── Notifications IO ────────────────────────────────────────────────────────
-export const createNotificationInputSchema = z
-  .object({
-    bannerId: z.string().uuid(),
-    audienceType: audienceTypeSchema,
-    tierKey: tierKeySchema.optional(),
-    customerIds: z.array(z.string().min(1)).optional(),
-    channels: z.array(bannerChannelSchema).min(1),
-    // null/undefined = send now.
-    scheduledAt: z.coerce.date().optional(),
-  })
-  .refine((v) => v.audienceType !== "tier" || !!v.tierKey, {
-    message: "tierKey required for tier audience",
-    path: ["tierKey"],
-  })
-  .refine(
-    (v) => v.audienceType !== "specific" || (v.customerIds?.length ?? 0) > 0,
-    { message: "customerIds required for specific audience", path: ["customerIds"] },
-  );
-export type CreateNotificationInput = z.infer<typeof createNotificationInputSchema>;
-
-export const listNotificationsInputSchema = z.object({ bannerId: z.string().uuid() });
-export const cancelNotificationInputSchema = z.object({ id: z.string().uuid() });
-
-export interface BannerNotificationView {
-  id: string;
-  audienceType: "all" | "tier" | "specific";
-  tierKey: string | null;
-  customerCount: number | null;
-  channels: string[];
-  scheduledAt: Date | null;
-  status: string;
-  runId: string | null;
-}
