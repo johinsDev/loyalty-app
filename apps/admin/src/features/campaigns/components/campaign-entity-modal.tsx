@@ -27,9 +27,12 @@ type Entity = { id: string; name: string };
  */
 export function CampaignEntityModal({
   scope,
+  field,
   onResolve,
 }: {
   scope: Scope | null;
+  /** When set, each result is a single action returning that field. */
+  field?: "name" | "href";
   onResolve: (v: EditorVariable | null) => void;
 }) {
   const t = useTranslations("Campaigns");
@@ -59,11 +62,8 @@ export function CampaignEntityModal({
           ? (rewards.data ?? []).map((r) => ({ id: r.id, name: r.name }))
           : [];
 
-  const pick = (ent: Entity, field: "name" | "href") => {
-    onResolve({
-      token: `{{${scope}#${ent.id}.${field}}}`,
-      label: field === "href" ? t("entityLinkLabel", { name: ent.name }) : ent.name,
-    });
+  const pick = (ent: Entity, f: "name" | "href") => {
+    onResolve({ token: `{{${scope}#${ent.id}.${f}}}`, label: ent.name });
     setQuery("");
   };
 
@@ -95,34 +95,50 @@ export function CampaignEntityModal({
             {results.length === 0 ? (
               <p className="text-muted-foreground py-6 text-center text-sm">{t("offerEmpty")}</p>
             ) : (
-              results.map((ent) => (
-                <div
-                  key={ent.id}
-                  className="border-border hover:bg-muted/50 flex items-center gap-2 rounded-xl border px-3 py-2"
-                >
-                  <span className="flex-1 truncate text-sm font-medium">{ent.name}</span>
-                  <Button
+              results.map((ent) =>
+                field ? (
+                  <button
+                    key={ent.id}
                     type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8 gap-1 rounded-lg"
-                    onClick={() => pick(ent, "name")}
+                    onClick={() => pick(ent, field)}
+                    className="border-border hover:bg-muted/50 flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left"
                   >
-                    <Tag className="size-3.5" />
-                    {t("entityInsertName")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8 gap-1 rounded-lg"
-                    onClick={() => pick(ent, "href")}
+                    {field === "href" ? (
+                      <Link2 className="text-muted-foreground size-4 shrink-0" />
+                    ) : (
+                      <Tag className="text-muted-foreground size-4 shrink-0" />
+                    )}
+                    <span className="flex-1 truncate text-sm font-medium">{ent.name}</span>
+                  </button>
+                ) : (
+                  <div
+                    key={ent.id}
+                    className="border-border hover:bg-muted/50 flex items-center gap-2 rounded-xl border px-3 py-2"
                   >
-                    <Link2 className="size-3.5" />
-                    {t("entityInsertLink")}
-                  </Button>
-                </div>
-              ))
+                    <span className="flex-1 truncate text-sm font-medium">{ent.name}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 gap-1 rounded-lg"
+                      onClick={() => pick(ent, "name")}
+                    >
+                      <Tag className="size-3.5" />
+                      {t("entityInsertName")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 gap-1 rounded-lg"
+                      onClick={() => pick(ent, "href")}
+                    >
+                      <Link2 className="size-3.5" />
+                      {t("entityInsertLink")}
+                    </Button>
+                  </div>
+                ),
+              )
             )}
           </div>
         </div>

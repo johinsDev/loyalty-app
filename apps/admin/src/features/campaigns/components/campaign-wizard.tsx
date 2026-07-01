@@ -454,11 +454,12 @@ export function CampaignWizard({ id }: { id?: string }) {
   // resolve the chosen chip back to it.
   const [entityReq, setEntityReq] = useState<{
     scope: EntityScope;
+    field?: "name" | "href";
     resolve: (v: EditorVariable | null) => void;
   } | null>(null);
-  const onRequestEntity = (scope: string) =>
+  const onRequestEntity = (scope: string, field?: "name" | "href") =>
     new Promise<EditorVariable | null>((resolve) =>
-      setEntityReq({ scope: scope as EntityScope, resolve }),
+      setEntityReq({ scope: scope as EntityScope, field, resolve }),
     );
   const uploadImage = useUploadImage();
   const reorderChannel = (from: number, to: number) => {
@@ -879,6 +880,7 @@ export function CampaignWizard({ id }: { id?: string }) {
 
       <CampaignEntityModal
         scope={entityReq?.scope ?? null}
+        field={entityReq?.field}
         onResolve={(v) => {
           entityReq?.resolve(v);
           setEntityReq(null);

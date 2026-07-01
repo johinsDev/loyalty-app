@@ -141,7 +141,8 @@ function buildVariableSuggestion(refs: {
   variablesRef: RefObject<EditorVariable[] | undefined>;
   entitiesRef: RefObject<{ scope: string; label: string }[] | undefined>;
   onRequestEntityRef: RefObject<
-    ((scope: string) => Promise<EditorVariable | null>) | undefined
+    | ((scope: string, field?: "name" | "href") => Promise<EditorVariable | null>)
+    | undefined
   >;
 }): Omit<SuggestionOptions<SuggestItem, SuggestItem>, "editor"> {
   const { variablesRef, entitiesRef, onRequestEntityRef } = refs;
@@ -292,7 +293,15 @@ export interface RichTextEditorProps {
    * returned chip. Keeps the app's search modal out of this generic component.
    */
   entities?: { scope: string; label: string }[];
-  onRequestEntity?: (scope: string) => Promise<EditorVariable | null>;
+  /**
+   * Asks the app to pick an entity. `field` selects what token to return:
+   * `"name"` (default) → a name chip; `"href"` → the entity's tracked link,
+   * used as a link destination in the link popover.
+   */
+  onRequestEntity?: (
+    scope: string,
+    field?: "name" | "href",
+  ) => Promise<EditorVariable | null>;
   /**
    * Optional image uploader. When provided, the image button offers a
    * click-to-upload zone (with a loading state) that stores the file via the
@@ -394,6 +403,27 @@ export function RichTextEditor({
     else editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
     setLinkPop(false);
   };
+  const linkToEntity = async (scope: string) => {
+    if (!onRequestEntity) return;
+    const v = await onRequestEntity(scope, "href");
+    if (!v) return;
+    if (editor.state.selection.empty) {
+      // No selection: drop the entity name in as the linked text.
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: "text",
+          text: v.label,
+          marks: [{ type: "link", attrs: { href: v.token } }],
+        })
+        .insertContent(" ")
+        .run();
+    } else {
+      editor.chain().focus().extendMarkRange("link").setLink({ href: v.token }).run();
+    }
+    setLinkPop(false);
+  };
   const insertImage = () => {
     const url = imgUrl.trim();
     if (url) editor.chain().focus().setImage({ src: url }).run();
@@ -472,6 +502,26 @@ export function RichTextEditor({
                 Aplicar
               </button>
             </div>
+            {onRequestEntity && entities && entities.length > 0 ? (
+              <>
+                <div className="text-muted-foreground flex items-center gap-2 text-[11px]">
+                  <span className="bg-border h-px flex-1" />o enlaza a
+                  <span className="bg-border h-px flex-1" />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {entities.map((e) => (
+                    <button
+                      key={e.scope}
+                      type="button"
+                      onClick={() => void linkToEntity(e.scope)}
+                      className="border-border text-muted-foreground hover:bg-muted rounded-full border border-dashed px-2 py-0.5 text-xs font-semibold transition-colors"
+                    >
+                      + {e.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
           </PopoverContent>
         </Popover>
 
