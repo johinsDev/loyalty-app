@@ -5,12 +5,10 @@ import { hasChannelContent } from "./message";
 import type { CampaignsRepository } from "./repository";
 import {
   audienceFilterSchema,
-  channelsStepSchema,
   definitionStepSchema,
   messageStepSchema,
   scheduleStepSchema,
   type AudienceStepInput,
-  type ChannelsStepInput,
   type DefinitionStepInput,
   type MessageStepInput,
   type ScheduleStepInput,
@@ -47,35 +45,19 @@ export class MessageStep extends WizardStep<
   readonly key = "message";
   readonly schema = messageStepSchema;
   isComplete(d: CampaignRow) {
-    return (
+    const hasContent =
       hasChannelContent(d.message, "push") ||
       hasChannelContent(d.message, "email") ||
       hasChannelContent(d.message, "sms") ||
-      hasChannelContent(d.message, "whatsapp")
-    );
+      hasChannelContent(d.message, "whatsapp");
+    return hasContent && (d.channelPriority?.length ?? 0) > 0;
   }
   persist(ctx: Ctx, d: CampaignRow, input: MessageStepInput) {
-    const { linkUrl, ...message } = input;
+    const { linkUrl, channelPriority, ...message } = input;
     return ctx.services.repo.patch(ctx.organizationId, d.id, {
       message,
+      channelPriority,
       linkUrl: linkUrl?.trim() ? linkUrl.trim() : null,
-    });
-  }
-}
-
-export class ChannelsStep extends WizardStep<
-  CampaignRow,
-  ChannelsStepInput,
-  CampaignStepServices
-> {
-  readonly key = "channels";
-  readonly schema = channelsStepSchema;
-  isComplete(d: CampaignRow) {
-    return (d.channelPriority?.length ?? 0) > 0;
-  }
-  persist(ctx: Ctx, d: CampaignRow, input: ChannelsStepInput) {
-    return ctx.services.repo.patch(ctx.organizationId, d.id, {
-      channelPriority: input.channelPriority,
     });
   }
 }

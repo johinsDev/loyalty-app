@@ -1228,6 +1228,7 @@
     },
     "messageLabel": "Message",
     "presetsLabel": "Quick presets",
+    "channelsLabel": "Channels & priority",
     "tokensLabel": "Insert variable",
     "tokenHint": "Place the cursor in a field to insert the variable.",
     "linkUrlLabel": "Link (CTA)",

@@ -259,8 +259,16 @@ describe("displayState", () => {
 });
 
 describe("campaignWizard", () => {
-  it("requires definition + message + channels to publish (audience/schedule optional)", () => {
+  it("requires definition + message (with channels) to publish (audience/schedule optional)", () => {
     expect(campaignWizard.state(base).canPublish).toBe(false);
+    // Message content without a channel priority is not enough.
+    expect(
+      campaignWizard.state({
+        ...base,
+        name: "2x1 lunes",
+        message: { whatsapp: { text: "Traé un amigo" } },
+      }).canPublish,
+    ).toBe(false);
     const filled: CampaignRow = {
       ...base,
       name: "2x1 lunes",
@@ -270,13 +278,7 @@ describe("campaignWizard", () => {
     const state = campaignWizard.state(filled);
     expect(state.canPublish).toBe(true);
     expect(state.current).toBe("review");
-    expect(state.order).toEqual([
-      "definition",
-      "message",
-      "channels",
-      "audience",
-      "schedule",
-    ]);
+    expect(state.order).toEqual(["definition", "message", "audience", "schedule"]);
   });
 
   it("points at the first incomplete step", () => {

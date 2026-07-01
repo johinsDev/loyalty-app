@@ -37,7 +37,6 @@ export {
   CAMPAIGN_STEP_KEYS,
   audienceFilterSchema,
   campaignChannelSchema,
-  channelsStepSchema,
   definitionStepSchema,
   messageStepSchema,
   scheduleStepSchema,
@@ -50,8 +49,8 @@ export {
   type CampaignReach,
   type CampaignsListInput,
   type CampaignStepKey,
-  type ChannelsStepInput,
   type CountReachInput,
   type DefinitionStepInput,
+  type MessageContentInput,
   type MessageStepInput,
 } from "./schemas";

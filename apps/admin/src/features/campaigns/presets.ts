@@ -1,4 +1,4 @@
-import type { MessageStepInput } from "@loyalty/api/features/campaigns/schemas";
+import type { MessageContentInput } from "@loyalty/api/features/campaigns/schemas";
 
 /**
  * Starter message presets that seed the wizard's message step client-side. Each
@@ -10,7 +10,7 @@ export type CampaignPreset = {
   id: string;
   label: string;
   emoji: string;
-  message: MessageStepInput;
+  message: MessageContentInput;
 };
 
 export const CAMPAIGN_PRESETS: CampaignPreset[] = [

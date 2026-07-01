@@ -45,23 +45,24 @@ const emailContentSchema = z.object({
 const smsContentSchema = z.object({ text: z.string().min(1).max(480) });
 const whatsappContentSchema = z.object({ text: z.string().min(1).max(1024) });
 
-export const messageStepSchema = z
-  .object({
-    push: pushContentSchema.optional(),
-    email: emailContentSchema.optional(),
-    sms: smsContentSchema.optional(),
-    whatsapp: whatsappContentSchema.optional(),
-    /** CTA destination for `{{short_link}}` (shortened per-recipient at send). */
-    linkUrl: z.string().url().optional().or(z.literal("")),
+/** Per-channel content (no channel priority) — used for presets + the draft. */
+export const messageContentSchema = z.object({
+  push: pushContentSchema.optional(),
+  email: emailContentSchema.optional(),
+  sms: smsContentSchema.optional(),
+  whatsapp: whatsappContentSchema.optional(),
+  /** CTA destination for `{{short_link}}` (shortened per-recipient at send). */
+  linkUrl: z.string().url().optional().or(z.literal("")),
+});
+
+export const messageStepSchema = messageContentSchema
+  .extend({
+    /** Ordered priority; first reachable channel per recipient wins. */
+    channelPriority: z.array(campaignChannelSchema).min(1),
   })
   .refine((m) => !!(m.push || m.email || m.sms || m.whatsapp), {
     message: "Escribe el mensaje para al menos un canal",
   });
-
-export const channelsStepSchema = z.object({
-  /** Ordered priority; first reachable channel per recipient wins. */
-  channelPriority: z.array(campaignChannelSchema).min(1),
-});
 
 export const audienceFilterSchema = z.object({
   tiers: z.array(tierKeySchema).optional(),
@@ -82,15 +83,14 @@ export const scheduleStepSchema = z.object({
 });
 
 export type DefinitionStepInput = z.infer<typeof definitionStepSchema>;
+export type MessageContentInput = z.infer<typeof messageContentSchema>;
 export type MessageStepInput = z.infer<typeof messageStepSchema>;
-export type ChannelsStepInput = z.infer<typeof channelsStepSchema>;
 export type AudienceStepInput = z.infer<typeof audienceFilterSchema>;
 export type ScheduleStepInput = z.infer<typeof scheduleStepSchema>;
 
 export const CAMPAIGN_STEP_KEYS = [
   "definition",
   "message",
-  "channels",
   "audience",
   "schedule",
 ] as const;

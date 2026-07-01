@@ -49,7 +49,7 @@ import { CAMPAIGN_PRESETS, type CampaignPreset } from "../presets";
 import { CampaignEntityModal } from "./campaign-entity-modal";
 import { CampaignMessagePreview, type PreviewMessage } from "./campaign-message-preview";
 
-const STEPS = ["definition", "message", "channels", "audience", "schedule"] as const;
+const STEPS = ["definition", "message", "audience", "schedule"] as const;
 type Step = (typeof STEPS)[number];
 
 const CHANNELS = ["push", "email", "sms", "whatsapp"] as const;
@@ -333,8 +333,9 @@ export function CampaignWizard({ id }: { id?: string }) {
 
   const valid: Record<Step, boolean> = {
     definition: form.name.trim().length > 0,
-    message: CHANNELS.some((c) => isChannelComplete(form.message, c)),
-    channels: form.channelPriority.length > 0,
+    message:
+      CHANNELS.some((c) => isChannelComplete(form.message, c)) &&
+      form.channelPriority.length > 0,
     audience: true,
     schedule: true,
   };
@@ -376,13 +377,11 @@ export function CampaignWizard({ id }: { id?: string }) {
         await advanceMut.mutateAsync({
           id: campaignId,
           step: "message",
-          input: { ...buildMessageInput(form.message), linkUrl: form.linkUrl || undefined },
-        });
-      } else if (step === "channels") {
-        await advanceMut.mutateAsync({
-          id: campaignId,
-          step: "channels",
-          input: { channelPriority: form.channelPriority },
+          input: {
+            ...buildMessageInput(form.message),
+            channelPriority: form.channelPriority,
+            linkUrl: form.linkUrl || undefined,
+          },
         });
       } else if (step === "audience") {
         await advanceMut.mutateAsync({
@@ -536,6 +535,74 @@ export function CampaignWizard({ id }: { id?: string }) {
           </div>
         ) : step === "message" ? (
           <div className="space-y-5">
+            <div className="border-border space-y-2.5 rounded-2xl border p-3.5">
+              <div>
+                <Label className="text-xs">{t("channelsLabel")}</Label>
+                <p className="text-muted-foreground text-xs">{t("channelsPriorityHint")}</p>
+              </div>
+              {form.channelPriority.length > 0 ? (
+                <ol className="space-y-2">
+                  {form.channelPriority.map((c, i) => {
+                    const Icon = CHANNEL_ICON[c];
+                    return (
+                      <li
+                        key={c}
+                        draggable
+                        onDragStart={() => setDragIndex(i)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => {
+                          if (dragIndex !== null) reorderChannel(dragIndex, i);
+                          setDragIndex(null);
+                        }}
+                        onDragEnd={() => setDragIndex(null)}
+                        className={`border-border bg-card flex items-center gap-3 rounded-xl border px-3 py-2 transition-colors ${
+                          dragIndex === i ? "opacity-50" : ""
+                        } ${dragIndex !== null && dragIndex !== i ? "hover:border-primary/50" : ""}`}
+                      >
+                        <GripVertical className="text-muted-foreground/50 size-4 flex-none cursor-grab active:cursor-grabbing" />
+                        <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-md text-xs font-bold">
+                          {i + 1}
+                        </span>
+                        <Icon className="text-muted-foreground size-4 flex-none" />
+                        <span className="flex-1 text-sm font-semibold">{t(`channel.${c}`)}</span>
+                        {!isChannelComplete(form.message, c) ? (
+                          <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[0.625rem] font-bold tracking-wide text-amber-700 uppercase dark:bg-amber-900/40 dark:text-amber-300">
+                            {t("channelEmpty")}
+                          </span>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 rounded-lg"
+                          aria-label={t("remove")}
+                          onClick={() => toggleChannel(c)}
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : null}
+              {form.channelPriority.length < CHANNELS.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {CHANNELS.filter((c) => !form.channelPriority.includes(c)).map((c) => (
+                    <Button
+                      key={c}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 rounded-full"
+                      onClick={() => toggleChannel(c)}
+                    >
+                      + {t(`channel.${c}`)}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
             <div className="space-y-2">
               <Label className="text-xs">{t("presetsLabel")}</Label>
               <div className="flex flex-wrap gap-2">
@@ -654,78 +721,6 @@ export function CampaignWizard({ id }: { id?: string }) {
                 onRequestEntity={onRequestEntity}
               />
             </ChannelBlock>
-          </div>
-        ) : step === "channels" ? (
-          <div className="space-y-4">
-            <p className="text-muted-foreground text-sm">{t("channelsPriorityHint")}</p>
-            {attempted && !valid.channels ? <ErrorText>{t("channelsRequired")}</ErrorText> : null}
-
-            {form.channelPriority.length > 0 ? (
-              <ol className="space-y-2">
-                {form.channelPriority.map((c, i) => {
-                  const Icon = CHANNEL_ICON[c];
-                  return (
-                    <li
-                      key={c}
-                      draggable
-                      onDragStart={() => setDragIndex(i)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => {
-                        if (dragIndex !== null) reorderChannel(dragIndex, i);
-                        setDragIndex(null);
-                      }}
-                      onDragEnd={() => setDragIndex(null)}
-                      className={`border-border bg-card flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-colors ${
-                        dragIndex === i ? "opacity-50" : ""
-                      } ${dragIndex !== null && dragIndex !== i ? "hover:border-primary/50" : ""}`}
-                    >
-                      <GripVertical className="text-muted-foreground/50 size-4 flex-none cursor-grab active:cursor-grabbing" />
-                      <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-md text-xs font-bold">
-                        {i + 1}
-                      </span>
-                      <Icon className="text-muted-foreground size-4 flex-none" />
-                      <span className="flex-1 text-sm font-semibold">{t(`channel.${c}`)}</span>
-                      {!isChannelComplete(form.message, c) ? (
-                        <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[0.625rem] font-bold tracking-wide text-amber-700 uppercase dark:bg-amber-900/40 dark:text-amber-300">
-                          {t("channelEmpty")}
-                        </span>
-                      ) : null}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 rounded-lg"
-                        aria-label={t("remove")}
-                        onClick={() => toggleChannel(c)}
-                      >
-                        <X className="size-4" />
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ol>
-            ) : null}
-
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t("addChannel")}</Label>
-              <div className="flex flex-wrap gap-3">
-                {CHANNELS.filter((c) => !form.channelPriority.includes(c)).map((c) => (
-                  <Button
-                    key={c}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 rounded-full"
-                    onClick={() => toggleChannel(c)}
-                  >
-                    + {t(`channel.${c}`)}
-                  </Button>
-                ))}
-                {form.channelPriority.length === CHANNELS.length ? (
-                  <span className="text-muted-foreground text-sm">{t("allChannelsAdded")}</span>
-                ) : null}
-              </div>
-            </div>
           </div>
         ) : step === "audience" ? (
           <div className="space-y-5">

@@ -1228,6 +1228,7 @@
     },
     "messageLabel": "Mensaje",
     "presetsLabel": "Plantillas rápidas",
+    "channelsLabel": "Canales y prioridad",
     "tokensLabel": "Insertar variable",
     "tokenHint": "Coloca el cursor en un campo para insertar la variable.",
     "linkUrlLabel": "Enlace (CTA)",
