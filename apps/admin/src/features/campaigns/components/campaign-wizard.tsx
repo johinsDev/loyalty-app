@@ -225,15 +225,25 @@ export function CampaignWizard({ id }: { id?: string }) {
 
   // New campaign → create a draft once.
   const createMut = useMutation(trpc.campaigns.create.mutationOptions());
-  useEffect(() => {
-    if (id || campaignId || creating.current) return;
+  const startDraft = () => {
     creating.current = true;
+    createMut.reset();
     createMut.mutate(undefined, {
       onSuccess: (res) => {
         setCampaignId(res.campaign.id);
         seeded.current = true;
       },
+      onError: () => {
+        // Allow a manual retry (the draft create failed — often a stale API
+        // worker bundle after a schema/route change; restart wrangler dev).
+        creating.current = false;
+        toast.error(t("createError"));
+      },
     });
+  };
+  useEffect(() => {
+    if (id || campaignId || creating.current) return;
+    startDraft();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, campaignId]);
 
@@ -437,7 +447,19 @@ export function CampaignWizard({ id }: { id?: string }) {
           <CampaignMessagePreview message={form.message} channelPriority={form.channelPriority} />
         }
       >
-        {busy ? (
+        {!campaignId && createMut.isError ? (
+          <div className="space-y-3 py-4">
+            <p className="text-destructive text-sm font-medium">{t("createError")}</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 rounded-xl"
+              onClick={startDraft}
+            >
+              {t("retryCreate")}
+            </Button>
+          </div>
+        ) : busy ? (
           <p className="text-muted-foreground text-sm">…</p>
         ) : step === "definition" ? (
           <div className="space-y-4">

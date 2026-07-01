@@ -182,13 +182,18 @@ export function CampaignDetailView({
       </div>
       <FunnelBars funnel={campaign.funnel} />
       {Object.keys(campaign.funnel.skipReasons).length > 0 ? (
-        <div className="text-muted-foreground space-y-1 text-xs">
-          {Object.entries(campaign.funnel.skipReasons).map(([reason, n]) => (
-            <div key={reason} className="flex items-center justify-between">
-              <span>{reason}</span>
-              <span className="font-semibold">{n}</span>
-            </div>
-          ))}
+        <div className="space-y-1.5">
+          <div className="text-muted-foreground space-y-1 text-xs">
+            {Object.entries(campaign.funnel.skipReasons).map(([reason, n]) => (
+              <div key={reason} className="flex items-center justify-between">
+                <span>{skipReasonLabel(reason, t)}</span>
+                <span className="font-semibold">{n}</span>
+              </div>
+            ))}
+          </div>
+          {campaign.funnel.skipReasons["no-channel"] ? (
+            <p className="text-muted-foreground/80 text-xs">{t("skipReasonsHint")}</p>
+          ) : null}
         </div>
       ) : null}
       {campaign.failures.length > 0 ? (
@@ -282,6 +287,22 @@ function FunnelBars({ funnel }: { funnel: CampaignDetail["funnel"] }) {
       ))}
     </div>
   );
+}
+
+/** Known skip reasons the send job/notifier can emit → friendly labels. */
+const KNOWN_SKIP_REASONS = new Set([
+  "no-channel",
+  "opted-out",
+  "capped",
+  "no-contact",
+  "no-method",
+  "not-registered",
+]);
+function skipReasonLabel(
+  reason: string,
+  t: ReturnType<typeof useTranslations>,
+): string {
+  return KNOWN_SKIP_REASONS.has(reason) ? t(`skipReason.${reason}`) : t("skipReason.unknown");
 }
 
 function SectionLabel({ children }: { children: ReactNode }) {

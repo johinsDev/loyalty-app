@@ -106,14 +106,14 @@ export function SmartDeliveryRules() {
                 type="time"
                 value={start}
                 onChange={(e) => setStart(e.target.value)}
-                className="h-10 w-32"
+                className="h-10 w-44"
               />
               <span className="text-muted-foreground text-sm">→</span>
               <Input
                 type="time"
                 value={end}
                 onChange={(e) => setEnd(e.target.value)}
-                className="h-10 w-32"
+                className="h-10 w-44"
               />
             </div>
           ) : null}
