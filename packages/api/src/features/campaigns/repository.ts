@@ -4,6 +4,7 @@ import {
   campaignSend,
   customer,
   notificationPreference,
+  organizationSettings,
   pointsAccount,
   purchase,
   pushToken,
@@ -15,6 +16,7 @@ import {
   type CampaignInsert,
   type CampaignRow,
   type CampaignSendInsert,
+  type SmartDeliveryRules,
 } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
 import { and, countDistinct, count, desc, eq, gte, inArray, isNotNull, like, lte, max } from "drizzle-orm";
@@ -396,6 +398,16 @@ export class CampaignsRepository {
       map.set(r.customerId, arr);
     }
     return map;
+  }
+
+  // ── Smart-delivery rules ───────────────────────────────────────────────────
+  async getSmartDelivery(orgId: string): Promise<SmartDeliveryRules | null> {
+    const rows = await this.db
+      .select({ rules: organizationSettings.smartDelivery })
+      .from(organizationSettings)
+      .where(eq(organizationSettings.organizationId, orgId))
+      .limit(1);
+    return rows[0]?.rules ?? null;
   }
 
   // ── Ledger ────────────────────────────────────────────────────────────────

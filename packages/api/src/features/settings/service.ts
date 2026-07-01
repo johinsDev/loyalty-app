@@ -11,9 +11,11 @@ import type {
   BrandingView,
   LocalizationView,
   SetLoyaltyScopeInput,
+  SmartDeliveryView,
   UpdateBrandingInput,
   UpdateLocalizationInput,
   UpdateSeoInput,
+  UpdateSmartDeliveryInput,
 } from "./schemas";
 
 /** "" → null, undefined → undefined (skip). Keeps cleared fields nullable. */
@@ -89,5 +91,24 @@ export class SettingsService {
     await this.repo.upsertSettings(orgId, { loyaltyScope: input.loyaltyScope });
     await invalidateBranding(orgId);
     return getBranding(this.db, orgId);
+  }
+
+  // ── Smart Delivery (campaign global rules) ────────────────────────────────
+  async smartDelivery(orgId: string): Promise<SmartDeliveryView> {
+    const row = await this.repo.get(orgId);
+    const r = row?.smartDelivery;
+    return {
+      frequencyCapPerWeek: r?.frequencyCapPerWeek ?? null,
+      quietHoursStart: r?.quietHoursStart ?? null,
+      quietHoursEnd: r?.quietHoursEnd ?? null,
+    };
+  }
+
+  async updateSmartDelivery(
+    orgId: string,
+    input: UpdateSmartDeliveryInput,
+  ): Promise<SmartDeliveryView> {
+    await this.repo.upsertSettings(orgId, { smartDelivery: input });
+    return this.smartDelivery(orgId);
   }
 }

@@ -8,6 +8,7 @@ import {
   updateBrandingInputSchema,
   updateLocalizationInputSchema,
   updateSeoInputSchema,
+  updateSmartDeliveryInputSchema,
 } from "./schemas";
 import { SettingsService } from "./service";
 
@@ -55,5 +56,14 @@ export const settingsRouter = router({
     .input(setLoyaltyScopeInputSchema)
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).setLoyaltyScope(await requireOrg(), input),
+    ),
+
+  smartDelivery: managerProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).smartDelivery(await requireOrg()),
+  ),
+  updateSmartDelivery: managerProcedure
+    .input(updateSmartDeliveryInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).updateSmartDelivery(await requireOrg(), input),
     ),
 });

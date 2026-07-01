@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import {
   countRedeemed,
   hasChannelContent,
+  minutesUntilQuietEnd,
+  parseHhMm,
   renderVars,
   resolveChannel,
   toNotificationChannel,
@@ -121,6 +123,37 @@ describe("countRedeemed", () => {
       WINDOW,
     );
     expect(n).toBe(1);
+  });
+});
+
+describe("parseHhMm", () => {
+  it("parses valid HH:mm to minutes", () => {
+    expect(parseHhMm("00:00")).toBe(0);
+    expect(parseHhMm("09:30")).toBe(570);
+    expect(parseHhMm("23:59")).toBe(1439);
+  });
+  it("rejects malformed values", () => {
+    expect(parseHhMm(null)).toBeNull();
+    expect(parseHhMm("")).toBeNull();
+    expect(parseHhMm("24:00")).toBeNull();
+    expect(parseHhMm("9-30")).toBeNull();
+  });
+});
+
+describe("minutesUntilQuietEnd", () => {
+  it("daytime window: defers to the end when inside", () => {
+    // window 09:00–21:00, now 12:00 → 9h to 21:00
+    expect(minutesUntilQuietEnd(720, 540, 1260)).toBe(540);
+    // now 08:00 → outside
+    expect(minutesUntilQuietEnd(480, 540, 1260)).toBeNull();
+  });
+  it("overnight window: handles both legs", () => {
+    // window 21:00–09:00. now 23:00 (pre-midnight leg) → 10h to 09:00
+    expect(minutesUntilQuietEnd(1380, 1260, 540)).toBe(600);
+    // now 03:00 (post-midnight leg) → 6h to 09:00
+    expect(minutesUntilQuietEnd(180, 1260, 540)).toBe(360);
+    // now 12:00 → outside the quiet window
+    expect(minutesUntilQuietEnd(720, 1260, 540)).toBeNull();
   });
 });
 

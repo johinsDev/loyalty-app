@@ -27,6 +27,7 @@ import {
   MessageCircle,
   MessageSquare,
   Plus,
+  SlidersHorizontal,
   Trash2,
   type LucideIcon,
 } from "lucide-react";
@@ -318,10 +319,20 @@ export function CampaignsView({ initialData }: { initialData?: CampaignsListResu
           <h1 className="font-display text-2xl font-semibold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
         </div>
-        <Button className="h-10 gap-1.5 rounded-xl" onClick={() => router.push("/campaigns/new")}>
-          <Plus className="size-4" />
-          {t("add")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="h-10 gap-1.5 rounded-xl"
+            onClick={() => router.push("/campaigns/rules")}
+          >
+            <SlidersHorizontal className="size-4" />
+            {t("rulesTitle")}
+          </Button>
+          <Button className="h-10 gap-1.5 rounded-xl" onClick={() => router.push("/campaigns/new")}>
+            <Plus className="size-4" />
+            {t("add")}
+          </Button>
+        </div>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">

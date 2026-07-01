@@ -1,6 +1,9 @@
 import {
   CampaignsRepository,
+  ORG_TZ,
   hasChannelContent,
+  minutesUntilQuietEnd,
+  parseHhMm,
   renderVars,
   resolveChannel,
   toNotificationChannel,
@@ -9,13 +12,26 @@ import {
 } from "@loyalty/api/features/campaigns";
 import { db } from "@loyalty/db";
 import type { CampaignMessage } from "@loyalty/db/schema";
-import { logger, task } from "@trigger.dev/sdk/v3";
+import { logger, task, tasks } from "@trigger.dev/sdk/v3";
 
 import { notifier } from "../notifications";
 import { CampaignNotification } from "../notifications-registry";
 import { shortlinks } from "../shortlinks";
 
 const SHORT_LINK_TOKEN = /\{\{\s*short_link\s*\}\}/i;
+
+/** Current minutes-of-day in the org timezone (0–1439). */
+function orgNowMinutes(): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: ORG_TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const hh = Number(parts.find((p) => p.type === "hour")?.value ?? "0") % 24;
+  const mm = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  return hh * 60 + mm;
+}
 
 /** Concatenated raw copy for a channel, to detect the `{{short_link}}` token. */
 function channelText(channel: CampaignChannel, message: CampaignMessage): string {
@@ -96,6 +112,30 @@ export const sendCampaignTask = task({
     // Only channels the campaign actually has copy for are deliverable.
     const effectivePriority = priority.filter((c) => hasChannelContent(message, c));
 
+    // ── Smart Delivery: quiet hours (defer the whole send) + frequency cap ──
+    const rules = await repo.getSmartDelivery(p.organizationId);
+    const quietStart = parseHhMm(rules?.quietHoursStart);
+    const quietEnd = parseHhMm(rules?.quietHoursEnd);
+    if (quietStart != null && quietEnd != null) {
+      const deferMin = minutesUntilQuietEnd(orgNowMinutes(), quietStart, quietEnd);
+      if (deferMin != null && deferMin > 0) {
+        // Re-enqueue at the window's end (+1min buffer). Transactional sends
+        // never hit this path; promotional/automated always respect quiet hours.
+        const runAt = new Date(Date.now() + (deferMin + 1) * 60_000);
+        const handle = await tasks.trigger("send-campaign", p, { delay: runAt });
+        await repo.setRun(p.campaignId, handle.id);
+        await repo.setSendState(p.campaignId, "scheduled");
+        logger.info("send-campaign: deferred for quiet hours", {
+          campaignId: campaign.id,
+          runAt: runAt.toISOString(),
+        });
+        return { recipients: 0, deferred: true };
+      }
+    }
+    // Frequency cap: promotional-only, rolling 7 days; "Especial" bypasses it.
+    const cap = campaign.special ? null : (rules?.frequencyCapPerWeek ?? null);
+    const capSince = new Date(Date.now() - 7 * 86_400_000);
+
     await repo.setSendState(p.campaignId, "sending");
 
     let recipients = await repo.resolveRecipients(p.organizationId, campaign.audienceFilter);
@@ -115,6 +155,23 @@ export const sendCampaignTask = task({
     let failed = 0;
 
     for (const r of recipients) {
+      // Frequency cap: skip recipients already at the rolling-7-day limit.
+      if (cap != null) {
+        const recent = await repo.recentSendCount(p.organizationId, r.customerId, capSince);
+        if (recent >= cap) {
+          await repo.recordSend({
+            organizationId: p.organizationId,
+            campaignId: campaign.id,
+            customerId: r.customerId,
+            channel: null,
+            status: "skipped",
+            skipReason: "capped",
+          });
+          skipped += 1;
+          continue;
+        }
+      }
+
       const reachable = new Set(r.reachable);
       const optedOut = new Set(r.optedOut);
       const channel = resolveChannel(effectivePriority, reachable, optedOut);

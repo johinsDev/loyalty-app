@@ -58,6 +58,41 @@ export function resolveChannel(
 /** Attribution window for the "Canjeados" funnel stage. */
 export const ATTRIBUTION_WINDOW_DAYS = 14;
 
+/** Operating timezone for quiet-hours + stat buckets (single-location pilot). */
+export const ORG_TZ = "America/Bogota";
+
+/** Parse "HH:mm" → minutes of day, or null if malformed. */
+export function parseHhMm(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return null;
+  return h * 60 + min;
+}
+
+/**
+ * Minutes to defer a non-critical send that lands inside the quiet-hours
+ * window, or null if `nowMin` is outside it. Handles overnight windows
+ * (start > end, e.g. 21:00→09:00). Pure, so it's unit-testable.
+ */
+export function minutesUntilQuietEnd(
+  nowMin: number,
+  startMin: number,
+  endMin: number,
+): number | null {
+  const overnight = startMin > endMin;
+  const inWindow = overnight
+    ? nowMin >= startMin || nowMin < endMin
+    : nowMin >= startMin && nowMin < endMin;
+  if (!inWindow) return null;
+  // If we're in the pre-midnight leg of an overnight window, the end is tomorrow.
+  const end = overnight && nowMin >= startMin ? endMin + 1440 : endMin;
+  const diff = end - nowMin;
+  return diff <= 0 ? diff + 1440 : diff;
+}
+
 /**
  * Count distinct recipients who redeemed the linked offer within the
  * attribution window after their send. Pure so it's unit-testable; the repo

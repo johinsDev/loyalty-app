@@ -169,6 +169,13 @@
       "when": 1782931744156,
       "tag": "0023_lucky_magneto",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1782932715516,
+      "tag": "0024_bitter_slipstream",
+      "breakpoints": true
     }
   ]
 }

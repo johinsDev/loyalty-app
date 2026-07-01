@@ -4,6 +4,18 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { organization } from "./auth";
 import type { StoreHours } from "./store";
 
+/**
+ * Global "Smart Delivery" rules for the campaigns engine. Applied to
+ * promotional (and, later, automated) sends — never to transactional.
+ */
+export type SmartDeliveryRules = {
+  /** Max promotional messages per customer per rolling 7 days; null = no cap. */
+  frequencyCapPerWeek: number | null;
+  /** Quiet-hours window (org-local "HH:mm"); non-critical sends defer to its end. */
+  quietHoursStart: string | null;
+  quietHoursEnd: string | null;
+};
+
 /** Brand social links (only filled keys are shown in the customer app). */
 export type SocialLinks = {
   instagram?: string;
@@ -51,6 +63,9 @@ export const organizationSettings = sqliteTable("organization_settings", {
   // Wallet scope across stores: "org" = shared (today), "store" = per-branch
   // (enforcement deferred — see docs/store-config.md backlog).
   loyaltyScope: text("loyalty_scope").notNull().default("org"),
+
+  // Global campaign "Smart Delivery" rules (frequency cap + quiet hours).
+  smartDelivery: text("smart_delivery", { mode: "json" }).$type<SmartDeliveryRules>(),
 
   // ── SEO (consumed by the apps' root metadata) ─────────────────────────────
   seoTitle: text("seo_title"),
