@@ -67,7 +67,6 @@ const CAMPAIGN_VARS = [
   { token: "{{user.name}}", label: "Nombre" },
   { token: "{{user.tier}}", label: "Nivel" },
   { token: "{{store.name}}", label: "Sucursal" },
-  { token: "{{short_link}}", label: "Enlace corto" },
 ] as const;
 
 type EntityScope = "promo" | "product" | "reward";
@@ -527,7 +526,7 @@ export function CampaignWizard({ id }: { id?: string }) {
                 value={form.objective}
                 onChange={(e) => set("objective", e.target.value)}
                 placeholder={t("fieldObjectivePlaceholder")}
-                rows={3}
+                rows={6}
               />
             </Field>
           </div>
@@ -584,21 +583,6 @@ export function CampaignWizard({ id }: { id?: string }) {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs" htmlFor="campaign-link-url">
-                {t("linkUrlLabel")}
-              </Label>
-              <Input
-                id="campaign-link-url"
-                type="url"
-                inputMode="url"
-                value={form.linkUrl}
-                onChange={(e) => set("linkUrl", e.target.value)}
-                placeholder="https://…"
-                className="h-10"
-              />
-              <p className="text-muted-foreground text-xs">{t("linkUrlHint")}</p>
-            </div>
 
             {attempted && !valid.message ? <ErrorText>{t("messageRequired")}</ErrorText> : null}
 

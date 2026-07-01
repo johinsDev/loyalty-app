@@ -15,7 +15,7 @@ import {
   ResponsiveModalTitle,
 } from "@loyalty/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Eye, MoreHorizontal, Pause, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { Eye, MoreHorizontal, Pause, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { parseAsString, useQueryState } from "nuqs";
 import { useState } from "react";
@@ -44,12 +44,10 @@ export function CampaignRowActions({ campaign }: { campaign: RowCampaign }) {
   const invalidate = () => queryClient.invalidateQueries(trpc.campaigns.adminList.queryFilter());
   const remove = useMutation(trpc.campaigns.remove.mutationOptions());
   const pause = useMutation(trpc.campaigns.pause.mutationOptions());
-  const retry = useMutation(trpc.campaigns.retry.mutationOptions());
 
   const isDraft = campaign.displayState === "draft";
   const canPause =
     campaign.displayState === "scheduled" || campaign.displayState === "sending";
-  const canRetry = campaign.displayState === "sent" || campaign.sent > 0;
 
   const onDelete = () =>
     remove.mutate(
@@ -70,18 +68,6 @@ export function CampaignRowActions({ campaign }: { campaign: RowCampaign }) {
       {
         onSuccess: () => {
           toast.success(t("paused"));
-          void invalidate();
-        },
-        onError: () => toast.error(t("saveError")),
-      },
-    );
-
-  const onRetry = () =>
-    retry.mutate(
-      { id: campaign.id },
-      {
-        onSuccess: (res) => {
-          toast.success(t("retried", { n: res.recipients }));
           void invalidate();
         },
         onError: () => toast.error(t("saveError")),
@@ -117,12 +103,6 @@ export function CampaignRowActions({ campaign }: { campaign: RowCampaign }) {
             <DropdownMenuItem onClick={onPause}>
               <Pause className="size-4" />
               {t("pause")}
-            </DropdownMenuItem>
-          ) : null}
-          {canRetry ? (
-            <DropdownMenuItem onClick={onRetry}>
-              <RotateCcw className="size-4" />
-              {t("retry")}
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuSeparator />
