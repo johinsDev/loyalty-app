@@ -258,21 +258,33 @@ export function CampaignWizard({ id }: { id?: string }) {
 
   // New campaign → create a draft once.
   const createMut = useMutation(trpc.campaigns.create.mutationOptions());
+  const [createErr, setCreateErr] = useState(false);
+  const createTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const startDraft = () => {
+    setCreateErr(false);
     creating.current = true;
     createMut.reset();
     createMut.mutate(undefined, {
       onSuccess: (res) => {
+        clearTimeout(createTimer.current);
         setCampaignId(res.campaign.id);
         seeded.current = true;
       },
       onError: () => {
-        // Allow a manual retry (the draft create failed — often a stale API
-        // worker bundle after a schema/route change; restart wrangler dev).
+        clearTimeout(createTimer.current);
         creating.current = false;
+        setCreateErr(true);
         toast.error(t("createError"));
       },
     });
+    // Don't hang on "Guardando…" forever if the request never returns (a stale
+    // API-worker bundle after a schema/route change → restart wrangler dev).
+    createTimer.current = setTimeout(() => {
+      creating.current = false;
+      createMut.reset();
+      setCreateErr(true);
+      toast.error(t("createError"));
+    }, 12_000);
   };
   useEffect(() => {
     if (id || campaignId || creating.current) return;
@@ -434,7 +446,7 @@ export function CampaignWizard({ id }: { id?: string }) {
     }
   }
 
-  const busy = createMut.isPending && !campaignId;
+  const busy = createMut.isPending && !campaignId && !createErr;
   const saving = advanceMut.isPending || publishMut.isPending;
 
   const toggleChannel = (c: Channel) =>
@@ -486,13 +498,14 @@ export function CampaignWizard({ id }: { id?: string }) {
         isLast={step === "schedule"}
         finishLabel={id ? t("saveChanges") : t("publish")}
         saving={saving || busy}
+        maxWidthClassName="max-w-7xl"
         onExit={tryExit}
         exitLabel={t("title")}
         preview={
           <CampaignMessagePreview message={form.message} channelPriority={form.channelPriority} />
         }
       >
-        {!campaignId && createMut.isError ? (
+        {!campaignId && (createMut.isError || createErr) ? (
           <div className="space-y-3 py-4">
             <p className="text-destructive text-sm font-medium">{t("createError")}</p>
             <Button
