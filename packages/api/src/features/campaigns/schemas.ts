@@ -29,17 +29,9 @@ export const campaignDisplayStateSchema = z.enum([
 ]);
 
 // ─── Per-step input schemas (reused verbatim by the FE forms) ────────────────
-/** Optional linked redeemable offer (drives the "Canjeados" funnel stage). */
-export const offerSchema = z.object({
-  kind: z.enum(["promo", "reward"]),
-  id: z.string().min(1),
-});
-export type OfferInput = z.infer<typeof offerSchema>;
-
 export const definitionStepSchema = z.object({
   name: z.string().min(1).max(120),
   objective: z.string().max(500).optional(),
-  offer: offerSchema.nullish(),
 });
 
 const pushContentSchema = z.object({

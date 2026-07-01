@@ -54,6 +54,4 @@ export {
   type CountReachInput,
   type DefinitionStepInput,
   type MessageStepInput,
-  type OfferInput,
 } from "./schemas";
-export { offerSchema } from "./schemas";

@@ -1,5 +1,9 @@
 import type { db as Db } from "@loyalty/db";
-import type { CampaignRow } from "@loyalty/db/schema";
+import type {
+  CampaignMessage,
+  CampaignOffer,
+  CampaignRow,
+} from "@loyalty/db/schema";
 import { runs, tasks } from "@trigger.dev/sdk/v3";
 import { TRPCError } from "@trpc/server";
 
@@ -37,6 +41,22 @@ type SendCampaignPayload = {
 export interface CampaignStateResult {
   campaign: CampaignRow;
   state: WizardState;
+}
+
+/** The first promo/reward entity variable in the message → the linked offer. */
+function deriveOffer(message: CampaignMessage | null): CampaignOffer | null {
+  if (!message) return null;
+  const texts = [
+    message.push?.title,
+    message.push?.body,
+    message.email?.subject,
+    message.email?.body,
+    message.sms?.text,
+    message.whatsapp?.text,
+  ].filter((s): s is string => !!s);
+  const refs = entityRefs(...texts);
+  const ref = refs.find((r) => r.scope === "promo") ?? refs.find((r) => r.scope === "reward");
+  return ref ? { kind: ref.scope as "promo" | "reward", id: ref.id } : null;
 }
 
 export class CampaignsService {
@@ -91,6 +111,10 @@ export class CampaignsService {
         message: "Completa definición, mensaje y canales antes de publicar",
       });
     }
+    // Derive the "Canjeados" offer from the first promo/reward entity variable
+    // used in the message (no separate offer picker).
+    const offer = deriveOffer(current.message);
+    if (offer) await this.repo.patch(orgId, id, { offer });
     const published = await this.repo.markPublished(orgId, id, {
       scheduledAt: current.scheduledAt,
       special: current.special,
