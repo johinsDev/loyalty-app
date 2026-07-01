@@ -1314,6 +1314,7 @@
       "phone-changed": "Cambio de teléfono"
     },
     "funnelTitle": "Embudo de envío",
+    "byChannelTitle": "Por canal",
     "funnel": {
       "sent": "Enviados",
       "clicked": "Clic",

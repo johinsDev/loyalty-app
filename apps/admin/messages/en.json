@@ -1314,6 +1314,7 @@
       "phone-changed": "Phone changed"
     },
     "funnelTitle": "Send funnel",
+    "byChannelTitle": "By channel",
     "funnel": {
       "sent": "Sent",
       "clicked": "Clicks",

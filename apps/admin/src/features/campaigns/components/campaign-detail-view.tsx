@@ -181,6 +181,7 @@ export function CampaignDetailView({
         ) : null}
       </div>
       <FunnelBars funnel={campaign.funnel} />
+      <ChannelBreakdown byChannel={campaign.funnel.byChannel} />
       {Object.keys(campaign.funnel.skipReasons).length > 0 ? (
         <div className="space-y-1.5">
           <div className="text-muted-foreground space-y-1 text-xs">
@@ -259,12 +260,21 @@ function FunnelBars({ funnel }: { funnel: CampaignDetail["funnel"] }) {
     funnel.skipped,
     funnel.failed,
   );
-  const stages: { key: string; value: number; bar: string; text: string }[] = [
+  // Conversion rate relative to Enviados (the funnel's entry stage).
+  const rate = (v: number) =>
+    funnel.sent > 0 ? Math.round((v / funnel.sent) * 100) : null;
+  const stages: {
+    key: string;
+    value: number;
+    bar: string;
+    text: string;
+    pct?: number | null;
+  }[] = [
     { key: "sent", value: funnel.sent, bar: "bg-emerald-500", text: "text-emerald-600" },
-    { key: "clicked", value: funnel.clicked, bar: "bg-blue-500", text: "text-blue-600" },
+    { key: "clicked", value: funnel.clicked, bar: "bg-blue-500", text: "text-blue-600", pct: rate(funnel.clicked) },
     // Canjeados — only when the campaign links a redeemable offer.
     ...(funnel.redeemed != null
-      ? [{ key: "redeemed", value: funnel.redeemed, bar: "bg-teal-500", text: "text-teal-600" }]
+      ? [{ key: "redeemed", value: funnel.redeemed, bar: "bg-teal-500", text: "text-teal-600", pct: rate(funnel.redeemed) }]
       : []),
     { key: "skipped", value: funnel.skipped, bar: "bg-muted-foreground/40", text: "text-muted-foreground" },
     { key: "failed", value: funnel.failed, bar: "bg-destructive", text: "text-destructive" },
@@ -275,7 +285,12 @@ function FunnelBars({ funnel }: { funnel: CampaignDetail["funnel"] }) {
         <div key={s.key} className="space-y-1">
           <div className="flex items-center justify-between text-xs font-semibold">
             <span className="text-muted-foreground">{t(`funnel.${s.key}`)}</span>
-            <span className={s.text}>{s.value.toLocaleString()}</span>
+            <span className={s.text}>
+              {s.value.toLocaleString()}
+              {s.pct != null ? (
+                <span className="text-muted-foreground ml-1 font-medium">· {s.pct}%</span>
+              ) : null}
+            </span>
           </div>
           <div className="bg-muted h-2 overflow-hidden rounded-full">
             <div
@@ -283,6 +298,31 @@ function FunnelBars({ funnel }: { funnel: CampaignDetail["funnel"] }) {
               style={{ width: `${(s.value / max) * 100}%` }}
             />
           </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Where successful sends actually landed (first reachable channel per user). */
+function ChannelBreakdown({ byChannel }: { byChannel: Record<string, number> }) {
+  const t = useTranslations("Campaigns");
+  const entries = Object.entries(byChannel).sort(([, a], [, b]) => b - a);
+  if (entries.length === 0) return null;
+  const total = entries.reduce((sum, [, n]) => sum + n, 0);
+  return (
+    <div className="space-y-1.5 pt-1">
+      <p className="text-muted-foreground text-xs font-semibold">{t("byChannelTitle")}</p>
+      {entries.map(([ch, n]) => (
+        <div key={ch} className="flex items-center gap-2 text-xs">
+          <span className="text-muted-foreground w-20 shrink-0">{t(`channel.${ch}`)}</span>
+          <div className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+            <div
+              className="bg-emerald-500 h-full rounded-full"
+              style={{ width: `${total > 0 ? (n / total) * 100 : 0}%` }}
+            />
+          </div>
+          <span className="w-8 shrink-0 text-right font-semibold">{n}</span>
         </div>
       ))}
     </div>
