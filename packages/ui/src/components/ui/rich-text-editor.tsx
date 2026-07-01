@@ -1,23 +1,34 @@
 "use client";
 
 import { Node, mergeAttributes } from "@tiptap/core";
+import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
   Bold,
+  ImagePlus,
   Italic,
   Link as LinkIcon,
   List,
   ListOrdered,
   Redo2,
+  Smile,
   Strikethrough,
   Undo2,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "../../cn";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+
+/** Common emojis for the quick picker. */
+const EMOJIS = [
+  "😀", "😍", "🥳", "🤩", "😎", "🙌", "👍", "🔥",
+  "🎉", "🎁", "💜", "❤️", "✨", "⭐", "🧋", "☕",
+  "🍰", "🛍️", "💸", "🏷️", "⏰", "📣", "✅", "🚀",
+];
 
 /** A merge variable the editor can insert as a chip. */
 export interface EditorVariable {
@@ -124,7 +135,9 @@ export function RichTextEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3] } }),
-      Link.configure({ openOnClick: false }),
+      // `inclusive: false` so typing after a link doesn't keep extending it.
+      Link.extend({ inclusive: false }).configure({ openOnClick: false }),
+      Image.configure({ inline: false }),
       Variable,
     ],
     content: value,
@@ -148,6 +161,11 @@ export function RichTextEditor({
     }
   }, [editor, value]);
 
+  const [linkPop, setLinkPop] = useState(false);
+  const [imgPop, setImgPop] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [imgUrl, setImgUrl] = useState("");
+
   if (!editor) return null;
 
   const insertVariable = (v: EditorVariable) =>
@@ -166,15 +184,26 @@ export function RichTextEditor({
     if (v) insertVariable(v);
   };
 
-  const setLink = () => {
-    const url = window.prompt("URL");
-    if (url === null) return;
-    if (url === "") {
-      editor.chain().focus().unsetLink().run();
-      return;
-    }
-    editor.chain().focus().setLink({ href: url }).run();
+  const applyLink = () => {
+    const url = linkUrl.trim();
+    if (!url) editor.chain().focus().unsetLink().run();
+    else editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    setLinkPop(false);
   };
+  const insertImage = () => {
+    const url = imgUrl.trim();
+    if (url) editor.chain().focus().setImage({ src: url }).run();
+    setImgUrl("");
+    setImgPop(false);
+  };
+
+  const triggerClass = (active?: boolean) =>
+    cn(
+      "grid size-8 place-items-center rounded-md transition-colors",
+      active
+        ? "bg-primary/10 text-primary"
+        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+    );
 
   return (
     <div
@@ -190,7 +219,91 @@ export function RichTextEditor({
         <span className="bg-border mx-1 h-5 w-px" />
         <Tool icon={List} active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()} />
         <Tool icon={ListOrdered} active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()} />
-        <Tool icon={LinkIcon} active={editor.isActive("link")} onClick={setLink} />
+
+        <Popover
+          open={linkPop}
+          onOpenChange={(o) => {
+            setLinkPop(o);
+            if (o) setLinkUrl((editor.getAttributes("link").href as string) ?? "");
+          }}
+        >
+          <PopoverTrigger className={triggerClass(editor.isActive("link"))} title="Enlace">
+            <LinkIcon className="size-4" />
+          </PopoverTrigger>
+          <PopoverContent className="w-72 space-y-2 p-2">
+            <input
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && applyLink()}
+              placeholder="https://…"
+              className="border-input h-9 w-full rounded-lg border bg-transparent px-2.5 text-sm outline-none"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  editor.chain().focus().unsetLink().run();
+                  setLinkPop(false);
+                }}
+                className="text-muted-foreground hover:text-foreground h-8 rounded-lg px-2 text-xs font-semibold"
+              >
+                Quitar
+              </button>
+              <button
+                type="button"
+                onClick={applyLink}
+                className="bg-primary text-primary-foreground h-8 rounded-lg px-3 text-xs font-semibold"
+              >
+                Aplicar
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <Popover open={imgPop} onOpenChange={setImgPop}>
+          <PopoverTrigger className={triggerClass()} title="Imagen / GIF">
+            <ImagePlus className="size-4" />
+          </PopoverTrigger>
+          <PopoverContent className="w-72 space-y-2 p-2">
+            <input
+              value={imgUrl}
+              onChange={(e) => setImgUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && insertImage()}
+              placeholder="https://…/imagen.png · .gif"
+              className="border-input h-9 w-full rounded-lg border bg-transparent px-2.5 text-sm outline-none"
+            />
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={insertImage}
+                className="bg-primary text-primary-foreground h-8 rounded-lg px-3 text-xs font-semibold"
+              >
+                Insertar
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <Popover>
+          <PopoverTrigger className={triggerClass()} title="Emoji">
+            <Smile className="size-4" />
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2">
+            <div className="grid grid-cols-8 gap-0.5">
+              {EMOJIS.map((emo) => (
+                <button
+                  key={emo}
+                  type="button"
+                  onClick={() => editor.chain().focus().insertContent(emo).run()}
+                  className="hover:bg-muted grid size-7 place-items-center rounded text-lg"
+                >
+                  {emo}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+
         <span className="bg-border mx-1 h-5 w-px" />
         <Tool icon={Undo2} onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} />
         <Tool icon={Redo2} onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} />
