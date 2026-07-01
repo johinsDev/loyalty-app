@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "789ac82e-fefd-42d3-bae8-1382ca088ad2",
+  "id": "a792eaf6-f7a3-4214-9374-9f05a561a038",
   "prevId": "3f2bf81f-984a-4886-bea8-d5c43f1dc876",
   "tables": {
     "audit_log": {
@@ -1649,7 +1649,7 @@
           "name": "store_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "created_at": {
@@ -1908,7 +1908,7 @@
           "name": "store_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "price_cents": {
@@ -2646,7 +2646,7 @@
           "name": "store_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "amount": {
@@ -3231,6 +3231,13 @@
         },
         "og_image_url": {
           "name": "og_image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "favicon_url": {
+          "name": "favicon_url",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

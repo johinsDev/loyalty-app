@@ -109,10 +109,9 @@ export const purchase = sqliteTable(
       .notNull()
       .references(() => user.id),
     // The store where the sale happened. Backfilled to the org's primary store
-    // for legacy rows (migration 0019), then enforced notNull.
-    storeId: text("store_id")
-      .notNull()
-      .references(() => store.id),
+    // for legacy rows (migration 0019). Nullable: legacy/pilot orgs may have no
+    // store to attribute to; the POS always sets it on new sales.
+    storeId: text("store_id").references(() => store.id),
     // `priceCents` = the NET charged (after any promo). For itemized purchases
     // `subtotalCents` + `discountCents` + `appliedPromoId` carry the breakdown.
     priceCents: integer("price_cents").notNull(),
@@ -209,10 +208,9 @@ export const stamp = sqliteTable("stamp", {
     .notNull()
     .references(() => user.id),
   // Store where the stamp was granted (mirrors the purchase). Backfilled from
-  // the purchase (migration 0019), then enforced notNull.
-  storeId: text("store_id")
-    .notNull()
-    .references(() => store.id),
+  // the purchase (migration 0019). Nullable: mirrors the purchase, which may
+  // have no store for legacy rows.
+  storeId: text("store_id").references(() => store.id),
   amount: integer("amount").notNull().default(1),
   note: text("note"),
   createdAt: integer("created_at", { mode: "timestamp" })
@@ -452,10 +450,9 @@ export const pointsTransaction = sqliteTable(
     }),
     addedByUserId: text("added_by_user_id").references(() => user.id),
     // Store attribution (mirrors the earning purchase). Backfilled to primary
-    // for legacy rows (migration 0019), then enforced notNull.
-    storeId: text("store_id")
-      .notNull()
-      .references(() => store.id),
+    // for legacy rows (migration 0019). Nullable: mirrors the purchase, which
+    // may have no store for legacy rows.
+    storeId: text("store_id").references(() => store.id),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
