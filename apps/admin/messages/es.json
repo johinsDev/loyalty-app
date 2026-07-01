@@ -1223,7 +1223,7 @@
     "tokensLabel": "Insertar variable",
     "tokenHint": "Coloca el cursor en un campo para insertar la variable.",
     "linkUrlLabel": "Enlace (CTA)",
-    "linkUrlHint": "Destino de la campaña. Usa {{short_link}} en el mensaje para acortarlo por cliente y medir los clics.",
+    "linkUrlHint": "Destino de la campaña. Insertá la variable de enlace en el mensaje para acortarlo por cliente y medir los clics.",
     "messageRequired": "Escribe el mensaje para al menos un canal.",
     "pushTitlePlaceholder": "Título de la notificación",
     "pushBodyPlaceholder": "Cuerpo de la notificación…",

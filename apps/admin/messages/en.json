@@ -1223,7 +1223,7 @@
     "tokensLabel": "Insert variable",
     "tokenHint": "Place the cursor in a field to insert the variable.",
     "linkUrlLabel": "Link (CTA)",
-    "linkUrlHint": "Campaign destination. Use {{short_link}} in the message to shorten it per member and track clicks.",
+    "linkUrlHint": "Campaign destination. Insert the link variable in the message to shorten it per member and track clicks.",
     "messageRequired": "Write the message for at least one channel.",
     "pushTitlePlaceholder": "Notification title",
     "pushBodyPlaceholder": "Notification body…",
