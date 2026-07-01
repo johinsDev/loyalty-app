@@ -97,6 +97,13 @@ export interface RichTextEditorProps {
    * (friendly label in the editor, `{{token}}` in the serialized HTML).
    */
   variables?: EditorVariable[];
+  /**
+   * Optional entity kinds (e.g. `{ scope: "promo", label: "Promoción" }`). The
+   * button asks the app (`onRequestEntity`) to pick an entity, then inserts the
+   * returned chip. Keeps the app's search modal out of this generic component.
+   */
+  entities?: { scope: string; label: string }[];
+  onRequestEntity?: (scope: string) => Promise<EditorVariable | null>;
 }
 
 /**
@@ -110,6 +117,8 @@ export function RichTextEditor({
   placeholder,
   className,
   variables,
+  entities,
+  onRequestEntity,
 }: RichTextEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
@@ -141,6 +150,22 @@ export function RichTextEditor({
 
   if (!editor) return null;
 
+  const insertVariable = (v: EditorVariable) =>
+    editor
+      .chain()
+      .focus()
+      .insertContent([
+        { type: "variable", attrs: { token: v.token, label: v.label } },
+        { type: "text", text: " " },
+      ])
+      .run();
+
+  const pickEntity = async (scope: string) => {
+    if (!onRequestEntity) return;
+    const v = await onRequestEntity(scope);
+    if (v) insertVariable(v);
+  };
+
   const setLink = () => {
     const url = window.prompt("URL");
     if (url === null) return;
@@ -170,25 +195,26 @@ export function RichTextEditor({
         <Tool icon={Undo2} onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} />
         <Tool icon={Redo2} onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} />
       </div>
-      {variables && variables.length > 0 ? (
+      {(variables && variables.length > 0) || (entities && entities.length > 0) ? (
         <div className="border-border flex flex-wrap items-center gap-1.5 border-b px-2 py-1.5">
-          {variables.map((v) => (
+          {variables?.map((v) => (
             <button
               key={v.token}
               type="button"
-              onClick={() =>
-                editor
-                  .chain()
-                  .focus()
-                  .insertContent([
-                    { type: "variable", attrs: { token: v.token, label: v.label } },
-                    { type: "text", text: " " },
-                  ])
-                  .run()
-              }
+              onClick={() => insertVariable(v)}
               className="bg-primary/10 text-primary hover:bg-primary/20 rounded-full px-2 py-0.5 text-xs font-semibold transition-colors"
             >
               {v.label}
+            </button>
+          ))}
+          {entities?.map((e) => (
+            <button
+              key={e.scope}
+              type="button"
+              onClick={() => void pickEntity(e.scope)}
+              className="border-border text-muted-foreground hover:bg-muted rounded-full border border-dashed px-2 py-0.5 text-xs font-semibold transition-colors"
+            >
+              + {e.label}
             </button>
           ))}
         </div>

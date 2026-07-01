@@ -20,6 +20,7 @@ import {
   SelectValue,
   Switch,
   Textarea,
+  type EditorVariable,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "ahooks";
@@ -43,6 +44,7 @@ import { useNavigationGuard } from "@/lib/use-unsaved-guard";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { CAMPAIGN_PRESETS, type CampaignPreset } from "../presets";
+import { CampaignEntityModal } from "./campaign-entity-modal";
 import { CampaignMessagePreview, type PreviewMessage } from "./campaign-message-preview";
 import { CampaignOfferPicker } from "./campaign-offer-picker";
 
@@ -68,6 +70,13 @@ const CAMPAIGN_VARS = [
   { token: "{{store.name}}", label: "Sucursal" },
   { token: "{{short_link}}", label: "Enlace corto" },
 ] as const;
+
+type EntityScope = "promo" | "product" | "reward";
+const ENTITY_KINDS: { scope: EntityScope; label: string }[] = [
+  { scope: "promo", label: "Promoción" },
+  { scope: "product", label: "Producto" },
+  { scope: "reward", label: "Recompensa" },
+];
 
 type Offer = { kind: "promo" | "reward"; id: string };
 
@@ -436,6 +445,16 @@ export function CampaignWizard({ id }: { id?: string }) {
         : [...form.channelPriority, c],
     );
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  // Entity-variable picker: the editor requests an entity, we open the modal and
+  // resolve the chosen chip back to it.
+  const [entityReq, setEntityReq] = useState<{
+    scope: EntityScope;
+    resolve: (v: EditorVariable | null) => void;
+  } | null>(null);
+  const onRequestEntity = (scope: string) =>
+    new Promise<EditorVariable | null>((resolve) =>
+      setEntityReq({ scope: scope as EntityScope, resolve }),
+    );
   const reorderChannel = (from: number, to: number) => {
     if (from === to) return;
     const next = [...form.channelPriority];
@@ -603,6 +622,8 @@ export function CampaignWizard({ id }: { id?: string }) {
                 }
                 placeholder={t("emailBodyPlaceholder")}
                 variables={[...CAMPAIGN_VARS]}
+                entities={ENTITY_KINDS}
+                onRequestEntity={onRequestEntity}
               />
             </ChannelBlock>
 
@@ -854,6 +875,14 @@ export function CampaignWizard({ id }: { id?: string }) {
           </ResponsiveModalFooter>
         </ResponsiveModalContent>
       </ResponsiveModal>
+
+      <CampaignEntityModal
+        scope={entityReq?.scope ?? null}
+        onResolve={(v) => {
+          entityReq?.resolve(v);
+          setEntityReq(null);
+        }}
+      />
     </>
   );
 }

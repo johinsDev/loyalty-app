@@ -1206,6 +1206,14 @@
     "offerSearchPlaceholder": "Search promo or reward…",
     "offerEmpty": "No results",
     "offerViewDetail": "View detail",
+    "entityPick": {
+      "promo": "Choose promotion",
+      "product": "Choose product",
+      "reward": "Choose reward"
+    },
+    "entityInsertName": "Name",
+    "entityInsertLink": "Link",
+    "entityLinkLabel": "{name} (link)",
     "createError": "Couldn't start the draft. Retry.",
     "retryCreate": "Retry",
     "skipReasonsHint": "Check the message has content for the prioritized channels.",

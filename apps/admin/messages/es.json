@@ -1206,6 +1206,14 @@
     "offerSearchPlaceholder": "Buscar promo o recompensa…",
     "offerEmpty": "Sin resultados",
     "offerViewDetail": "Ver detalle",
+    "entityPick": {
+      "promo": "Elegir promoción",
+      "product": "Elegir producto",
+      "reward": "Elegir recompensa"
+    },
+    "entityInsertName": "Nombre",
+    "entityInsertLink": "Enlace",
+    "entityLinkLabel": "{name} (enlace)",
     "createError": "No se pudo iniciar el borrador. Reintenta.",
     "retryCreate": "Reintentar",
     "skipReasonsHint": "Revisa que el mensaje tenga contenido para los canales priorizados.",
