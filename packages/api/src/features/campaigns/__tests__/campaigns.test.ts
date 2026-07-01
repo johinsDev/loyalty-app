@@ -12,6 +12,12 @@ import {
   type CampaignChannel,
 } from "../message";
 import { displayState } from "../repository";
+import {
+  entityRefs,
+  extractTokens,
+  renderTemplate,
+  renderTemplateSync,
+} from "../templating";
 import { campaignWizard } from "../wizard";
 
 const now = new Date("2026-06-15T12:00:00Z");
@@ -154,6 +160,52 @@ describe("minutesUntilQuietEnd", () => {
     expect(minutesUntilQuietEnd(180, 1260, 540)).toBe(360);
     // now 12:00 → outside the quiet window
     expect(minutesUntilQuietEnd(720, 1260, 540)).toBeNull();
+  });
+});
+
+describe("templating tokens", () => {
+  it("extracts dynamic, entity, and legacy tokens", () => {
+    const tokens = extractTokens(
+      "Hola {{user.name}}, mirá {{promo#p1.name}} — {{promo#p1.href}} y {{nombre}}",
+    );
+    expect(tokens.map((t) => `${t.scope}${t.id ? "#" + t.id : ""}.${t.field}`)).toEqual([
+      "user.name",
+      "promo#p1.name",
+      "promo#p1.href",
+      "user.name", // legacy {{nombre}} → user.name
+    ]);
+  });
+
+  it("ignores unrecognized tokens", () => {
+    expect(extractTokens("{{bogus}} {{weird#x}} plain")).toEqual([]);
+  });
+
+  it("collects distinct entity refs across texts", () => {
+    const refs = entityRefs(
+      "{{promo#p1.name}} {{promo#p1.href}}",
+      "{{reward#r1.name}} {{promo#p1.name}}",
+    );
+    expect(refs).toEqual([
+      { scope: "promo", id: "p1" },
+      { scope: "reward", id: "r1" },
+    ]);
+  });
+
+  it("renders via a resolver, blanking unknowns", async () => {
+    const out = await renderTemplate(
+      "Hola {{user.name}}, {{promo#p1.name}} en {{store.name}}",
+      (t) => {
+        if (t.scope === "user" && t.field === "name") return "Ana";
+        if (t.scope === "promo" && t.field === "name") return "2x1";
+        return ""; // store.name unresolved
+      },
+    );
+    expect(out).toBe("Hola Ana, 2x1 en ");
+  });
+
+  it("renderTemplateSync uses a value map by raw token", () => {
+    const values = new Map([["{{user.name}}", "Ana"]]);
+    expect(renderTemplateSync("Hola {{user.name}}!", values)).toBe("Hola Ana!");
   });
 });
 

@@ -6,12 +6,16 @@ import {
   notificationPreference,
   organizationSettings,
   pointsAccount,
+  product,
+  promo,
   purchase,
   pushToken,
   promoRedemption,
   redemption,
+  reward,
   shortlink,
   shortlinkClick,
+  store,
   type CampaignAudienceFilter,
   type CampaignInsert,
   type CampaignRow,
@@ -396,6 +400,57 @@ export class CampaignsRepository {
       const arr = map.get(r.customerId) ?? [];
       arr.push(c);
       map.set(r.customerId, arr);
+    }
+    return map;
+  }
+
+  // ── Template entity resolution (merge variables) ──────────────────────────
+  /** The org's primary store display name (for `{{store.name}}`). */
+  async storeName(orgId: string): Promise<string> {
+    const rows = await this.db
+      .select({ name: store.name })
+      .from(store)
+      .where(eq(store.organizationId, orgId))
+      .limit(1);
+    return rows[0]?.name ?? "";
+  }
+
+  /**
+   * Resolve `{{entity#id.field}}` references to their name + customer-app URL,
+   * keyed by `"${scope}#${id}"`. Same entity for all recipients → resolved once.
+   */
+  async resolveEntityRefs(
+    orgId: string,
+    refs: ReadonlyArray<{ scope: "promo" | "product" | "reward" | "category"; id: string }>,
+  ): Promise<Map<string, { name: string; url: string | null }>> {
+    const map = new Map<string, { name: string; url: string | null }>();
+    const ids = (s: string) => refs.filter((r) => r.scope === s).map((r) => r.id);
+
+    const promoIds = ids("promo");
+    if (promoIds.length) {
+      const rows = await this.db
+        .select({ id: promo.id, name: promo.name, slug: promo.slug })
+        .from(promo)
+        .where(and(eq(promo.organizationId, orgId), inArray(promo.id, promoIds)));
+      for (const r of rows)
+        map.set(`promo#${r.id}`, { name: r.name ?? "", url: r.slug ? `/promos/${r.slug}` : null });
+    }
+    const productIds = ids("product");
+    if (productIds.length) {
+      const rows = await this.db
+        .select({ id: product.id, name: product.name, slug: product.slug })
+        .from(product)
+        .where(and(eq(product.organizationId, orgId), inArray(product.id, productIds)));
+      for (const r of rows)
+        map.set(`product#${r.id}`, { name: r.name, url: `/product/${r.slug}` });
+    }
+    const rewardIds = ids("reward");
+    if (rewardIds.length) {
+      const rows = await this.db
+        .select({ id: reward.id, name: reward.name })
+        .from(reward)
+        .where(and(eq(reward.organizationId, orgId), inArray(reward.id, rewardIds)));
+      for (const r of rows) map.set(`reward#${r.id}`, { name: r.name, url: `/rewards` });
     }
     return map;
   }

@@ -8,6 +8,16 @@ export {
 export { CampaignsService, type CampaignStateResult } from "./service";
 export { campaignWizard } from "./wizard";
 export {
+  ENTITY_SCOPES,
+  entityRefs,
+  extractTokens,
+  renderTemplate,
+  renderTemplateSync,
+  type EntityScope,
+  type Token,
+  type TokenScope,
+} from "./templating";
+export {
   ATTRIBUTION_WINDOW_DAYS,
   CAMPAIGN_CHANNELS,
   MERGE_VARS,

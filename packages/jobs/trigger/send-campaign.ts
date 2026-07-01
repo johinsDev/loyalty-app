@@ -1,24 +1,24 @@
 import {
   CampaignsRepository,
   ORG_TZ,
+  entityRefs,
   hasChannelContent,
   minutesUntilQuietEnd,
   parseHhMm,
-  renderVars,
+  renderTemplate,
   resolveChannel,
   toNotificationChannel,
   type CampaignChannel,
-  type MergeVars,
+  type Token,
 } from "@loyalty/api/features/campaigns";
 import { db } from "@loyalty/db";
 import type { CampaignMessage } from "@loyalty/db/schema";
 import { logger, task, tasks } from "@trigger.dev/sdk/v3";
 
+import { env } from "../env";
 import { notifier } from "../notifications";
 import { CampaignNotification } from "../notifications-registry";
 import { shortlinks } from "../shortlinks";
-
-const SHORT_LINK_TOKEN = /\{\{\s*short_link\s*\}\}/i;
 
 /** Current minutes-of-day in the org timezone (0–1439). */
 function orgNowMinutes(): number {
@@ -33,14 +33,6 @@ function orgNowMinutes(): number {
   return hh * 60 + mm;
 }
 
-/** Concatenated raw copy for a channel, to detect the `{{short_link}}` token. */
-function channelText(channel: CampaignChannel, message: CampaignMessage): string {
-  if (channel === "push") return `${message.push?.title ?? ""} ${message.push?.body ?? ""}`;
-  if (channel === "email") return `${message.email?.subject ?? ""} ${message.email?.body ?? ""}`;
-  if (channel === "sms") return message.sms?.text ?? "";
-  return message.whatsapp?.text ?? "";
-}
-
 // Untyped at the boundary (api enqueues this by id to avoid an api → jobs
 // cycle). Stays in sync with packages/api/src/features/campaigns/service.ts.
 type Payload = {
@@ -49,35 +41,28 @@ type Payload = {
   onlyCustomerIds?: string[];
 };
 
+type Resolve = (token: Token) => string | Promise<string>;
+
 /** Build the pre-rendered, single-channel content for a recipient. */
-function renderContent(
+async function renderContent(
   channel: CampaignChannel,
   message: CampaignMessage,
-  vars: MergeVars,
+  resolve: Resolve,
 ) {
+  const r = (s: string) => renderTemplate(s, resolve);
   if (channel === "push" && message.push) {
-    return {
-      push: {
-        title: renderVars(message.push.title, vars),
-        body: renderVars(message.push.body, vars),
-      },
-    };
+    return { push: { title: await r(message.push.title), body: await r(message.push.body) } };
   }
   if (channel === "email" && message.email) {
-    // The email body is rich HTML from the wizard editor; render vars into it
+    // The email body is rich HTML from the wizard editor; render tokens into it
     // as-is (no extra wrapping).
-    return {
-      mail: {
-        subject: renderVars(message.email.subject, vars),
-        html: renderVars(message.email.body, vars),
-      },
-    };
+    return { mail: { subject: await r(message.email.subject), html: await r(message.email.body) } };
   }
   if (channel === "sms" && message.sms) {
-    return { sms: { body: renderVars(message.sms.text, vars) } };
+    return { sms: { body: await r(message.sms.text) } };
   }
   if (channel === "whatsapp" && message.whatsapp) {
-    return { whatsapp: { body: renderVars(message.whatsapp.text, vars) } };
+    return { whatsapp: { body: await r(message.whatsapp.text) } };
   }
   return {};
 }
@@ -152,6 +137,36 @@ export const sendCampaignTask = task({
       priority: effectivePriority,
     });
 
+    // Resolve template entities once (same for every recipient) + shortlink/URL
+    // helpers for `.href` and the legacy `{{short_link}}`.
+    const allTexts = [
+      message.push?.title,
+      message.push?.body,
+      message.email?.subject,
+      message.email?.body,
+      message.sms?.text,
+      message.whatsapp?.text,
+    ].filter((s): s is string => !!s);
+    const [entityMap, storeName] = await Promise.all([
+      repo.resolveEntityRefs(p.organizationId, entityRefs(...allTexts)),
+      repo.storeName(p.organizationId),
+    ]);
+    const appBase = env.CUSTOMER_APP_URL?.replace(/\/+$/, "") ?? "";
+    const absolute = (url: string) =>
+      /^https?:\/\//i.test(url) ? url : appBase ? `${appBase}${url}` : url;
+    const shorten = async (url: string, customerId: string) => {
+      try {
+        const res = await shortlinks.shorten(url, {
+          organizationId: p.organizationId,
+          campaignId: campaign.id,
+          customerId,
+        });
+        return res.shortUrl;
+      } catch {
+        return url;
+      }
+    };
+
     let sent = 0;
     let skipped = 0;
     let failed = 0;
@@ -194,31 +209,24 @@ export const sendCampaignTask = task({
         continue;
       }
 
-      // Resolve `{{short_link}}`: mint a per-recipient shortlink (attributed to
-      // campaign+customer) only when this channel's copy uses the token and the
-      // campaign has a CTA URL. Null provider (dev) returns the raw URL.
-      let shortLink = campaign.linkUrl ?? "";
-      if (campaign.linkUrl && SHORT_LINK_TOKEN.test(channelText(channel, message))) {
-        try {
-          const res = await shortlinks.shorten(campaign.linkUrl, {
-            organizationId: p.organizationId,
-            campaignId: campaign.id,
-            customerId: r.customerId,
-          });
-          shortLink = res.shortUrl;
-        } catch {
-          shortLink = campaign.linkUrl;
+      // Per-recipient token resolver: user.* (dynamic), store.*, entity refs
+      // (fixed), and `.href`/`{{short_link}}` → per-recipient tracked shortlink.
+      const resolve: Resolve = async (tk) => {
+        if (tk.scope === "user") {
+          if (tk.field === "name") return r.name ?? "";
+          if (tk.field === "tier") return r.tier ?? "";
+          if (tk.field === "short_link")
+            return campaign.linkUrl ? shorten(absolute(campaign.linkUrl), r.customerId) : "";
+          return ""; // user.points — deferred
         }
-      }
-
-      const vars: MergeVars = {
-        nombre: r.name ?? "",
-        nivel: r.tier ?? "",
-        puntos: "",
-        sucursal: "",
-        short_link: shortLink,
+        if (tk.scope === "store") return tk.field === "name" ? storeName : "";
+        const ent = entityMap.get(`${tk.scope}#${tk.id}`);
+        if (!ent) return "";
+        if (tk.field === "name") return ent.name;
+        if (tk.field === "href") return ent.url ? shorten(absolute(ent.url), r.customerId) : "";
+        return "";
       };
-      const content = renderContent(channel, message, vars);
+      const content = await renderContent(channel, message, resolve);
 
       try {
         const result = await notifier.send(

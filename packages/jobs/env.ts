@@ -110,6 +110,8 @@ function build() {
 
       SHORTLINKS_PROVIDER: z.enum(["null", "custom"]).optional(),
       SHORTLINK_BASE_URL: z.string().optional(),
+      /** Customer web base URL, for building absolute links from entity refs. */
+      CUSTOMER_APP_URL: z.string().optional(),
     },
     runtimeEnv: process.env,
     emptyStringAsUndefined: true,
