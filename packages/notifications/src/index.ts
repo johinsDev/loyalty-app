@@ -57,6 +57,7 @@ export {
   type NotifierLogLevel,
   type NotifierLogger,
   type ResolvedNotifiable,
+  type SendOptions,
   type SendResult,
   type SkipReason,
 } from "./types";

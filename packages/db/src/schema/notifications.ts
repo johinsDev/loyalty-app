@@ -99,3 +99,41 @@ export type NotificationPreferenceRow =
   typeof notificationPreference.$inferSelect;
 export type NotificationPreferenceInsert =
   typeof notificationPreference.$inferInsert;
+
+/**
+ * `notification_config` — per-org override for an automated notification trigger
+ * (keyed by `notificationKey`). Replaces the hardcoded `via()` channel set when
+ * present: `enabled = false` suppresses the trigger entirely; `channels` (when
+ * non-null) restricts delivery to that subset. Absence of a row = the code
+ * defaults. Protected/security triggers (OTP, phone-change) ignore this table.
+ */
+export const notificationConfig = sqliteTable(
+  "notification_config",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    notificationKey: text("notification_key").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    /** Channel allowlist override; null = use the notification's declared channels. */
+    channels: text("channels", { mode: "json" }).$type<string[]>(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    orgKeyUq: uniqueIndex("notification_config_org_key_uq").on(
+      t.organizationId,
+      t.notificationKey,
+    ),
+  }),
+);
+
+export type NotificationConfigRow = typeof notificationConfig.$inferSelect;
+export type NotificationConfigInsert = typeof notificationConfig.$inferInsert;

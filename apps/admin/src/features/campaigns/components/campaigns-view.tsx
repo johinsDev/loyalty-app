@@ -29,6 +29,7 @@ import {
   Plus,
   SlidersHorizontal,
   Trash2,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { parseAsArrayOf, parseAsIsoDate, parseAsString, useQueryState } from "nuqs";
@@ -320,6 +321,14 @@ export function CampaignsView({ initialData }: { initialData?: CampaignsListResu
           <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="h-10 gap-1.5 rounded-xl"
+            onClick={() => router.push("/campaigns/automated")}
+          >
+            <Zap className="size-4" />
+            {t("automatedTitle")}
+          </Button>
           <Button
             variant="outline"
             className="h-10 gap-1.5 rounded-xl"

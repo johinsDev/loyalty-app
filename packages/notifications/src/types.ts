@@ -88,6 +88,16 @@ export interface ChannelResult {
   error?: Error;
 }
 
+/** Per-send options for `notifier.send()`. */
+export interface SendOptions {
+  /**
+   * Restrict delivery to this channel allowlist (intersected with the
+   * notification's declared `via()`). Used by the automated-trigger config to
+   * override a notification's channels per org.
+   */
+  onlyChannels?: ChannelName[];
+}
+
 /** Aggregate result of a single `notifier.send()`. */
 export interface SendResult {
   /** The notification class name (e.g. `NewUserNotification`). */
