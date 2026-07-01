@@ -440,7 +440,7 @@ export function CampaignWizard({ id }: { id?: string }) {
         isFirst={stepIndex === 0}
         isLast={step === "schedule"}
         finishLabel={id ? t("saveChanges") : t("publish")}
-        saving={saving}
+        saving={saving || busy}
         onExit={tryExit}
         exitLabel={t("title")}
         preview={
@@ -459,8 +459,6 @@ export function CampaignWizard({ id }: { id?: string }) {
               {t("retryCreate")}
             </Button>
           </div>
-        ) : busy ? (
-          <p className="text-muted-foreground text-sm">…</p>
         ) : step === "definition" ? (
           <div className="space-y-4">
             <Field label={t("fieldName")}>
