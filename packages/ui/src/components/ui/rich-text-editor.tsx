@@ -295,13 +295,19 @@ function buildVariableSuggestion(refs: {
         }
         root.style.display = "block";
         let lastSection = "";
+        let firstHeader = true;
+        let activeEl: HTMLButtonElement | null = null;
         items.forEach((it, i) => {
           const section = sectionOf(it);
           if (section !== lastSection) {
             lastSection = section;
             const header = document.createElement("div");
-            header.className =
-              "text-muted-foreground px-2.5 pt-2 pb-1 text-[10px] font-bold tracking-wider uppercase";
+            // Spacing + a divider between groups (not before the first).
+            header.className = cn(
+              "text-muted-foreground px-2.5 pb-1 text-[10px] font-bold tracking-wider uppercase",
+              firstHeader ? "pt-1.5" : "border-border mt-1.5 border-t pt-2.5",
+            );
+            firstHeader = false;
             header.textContent = section;
             root?.appendChild(header);
           }
@@ -313,6 +319,7 @@ function buildVariableSuggestion(refs: {
               ? "bg-accent text-accent-foreground"
               : "text-foreground hover:bg-muted",
           );
+          if (i === active) activeEl = btn;
           if (it.type === "var" && it.hint) btn.title = it.hint;
           const label = document.createElement("span");
           label.className = "truncate font-medium";
@@ -327,6 +334,16 @@ function buildVariableSuggestion(refs: {
           });
           root?.appendChild(btn);
         });
+        // Keep the highlighted item visible when navigating with the arrows,
+        // scrolling only the menu (never the page).
+        if (activeEl && root) {
+          const el = activeEl as HTMLButtonElement;
+          const top = el.offsetTop;
+          const bottom = top + el.offsetHeight;
+          if (top < root.scrollTop) root.scrollTop = top - 28;
+          else if (bottom > root.scrollTop + root.clientHeight)
+            root.scrollTop = bottom - root.clientHeight + 6;
+        }
         position();
       };
       return {
