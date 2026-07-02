@@ -1131,7 +1131,10 @@
       "channel": { "push": "Push", "email": "Email", "whatsapp": "WhatsApp" },
       "audience": "Audience",
       "aud": { "all": "Everyone", "tier": "By tier" },
+      "tierHint": "Pick one or more tiers.",
       "reach": "≈ {n} people",
+      "required": "Fill this in or turn the announcement off.",
+      "prior": "This banner already has {n} campaign(s).",
       "needsPublish": "Publish the banner to announce it.",
       "launched": "Announcement sent 🎉",
       "failed": "Banner saved ✓ — we couldn't launch the announcement. Retry from the banner."

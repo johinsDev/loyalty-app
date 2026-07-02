@@ -1131,7 +1131,10 @@
       "channel": { "push": "Push", "email": "Email", "whatsapp": "WhatsApp" },
       "audience": "Audiencia",
       "aud": { "all": "Todos", "tier": "Por nivel" },
+      "tierHint": "Elegí uno o más niveles.",
       "reach": "≈ {n} personas",
+      "required": "Completá este campo o desactivá el anuncio.",
+      "prior": "Este banner ya tiene {n} campaña(s).",
       "needsPublish": "Publicá el banner para poder anunciarlo.",
       "launched": "Anuncio lanzado 🎉",
       "failed": "Banner guardado ✓ — no pudimos lanzar el anuncio. Reintentá desde el banner."

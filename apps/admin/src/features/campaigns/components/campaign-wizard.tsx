@@ -53,6 +53,7 @@ import { useTRPC } from "@/lib/trpc/client";
 
 import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 
+import { CAMPAIGN_VARS } from "../lib/campaign-vars";
 import { CAMPAIGN_PRESETS, type CampaignPreset } from "../presets";
 import { CampaignEntityModal } from "./campaign-entity-modal";
 import { CampaignPresetsGallery } from "./campaign-presets-gallery";
@@ -74,19 +75,6 @@ const CHANNEL_ICON: Record<Channel, LucideIcon> = {
 };
 const TIERS = ["hoja", "flor", "oro"] as const;
 type Tier = (typeof TIERS)[number];
-// Dynamic (per-recipient / per-org) variables. Entity variables (promo/product/
-// reward with a picker) arrive in V3.
-const CAMPAIGN_VARS = [
-  { token: "{{user.name}}", label: "Nombre de usuario", hint: "El nombre del cliente" },
-  { token: "{{user.phone}}", label: "Teléfono", hint: "El teléfono del cliente" },
-  { token: "{{user.tier}}", label: "Nivel", hint: "El nivel/tier actual del cliente" },
-  { token: "{{user.points}}", label: "Puntos", hint: "Puntos disponibles del cliente" },
-  { token: "{{user.stamps}}", label: "Sellos", hint: "Sellos en la tarjeta activa" },
-  { token: "{{store.name}}", label: "Sucursal", hint: "El nombre de la sucursal" },
-  { token: "{{store.address}}", label: "Dirección", hint: "La dirección de la sucursal" },
-  { token: "{{store.phone}}", label: "Tel. sucursal", hint: "El teléfono de la sucursal" },
-  { token: "{{store.instagram}}", label: "Instagram", hint: "El Instagram de la sucursal" },
-] as const;
 
 type EntityScope = "promo" | "product" | "reward" | "category";
 const ENTITY_KINDS: { scope: EntityScope; label: string }[] = [

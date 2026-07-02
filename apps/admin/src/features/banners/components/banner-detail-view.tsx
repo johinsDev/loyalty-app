@@ -53,7 +53,9 @@ export function BannerDetailView({
       <h3 className="font-display mb-3 text-sm font-semibold">
         {t("campaigns.title", { n: campaigns.data?.length ?? 0 })}
       </h3>
-      {campaigns.data && campaigns.data.length > 0 ? (
+      {campaigns.isPending ? (
+        <div className="bg-muted/50 h-5 w-40 animate-pulse rounded" />
+      ) : campaigns.data && campaigns.data.length > 0 ? (
         <ul className="divide-border divide-y">
           {campaigns.data.map((c) => (
             <li key={c.id} className="flex items-center justify-between py-2">

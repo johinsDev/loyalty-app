@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { WizardShell } from "@/components/wizard-shell";
 import {
   AnnounceComposer,
+  announceAudienceFilter,
   type AnnounceChannel,
   type AnnounceValue,
 } from "@/features/campaigns/components/announce-composer";
@@ -140,9 +141,12 @@ export function BannerWizard({ id }: { id?: string }) {
   const [announce, setAnnounce] = useState<AnnounceValue | null>(null);
   const seeded = useRef(false);
   const creating = useRef(false);
+  // Blocks a second Finish from firing a duplicate publish + announce while the
+  // first one is still awaiting (createFromEntity outlives the publish spinner).
+  const finishing = useRef(false);
 
-  // Difusión is client-only + always publishes on Finish, so it never leaves the
-  // banner as a draft. No draft-save exit exists → the announce guard is off.
+  // Reserved for a future draft-save exit: today Difusión always publishes on
+  // Finish, so the banner never stays a draft and the announce guard is off.
   const willBeDraft: boolean = false;
 
   /** Current form projected into the shape the announce seed/link helpers read. */
@@ -240,6 +244,12 @@ export function BannerWizard({ id }: { id?: string }) {
   const publishMut = useMutation(trpc.banners.publish.mutationOptions());
   const createFromEntityMut = useMutation(trpc.campaigns.createFromEntity.mutationOptions());
 
+  // In edit mode, surface how many campaigns already announce this banner.
+  const priorCampaignsQuery = useQuery({
+    ...trpc.campaigns.campaignsBySource.queryOptions({ scope: "banner", id: id ?? "" }),
+    enabled: Boolean(id),
+  });
+
   const step = STEPS[stepIndex]!;
   const steps = STEPS.map((key) => ({ key, label: t(`step.${key}`) }));
 
@@ -265,7 +275,11 @@ export function BannerWizard({ id }: { id?: string }) {
       (form.ctaTarget !== "product" || form.ctaValue.trim().length > 0),
     design: true,
     schedule: true,
-    difusion: true,
+    // Block finishing when the announcement is on but has no title/message.
+    difusion:
+      announce === null ||
+      !announce.enabled ||
+      (announce.title.trim().length > 0 && announce.body.trim().length > 0),
     review: true,
   };
   const navigable: string[] = [];
@@ -334,46 +348,55 @@ export function BannerWizard({ id }: { id?: string }) {
       return;
     }
     if (step === "review") {
-      if (!bannerId) return;
+      // Guard against a double Finish firing a duplicate publish + announce.
+      if (!bannerId || finishing.current) return;
+      finishing.current = true;
       try {
         await publishMut.mutateAsync({ id: bannerId });
-        bypass.current = true;
-        setDirty(false);
-        await queryClient.invalidateQueries(trpc.banners.adminList.queryFilter());
-        await queryClient.invalidateQueries(trpc.banners.list.queryFilter());
-        // Best-effort follow-on: the banner is already saved. Announce only when
-        // the toggle is on and the banner ends up published (never blocks).
-        if (announce?.enabled && !willBeDraft) {
-          const channels: AnnounceChannel[] = announce.channels.length
-            ? announce.channels
-            : ["push"];
-          try {
-            await createFromEntityMut.mutateAsync({
-              source: { scope: "banner", id: bannerId },
-              name: form.name,
-              push: { title: announce.title, body: announce.body },
-              ...(channels.includes("email")
-                ? { email: { subject: announce.title, body: announce.body } }
-                : {}),
-              ...(channels.includes("whatsapp")
-                ? { whatsapp: { text: `${announce.title}\n\n${announce.body}` } }
-                : {}),
-              channelPriority: channels,
-              linkUrl: bannerLinkUrl(formToBannerLike()),
-              audienceFilter:
-                announce.audience === "all" ? undefined : { tiers: ["oro" as const] },
-              scheduledAt: announce.when === "schedule" ? announce.scheduledAt : undefined,
-            });
-            toast.success(tc("launched"));
-          } catch {
-            toast.error(tc("failed"));
-          }
-        }
-        toast.success(id ? t("updated", { name: form.name }) : t("created", { name: form.name }));
-        router.push("/banners");
       } catch {
         toast.error(t("publishError"));
+        finishing.current = false; // let the admin retry
+        return;
       }
+      bypass.current = true;
+      setDirty(false);
+      await queryClient.invalidateQueries(trpc.banners.adminList.queryFilter());
+      await queryClient.invalidateQueries(trpc.banners.list.queryFilter());
+      // Best-effort follow-on: the banner is already saved. Announce only when
+      // the toggle is on and the banner ends up published (never blocks).
+      let announced = false;
+      if (announce?.enabled && !willBeDraft) {
+        announced = true;
+        const channels: AnnounceChannel[] = announce.channels.length
+          ? announce.channels
+          : ["push"];
+        try {
+          await createFromEntityMut.mutateAsync({
+            source: { scope: "banner", id: bannerId },
+            name: form.name,
+            push: { title: announce.title, body: announce.body },
+            ...(channels.includes("email")
+              ? { email: { subject: announce.title, body: announce.body } }
+              : {}),
+            ...(channels.includes("whatsapp")
+              ? { whatsapp: { text: `${announce.title}\n\n${announce.body}` } }
+              : {}),
+            channelPriority: channels,
+            linkUrl: bannerLinkUrl(formToBannerLike()),
+            audienceFilter: announceAudienceFilter(announce),
+            scheduledAt: announce.when === "schedule" ? announce.scheduledAt : undefined,
+          });
+          toast.success(tc("launched"));
+        } catch {
+          toast.error(tc("failed"));
+        }
+      }
+      // Single toast: the announce toast (launched/failed) already implies the
+      // banner was saved, so suppress the banner-saved toast when it fires.
+      if (!announced) {
+        toast.success(id ? t("updated", { name: form.name }) : t("created", { name: form.name }));
+      }
+      router.push("/banners");
       return;
     }
     const ok = await persistStep();
@@ -384,7 +407,8 @@ export function BannerWizard({ id }: { id?: string }) {
   }
 
   const busy = createMut.isPending && !bannerId;
-  const saving = advanceMut.isPending || publishMut.isPending;
+  const saving =
+    advanceMut.isPending || publishMut.isPending || createFromEntityMut.isPending;
 
   return (
     <>
@@ -570,6 +594,7 @@ export function BannerWizard({ id }: { id?: string }) {
             onChange={setAnnounce}
             disabled={willBeDraft}
             disabledReason={tc("needsPublish")}
+            priorCampaigns={priorCampaignsQuery.data?.length ?? 0}
           />
         ) : (
           <p className="text-muted-foreground text-sm">…</p>
