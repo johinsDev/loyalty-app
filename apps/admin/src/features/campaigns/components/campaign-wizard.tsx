@@ -953,7 +953,7 @@ export function CampaignWizard({ id }: { id?: string }) {
 
             {form.mode === "once" ? (
               <Field label={t("scheduleLabel")} hint={form.scheduledAt ? undefined : t("sendNow")}>
-                <div className="flex items-center gap-2">
+                <div className="flex max-w-xs items-center gap-2">
                   <DatePicker
                     value={form.scheduledAt ?? undefined}
                     onValueChange={(d) => set("scheduledAt", d ?? null)}
@@ -990,7 +990,7 @@ export function CampaignWizard({ id }: { id?: string }) {
                   </div>
                 </Field>
                 <Field label={t("endsAtLabel")} hint={form.endsAt ? undefined : t("noEndDate")}>
-                  <div className="flex items-center gap-2">
+                  <div className="flex max-w-xs items-center gap-2">
                     <DatePicker
                       value={form.endsAt ?? undefined}
                       onValueChange={(d) => set("endsAt", d ?? null)}
