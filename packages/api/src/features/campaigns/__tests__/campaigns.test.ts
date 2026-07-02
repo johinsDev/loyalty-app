@@ -1,6 +1,7 @@
 import type { CampaignRow } from "@loyalty/db/schema";
 import { describe, expect, it } from "vitest";
 
+import { bannerAnnounceDefaults } from "../announce";
 import {
   attributedRedemptions,
   countRedeemed,
@@ -34,6 +35,7 @@ const base: CampaignRow = {
   objective: null,
   message: null,
   offer: null,
+  source: null,
   linkUrl: null,
   channelPriority: null,
   audienceFilter: null,
@@ -343,5 +345,34 @@ describe("displayState — evergreen", () => {
     expect(
       displayState({ ...base, status: "published", mode: "drip", sentAt: now }, now),
     ).toBe("active");
+  });
+});
+
+describe("bannerAnnounceDefaults", () => {
+  const banner = {
+    slug: "verano",
+    name: "Promo de verano",
+    shortDescription: "2x1 toda la semana",
+    mainImageUrl: "https://cdn/x.jpg",
+    ctaHref: "/promos/2x1",
+    ctaKind: "internal" as const,
+  };
+
+  it("links to the CTA when present", () => {
+    const d = bannerAnnounceDefaults(banner);
+    expect(d.linkUrl).toBe("/promos/2x1");
+    expect(d.push.title).toBe("Promo de verano");
+    expect(d.push.body).toContain("2x1 toda la semana");
+    expect(d.channelPriority).toEqual(["push"]);
+  });
+
+  it("falls back to the banner detail when there is no CTA", () => {
+    const d = bannerAnnounceDefaults({ ...banner, ctaHref: null });
+    expect(d.linkUrl).toBe("/banner/verano");
+  });
+
+  it("uses a generic body when shortDescription is empty", () => {
+    const d = bannerAnnounceDefaults({ ...banner, shortDescription: null });
+    expect(d.push.body.length).toBeGreaterThan(0);
   });
 });
