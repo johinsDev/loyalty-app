@@ -236,6 +236,8 @@ export class CampaignsService {
       if (t.scope === "store") {
         if (t.field === "name") return store.name;
         if (t.field === "address") return store.address;
+        if (t.field === "phone") return store.phone || "312 345 6789";
+        if (t.field === "instagram") return store.instagram || "@t4lovers";
         return "";
       }
       const ent = entityMap.get(`${t.scope}#${t.id}`);

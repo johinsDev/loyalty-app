@@ -68,13 +68,15 @@ type Tier = (typeof TIERS)[number];
 // Dynamic (per-recipient / per-org) variables. Entity variables (promo/product/
 // reward with a picker) arrive in V3.
 const CAMPAIGN_VARS = [
-  { token: "{{user.name}}", label: "Nombre de usuario" },
-  { token: "{{user.phone}}", label: "Teléfono" },
-  { token: "{{user.tier}}", label: "Nivel" },
-  { token: "{{user.points}}", label: "Puntos" },
-  { token: "{{user.stamps}}", label: "Sellos" },
-  { token: "{{store.name}}", label: "Sucursal" },
-  { token: "{{store.address}}", label: "Dirección" },
+  { token: "{{user.name}}", label: "Nombre de usuario", hint: "El nombre del cliente" },
+  { token: "{{user.phone}}", label: "Teléfono", hint: "El teléfono del cliente" },
+  { token: "{{user.tier}}", label: "Nivel", hint: "El nivel/tier actual del cliente" },
+  { token: "{{user.points}}", label: "Puntos", hint: "Puntos disponibles del cliente" },
+  { token: "{{user.stamps}}", label: "Sellos", hint: "Sellos en la tarjeta activa" },
+  { token: "{{store.name}}", label: "Sucursal", hint: "El nombre de la sucursal" },
+  { token: "{{store.address}}", label: "Dirección", hint: "La dirección de la sucursal" },
+  { token: "{{store.phone}}", label: "Tel. sucursal", hint: "El teléfono de la sucursal" },
+  { token: "{{store.instagram}}", label: "Instagram", hint: "El Instagram de la sucursal" },
 ] as const;
 
 type EntityScope = "promo" | "product" | "reward";
@@ -652,6 +654,7 @@ export function CampaignWizard({ id }: { id?: string }) {
                     type="button"
                     variant="secondary"
                     size="sm"
+                    title={`${v.hint} · ${v.token}`}
                     className="h-8 rounded-full text-xs font-semibold"
                     onClick={() => insertToken(v.token)}
                   >

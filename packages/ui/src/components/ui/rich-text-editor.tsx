@@ -39,6 +39,8 @@ export interface EditorVariable {
   token: string;
   /** The friendly label shown on the chip, e.g. `Nombre`. */
   label: string;
+  /** Optional description shown as a hover tooltip in the pickers. */
+  hint?: string;
 }
 
 /**
@@ -107,7 +109,7 @@ const Variable = Node.create({
 
 /** An item in the `{{` autocomplete menu: a ready variable or an entity kind. */
 type SuggestItem =
-  | { type: "var"; token: string; label: string }
+  | { type: "var"; token: string; label: string; hint?: string }
   | { type: "entity"; scope: string; label: string };
 
 /**
@@ -250,7 +252,7 @@ function buildVariableSuggestion(refs: {
             v.label.toLowerCase().includes(q) ||
             v.token.toLowerCase().includes(q),
         )
-        .map((v) => ({ type: "var", token: v.token, label: v.label }));
+        .map((v) => ({ type: "var", token: v.token, label: v.label, hint: v.hint }));
       const ents: SuggestItem[] = (entitiesRef.current ?? [])
         .filter((e) => !q || e.label.toLowerCase().includes(q))
         .map((e) => ({ type: "entity", scope: e.scope, label: e.label }));
@@ -300,6 +302,7 @@ function buildVariableSuggestion(refs: {
               ? "bg-accent text-accent-foreground"
               : "text-foreground hover:bg-muted",
           );
+          if (it.type === "var" && it.hint) btn.title = it.hint;
           const label = document.createElement("span");
           label.className = "truncate font-medium";
           label.textContent = it.label;
@@ -768,6 +771,7 @@ export function RichTextEditor({
             <button
               key={v.token}
               type="button"
+              title={v.hint ? `${v.hint} · ${v.token}` : v.token}
               onClick={() => insertVariable(v)}
               className="bg-primary/10 text-primary hover:bg-primary/20 rounded-full px-2 py-0.5 text-xs font-semibold transition-colors"
             >

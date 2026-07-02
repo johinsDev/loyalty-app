@@ -228,6 +228,8 @@ export const sendCampaignTask = task({
         if (tk.scope === "store") {
           if (tk.field === "name") return store.name;
           if (tk.field === "address") return store.address;
+          if (tk.field === "phone") return store.phone;
+          if (tk.field === "instagram") return store.instagram;
           return "";
         }
         const ent = entityMap.get(`${tk.scope}#${tk.id}`);

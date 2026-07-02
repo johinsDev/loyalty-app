@@ -463,14 +463,34 @@ export class CampaignsRepository {
 
   // ── Template entity resolution (merge variables) ──────────────────────────
   /** The org's primary store display name (for `{{store.name}}`). */
-  /** Org store name + denormalized single-line address (for `{{store.*}}`). */
-  async storeInfo(orgId: string): Promise<{ name: string; address: string }> {
-    const rows = await this.db
-      .select({ name: store.name, address: store.address })
+  /** Store fields for `{{store.*}}` — phone/social fall back to org settings. */
+  async storeInfo(
+    orgId: string,
+  ): Promise<{ name: string; address: string; phone: string; instagram: string }> {
+    const [s] = await this.db
+      .select({
+        name: store.name,
+        address: store.address,
+        phone: store.phone,
+        social: store.socialLinks,
+      })
       .from(store)
       .where(eq(store.organizationId, orgId))
       .limit(1);
-    return { name: rows[0]?.name ?? "", address: rows[0]?.address ?? "" };
+    const [os] = await this.db
+      .select({
+        phone: organizationSettings.phone,
+        social: organizationSettings.socialLinks,
+      })
+      .from(organizationSettings)
+      .where(eq(organizationSettings.organizationId, orgId))
+      .limit(1);
+    return {
+      name: s?.name ?? "",
+      address: s?.address ?? "",
+      phone: s?.phone ?? os?.phone ?? "",
+      instagram: s?.social?.instagram ?? os?.social?.instagram ?? "",
+    };
   }
 
   /**
