@@ -1215,7 +1215,8 @@
     "entityPick": {
       "promo": "Choose promotion",
       "product": "Choose product",
-      "reward": "Choose reward"
+      "reward": "Choose reward",
+      "category": "Choose category"
     },
     "entityInsertName": "Name",
     "entityInsertLink": "Link",

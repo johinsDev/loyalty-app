@@ -17,7 +17,7 @@ import { useState } from "react";
 
 import { useTRPC } from "@/lib/trpc/client";
 
-type Scope = "promo" | "product" | "reward";
+type Scope = "promo" | "product" | "reward" | "category";
 type Entity = { id: string; name: string };
 
 /**
@@ -52,6 +52,11 @@ export function CampaignEntityModal({
     ...trpc.rewards.catalog.queryOptions({ search: debounced || undefined }),
     enabled: scope === "reward",
   });
+  // `menu.categories` takes no search arg — filter client-side.
+  const categories = useQuery({
+    ...trpc.menu.categories.queryOptions(),
+    enabled: scope === "category",
+  });
 
   const results: Entity[] =
     scope === "promo"
@@ -60,7 +65,14 @@ export function CampaignEntityModal({
         ? (products.data?.items ?? []).map((p) => ({ id: p.id, name: p.name }))
         : scope === "reward"
           ? (rewards.data ?? []).map((r) => ({ id: r.id, name: r.name }))
-          : [];
+          : scope === "category"
+            ? (categories.data ?? [])
+                .filter(
+                  (c) =>
+                    !debounced || c.name.toLowerCase().includes(debounced.toLowerCase()),
+                )
+                .map((c) => ({ id: c.id, name: c.name }))
+            : [];
 
   const pick = (ent: Entity, f: "name" | "href") => {
     onResolve({ token: `{{${scope}#${ent.id}.${f}}}`, label: ent.name });

@@ -3,6 +3,7 @@ import {
   campaign,
   campaignSend,
   campaignTemplate,
+  category,
   customer,
   loyaltyCard,
   notificationPreference,
@@ -529,6 +530,15 @@ export class CampaignsRepository {
         .from(reward)
         .where(and(eq(reward.organizationId, orgId), inArray(reward.id, rewardIds)));
       for (const r of rows) map.set(`reward#${r.id}`, { name: r.name, url: `/rewards` });
+    }
+    const categoryIds = ids("category");
+    if (categoryIds.length) {
+      const rows = await this.db
+        .select({ id: category.id, name: category.name, slug: category.slug })
+        .from(category)
+        .where(and(eq(category.organizationId, orgId), inArray(category.id, categoryIds)));
+      for (const r of rows)
+        map.set(`category#${r.id}`, { name: r.name, url: `/menu?category=${r.slug}` });
     }
     return map;
   }

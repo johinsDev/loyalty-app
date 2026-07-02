@@ -79,10 +79,11 @@ const CAMPAIGN_VARS = [
   { token: "{{store.instagram}}", label: "Instagram", hint: "El Instagram de la sucursal" },
 ] as const;
 
-type EntityScope = "promo" | "product" | "reward";
+type EntityScope = "promo" | "product" | "reward" | "category";
 const ENTITY_KINDS: { scope: EntityScope; label: string }[] = [
   { scope: "promo", label: "Promoción" },
   { scope: "product", label: "Producto" },
+  { scope: "category", label: "Categoría" },
   { scope: "reward", label: "Recompensa" },
 ];
 

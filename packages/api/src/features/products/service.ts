@@ -48,7 +48,10 @@ export class MenuService {
     );
   }
 
-  categories(orgId: string, lc: LocaleContext): Promise<{ slug: string; name: string }[]> {
+  categories(
+    orgId: string,
+    lc: LocaleContext,
+  ): Promise<{ id: string; slug: string; name: string }[]> {
     return cache.getOrSet(
       `menu:${orgId}:categories:${lc.locale}`,
       () => this.repo.categories(orgId, lc),
