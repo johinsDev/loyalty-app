@@ -4,11 +4,13 @@ import type { AppRouter } from "@loyalty/api";
 import { formatDate } from "@loyalty/date";
 import { Badge, Button } from "@loyalty/ui";
 import type { inferRouterOutputs } from "@trpc/server";
+import { useQuery } from "@tanstack/react-query";
 import { MousePointerClick, Pencil, Users } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+import { useTRPC } from "@/lib/trpc/client";
 
 import { BannerStatsChart } from "./banner-stats-chart";
 
@@ -39,7 +41,39 @@ export function BannerDetailView({
   const t = useTranslations("Banners");
   const locale = useLocale();
   const router = useRouter();
+  const trpc = useTRPC();
   const state = banner.displayState as BannerState;
+
+  const campaigns = useQuery(
+    trpc.campaigns.campaignsBySource.queryOptions({ scope: "banner", id: banner.id }),
+  );
+
+  const campaignsBlock = (
+    <section className="bg-card border-border rounded-3xl border p-5 shadow-sm">
+      <h3 className="font-display mb-3 text-sm font-semibold">
+        {t("campaigns.title", { n: campaigns.data?.length ?? 0 })}
+      </h3>
+      {campaigns.data && campaigns.data.length > 0 ? (
+        <ul className="divide-border divide-y">
+          {campaigns.data.map((c) => (
+            <li key={c.id} className="flex items-center justify-between py-2">
+              <Link
+                href={{ pathname: "/campaigns/[id]", params: { id: c.id } }}
+                className="text-sm hover:underline"
+              >
+                {c.name ?? t("campaigns.untitled")}
+              </Link>
+              <span className="text-muted-foreground text-xs">
+                {t(`campaigns.status.${c.status === "published" ? "published" : "draft"}`)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-muted-foreground text-sm">{t("campaigns.empty")}</p>
+      )}
+    </section>
+  );
 
   const header = (
     <div className="flex items-start justify-between gap-3">
@@ -146,6 +180,7 @@ export function BannerDetailView({
         {preview}
         {statsBlock}
         {scheduleBlock}
+        {campaignsBlock}
       </div>
     );
   }
@@ -158,8 +193,11 @@ export function BannerDetailView({
           {preview}
           {statsBlock}
         </div>
-        <div className="bg-card border-border h-fit space-y-5 rounded-3xl border p-5 shadow-sm">
-          {scheduleBlock}
+        <div className="h-fit space-y-5">
+          <div className="bg-card border-border space-y-5 rounded-3xl border p-5 shadow-sm">
+            {scheduleBlock}
+          </div>
+          {campaignsBlock}
         </div>
       </div>
     </div>
