@@ -92,9 +92,13 @@ export class CampaignsService {
     input: unknown,
   ): Promise<CampaignStateResult> {
     const current = await this.loadDraft(orgId, id);
-    // One-shots are immutable once published; evergreen rules stay editable
-    // while live (changes apply to the next cron pulse).
-    if (current.status === "published" && current.mode !== "evergreen") {
+    // One-shots are immutable once published; recurring rules (evergreen + drip)
+    // stay editable while live (changes apply to the next cron pulse).
+    if (
+      current.status === "published" &&
+      current.mode !== "evergreen" &&
+      current.mode !== "drip"
+    ) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
         message: "Cannot edit a published one-time campaign",
