@@ -105,6 +105,7 @@ export type CampaignPatch = Partial<
     | "objective"
     | "message"
     | "offer"
+    | "source"
     | "linkUrl"
     | "channelPriority"
     | "audienceFilter"
@@ -319,6 +320,27 @@ export class CampaignsRepository {
       sent: sentCounts.get(r.id) ?? 0,
       createdAt: r.createdAt,
     }));
+  }
+
+  /** Campaigns spawned by a given entity (banner detail "Campañas"). */
+  async campaignsForSource(
+    orgId: string,
+    source: { scope: string; id: string },
+  ): Promise<{ id: string; name: string | null; status: string; publishedAt: Date | null }[]> {
+    const rows = await this.db
+      .select({
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        publishedAt: campaign.publishedAt,
+        source: campaign.source,
+      })
+      .from(campaign)
+      .where(eq(campaign.organizationId, orgId))
+      .orderBy(desc(campaign.createdAt));
+    return rows
+      .filter((r) => r.source?.scope === source.scope && r.source?.id === source.id)
+      .map(({ source: _drop, ...r }) => r);
   }
 
   async #sentCounts(ids: string[]): Promise<Map<string, number>> {
