@@ -32,17 +32,55 @@ import { and, countDistinct, count, desc, eq, gte, inArray, isNotNull, like, lte
 import { pageCountOf, pageOffset, type ListResult } from "../_shared/list";
 import {
   ATTRIBUTION_WINDOW_DAYS,
+  ORG_TZ,
+  attributedRedemptions,
   countRedeemed,
   type CampaignChannel,
 } from "./message";
 import type {
+  CampaignAnalytics,
   CampaignDisplayState,
   CampaignFailureRow,
   CampaignFunnel,
+  CampaignLeaderRow,
   CampaignListItem,
+  CampaignSeriesPoint,
+  CampaignTimeseries,
   CampaignsListInput,
   SaveTemplateInput,
 } from "./schemas";
+
+// ─── Day bucketing (per-day in the org timezone) ─────────────────────────────
+const DAY_MS = 86_400_000;
+const dayFmt = new Intl.DateTimeFormat("en-CA", {
+  timeZone: ORG_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+/** YYYY-MM-DD for a date, in the org timezone. */
+function dayKey(d: Date): string {
+  return dayFmt.format(d);
+}
+/** Ordered, gap-free day keys from `since` through `now` (inclusive). */
+function denseDays(since: Date, now: Date): string[] {
+  const days: string[] = [];
+  const seen = new Set<string>();
+  for (let t = since.getTime(); t <= now.getTime() + DAY_MS; t += DAY_MS) {
+    const k = dayKey(new Date(t));
+    if (!seen.has(k)) {
+      seen.add(k);
+      days.push(k);
+    }
+  }
+  return days;
+}
+type DayTally = { sent: number; clicked: number; redeemed: number };
+function bump(map: Map<string, DayTally>, day: string, field: keyof DayTally): void {
+  const cur = map.get(day) ?? { sent: 0, clicked: 0, redeemed: 0 };
+  cur[field] += 1;
+  map.set(day, cur);
+}
 
 /** Everything the send job needs per recipient to pick a channel + render vars. */
 export interface RecipientFacts {
@@ -769,7 +807,14 @@ export class CampaignsRepository {
    * attribution window after their send. Inferred (offer + customer + time) —
    * no attribution column on the redemption write path. Null when no offer.
    */
-  async redeemedCount(orgId: string, campaign: CampaignRow): Promise<number | null> {
+  /** First-send-per-customer + this offer's redemptions (for attribution). */
+  async #redemptionInputs(
+    orgId: string,
+    campaign: CampaignRow,
+  ): Promise<{
+    sentAtByCustomer: Map<string, Date>;
+    redemptions: { customerId: string; at: Date }[];
+  } | null> {
     const offer = campaign.offer;
     if (!offer) return null;
 
@@ -789,7 +834,6 @@ export class CampaignsRepository {
       const prev = sentAtByCustomer.get(r.customerId);
       if (!prev || r.sentAt < prev) sentAtByCustomer.set(r.customerId, r.sentAt);
     }
-    if (sentAtByCustomer.size === 0) return 0;
 
     const redemptions =
       offer.kind === "promo"
@@ -819,10 +863,17 @@ export class CampaignsRepository {
             .filter((r): r is { customerId: string; at: Date } => r.customerId != null)
             .map((r) => ({ customerId: r.customerId, at: r.at }));
 
+    return { sentAtByCustomer, redemptions };
+  }
+
+  async redeemedCount(orgId: string, campaign: CampaignRow): Promise<number | null> {
+    const inp = await this.#redemptionInputs(orgId, campaign);
+    if (!inp) return null;
+    if (inp.sentAtByCustomer.size === 0) return 0;
     return countRedeemed(
-      sentAtByCustomer,
-      redemptions,
-      ATTRIBUTION_WINDOW_DAYS * 86_400_000,
+      inp.sentAtByCustomer,
+      inp.redemptions,
+      ATTRIBUTION_WINDOW_DAYS * DAY_MS,
     );
   }
 
@@ -840,6 +891,238 @@ export class CampaignsRepository {
         ),
       );
     return Number(rows[0]?.n ?? 0);
+  }
+
+  // ── Analytics (honest signals: sent → clicked → redeemed) ─────────────────
+  /** Org-level campaign analytics over a lookback window (dashboard + hub). */
+  async analytics(orgId: string, sinceMs: number): Promise<CampaignAnalytics> {
+    const now = new Date();
+    const since = new Date(now.getTime() - sinceMs);
+
+    const sent = await this.db
+      .select({
+        campaignId: campaignSend.campaignId,
+        channel: campaignSend.channel,
+        sentAt: campaignSend.sentAt,
+      })
+      .from(campaignSend)
+      .where(
+        and(
+          eq(campaignSend.organizationId, orgId),
+          eq(campaignSend.status, "sent"),
+          gte(campaignSend.sentAt, since),
+        ),
+      );
+    const clicks = await this.db
+      .select({
+        campaignId: shortlink.campaignId,
+        customerId: shortlink.customerId,
+        clickedAt: shortlinkClick.clickedAt,
+      })
+      .from(shortlinkClick)
+      .innerJoin(shortlink, eq(shortlink.id, shortlinkClick.shortlinkId))
+      .where(
+        and(
+          eq(shortlink.organizationId, orgId),
+          isNotNull(shortlink.campaignId),
+          isNotNull(shortlink.customerId),
+          gte(shortlinkClick.clickedAt, since),
+        ),
+      );
+
+    const campIds = [...new Set(sent.map((s) => s.campaignId))];
+    const camps =
+      campIds.length > 0
+        ? await this.db
+            .select()
+            .from(campaign)
+            .where(and(eq(campaign.organizationId, orgId), inArray(campaign.id, campIds)))
+        : [];
+
+    const seriesMap = new Map<string, DayTally>();
+    const byChannel: Record<string, number> = {};
+    const sentByCampaign = new Map<string, number>();
+    for (const s of sent) {
+      if (!s.sentAt) continue;
+      bump(seriesMap, dayKey(s.sentAt), "sent");
+      if (s.channel) byChannel[s.channel] = (byChannel[s.channel] ?? 0) + 1;
+      sentByCampaign.set(s.campaignId, (sentByCampaign.get(s.campaignId) ?? 0) + 1);
+    }
+
+    // Clicked = distinct recipient (per campaign) — daily dedups by day+campaign+customer.
+    const clickedByCampaign = new Map<string, Set<string>>();
+    const clickDaySeen = new Set<string>();
+    for (const c of clicks) {
+      if (!c.customerId || !c.campaignId) continue;
+      const day = dayKey(c.clickedAt);
+      const dk = `${day}|${c.campaignId}|${c.customerId}`;
+      if (!clickDaySeen.has(dk)) {
+        clickDaySeen.add(dk);
+        bump(seriesMap, day, "clicked");
+      }
+      let set = clickedByCampaign.get(c.campaignId);
+      if (!set) {
+        set = new Set();
+        clickedByCampaign.set(c.campaignId, set);
+      }
+      set.add(c.customerId);
+    }
+
+    // Redeemed = attributed redemptions (offer-linked campaigns), bucketed by day.
+    let totalRedeemed = 0;
+    const redeemedByCampaign = new Map<string, number>();
+    for (const c of camps) {
+      if (!c.offer) continue;
+      const inp = await this.#redemptionInputs(orgId, c);
+      if (!inp || inp.sentAtByCustomer.size === 0) continue;
+      const dates = attributedRedemptions(
+        inp.sentAtByCustomer,
+        inp.redemptions,
+        ATTRIBUTION_WINDOW_DAYS * DAY_MS,
+      );
+      redeemedByCampaign.set(c.id, dates.length);
+      totalRedeemed += dates.length;
+      for (const d of dates) if (d >= since) bump(seriesMap, dayKey(d), "redeemed");
+    }
+
+    const series: CampaignSeriesPoint[] = denseDays(since, now).map((day) => ({
+      day,
+      ...(seriesMap.get(day) ?? { sent: 0, clicked: 0, redeemed: 0 }),
+    }));
+
+    const totalSent = sent.length;
+    const totalClicked = [...clickedByCampaign.values()].reduce((a, s) => a + s.size, 0);
+    const nameById = new Map(camps.map((c) => [c.id, c.name]));
+    const leaderboard: CampaignLeaderRow[] = campIds
+      .map((id) => {
+        const s = sentByCampaign.get(id) ?? 0;
+        const cl = clickedByCampaign.get(id)?.size ?? 0;
+        return {
+          id,
+          name: nameById.get(id) ?? "—",
+          sent: s,
+          clickRate: s > 0 ? cl / s : 0,
+          redeemed: redeemedByCampaign.get(id) ?? 0,
+        };
+      })
+      .sort((a, b) => b.clickRate - a.clickRate || b.sent - a.sent)
+      .slice(0, 8);
+
+    return {
+      kpis: {
+        sent: totalSent,
+        clickRate: totalSent > 0 ? totalClicked / totalSent : 0,
+        redeemed: totalRedeemed,
+        active: await this.#activeCampaignCount(orgId, now),
+      },
+      series,
+      byChannel,
+      leaderboard,
+    };
+  }
+
+  async #activeCampaignCount(orgId: string, now: Date): Promise<number> {
+    const rows = await this.db
+      .select()
+      .from(campaign)
+      .where(and(eq(campaign.organizationId, orgId), eq(campaign.status, "published")));
+    return rows.filter((r) => {
+      const s = displayState(r, now);
+      return s === "active" || s === "sending" || s === "scheduled";
+    }).length;
+  }
+
+  /** Per-campaign time-series (+ drip per-attempt breakdown). */
+  async campaignTimeseries(orgId: string, camp: CampaignRow): Promise<CampaignTimeseries> {
+    const now = new Date();
+    const sent = await this.db
+      .select({ customerId: campaignSend.customerId, sentAt: campaignSend.sentAt })
+      .from(campaignSend)
+      .where(
+        and(
+          eq(campaignSend.organizationId, orgId),
+          eq(campaignSend.campaignId, camp.id),
+          eq(campaignSend.status, "sent"),
+        ),
+      );
+    const clicks = await this.db
+      .select({ customerId: shortlink.customerId, clickedAt: shortlinkClick.clickedAt })
+      .from(shortlinkClick)
+      .innerJoin(shortlink, eq(shortlink.id, shortlinkClick.shortlinkId))
+      .where(
+        and(
+          eq(shortlink.organizationId, orgId),
+          eq(shortlink.campaignId, camp.id),
+          isNotNull(shortlink.customerId),
+        ),
+      );
+
+    let first: Date | null = null;
+    const seriesMap = new Map<string, DayTally>();
+    const firstByCustomer = new Map<string, Date>();
+    const attemptsByCustomer = new Map<string, number>();
+    for (const s of sent) {
+      if (!s.sentAt) continue;
+      bump(seriesMap, dayKey(s.sentAt), "sent");
+      if (!first || s.sentAt < first) first = s.sentAt;
+      const prev = firstByCustomer.get(s.customerId);
+      if (!prev || s.sentAt < prev) firstByCustomer.set(s.customerId, s.sentAt);
+      attemptsByCustomer.set(s.customerId, (attemptsByCustomer.get(s.customerId) ?? 0) + 1);
+    }
+    const clickDaySeen = new Set<string>();
+    for (const c of clicks) {
+      if (!c.customerId) continue;
+      const day = dayKey(c.clickedAt);
+      const dk = `${day}|${c.customerId}`;
+      if (!clickDaySeen.has(dk)) {
+        clickDaySeen.add(dk);
+        bump(seriesMap, day, "clicked");
+      }
+    }
+    const inp = await this.#redemptionInputs(orgId, camp);
+    if (inp && inp.sentAtByCustomer.size > 0) {
+      for (const d of attributedRedemptions(
+        inp.sentAtByCustomer,
+        inp.redemptions,
+        ATTRIBUTION_WINDOW_DAYS * DAY_MS,
+      )) {
+        bump(seriesMap, dayKey(d), "redeemed");
+      }
+    }
+
+    const start = first ?? camp.createdAt;
+    const series: CampaignSeriesPoint[] = denseDays(start, now).map((day) => ({
+      day,
+      ...(seriesMap.get(day) ?? { sent: 0, clicked: 0, redeemed: 0 }),
+    }));
+
+    let attempts: CampaignTimeseries["attempts"] = null;
+    if (camp.mode === "drip") {
+      const ids = [...attemptsByCustomer.keys()];
+      const purchases =
+        ids.length > 0
+          ? await this.db
+              .select({ customerId: purchase.customerId, last: max(purchase.createdAt) })
+              .from(purchase)
+              .where(
+                and(eq(purchase.organizationId, orgId), inArray(purchase.customerId, ids)),
+              )
+              .groupBy(purchase.customerId)
+          : [];
+      const lastPurchase = new Map(purchases.map((p) => [p.customerId, p.last]));
+      const maxAtt = camp.dripMaxAttempts ?? 3;
+      const buckets = Array.from({ length: maxAtt }, () => ({ recipients: 0, converted: 0 }));
+      for (const [cust, n] of attemptsByCustomer) {
+        const bucket = buckets[Math.min(n, maxAtt) - 1]!;
+        bucket.recipients += 1;
+        const lp = lastPurchase.get(cust);
+        const fs = firstByCustomer.get(cust);
+        if (lp && fs && lp >= fs) bucket.converted += 1;
+      }
+      attempts = buckets.map((b, i) => ({ attempt: i + 1, ...b }));
+    }
+
+    return { series, attempts };
   }
 
   async listFailures(orgId: string, campaignId: string): Promise<CampaignFailureRow[]> {

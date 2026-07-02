@@ -2,6 +2,7 @@ import type { CampaignRow } from "@loyalty/db/schema";
 import { describe, expect, it } from "vitest";
 
 import {
+  attributedRedemptions,
   countRedeemed,
   hasChannelContent,
   minutesUntilQuietEnd,
@@ -89,6 +90,26 @@ describe("renderVars", () => {
     expect(renderVars("Hola {{nombre}}", {})).toBe("Hola ");
     expect(renderVars("{{ sucursal }}", { sucursal: "T4 Colina" })).toBe("T4 Colina");
     expect(renderVars("sin tokens", {})).toBe("sin tokens");
+  });
+});
+
+describe("attributedRedemptions", () => {
+  const WINDOW = 14 * 86_400_000;
+  const day = (n: number) => new Date(2026, 0, n);
+  const sent = new Map([["a", day(1)], ["b", day(1)]]);
+
+  it("returns the first qualifying redemption date per distinct recipient", () => {
+    const dates = attributedRedemptions(
+      sent,
+      [
+        { customerId: "a", at: day(3) }, // qualifies → kept
+        { customerId: "a", at: day(6) }, // same customer → skipped
+        { customerId: "b", at: day(30) }, // out of window → dropped
+        { customerId: "z", at: day(2) }, // not a recipient → dropped
+      ],
+      WINDOW,
+    );
+    expect(dates).toEqual([day(3)]);
   });
 });
 

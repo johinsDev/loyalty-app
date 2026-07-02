@@ -233,6 +233,46 @@ export interface CampaignFailureRow {
   createdAt: Date;
 }
 
+// ─── Analytics (honest signals: sent → clicked → redeemed) ───────────────────
+export const campaignAnalyticsInputSchema = z.object({
+  period: z.enum(["7d", "30d", "90d"]).default("30d"),
+});
+export type CampaignAnalyticsInput = z.infer<typeof campaignAnalyticsInputSchema>;
+
+export const campaignTimeseriesInputSchema = z.object({ id: z.string().uuid() });
+
+/** One day's honest counters (buckets are per-day in the org timezone). */
+export interface CampaignSeriesPoint {
+  day: string; // YYYY-MM-DD
+  sent: number;
+  clicked: number;
+  redeemed: number;
+}
+
+export interface CampaignLeaderRow {
+  id: string;
+  name: string;
+  sent: number;
+  clickRate: number; // clicked / sent
+  redeemed: number;
+}
+
+/** Org-level campaign analytics for the dashboard strip + the analytics hub. */
+export interface CampaignAnalytics {
+  kpis: { sent: number; clickRate: number; redeemed: number; active: number };
+  series: CampaignSeriesPoint[];
+  byChannel: Record<string, number>;
+  leaderboard: CampaignLeaderRow[];
+}
+
+/** Per-campaign time-series for the detail (+ drip per-attempt breakdown). */
+export interface CampaignTimeseries {
+  series: CampaignSeriesPoint[];
+  attempts:
+    | { attempt: number; recipients: number; converted: number }[]
+    | null;
+}
+
 // ─── Live preview (resolve tokens to sample/real values) ─────────────────────
 export const previewMessageSchema = z.object({
   push: z.object({ title: z.string(), body: z.string() }).optional(),

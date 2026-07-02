@@ -21,6 +21,9 @@ import type {
   CampaignReach,
   CampaignStepKey,
   CampaignsListInput,
+  CampaignAnalytics,
+  CampaignAnalyticsInput,
+  CampaignTimeseries,
   CountReachInput,
   RenderPreviewInput,
   RenderedPreview,
@@ -276,6 +279,17 @@ export class CampaignsService {
     const out: Record<string, string> = {};
     for (const [key, val] of map) out[key] = val.name;
     return out;
+  }
+
+  // ── Analytics ─────────────────────────────────────────────────────────────
+  analytics(orgId: string, input: CampaignAnalyticsInput): Promise<CampaignAnalytics> {
+    const days = input.period === "7d" ? 7 : input.period === "90d" ? 90 : 30;
+    return this.repo.analytics(orgId, days * 86_400_000);
+  }
+
+  async timeseries(orgId: string, id: string): Promise<CampaignTimeseries> {
+    const row = await this.loadDraft(orgId, id);
+    return this.repo.campaignTimeseries(orgId, row);
   }
 
   // ── Reach preview ───────────────────────────────────────────────────────────

@@ -92,20 +92,37 @@ export function minutesUntilQuietEnd(
  * attribution window after their send. Pure so it's unit-testable; the repo
  * feeds it the sent times + the offer's redemptions.
  */
+/**
+ * The first qualifying redemption date per distinct customer — a redemption
+ * counts if it falls within `[sentAt, sentAt + window]`. Returns the dates so
+ * callers can both count and bucket them by day.
+ */
+export function attributedRedemptions(
+  sentAtByCustomer: ReadonlyMap<string, Date>,
+  redemptions: ReadonlyArray<{ customerId: string; at: Date }>,
+  windowMs: number,
+): Date[] {
+  const seen = new Set<string>();
+  const out: Date[] = [];
+  for (const r of redemptions) {
+    if (seen.has(r.customerId)) continue;
+    const sentAt = sentAtByCustomer.get(r.customerId);
+    if (!sentAt) continue;
+    const delta = r.at.getTime() - sentAt.getTime();
+    if (delta >= 0 && delta <= windowMs) {
+      seen.add(r.customerId);
+      out.push(r.at);
+    }
+  }
+  return out;
+}
+
 export function countRedeemed(
   sentAtByCustomer: ReadonlyMap<string, Date>,
   redemptions: ReadonlyArray<{ customerId: string; at: Date }>,
   windowMs: number,
 ): number {
-  const redeemed = new Set<string>();
-  for (const r of redemptions) {
-    if (redeemed.has(r.customerId)) continue;
-    const sentAt = sentAtByCustomer.get(r.customerId);
-    if (!sentAt) continue;
-    const delta = r.at.getTime() - sentAt.getTime();
-    if (delta >= 0 && delta <= windowMs) redeemed.add(r.customerId);
-  }
-  return redeemed.size;
+  return attributedRedemptions(sentAtByCustomer, redemptions, windowMs).length;
 }
 
 /** Whether the message has any content for the given channel. */

@@ -6,7 +6,9 @@ import { CampaignsRepository } from "./repository";
 import {
   advanceInputSchema,
   bulkIdsSchema,
+  campaignAnalyticsInputSchema,
   campaignsListInputSchema,
+  campaignTimeseriesInputSchema,
   countReachInputSchema,
   deleteTemplateSchema,
   getStateInputSchema,
@@ -96,6 +98,16 @@ export const campaignsRouter = router({
     .input(resolveEntitiesInputSchema)
     .query(async ({ ctx, input }) =>
       makeService(ctx.db).resolveEntityNames(await requireOrg(), input.refs),
+    ),
+  analytics: managerProcedure
+    .input(campaignAnalyticsInputSchema)
+    .query(async ({ ctx, input }) =>
+      makeService(ctx.db).analytics(await requireOrg(), input),
+    ),
+  timeseries: managerProcedure
+    .input(campaignTimeseriesInputSchema)
+    .query(async ({ ctx, input }) =>
+      makeService(ctx.db).timeseries(await requireOrg(), input.id),
     ),
   pause: managerProcedure
     .input(pauseInputSchema)
