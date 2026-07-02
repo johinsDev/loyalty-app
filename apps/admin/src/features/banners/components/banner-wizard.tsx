@@ -28,6 +28,15 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { WizardShell } from "@/components/wizard-shell";
+import {
+  AnnounceComposer,
+  type AnnounceChannel,
+  type AnnounceValue,
+} from "@/features/campaigns/components/announce-composer";
+import {
+  bannerAnnounceInitial,
+  bannerLinkUrl,
+} from "@/features/campaigns/lib/banner-announce";
 import { FileUpload } from "@/features/storage/components/file-upload";
 import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 import { useRouter } from "@/i18n/navigation";
@@ -36,7 +45,7 @@ import { useTRPC } from "@/lib/trpc/client";
 
 import { CtaEntityPicker } from "./cta-entity-picker";
 
-const STEPS = ["content", "design", "schedule", "review"] as const;
+const STEPS = ["content", "design", "schedule", "difusion", "review"] as const;
 type Step = (typeof STEPS)[number];
 
 type CtaTarget = "none" | "external" | "product" | "promo" | "reward";
@@ -113,6 +122,7 @@ function slugify(s: string): string {
  */
 export function BannerWizard({ id }: { id?: string }) {
   const t = useTranslations("Banners");
+  const tc = useTranslations("Campaigns.announce");
   const locale = useLocale();
   const router = useRouter();
   const trpc = useTRPC();
@@ -127,8 +137,25 @@ export function BannerWizard({ id }: { id?: string }) {
   const [attempted, setAttempted] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [announce, setAnnounce] = useState<AnnounceValue | null>(null);
   const seeded = useRef(false);
   const creating = useRef(false);
+
+  // Difusión is client-only + always publishes on Finish, so it never leaves the
+  // banner as a draft. No draft-save exit exists → the announce guard is off.
+  const willBeDraft: boolean = false;
+
+  /** Current form projected into the shape the announce seed/link helpers read. */
+  function formToBannerLike() {
+    const cta = buildCta(form.ctaTarget, form.ctaValue);
+    return {
+      slug: form.slug || slugify(form.name),
+      name: form.name,
+      shortDescription: form.shortDescription,
+      ctaHref: cta.href ?? null,
+      displayFrom: form.displayFrom,
+    };
+  }
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -211,9 +238,19 @@ export function BannerWizard({ id }: { id?: string }) {
 
   const advanceMut = useMutation(trpc.banners.advance.mutationOptions());
   const publishMut = useMutation(trpc.banners.publish.mutationOptions());
+  const createFromEntityMut = useMutation(trpc.campaigns.createFromEntity.mutationOptions());
 
   const step = STEPS[stepIndex]!;
   const steps = STEPS.map((key) => ({ key, label: t(`step.${key}`) }));
+
+  // Seed the announcement from the current banner fields the first time the
+  // admin reaches the Difusión step (form is fully filled by then).
+  useEffect(() => {
+    if (step === "difusion" && announce === null) {
+      setAnnounce(bannerAnnounceInitial(formToBannerLike()));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, announce]);
 
   // Per-step validity (mirrors the zod schemas). Only `content` can be invalid;
   // the rest are always satisfiable. A step is reachable once every prior step is
@@ -228,6 +265,7 @@ export function BannerWizard({ id }: { id?: string }) {
       (form.ctaTarget !== "product" || form.ctaValue.trim().length > 0),
     design: true,
     schedule: true,
+    difusion: true,
     review: true,
   };
   const navigable: string[] = [];
@@ -303,6 +341,34 @@ export function BannerWizard({ id }: { id?: string }) {
         setDirty(false);
         await queryClient.invalidateQueries(trpc.banners.adminList.queryFilter());
         await queryClient.invalidateQueries(trpc.banners.list.queryFilter());
+        // Best-effort follow-on: the banner is already saved. Announce only when
+        // the toggle is on and the banner ends up published (never blocks).
+        if (announce?.enabled && !willBeDraft) {
+          const channels: AnnounceChannel[] = announce.channels.length
+            ? announce.channels
+            : ["push"];
+          try {
+            await createFromEntityMut.mutateAsync({
+              source: { scope: "banner", id: bannerId },
+              name: form.name,
+              push: { title: announce.title, body: announce.body },
+              ...(channels.includes("email")
+                ? { email: { subject: announce.title, body: announce.body } }
+                : {}),
+              ...(channels.includes("whatsapp")
+                ? { whatsapp: { text: `${announce.title}\n\n${announce.body}` } }
+                : {}),
+              channelPriority: channels,
+              linkUrl: bannerLinkUrl(formToBannerLike()),
+              audienceFilter:
+                announce.audience === "all" ? undefined : { tiers: ["oro" as const] },
+              scheduledAt: announce.when === "schedule" ? announce.scheduledAt : undefined,
+            });
+            toast.success(tc("launched"));
+          } catch {
+            toast.error(tc("failed"));
+          }
+        }
         toast.success(id ? t("updated", { name: form.name }) : t("created", { name: form.name }));
         router.push("/banners");
       } catch {
@@ -497,6 +563,17 @@ export function BannerWizard({ id }: { id?: string }) {
             </Field>
           </div>
         </div>
+      ) : step === "difusion" ? (
+        announce ? (
+          <AnnounceComposer
+            value={announce}
+            onChange={setAnnounce}
+            disabled={willBeDraft}
+            disabledReason={tc("needsPublish")}
+          />
+        ) : (
+          <p className="text-muted-foreground text-sm">…</p>
+        )
       ) : (
         <div className="space-y-3">
           <h2 className="font-display text-lg font-semibold tracking-tight">
