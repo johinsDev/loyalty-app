@@ -192,7 +192,6 @@ export function CampaignWizard({ id }: { id?: string }) {
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [activeField, setActiveField] = useState<{ channel: Channel; key: string } | null>(null);
   const seeded = useRef(false);
-  const creating = useRef(false);
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -276,41 +275,21 @@ export function CampaignWizard({ id }: { id?: string }) {
     }
   };
 
-  // New campaign → create a draft once.
+  // New campaign → the draft is created LAZILY on the first save (not on mount),
+  // so opening — or reloading — the wizard never spawns empty drafts.
   const createMut = useMutation(trpc.campaigns.create.mutationOptions());
-  const [createErr, setCreateErr] = useState(false);
-  const createTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const startDraft = () => {
-    setCreateErr(false);
-    creating.current = true;
-    createMut.reset();
-    createMut.mutate(undefined, {
-      onSuccess: (res) => {
-        clearTimeout(createTimer.current);
-        setCampaignId(res.campaign.id);
-        seeded.current = true;
-      },
-      onError: () => {
-        clearTimeout(createTimer.current);
-        creating.current = false;
-        setCreateErr(true);
-        toast.error(t("createError"));
-      },
-    });
-    // Don't hang on "Guardando…" forever if the request never returns (a stale
-    // API-worker bundle after a schema/route change → restart wrangler dev).
-    createTimer.current = setTimeout(() => {
-      creating.current = false;
-      createMut.reset();
-      setCreateErr(true);
+  async function ensureDraft(): Promise<string | null> {
+    if (campaignId) return campaignId;
+    try {
+      const res = await createMut.mutateAsync();
+      setCampaignId(res.campaign.id);
+      seeded.current = true;
+      return res.campaign.id;
+    } catch {
       toast.error(t("createError"));
-    }, 12_000);
-  };
-  useEffect(() => {
-    if (id || campaignId || creating.current) return;
-    startDraft();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, campaignId]);
+      return null;
+    }
+  }
 
   // Edit campaign → load + seed once.
   const stateQuery = useQuery({
@@ -388,12 +367,15 @@ export function CampaignWizard({ id }: { id?: string }) {
     enabled: step === "audience" || step === "schedule",
   });
 
-  async function persistStep(): Promise<boolean> {
-    if (!campaignId) return false;
+  // Persists the current step, creating the draft first if it doesn't exist yet.
+  // Returns the campaign id on success (needed for publish), null on failure.
+  async function persistStep(): Promise<string | null> {
+    const cid = await ensureDraft();
+    if (!cid) return null;
     try {
       if (step === "definition") {
         await advanceMut.mutateAsync({
-          id: campaignId,
+          id: cid,
           step: "definition",
           input: {
             name: form.name,
@@ -402,7 +384,7 @@ export function CampaignWizard({ id }: { id?: string }) {
         });
       } else if (step === "message") {
         await advanceMut.mutateAsync({
-          id: campaignId,
+          id: cid,
           step: "message",
           input: {
             ...buildMessageInput(form.message),
@@ -412,14 +394,14 @@ export function CampaignWizard({ id }: { id?: string }) {
         });
       } else if (step === "audience") {
         await advanceMut.mutateAsync({
-          id: campaignId,
+          id: cid,
           step: "audience",
           input: buildAudienceFilter(form) ?? {},
         });
       } else if (step === "schedule") {
         const evergreen = form.mode === "evergreen";
         await advanceMut.mutateAsync({
-          id: campaignId,
+          id: cid,
           step: "schedule",
           input: {
             mode: form.mode,
@@ -430,10 +412,10 @@ export function CampaignWizard({ id }: { id?: string }) {
           },
         });
       }
-      return true;
+      return cid;
     } catch {
       toast.error(t("saveError"));
-      return false;
+      return null;
     }
   }
 
@@ -450,11 +432,10 @@ export function CampaignWizard({ id }: { id?: string }) {
       return;
     }
     if (step === "schedule") {
-      if (!campaignId) return;
-      const ok = await persistStep();
-      if (!ok) return;
+      const cid = await persistStep();
+      if (!cid) return;
       try {
-        await publishMut.mutateAsync({ id: campaignId });
+        await publishMut.mutateAsync({ id: cid });
         bypass.current = true;
         setDirty(false);
         await queryClient.invalidateQueries(trpc.campaigns.adminList.queryFilter());
@@ -465,15 +446,13 @@ export function CampaignWizard({ id }: { id?: string }) {
       }
       return;
     }
-    const ok = await persistStep();
-    if (ok) {
+    if (await persistStep()) {
       setAttempted(false);
       setStepIndex((n) => n + 1);
     }
   }
 
-  const busy = createMut.isPending && !campaignId && !createErr;
-  const saving = advanceMut.isPending || publishMut.isPending;
+  const saving = createMut.isPending || advanceMut.isPending || publishMut.isPending;
 
   const toggleChannel = (c: Channel) =>
     set(
@@ -525,7 +504,8 @@ export function CampaignWizard({ id }: { id?: string }) {
         isFirst={stepIndex === 0}
         isLast={step === "schedule"}
         finishLabel={id ? t("saveChanges") : t("publish")}
-        saving={saving || busy}
+        saving={saving}
+        saved={Boolean(campaignId)}
         maxWidthClassName="max-w-7xl"
         onExit={tryExit}
         exitLabel={t("title")}
@@ -533,19 +513,7 @@ export function CampaignWizard({ id }: { id?: string }) {
           <CampaignMessagePreview message={form.message} channelPriority={form.channelPriority} />
         }
       >
-        {!campaignId && (createMut.isError || createErr) ? (
-          <div className="space-y-3 py-4">
-            <p className="text-destructive text-sm font-medium">{t("createError")}</p>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 rounded-xl"
-              onClick={startDraft}
-            >
-              {t("retryCreate")}
-            </Button>
-          </div>
-        ) : step === "definition" ? (
+        {step === "definition" ? (
           <div className="space-y-4">
             <Field label={t("fieldName")}>
               <Input
