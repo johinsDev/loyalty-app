@@ -24,7 +24,9 @@ import type {
   CampaignAnalytics,
   CampaignAnalyticsInput,
   CampaignTimeseries,
+  CampaignSourceInput,
   CountReachInput,
+  CreateFromEntityInput,
   RenderPreviewInput,
   RenderedPreview,
   SaveTemplateInput,
@@ -147,6 +149,45 @@ export class CampaignsService {
       await this.enqueue(orgId, published);
     }
     return { campaign: published, state: campaignWizard.state(published) };
+  }
+
+  /**
+   * Create + publish a once-mode announcement for an entity in one call. The
+   * caller (e.g. the banner wizard's Difusión step) supplies seeded content;
+   * we patch the draft directly then reuse `publish` for dispatch. Trusts the
+   * client's "entity is published" guard (no cross-feature status check).
+   */
+  async createFromEntity(
+    orgId: string,
+    userId: string,
+    input: CreateFromEntityInput,
+  ): Promise<CampaignStateResult> {
+    const draft = await this.repo.createDraft(orgId, userId);
+    const audienceFilter = input.audienceFilter
+      ? {
+          ...input.audienceFilter,
+          signedUpAfter: input.audienceFilter.signedUpAfter?.getTime(),
+          signedUpBefore: input.audienceFilter.signedUpBefore?.getTime(),
+        }
+      : null;
+    await this.repo.patch(orgId, draft.id, {
+      name: input.name,
+      message: { push: input.push },
+      channelPriority: input.channelPriority,
+      linkUrl: input.linkUrl ?? null,
+      audienceFilter,
+      scheduledAt: input.scheduledAt ?? null,
+      mode: "once",
+      source: input.source,
+    });
+    return this.publish(orgId, draft.id);
+  }
+
+  campaignsBySource(
+    orgId: string,
+    source: CampaignSourceInput,
+  ): ReturnType<CampaignsRepository["campaignsForSource"]> {
+    return this.repo.campaignsForSource(orgId, source);
   }
 
   /** Enqueue the dispatch job (native Trigger `delay` for scheduled sends). */
