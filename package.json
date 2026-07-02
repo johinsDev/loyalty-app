@@ -51,6 +51,7 @@
     "db:seed:banners": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-banners.ts",
     "db:seed:promos": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-promos.ts",
     "db:seed:stores": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-stores.ts",
+    "db:seed:campaigns": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-campaigns.ts",
     "db:seed:i18n": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-i18n.ts"
   },
   "overrides": {
