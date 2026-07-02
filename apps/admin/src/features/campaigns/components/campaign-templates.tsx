@@ -45,6 +45,7 @@ export function CampaignTemplates({
   const queryClient = useQueryClient();
   const [saveOpen, setSaveOpen] = useState(false);
   const [name, setName] = useState("");
+  const [confirmDel, setConfirmDel] = useState<{ id: string; name: string } | null>(null);
 
   const templates = useQuery(trpc.campaigns.templateList.queryOptions());
   const invalidate = () =>
@@ -90,6 +91,7 @@ export function CampaignTemplates({
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">{t("templatesLabel")}</Label>
+      <p className="text-muted-foreground text-xs">{t("templatesHint")}</p>
       <div className="flex flex-wrap items-center gap-1.5">
         {rows.map((tpl) => (
           <span
@@ -110,7 +112,7 @@ export function CampaignTemplates({
               type="button"
               aria-label={t("delete")}
               className="text-muted-foreground/60 hover:bg-muted hover:text-destructive grid size-5 place-items-center rounded-full"
-              onClick={() => onDelete(tpl.id, tpl.name)}
+              onClick={() => setConfirmDel({ id: tpl.id, name: tpl.name })}
             >
               <X className="size-3" />
             </button>
@@ -160,6 +162,42 @@ export function CampaignTemplates({
               disabled={!name.trim() || save.isPending}
             >
               {t("templateSave")}
+            </Button>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
+
+      <ResponsiveModal
+        open={confirmDel !== null}
+        onOpenChange={(o) => !o && setConfirmDel(null)}
+      >
+        <ResponsiveModalContent>
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>
+              {confirmDel ? t("templateDeleteTitle", { name: confirmDel.name }) : ""}
+            </ResponsiveModalTitle>
+          </ResponsiveModalHeader>
+          <p className="text-muted-foreground px-4 pb-2 text-sm">
+            {t("templateDeleteBody")}
+          </p>
+          <ResponsiveModalFooter className="gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 rounded-full px-5"
+              onClick={() => setConfirmDel(null)}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 rounded-full px-6 font-semibold"
+              onClick={() => {
+                if (confirmDel) onDelete(confirmDel.id, confirmDel.name);
+                setConfirmDel(null);
+              }}
+            >
+              {t("delete")}
             </Button>
           </ResponsiveModalFooter>
         </ResponsiveModalContent>
