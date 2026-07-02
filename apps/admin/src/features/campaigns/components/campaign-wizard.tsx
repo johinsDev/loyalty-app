@@ -667,25 +667,34 @@ export function CampaignWizard({ id }: { id?: string }) {
 
             {attempted && !valid.message ? <ErrorText>{t("messageRequired")}</ErrorText> : null}
 
-            <ChannelBlock label={t("channel.push")}>
-              <Input
-                value={form.message.push.title}
-                onChange={(e) => setMsg("push", "title", e.target.value)}
-                onFocus={() => setActiveField({ channel: "push", key: "title" })}
-                placeholder={t("pushTitlePlaceholder")}
-                className="h-10"
-              />
-              <RichTextEditor
-                plain
-                value={form.message.push.body}
-                onValueChange={(text) => setMsg("push", "body", text.trim() ? text : "")}
-                placeholder={t("pushBodyPlaceholder")}
-                variables={[...CAMPAIGN_VARS]}
-                entities={ENTITY_KINDS}
-                onRequestEntity={onRequestEntity}
-              />
-            </ChannelBlock>
+            {form.channelPriority.length === 0 ? (
+              <div className="border-border text-muted-foreground rounded-2xl border border-dashed p-6 text-center text-sm">
+                {t("noChannelsHint")}
+              </div>
+            ) : null}
 
+            {form.channelPriority.includes("push") ? (
+              <ChannelBlock label={t("channel.push")}>
+                <Input
+                  value={form.message.push.title}
+                  onChange={(e) => setMsg("push", "title", e.target.value)}
+                  onFocus={() => setActiveField({ channel: "push", key: "title" })}
+                  placeholder={t("pushTitlePlaceholder")}
+                  className="h-10"
+                />
+                <RichTextEditor
+                  plain
+                  value={form.message.push.body}
+                  onValueChange={(text) => setMsg("push", "body", text.trim() ? text : "")}
+                  placeholder={t("pushBodyPlaceholder")}
+                  variables={[...CAMPAIGN_VARS]}
+                  entities={ENTITY_KINDS}
+                  onRequestEntity={onRequestEntity}
+                />
+              </ChannelBlock>
+            ) : null}
+
+            {form.channelPriority.includes("email") ? (
             <ChannelBlock label={t("channel.email")}>
               <Input
                 value={form.message.email.subject}
@@ -707,30 +716,35 @@ export function CampaignWizard({ id }: { id?: string }) {
                 onUploadImage={uploadImage}
               />
             </ChannelBlock>
+            ) : null}
 
-            <ChannelBlock label={t("channel.sms")}>
-              <RichTextEditor
-                plain
-                value={form.message.sms.text}
-                onValueChange={(text) => setMsg("sms", "text", text.trim() ? text : "")}
-                placeholder={t("smsPlaceholder")}
-                variables={[...CAMPAIGN_VARS]}
-                entities={ENTITY_KINDS}
-                onRequestEntity={onRequestEntity}
-              />
-            </ChannelBlock>
+            {form.channelPriority.includes("sms") ? (
+              <ChannelBlock label={t("channel.sms")}>
+                <RichTextEditor
+                  plain
+                  value={form.message.sms.text}
+                  onValueChange={(text) => setMsg("sms", "text", text.trim() ? text : "")}
+                  placeholder={t("smsPlaceholder")}
+                  variables={[...CAMPAIGN_VARS]}
+                  entities={ENTITY_KINDS}
+                  onRequestEntity={onRequestEntity}
+                />
+              </ChannelBlock>
+            ) : null}
 
-            <ChannelBlock label={t("channel.whatsapp")}>
-              <RichTextEditor
-                plain
-                value={form.message.whatsapp.text}
-                onValueChange={(text) => setMsg("whatsapp", "text", text.trim() ? text : "")}
-                placeholder={t("whatsappPlaceholder")}
-                variables={[...CAMPAIGN_VARS]}
-                entities={ENTITY_KINDS}
-                onRequestEntity={onRequestEntity}
-              />
-            </ChannelBlock>
+            {form.channelPriority.includes("whatsapp") ? (
+              <ChannelBlock label={t("channel.whatsapp")}>
+                <RichTextEditor
+                  plain
+                  value={form.message.whatsapp.text}
+                  onValueChange={(text) => setMsg("whatsapp", "text", text.trim() ? text : "")}
+                  placeholder={t("whatsappPlaceholder")}
+                  variables={[...CAMPAIGN_VARS]}
+                  entities={ENTITY_KINDS}
+                  onRequestEntity={onRequestEntity}
+                />
+              </ChannelBlock>
+            ) : null}
           </div>
         ) : step === "audience" ? (
           <div className="space-y-5">

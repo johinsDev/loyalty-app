@@ -1235,6 +1235,7 @@
     "messageLabel": "Mensaje",
     "presetsLabel": "Plantillas rápidas",
     "channelsLabel": "Canales y prioridad",
+    "noChannelsHint": "Agrega un canal arriba para escribir su mensaje.",
     "templatesLabel": "Mis plantillas",
     "templateSave": "Guardar plantilla",
     "templateSaveTitle": "Guardar como plantilla",

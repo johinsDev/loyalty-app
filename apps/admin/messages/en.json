@@ -1235,6 +1235,7 @@
     "messageLabel": "Message",
     "presetsLabel": "Quick presets",
     "channelsLabel": "Channels & priority",
+    "noChannelsHint": "Add a channel above to write its message.",
     "templatesLabel": "My templates",
     "templateSave": "Save template",
     "templateSaveTitle": "Save as template",
