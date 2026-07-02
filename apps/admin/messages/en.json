@@ -1383,6 +1383,20 @@
     "automatedOffConfirm": "Turn off",
     "funnelTitle": "Send funnel",
     "byChannelTitle": "By channel",
+    "analytics": {
+      "period": { "7d": "7 days", "30d": "30 days", "90d": "90 days" },
+      "kpiSent": "Sent",
+      "kpiClickRate": "Click rate",
+      "kpiRedeemed": "Redeemed",
+      "kpiActive": "Active",
+      "trendTitle": "Trend (sent / clicked / redeemed)",
+      "leaderboard": "Campaign leaderboard",
+      "empty": "No data in this period yet.",
+      "detailTrend": "Activity over time",
+      "dripByAttempt": "Conversion by attempt",
+      "attempt": "Attempt {n}",
+      "attemptConverted": "{converted} of {recipients} purchased"
+    },
     "funnel": {
       "sent": "Sent",
       "clicked": "Clicks",
@@ -2119,6 +2133,7 @@
     "ytd": "YTD",
     "nav": {
       "overview": "Overview",
+      "campaigns": "Campaigns",
       "team": "Team",
       "banners": "Banners",
       "cohorts": "Cohorts",

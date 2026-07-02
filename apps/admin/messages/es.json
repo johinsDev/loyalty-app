@@ -1383,6 +1383,20 @@
     "automatedOffConfirm": "Desactivar",
     "funnelTitle": "Embudo de envío",
     "byChannelTitle": "Por canal",
+    "analytics": {
+      "period": { "7d": "7 días", "30d": "30 días", "90d": "90 días" },
+      "kpiSent": "Enviados",
+      "kpiClickRate": "Tasa de clic",
+      "kpiRedeemed": "Canjes",
+      "kpiActive": "Activas",
+      "trendTitle": "Tendencia (envíos / clics / canjes)",
+      "leaderboard": "Ranking de campañas",
+      "empty": "Sin datos en este período todavía.",
+      "detailTrend": "Actividad en el tiempo",
+      "dripByAttempt": "Conversión por intento",
+      "attempt": "Intento {n}",
+      "attemptConverted": "{converted} de {recipients} compraron"
+    },
     "funnel": {
       "sent": "Enviados",
       "clicked": "Clic",
@@ -2119,6 +2133,7 @@
     "ytd": "YTD",
     "nav": {
       "overview": "Resumen",
+      "campaigns": "Campañas",
       "team": "Equipo",
       "banners": "Banners",
       "cohorts": "Cohortes",
