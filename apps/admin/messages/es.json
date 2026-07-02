@@ -1235,6 +1235,7 @@
     },
     "messageLabel": "Mensaje",
     "presetsLabel": "Plantillas rápidas",
+    "presetsBrowse": "Ver todas",
     "channelsLabel": "Canales y prioridad",
     "variablesHelp": "¿Cómo funcionan?",
     "noChannelsHint": "Agrega un canal arriba para escribir su mensaje.",

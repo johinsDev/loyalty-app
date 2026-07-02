@@ -1235,6 +1235,7 @@
     },
     "messageLabel": "Message",
     "presetsLabel": "Quick presets",
+    "presetsBrowse": "See all",
     "channelsLabel": "Channels & priority",
     "variablesHelp": "How do they work?",
     "noChannelsHint": "Add a channel above to write its message.",

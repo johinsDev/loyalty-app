@@ -31,6 +31,7 @@ import {
   Mail,
   MessageCircle,
   MessageSquare,
+  Sparkles,
   Users,
   X,
   type LucideIcon,
@@ -49,6 +50,7 @@ import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 
 import { CAMPAIGN_PRESETS, type CampaignPreset } from "../presets";
 import { CampaignEntityModal } from "./campaign-entity-modal";
+import { CampaignPresetsGallery } from "./campaign-presets-gallery";
 import { CampaignVariablesHelp } from "./campaign-variables-help";
 import { CampaignTemplates, type LoadedTemplate } from "./campaign-templates";
 import { CampaignMessagePreview, type PreviewMessage } from "./campaign-message-preview";
@@ -214,6 +216,7 @@ export function CampaignWizard({ id }: { id?: string }) {
   const [attempted, setAttempted] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [activeField, setActiveField] = useState<{ channel: Channel; key: string } | null>(null);
   const seeded = useRef(false);
@@ -648,8 +651,8 @@ export function CampaignWizard({ id }: { id?: string }) {
 
             <div className="space-y-2">
               <Label className="text-xs">{t("presetsLabel")}</Label>
-              <div className="flex flex-wrap gap-2">
-                {CAMPAIGN_PRESETS.map((p) => (
+              <div className="flex flex-wrap items-center gap-2">
+                {CAMPAIGN_PRESETS.slice(0, 4).map((p) => (
                   <Button
                     key={p.id}
                     type="button"
@@ -662,6 +665,16 @@ export function CampaignWizard({ id }: { id?: string }) {
                     {p.label}
                   </Button>
                 ))}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary h-9 gap-1.5 rounded-full font-semibold"
+                  onClick={() => setGalleryOpen(true)}
+                >
+                  <Sparkles className="size-3.5" />
+                  {t("presetsBrowse")}
+                </Button>
               </div>
             </div>
 
@@ -1035,6 +1048,11 @@ export function CampaignWizard({ id }: { id?: string }) {
         }}
       />
       <CampaignVariablesHelp open={helpOpen} onOpenChange={setHelpOpen} />
+      <CampaignPresetsGallery
+        open={galleryOpen}
+        onOpenChange={setGalleryOpen}
+        onPick={applyPreset}
+      />
     </>
   );
 }
