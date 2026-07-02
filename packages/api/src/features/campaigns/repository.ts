@@ -4,9 +4,11 @@ import {
   campaignSend,
   campaignTemplate,
   customer,
+  loyaltyCard,
   notificationPreference,
   organizationSettings,
   pointsAccount,
+  pointsTransaction,
   product,
   promo,
   purchase,
@@ -24,7 +26,7 @@ import {
   type SmartDeliveryRules,
 } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, countDistinct, count, desc, eq, gte, inArray, isNotNull, like, lte, max } from "drizzle-orm";
+import { and, countDistinct, count, desc, eq, gte, inArray, isNotNull, like, lte, max, sql } from "drizzle-orm";
 
 import { pageCountOf, pageOffset, type ListResult } from "../_shared/list";
 import {
@@ -48,6 +50,10 @@ export interface RecipientFacts {
   email: string | null;
   phone: string;
   tier: string | null;
+  /** Spendable points balance (SUM of the ledger). */
+  points: number;
+  /** Spendable stamps on the active card. */
+  stamps: number;
   reachable: CampaignChannel[];
   optedOut: CampaignChannel[];
 }
@@ -351,9 +357,11 @@ export class CampaignsRepository {
     }
 
     const ids = rows.map((r) => r.id);
-    const [pushSet, optOutMap] = await Promise.all([
+    const [pushSet, optOutMap, pointsMap, stampsMap] = await Promise.all([
       this.#customersWithPush(orgId, ids),
       this.#channelOptOuts(orgId, ids),
+      this.#pointsByCustomer(orgId, ids),
+      this.#stampsByCustomer(orgId, ids),
     ]);
 
     return rows.map((r) => {
@@ -366,10 +374,47 @@ export class CampaignsRepository {
         email: r.email,
         phone: r.phone,
         tier: r.tier,
+        points: pointsMap.get(r.id) ?? 0,
+        stamps: stampsMap.get(r.id) ?? 0,
         reachable,
         optedOut: optOutMap.get(r.id) ?? [],
       };
     });
+  }
+
+  /** Points balance per customer (SUM of the signed ledger). */
+  async #pointsByCustomer(orgId: string, ids: string[]): Promise<Map<string, number>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .select({
+        customerId: pointsTransaction.customerId,
+        total: sql<number>`coalesce(sum(${pointsTransaction.points}), 0)`,
+      })
+      .from(pointsTransaction)
+      .where(
+        and(
+          eq(pointsTransaction.organizationId, orgId),
+          inArray(pointsTransaction.customerId, ids),
+        ),
+      )
+      .groupBy(pointsTransaction.customerId);
+    return new Map(rows.map((r) => [r.customerId, Number(r.total)]));
+  }
+
+  /** Spendable stamps per customer (the active card's `currentStamps`). */
+  async #stampsByCustomer(orgId: string, ids: string[]): Promise<Map<string, number>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .select({ customerId: loyaltyCard.customerId, stamps: loyaltyCard.currentStamps })
+      .from(loyaltyCard)
+      .where(
+        and(
+          eq(loyaltyCard.organizationId, orgId),
+          eq(loyaltyCard.status, "active"),
+          inArray(loyaltyCard.customerId, ids),
+        ),
+      );
+    return new Map(rows.map((r) => [r.customerId, Number(r.stamps ?? 0)]));
   }
 
   async #customersWithPush(orgId: string, ids: string[]): Promise<Set<string>> {
@@ -418,13 +463,14 @@ export class CampaignsRepository {
 
   // ── Template entity resolution (merge variables) ──────────────────────────
   /** The org's primary store display name (for `{{store.name}}`). */
-  async storeName(orgId: string): Promise<string> {
+  /** Org store name + denormalized single-line address (for `{{store.*}}`). */
+  async storeInfo(orgId: string): Promise<{ name: string; address: string }> {
     const rows = await this.db
-      .select({ name: store.name })
+      .select({ name: store.name, address: store.address })
       .from(store)
       .where(eq(store.organizationId, orgId))
       .limit(1);
-    return rows[0]?.name ?? "";
+    return { name: rows[0]?.name ?? "", address: rows[0]?.address ?? "" };
   }
 
   /**

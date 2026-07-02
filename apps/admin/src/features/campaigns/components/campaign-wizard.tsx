@@ -68,9 +68,13 @@ type Tier = (typeof TIERS)[number];
 // Dynamic (per-recipient / per-org) variables. Entity variables (promo/product/
 // reward with a picker) arrive in V3.
 const CAMPAIGN_VARS = [
-  { token: "{{user.name}}", label: "Nombre" },
+  { token: "{{user.name}}", label: "Nombre de usuario" },
+  { token: "{{user.phone}}", label: "Teléfono" },
   { token: "{{user.tier}}", label: "Nivel" },
+  { token: "{{user.points}}", label: "Puntos" },
+  { token: "{{user.stamps}}", label: "Sellos" },
   { token: "{{store.name}}", label: "Sucursal" },
+  { token: "{{store.address}}", label: "Dirección" },
 ] as const;
 
 type EntityScope = "promo" | "product" | "reward";

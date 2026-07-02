@@ -150,9 +150,9 @@ export const sendCampaignTask = task({
       message.sms?.text,
       message.whatsapp?.text,
     ].filter((s): s is string => !!s);
-    const [entityMap, storeName] = await Promise.all([
+    const [entityMap, store] = await Promise.all([
       repo.resolveEntityRefs(p.organizationId, entityRefs(...allTexts)),
-      repo.storeName(p.organizationId),
+      repo.storeInfo(p.organizationId),
     ]);
     const appBase = env.CUSTOMER_APP_URL?.replace(/\/+$/, "") ?? "";
     const absolute = (url: string) =>
@@ -217,12 +217,19 @@ export const sendCampaignTask = task({
       const resolve: Resolve = async (tk) => {
         if (tk.scope === "user") {
           if (tk.field === "name") return r.name ?? "";
+          if (tk.field === "phone") return r.phone;
           if (tk.field === "tier") return r.tier ?? "";
+          if (tk.field === "points") return r.points.toLocaleString("es-CO");
+          if (tk.field === "stamps") return String(r.stamps);
           if (tk.field === "short_link")
             return campaign.linkUrl ? shorten(absolute(campaign.linkUrl), r.customerId) : "";
-          return ""; // user.points — deferred
+          return "";
         }
-        if (tk.scope === "store") return tk.field === "name" ? storeName : "";
+        if (tk.scope === "store") {
+          if (tk.field === "name") return store.name;
+          if (tk.field === "address") return store.address;
+          return "";
+        }
         const ent = entityMap.get(`${tk.scope}#${tk.id}`);
         if (!ent) return "";
         if (tk.field === "name") return ent.name;

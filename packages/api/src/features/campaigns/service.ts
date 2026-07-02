@@ -218,20 +218,26 @@ export class CampaignsService {
       m.sms?.text,
       m.whatsapp?.text,
     ].filter((s): s is string => !!s);
-    const [entityMap, storeName] = await Promise.all([
+    const [entityMap, store] = await Promise.all([
       this.repo.resolveEntityRefs(orgId, entityRefs(...texts)),
-      this.repo.storeName(orgId),
+      this.repo.storeInfo(orgId),
     ]);
-    // Sample values for dynamic vars; real values for bound entities.
+    // Sample values for dynamic vars; real values for bound entities/store.
     const resolve = (t: Token): string => {
       if (t.scope === "user") {
         if (t.field === "name") return "Ana";
+        if (t.field === "phone") return "300 123 4567";
         if (t.field === "tier") return "Oro";
         if (t.field === "points") return "1.200";
+        if (t.field === "stamps") return "7";
         if (t.field === "short_link") return "t4.co/abc";
         return "";
       }
-      if (t.scope === "store") return t.field === "name" ? storeName : "";
+      if (t.scope === "store") {
+        if (t.field === "name") return store.name;
+        if (t.field === "address") return store.address;
+        return "";
+      }
       const ent = entityMap.get(`${t.scope}#${t.id}`);
       if (!ent) return "";
       if (t.field === "name") return ent.name;
