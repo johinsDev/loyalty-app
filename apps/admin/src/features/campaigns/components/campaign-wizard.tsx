@@ -735,7 +735,7 @@ export function CampaignWizard({ id }: { id?: string }) {
             {form.channelPriority.includes("whatsapp") ? (
               <ChannelBlock label={t("channel.whatsapp")}>
                 <RichTextEditor
-                  plain
+                  whatsapp
                   value={form.message.whatsapp.text}
                   onValueChange={(text) => setMsg("whatsapp", "text", text.trim() ? text : "")}
                   placeholder={t("whatsappPlaceholder")}

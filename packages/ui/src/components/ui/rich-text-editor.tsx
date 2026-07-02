@@ -154,6 +154,65 @@ function plainToHtml(text: string, variables?: EditorVariable[]): string {
   return `<p>${out.replace(/\n/g, "<br>")}</p>`;
 }
 
+/**
+ * Editor doc → WhatsApp markup: bold→`*x*`, italic→`_x_`, strike→`~x~`, variable
+ * chips → their `{{token}}`. Paragraphs join with newlines. WhatsApp channels
+ * store this markup (not HTML); the send-time renderer substitutes tokens.
+ */
+function docToWhatsApp(editor: Editor): string {
+  const json = editor.getJSON() as {
+    content?: { type: string; content?: unknown[]; text?: string; marks?: { type: string }[]; attrs?: { token?: string } }[];
+  };
+  const inline = (n: {
+    type: string;
+    text?: string;
+    marks?: { type: string }[];
+    attrs?: { token?: string };
+  }): string => {
+    if (n.type === "variable") return String(n.attrs?.token ?? "");
+    if (n.type === "hardBreak") return "\n";
+    if (n.type !== "text") return "";
+    let t = n.text ?? "";
+    const marks = new Set((n.marks ?? []).map((m) => m.type));
+    if (marks.has("strike")) t = `~${t}~`;
+    if (marks.has("italic")) t = `_${t}_`;
+    if (marks.has("bold")) t = `*${t}*`;
+    return t;
+  };
+  const blocks: string[] = [];
+  for (const node of json.content ?? []) {
+    const kids = (node.content ?? []) as Parameters<typeof inline>[0][];
+    blocks.push(kids.map(inline).join(""));
+  }
+  return blocks.join("\n").trim();
+}
+
+/** WhatsApp markup (with `{{tokens}}`) → HTML the editor loads (chips + marks). */
+function whatsAppToHtml(text: string, variables?: EditorVariable[]): string {
+  if (!text) return "";
+  const labelOf = (token: string) =>
+    variables?.find((v) => v.token === token)?.label ??
+    token.replace(/^\{\{|\}\}$/g, "");
+  // Escape + wrap tokens as chips (reuse the plain scan).
+  const re = /\{\{[^}]+\}\}/g;
+  let out = "";
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    out += escapeHtml(text.slice(last, m.index));
+    const token = m[0];
+    out += `<span data-variable data-token="${escapeHtml(token)}" data-label="${escapeHtml(labelOf(token))}">${escapeHtml(token)}</span>`;
+    last = m.index + token.length;
+  }
+  out += escapeHtml(text.slice(last));
+  // Apply WhatsApp markup (tokens carry no `*_~`, so this is safe).
+  out = out
+    .replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>")
+    .replace(/_([^_\n]+)_/g, "<em>$1</em>")
+    .replace(/~([^~\n]+)~/g, "<s>$1</s>");
+  return `<p>${out.replace(/\n/g, "<br>")}</p>`;
+}
+
 const insertVariableChip = (editor: Editor, token: string, label: string) =>
   editor
     .chain()
@@ -347,6 +406,11 @@ export interface RichTextEditorProps {
    * `{{`), and emits/loads plain text (with `{{tokens}}`) instead of HTML.
    */
   plain?: boolean;
+  /**
+   * WhatsApp mode: allows bold/italic/strike (+ emoji + variables) but no
+   * lists/link/image, and emits/loads WhatsApp markup (`*bold*`) instead of HTML.
+   */
+  whatsapp?: boolean;
 }
 
 /**
@@ -364,6 +428,7 @@ export function RichTextEditor({
   onRequestEntity,
   onUploadImage,
   plain = false,
+  whatsapp = false,
 }: RichTextEditorProps) {
   // Refs keep the `{{`-suggestion (built once for the editor) reading current
   // props, since the extension array is only evaluated on mount.
@@ -374,9 +439,15 @@ export function RichTextEditor({
   entitiesRef.current = entities;
   onRequestEntityRef.current = onRequestEntity;
 
-  // Plain channels store text; serialize/parse via `{{tokens}}`.
+  // Plain channels store text; WhatsApp stores markup; both round-trip tokens.
   const readValue = (ed: Editor) =>
-    plain ? ed.getText({ blockSeparator: "\n" }) : ed.getHTML();
+    whatsapp
+      ? docToWhatsApp(ed)
+      : plain
+        ? ed.getText({ blockSeparator: "\n" })
+        : ed.getHTML();
+  const toContent = (v: string) =>
+    whatsapp ? whatsAppToHtml(v, variables) : plain ? plainToHtml(v, variables) : v;
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -395,9 +466,20 @@ export function RichTextEditor({
             codeBlock: false,
             horizontalRule: false,
           })
-        : StarterKit.configure({ heading: { levels: [2, 3] } }),
+        : whatsapp
+          ? StarterKit.configure({
+              heading: false,
+              code: false,
+              bulletList: false,
+              orderedList: false,
+              listItem: false,
+              blockquote: false,
+              codeBlock: false,
+              horizontalRule: false,
+            })
+          : StarterKit.configure({ heading: { levels: [2, 3] } }),
       // Link/Image only in rich mode.
-      ...(plain
+      ...(plain || whatsapp
         ? []
         : [
             // `inclusive: false` so typing after a link doesn't keep extending it.
@@ -413,7 +495,7 @@ export function RichTextEditor({
         }),
       }),
     ],
-    content: plain ? plainToHtml(value, variables) : value,
+    content: toContent(value),
     editorProps: {
       attributes: {
         class: cn(
@@ -430,9 +512,7 @@ export function RichTextEditor({
   // the cursor while typing.
   useEffect(() => {
     if (editor && value !== readValue(editor)) {
-      editor.commands.setContent(plain ? plainToHtml(value, variables) : value, {
-        emitUpdate: false,
-      });
+      editor.commands.setContent(toContent(value), { emitUpdate: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, value]);
@@ -528,6 +608,8 @@ export function RichTextEditor({
         <Tool icon={Bold} active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} />
         <Tool icon={Italic} active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} />
         <Tool icon={Strikethrough} active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()} />
+        {whatsapp ? null : (
+          <>
         <span className="bg-border mx-1 h-5 w-px" />
         <Tool icon={List} active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()} />
         <Tool icon={ListOrdered} active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()} />
@@ -651,6 +733,8 @@ export function RichTextEditor({
             </div>
           </PopoverContent>
         </Popover>
+          </>
+        )}
           </>
         )}
 

@@ -26,8 +26,6 @@ const CHANNEL_ICON: Record<Channel, typeof Bell> = {
   whatsapp: MessageCircle,
 };
 
-const DEFAULT_ORDER: Channel[] = ["push", "email", "sms", "whatsapp"];
-
 function hasContent(message: PreviewMessage, c: Channel): boolean {
   if (c === "push") return !!(message.push.title || message.push.body);
   if (c === "email") return !!(message.email.subject || message.email.body);
@@ -49,6 +47,22 @@ function renderCopy(text: string, placeholder?: string): ReactNode {
       <span key={i}>{part}</span>
     ),
   );
+}
+
+/** WhatsApp markup (`*bold*`/`_italic_`/`~strike~`) + token highlight → HTML. */
+function whatsAppToPreviewHtml(text: string): string {
+  const s = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(
+      /(\{\{[^}]+\}\})/g,
+      '<span class="bg-primary/15 text-primary rounded px-1 font-semibold">$1</span>',
+    )
+    .replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>")
+    .replace(/_([^_\n]+)_/g, "<em>$1</em>")
+    .replace(/~([^~\n]+)~/g, "<s>$1</s>");
+  return s.replace(/\n/g, "<br>");
 }
 
 /**
@@ -98,9 +112,9 @@ export function CampaignMessagePreview({
     whatsapp: query.data?.whatsapp ?? message.whatsapp,
   };
 
-  const order = (channelPriority.length > 0 ? channelPriority : DEFAULT_ORDER).filter(
-    (c, i, arr) => arr.indexOf(c) === i,
-  );
+  // Only the selected channels (in priority order) that actually have copy —
+  // a removed channel with leftover text must NOT keep showing in the preview.
+  const order = channelPriority.filter((c, i, arr) => arr.indexOf(c) === i);
   const active = order.filter((c) => hasContent(message, c));
 
   if (active.length === 0) {
@@ -175,9 +189,18 @@ function Card({ channel, message }: { channel: Channel; message: PreviewMessage 
       return (
         <div className="rounded-2xl bg-emerald-950/40 p-3">
           <div className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-emerald-600 px-3 py-2 text-white">
-            <p className="text-sm leading-snug text-white/95">
-              {renderCopy(message.whatsapp.text, t("previewBodyPlaceholder"))}
-            </p>
+            {message.whatsapp.text ? (
+              <p
+                className="text-sm leading-snug text-white/95"
+                dangerouslySetInnerHTML={{
+                  __html: whatsAppToPreviewHtml(message.whatsapp.text),
+                }}
+              />
+            ) : (
+              <p className="text-sm leading-snug text-white/95">
+                <span className="opacity-60">{t("previewBodyPlaceholder")}</span>
+              </p>
+            )}
           </div>
         </div>
       );
