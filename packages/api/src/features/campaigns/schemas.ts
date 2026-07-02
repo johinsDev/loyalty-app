@@ -310,6 +310,13 @@ export const createFromEntityInputSchema = z.object({
     title: z.string().min(1).max(80),
     body: z.string().min(1).max(180),
   }),
+  email: z
+    .object({
+      subject: z.string().min(1).max(160),
+      body: z.string().min(1).max(4000),
+    })
+    .optional(),
+  whatsapp: z.object({ text: z.string().min(1).max(1024) }).optional(),
   channelPriority: z.array(campaignChannelSchema).min(1),
   linkUrl: z.string().max(2000).optional(),
   audienceFilter: audienceFilterSchema.optional(),

@@ -172,7 +172,11 @@ export class CampaignsService {
       : null;
     await this.repo.patch(orgId, draft.id, {
       name: input.name,
-      message: { push: input.push },
+      message: {
+        push: input.push,
+        ...(input.email ? { email: input.email } : {}),
+        ...(input.whatsapp ? { whatsapp: input.whatsapp } : {}),
+      },
       channelPriority: input.channelPriority,
       linkUrl: input.linkUrl ?? null,
       audienceFilter,
