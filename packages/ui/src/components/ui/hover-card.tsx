@@ -29,6 +29,7 @@ function HoverCardContent({
   return (
     <PreviewCardPrimitive.Portal data-slot="hover-card-portal">
       <PreviewCardPrimitive.Positioner
+        positionMethod="fixed"
         align={align}
         alignOffset={alignOffset}
         side={side}

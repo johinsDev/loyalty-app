@@ -32,6 +32,10 @@ function PopoverContent({
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
+        // `fixed` (vs the default `absolute`) keeps the portaled popover out of
+        // document flow — an absolute popover placed below the fold extends the
+        // page's scrollHeight and shows up as extra space/margin at the bottom.
+        positionMethod="fixed"
         className="isolate z-50"
       >
         <PopoverPrimitive.Popup
