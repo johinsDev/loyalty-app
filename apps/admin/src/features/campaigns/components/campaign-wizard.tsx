@@ -35,6 +35,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { parseAsString, useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -183,7 +184,11 @@ export function CampaignWizard({ id }: { id?: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  const [campaignId, setCampaignId] = useState<string | undefined>(id);
+  // A new campaign's draft id is mirrored into `?draft=` so reloading mid-wizard
+  // resumes the same draft instead of starting over (and spawning another one).
+  const [draftId, setDraftId] = useQueryState("draft", parseAsString);
+  const loadId = id ?? draftId ?? undefined;
+  const [campaignId, setCampaignId] = useState<string | undefined>(loadId);
   const [form, setForm] = useState<Form>(EMPTY);
   const [stepIndex, setStepIndex] = useState(0);
   const [dirty, setDirty] = useState(false);
@@ -284,6 +289,8 @@ export function CampaignWizard({ id }: { id?: string }) {
       const res = await createMut.mutateAsync();
       setCampaignId(res.campaign.id);
       seeded.current = true;
+      // Mirror into the URL so a mid-wizard reload resumes this same draft.
+      void setDraftId(res.campaign.id);
       return res.campaign.id;
     } catch {
       toast.error(t("createError"));
@@ -293,11 +300,11 @@ export function CampaignWizard({ id }: { id?: string }) {
 
   // Edit campaign → load + seed once.
   const stateQuery = useQuery({
-    ...trpc.campaigns.getState.queryOptions({ id: id ?? "" }),
-    enabled: Boolean(id),
+    ...trpc.campaigns.getState.queryOptions({ id: loadId ?? "" }),
+    enabled: Boolean(loadId),
   });
   useEffect(() => {
-    if (id && stateQuery.data && !seeded.current) {
+    if (loadId && stateQuery.data && !seeded.current) {
       const c = stateQuery.data.campaign;
       setForm({
         name: c.name ?? "",
@@ -329,7 +336,7 @@ export function CampaignWizard({ id }: { id?: string }) {
       });
       seeded.current = true;
     }
-  }, [id, stateQuery.data]);
+  }, [loadId, stateQuery.data]);
 
   const advanceMut = useMutation(trpc.campaigns.advance.mutationOptions());
   const publishMut = useMutation(trpc.campaigns.publish.mutationOptions());
