@@ -49,16 +49,16 @@ export function CampaignRowActions({ campaign }: { campaign: RowCampaign }) {
   const end = useMutation(trpc.campaigns.end.mutationOptions());
 
   const isDraft = campaign.displayState === "draft";
-  const isEvergreen = campaign.mode === "evergreen";
-  // Drafts edit freely; live evergreen rules stay editable (not once ended).
-  const canEdit = isDraft || (isEvergreen && campaign.displayState !== "ended");
+  const isRecurring = campaign.mode === "evergreen" || campaign.mode === "drip";
+  // Drafts edit freely; live recurring rules stay editable (not once ended).
+  const canEdit = isDraft || (isRecurring && campaign.displayState !== "ended");
   const canPause =
     campaign.displayState === "scheduled" ||
     campaign.displayState === "sending" ||
     campaign.displayState === "active";
-  const canResume = isEvergreen && campaign.displayState === "paused";
+  const canResume = isRecurring && campaign.displayState === "paused";
   const canEnd =
-    isEvergreen &&
+    isRecurring &&
     (campaign.displayState === "active" || campaign.displayState === "paused");
 
   const onDelete = () =>

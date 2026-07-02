@@ -1287,12 +1287,19 @@
     "scheduleLabel": "Schedule",
     "mode": {
       "once": "One-time",
-      "evergreen": "Evergreen (recurring)"
+      "evergreen": "Evergreen",
+      "drip": "Insist"
     },
     "modeHint": {
       "once": "Sent once to the current audience.",
-      "evergreen": "Standing rule: sent daily to whoever matches the filter."
+      "evergreen": "Standing rule: sent daily to whoever matches the filter.",
+      "drip": "Nudges non-buyers again every few days."
     },
+    "dripIntervalLabel": "Insist every",
+    "dripIntervalHint": "Days to wait between one nudge and the next.",
+    "dripAttemptsLabel": "Max attempts",
+    "dripAttemptsHint": "How many times to insist in total (incl. the first send). Stops on purchase.",
+    "dripAttemptsUnit": "attempts",
     "modeLabel": "Delivery type",
     "lastPulseLabel": "Last sent",
     "cooldownLabel": "Resend every",

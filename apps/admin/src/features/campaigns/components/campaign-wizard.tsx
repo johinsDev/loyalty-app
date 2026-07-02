@@ -101,11 +101,13 @@ type Form = {
   minPurchases: string;
   signedUpAfter: Date | null;
   signedUpBefore: Date | null;
-  mode: "once" | "evergreen";
+  mode: "once" | "evergreen" | "drip";
   scheduledAt: Date | null;
   special: boolean;
   cooldownDays: string;
   endsAt: Date | null;
+  dripIntervalDays: string;
+  dripMaxAttempts: string;
 };
 
 const EMPTY_MESSAGE: PreviewMessage = {
@@ -132,6 +134,8 @@ const EMPTY: Form = {
   special: false,
   cooldownDays: "30",
   endsAt: null,
+  dripIntervalDays: "3",
+  dripMaxAttempts: "3",
 };
 
 function toFormMessage(m: CampaignPreset["message"] | null): PreviewMessage {
@@ -338,11 +342,14 @@ export function CampaignWizard({ id }: { id?: string }) {
         signedUpBefore: c.audienceFilter?.signedUpBefore
           ? new Date(c.audienceFilter.signedUpBefore)
           : null,
-        mode: c.mode === "evergreen" ? "evergreen" : "once",
+        mode:
+          c.mode === "evergreen" ? "evergreen" : c.mode === "drip" ? "drip" : "once",
         scheduledAt: c.scheduledAt ?? null,
         special: c.special,
         cooldownDays: c.cooldownDays != null ? String(c.cooldownDays) : "30",
         endsAt: c.endsAt ?? null,
+        dripIntervalDays: c.dripIntervalDays != null ? String(c.dripIntervalDays) : "3",
+        dripMaxAttempts: c.dripMaxAttempts != null ? String(c.dripMaxAttempts) : "3",
       });
       seeded.current = true;
     }
@@ -417,15 +424,18 @@ export function CampaignWizard({ id }: { id?: string }) {
         });
       } else if (step === "schedule") {
         const evergreen = form.mode === "evergreen";
+        const drip = form.mode === "drip";
         await advanceMut.mutateAsync({
           id: cid,
           step: "schedule",
           input: {
             mode: form.mode,
-            scheduledAt: evergreen ? undefined : (form.scheduledAt ?? undefined),
+            scheduledAt: evergreen || drip ? undefined : (form.scheduledAt ?? undefined),
             special: form.special,
             cooldownDays: evergreen ? Number(form.cooldownDays) || 30 : undefined,
             endsAt: evergreen ? (form.endsAt ?? undefined) : undefined,
+            dripIntervalDays: drip ? Number(form.dripIntervalDays) || 3 : undefined,
+            dripMaxAttempts: drip ? Number(form.dripMaxAttempts) || 3 : undefined,
           },
         });
       }
@@ -856,8 +866,8 @@ export function CampaignWizard({ id }: { id?: string }) {
 
             <ReachBox reachable={reach.data?.reachable} audience={reach.data?.audience} />
 
-            <div className="grid grid-cols-2 gap-2">
-              {(["once", "evergreen"] as const).map((m) => (
+            <div className="grid grid-cols-3 gap-2">
+              {(["once", "evergreen", "drip"] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -897,7 +907,7 @@ export function CampaignWizard({ id }: { id?: string }) {
                   ) : null}
                 </div>
               </Field>
-            ) : (
+            ) : form.mode === "evergreen" ? (
               <>
                 <Field label={t("cooldownLabel")} hint={t("cooldownHint")}>
                   <div className="flex items-center gap-2">
@@ -932,6 +942,35 @@ export function CampaignWizard({ id }: { id?: string }) {
                         <X className="size-4" />
                       </Button>
                     ) : null}
+                  </div>
+                </Field>
+              </>
+            ) : (
+              <>
+                <Field label={t("dripIntervalLabel")} hint={t("dripIntervalHint")}>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={90}
+                      value={form.dripIntervalDays}
+                      onChange={(e) => set("dripIntervalDays", e.target.value)}
+                      className="h-10 w-24"
+                    />
+                    <span className="text-muted-foreground text-sm">{t("cooldownUnit")}</span>
+                  </div>
+                </Field>
+                <Field label={t("dripAttemptsLabel")} hint={t("dripAttemptsHint")}>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={2}
+                      max={10}
+                      value={form.dripMaxAttempts}
+                      onChange={(e) => set("dripMaxAttempts", e.target.value)}
+                      className="h-10 w-24"
+                    />
+                    <span className="text-muted-foreground text-sm">{t("dripAttemptsUnit")}</span>
                   </div>
                 </Field>
               </>

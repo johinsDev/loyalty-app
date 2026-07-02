@@ -1287,12 +1287,19 @@
     "scheduleLabel": "Programación",
     "mode": {
       "once": "Una vez",
-      "evergreen": "Evergreen (recurrente)"
+      "evergreen": "Evergreen",
+      "drip": "Insistir"
     },
     "modeHint": {
       "once": "Se envía una sola vez a la audiencia actual.",
-      "evergreen": "Regla permanente: se envía a quien cumpla el filtro, a diario."
+      "evergreen": "Regla permanente: se envía a quien cumpla el filtro, a diario.",
+      "drip": "Insiste a quien no compre, cada varios días."
     },
+    "dripIntervalLabel": "Insistir cada",
+    "dripIntervalHint": "Días de espera entre una insistencia y la siguiente.",
+    "dripAttemptsLabel": "Máximo de intentos",
+    "dripAttemptsHint": "Cuántas veces insistir en total (incluye el primer envío). Para al comprar.",
+    "dripAttemptsUnit": "intentos",
     "modeLabel": "Tipo de entrega",
     "lastPulseLabel": "Último envío",
     "cooldownLabel": "Reenviar cada",

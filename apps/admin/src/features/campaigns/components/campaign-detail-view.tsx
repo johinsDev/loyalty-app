@@ -83,7 +83,8 @@ export function CampaignDetailView({
           <Badge variant="outline">{t(`type.${campaign.type}`)}</Badge>
         </div>
       </div>
-      {state === "draft" || (campaign.mode === "evergreen" && state !== "ended") ? (
+      {state === "draft" ||
+      ((campaign.mode === "evergreen" || campaign.mode === "drip") && state !== "ended") ? (
         <Button
           size="sm"
           variant="outline"
@@ -143,6 +144,7 @@ export function CampaignDetailView({
   );
 
   const evergreen = campaign.mode === "evergreen";
+  const drip = campaign.mode === "drip";
   const scheduleBlock = (
     <dl className="text-muted-foreground grid grid-cols-2 gap-y-1 text-sm">
       {evergreen ? (
@@ -163,6 +165,25 @@ export function CampaignDetailView({
             <>
               <dt>{t("endsAtLabel")}</dt>
               <dd className="text-right">{formatDate(campaign.endsAt, { locale })}</dd>
+            </>
+          ) : null}
+        </>
+      ) : drip ? (
+        <>
+          <dt>{t("modeLabel")}</dt>
+          <dd className="text-right">{t("mode.drip")}</dd>
+          <dt>{t("dripIntervalLabel")}</dt>
+          <dd className="text-right">
+            {campaign.dripIntervalDays ?? 3} {t("cooldownUnit")}
+          </dd>
+          <dt>{t("dripAttemptsLabel")}</dt>
+          <dd className="text-right">
+            {campaign.dripMaxAttempts ?? 3} {t("dripAttemptsUnit")}
+          </dd>
+          {campaign.lastPulseAt ? (
+            <>
+              <dt>{t("lastPulseLabel")}</dt>
+              <dd className="text-right">{formatDate(campaign.lastPulseAt, { locale })}</dd>
             </>
           ) : null}
         </>
