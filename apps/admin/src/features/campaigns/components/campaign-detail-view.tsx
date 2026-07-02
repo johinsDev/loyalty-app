@@ -3,7 +3,7 @@
 import type { AppRouter } from "@loyalty/api";
 import { formatDate } from "@loyalty/date";
 import { Badge, Button } from "@loyalty/ui";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import { Pencil, RotateCcw } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -14,6 +14,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { CampaignMessagePreview, type PreviewMessage } from "./campaign-message-preview";
+import { CampaignStatsChart } from "./campaign-stats-chart";
 
 type CampaignDetail = NonNullable<inferRouterOutputs<AppRouter>["campaigns"]["detail"]>;
 type CampaignDisplayState = CampaignDetail["displayState"];
@@ -57,6 +58,14 @@ export function CampaignDetailView({
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const state = campaign.displayState;
+
+  // Time-series for this campaign (+ drip per-attempt) — only once it has sends.
+  const timeseries = useQuery({
+    ...trpc.campaigns.timeseries.queryOptions({ id: campaign.id }),
+    enabled: campaign.funnel.sent > 0,
+  });
+  const series = timeseries.data?.series ?? [];
+  const attempts = timeseries.data?.attempts ?? null;
 
   const retry = useMutation(trpc.campaigns.retry.mutationOptions());
   const onRetry = () =>
@@ -268,11 +277,48 @@ export function CampaignDetailView({
     </section>
   );
 
+  const trendBlock =
+    campaign.funnel.sent > 0 &&
+    series.some((p) => p.sent || p.clicked || p.redeemed) ? (
+      <section className="space-y-3">
+        <SectionLabel>{t("analytics.detailTrend")}</SectionLabel>
+        <CampaignStatsChart
+          series={series}
+          labels={{
+            sent: t("funnel.sent"),
+            clicked: t("funnel.clicked"),
+            redeemed: t("funnel.redeemed"),
+          }}
+        />
+        {attempts && attempts.length > 0 ? (
+          <div className="space-y-1.5 pt-1">
+            <p className="text-muted-foreground text-xs font-semibold">
+              {t("analytics.dripByAttempt")}
+            </p>
+            {attempts.map((a) => (
+              <div key={a.attempt} className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">
+                  {t("analytics.attempt", { n: a.attempt })}
+                </span>
+                <span className="font-semibold">
+                  {t("analytics.attemptConverted", {
+                    converted: a.converted,
+                    recipients: a.recipients,
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
+    ) : null;
+
   if (variant === "modal") {
     return (
       <div className="max-h-[85dvh] space-y-5 overflow-y-auto p-5">
         {header}
         {funnelBlock}
+        {trendBlock}
         {previewBlock}
         {channelsBlock}
         {audienceBlock}
@@ -287,6 +333,7 @@ export function CampaignDetailView({
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
           {funnelBlock}
+          {trendBlock}
           {previewBlock}
         </div>
         <div className="bg-card border-border h-fit space-y-5 rounded-3xl border p-5 shadow-sm">

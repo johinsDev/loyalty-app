@@ -11,6 +11,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { CampaignsKpiStrip } from "@/features/campaigns/components/campaigns-kpi-strip";
 import { useFadeUp } from "@/lib/animate";
 
 import {
@@ -113,6 +114,11 @@ export function DashboardView() {
         {kpis.map((k) => (
           <KpiCard key={k.key} kpi={k} style={fade(i++)} />
         ))}
+      </div>
+
+      {/* Campaigns — real stats (last 30d) */}
+      <div className="mt-3" style={fade(i++)}>
+        <CampaignsKpiStrip />
       </div>
 
       {/* Purchases + engagement */}
