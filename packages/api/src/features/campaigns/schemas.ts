@@ -290,3 +290,31 @@ export interface RenderedPreview {
   sms?: { text: string };
   whatsapp?: { text: string };
 }
+
+// ─── Entity → campaign (createFromEntity, source traceability) ───────────────
+export const campaignSourceSchema = z.object({
+  scope: z.enum(["banner", "promo", "product", "category", "reward"]),
+  id: z.string().min(1),
+});
+export type CampaignSourceInput = z.infer<typeof campaignSourceSchema>;
+
+/**
+ * One-shot "create + publish a once-mode announcement for an entity". Bypasses
+ * the step wizard: the caller supplies the fully-seeded content. `linkUrl` is a
+ * plain string (relative paths allowed, mirroring stored campaign links).
+ */
+export const createFromEntityInputSchema = z.object({
+  source: campaignSourceSchema,
+  name: z.string().min(1).max(120),
+  push: z.object({
+    title: z.string().min(1).max(80),
+    body: z.string().min(1).max(180),
+  }),
+  channelPriority: z.array(campaignChannelSchema).min(1),
+  linkUrl: z.string().max(2000).optional(),
+  audienceFilter: audienceFilterSchema.optional(),
+  scheduledAt: z.coerce.date().optional(),
+});
+export type CreateFromEntityInput = z.infer<typeof createFromEntityInputSchema>;
+
+export const campaignsBySourceInputSchema = campaignSourceSchema;
