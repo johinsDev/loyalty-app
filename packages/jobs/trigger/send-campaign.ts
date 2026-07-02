@@ -221,8 +221,6 @@ export const sendCampaignTask = task({
           if (tk.field === "tier") return r.tier ?? "";
           if (tk.field === "points") return r.points.toLocaleString("es-CO");
           if (tk.field === "stamps") return String(r.stamps);
-          if (tk.field === "short_link")
-            return campaign.linkUrl ? shorten(absolute(campaign.linkUrl), r.customerId) : "";
           return "";
         }
         if (tk.scope === "store") {

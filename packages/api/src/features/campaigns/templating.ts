@@ -35,7 +35,6 @@ const LEGACY: Record<string, { scope: TokenScope; field: string }> = {
   nivel: { scope: "user", field: "tier" },
   puntos: { scope: "user", field: "points" },
   sucursal: { scope: "store", field: "name" },
-  short_link: { scope: "user", field: "short_link" },
 };
 
 const ENTITY_SET = new Set<string>(ENTITY_SCOPES);

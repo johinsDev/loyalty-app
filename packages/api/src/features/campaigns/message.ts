@@ -12,13 +12,7 @@ export const CAMPAIGN_CHANNELS = ["push", "email", "sms", "whatsapp"] as const;
 export type CampaignChannel = (typeof CAMPAIGN_CHANNELS)[number];
 
 /** Merge tokens the admin can insert; rendered per-recipient at send time. */
-export const MERGE_VARS = [
-  "nombre",
-  "nivel",
-  "puntos",
-  "sucursal",
-  "short_link",
-] as const;
+export const MERGE_VARS = ["nombre", "nivel", "puntos", "sucursal"] as const;
 export type MergeVar = (typeof MERGE_VARS)[number];
 export type MergeVars = Partial<Record<MergeVar, string>>;
 

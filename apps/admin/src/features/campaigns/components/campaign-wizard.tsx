@@ -27,6 +27,7 @@ import { useDebounce } from "ahooks";
 import {
   Bell,
   GripVertical,
+  HelpCircle,
   Mail,
   MessageCircle,
   MessageSquare,
@@ -48,6 +49,7 @@ import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 
 import { CAMPAIGN_PRESETS, type CampaignPreset } from "../presets";
 import { CampaignEntityModal } from "./campaign-entity-modal";
+import { CampaignVariablesHelp } from "./campaign-variables-help";
 import { CampaignTemplates, type LoadedTemplate } from "./campaign-templates";
 import { CampaignMessagePreview, type PreviewMessage } from "./campaign-message-preview";
 
@@ -201,6 +203,7 @@ export function CampaignWizard({ id }: { id?: string }) {
   const [dirty, setDirty] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [activeField, setActiveField] = useState<{ channel: Channel; key: string } | null>(null);
   const seeded = useRef(false);
@@ -646,7 +649,17 @@ export function CampaignWizard({ id }: { id?: string }) {
             />
 
             <div className="space-y-1.5">
-              <Label className="text-xs">{t("tokensLabel")}</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs">{t("tokensLabel")}</Label>
+                <button
+                  type="button"
+                  onClick={() => setHelpOpen(true)}
+                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-semibold"
+                >
+                  <HelpCircle className="size-3.5" />
+                  {t("variablesHelp")}
+                </button>
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {CAMPAIGN_VARS.map((v) => (
                   <Button
@@ -968,6 +981,7 @@ export function CampaignWizard({ id }: { id?: string }) {
           setEntityReq(null);
         }}
       />
+      <CampaignVariablesHelp open={helpOpen} onOpenChange={setHelpOpen} />
     </>
   );
 }

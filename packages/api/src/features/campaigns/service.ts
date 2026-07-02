@@ -230,7 +230,6 @@ export class CampaignsService {
         if (t.field === "tier") return "Oro";
         if (t.field === "points") return "1.200";
         if (t.field === "stamps") return "7";
-        if (t.field === "short_link") return "t4.co/abc";
         return "";
       }
       if (t.scope === "store") {

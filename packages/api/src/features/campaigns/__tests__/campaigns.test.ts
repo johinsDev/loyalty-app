@@ -85,7 +85,7 @@ describe("renderVars", () => {
       "Hola Ana, nivel oro",
     );
     expect(renderVars("Hola {{nombre}}", {})).toBe("Hola ");
-    expect(renderVars("{{ short_link }}", { short_link: "t4.co/x" })).toBe("t4.co/x");
+    expect(renderVars("{{ sucursal }}", { sucursal: "T4 Colina" })).toBe("T4 Colina");
     expect(renderVars("sin tokens", {})).toBe("sin tokens");
   });
 });

@@ -278,6 +278,14 @@ function buildVariableSuggestion(refs: {
         root.style.top = `${rect.bottom + 6}px`;
         root.style.left = `${Math.min(rect.left, Math.max(8, maxLeft))}px`;
       };
+      const sectionOf = (it: SuggestItem) =>
+        it.type === "entity"
+          ? "Contenido"
+          : it.token.startsWith("{{user")
+            ? "Usuario"
+            : it.token.startsWith("{{store")
+              ? "Sucursal"
+              : "Variables";
       const paint = () => {
         if (!root) return;
         root.replaceChildren();
@@ -286,7 +294,17 @@ function buildVariableSuggestion(refs: {
           return;
         }
         root.style.display = "block";
+        let lastSection = "";
         items.forEach((it, i) => {
+          const section = sectionOf(it);
+          if (section !== lastSection) {
+            lastSection = section;
+            const header = document.createElement("div");
+            header.className =
+              "text-muted-foreground px-2.5 pt-2 pb-1 text-[10px] font-bold tracking-wider uppercase";
+            header.textContent = section;
+            root?.appendChild(header);
+          }
           const btn = document.createElement("button");
           btn.type = "button";
           btn.className = cn(
@@ -300,7 +318,7 @@ function buildVariableSuggestion(refs: {
           label.className = "truncate font-medium";
           label.textContent = it.label;
           const hint = document.createElement("span");
-          hint.className = "text-muted-foreground shrink-0 text-[11px]";
+          hint.className = "text-muted-foreground shrink-0 font-mono text-[11px]";
           hint.textContent = it.type === "var" ? it.token : "Buscar…";
           btn.append(label, hint);
           btn.addEventListener("mousedown", (e) => {
@@ -319,7 +337,7 @@ function buildVariableSuggestion(refs: {
           active = 0;
           root = document.createElement("div");
           root.className =
-            "bg-popover border-border fixed z-50 max-h-64 w-56 overflow-auto rounded-xl border p-1 shadow-lg";
+            "bg-popover border-border fixed z-50 max-h-72 w-72 overflow-y-auto rounded-xl border p-1 shadow-lg";
           document.body.appendChild(root);
           paint();
         },
