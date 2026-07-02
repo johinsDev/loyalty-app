@@ -1122,6 +1122,20 @@
   "Campaigns": {
     "title": "Campañas",
     "subtitle": "Envía mensajes a tus socios y mide su alcance.",
+    "announce": {
+      "toggle": "Anunciar este banner",
+      "title": "Título",
+      "body": "Mensaje",
+      "linkHint": "Se agrega un enlace corto al final que lleva al destino del banner.",
+      "channels": "Canales",
+      "channel": { "push": "Push", "email": "Email", "whatsapp": "WhatsApp" },
+      "audience": "Audiencia",
+      "aud": { "all": "Todos", "tier": "Por nivel" },
+      "reach": "≈ {n} personas",
+      "needsPublish": "Publicá el banner para poder anunciarlo.",
+      "launched": "Anuncio lanzado 🎉",
+      "failed": "Banner guardado ✓ — no pudimos lanzar el anuncio. Reintentá desde el banner."
+    },
     "add": "Nueva campaña",
     "searchPlaceholder": "Buscar campaña…",
     "viewToggle": "Cambiar vista",
@@ -1441,7 +1455,14 @@
       "design": "Diseño",
       "target": "Destino",
       "schedule": "Programación",
+      "difusion": "Difusión",
       "review": "Revisar"
+    },
+    "campaigns": {
+      "title": "Campañas de este banner ({n})",
+      "empty": "Todavía no anunciaste este banner.",
+      "untitled": "Sin nombre",
+      "status": { "draft": "Borrador", "published": "Publicada" }
     },
     "fieldTitle": "Título",
     "fieldTitlePlaceholder": "2×1 entre semana",

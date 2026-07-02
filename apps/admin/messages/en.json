@@ -1122,6 +1122,20 @@
   "Campaigns": {
     "title": "Campaigns",
     "subtitle": "Message your members and measure the reach.",
+    "announce": {
+      "toggle": "Announce this banner",
+      "title": "Title",
+      "body": "Message",
+      "linkHint": "A short link to the banner's destination is appended automatically.",
+      "channels": "Channels",
+      "channel": { "push": "Push", "email": "Email", "whatsapp": "WhatsApp" },
+      "audience": "Audience",
+      "aud": { "all": "Everyone", "tier": "By tier" },
+      "reach": "≈ {n} people",
+      "needsPublish": "Publish the banner to announce it.",
+      "launched": "Announcement sent 🎉",
+      "failed": "Banner saved ✓ — we couldn't launch the announcement. Retry from the banner."
+    },
     "add": "New campaign",
     "searchPlaceholder": "Search campaign…",
     "viewToggle": "Toggle view",
@@ -1441,7 +1455,14 @@
       "design": "Design",
       "target": "Target",
       "schedule": "Schedule",
+      "difusion": "Announce",
       "review": "Review"
+    },
+    "campaigns": {
+      "title": "Campaigns for this banner ({n})",
+      "empty": "You haven't announced this banner yet.",
+      "untitled": "Untitled",
+      "status": { "draft": "Draft", "published": "Published" }
     },
     "fieldTitle": "Title",
     "fieldTitlePlaceholder": "Weekday 2-for-1",
