@@ -103,6 +103,19 @@ export const scheduleStepSchema = z
     path: ["cooldownDays"],
   });
 
+// Resolve bound-entity names for the editor (chips show the real name on load).
+export const resolveEntitiesInputSchema = z.object({
+  refs: z
+    .array(
+      z.object({
+        scope: z.enum(["promo", "product", "reward", "category"]),
+        id: z.string().min(1),
+      }),
+    )
+    .max(50),
+});
+export type ResolveEntitiesInput = z.infer<typeof resolveEntitiesInputSchema>;
+
 export type DefinitionStepInput = z.infer<typeof definitionStepSchema>;
 export type MessageContentInput = z.infer<typeof messageContentSchema>;
 export type MessageStepInput = z.infer<typeof messageStepSchema>;

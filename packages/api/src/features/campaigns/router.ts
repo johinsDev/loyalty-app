@@ -14,6 +14,7 @@ import {
   publishInputSchema,
   removeInputSchema,
   renderPreviewInputSchema,
+  resolveEntitiesInputSchema,
   retryInputSchema,
   saveTemplateSchema,
 } from "./schemas";
@@ -90,6 +91,11 @@ export const campaignsRouter = router({
     .input(renderPreviewInputSchema)
     .query(async ({ ctx, input }) =>
       makeService(ctx.db).renderPreview(await requireOrg(), input),
+    ),
+  resolveEntities: managerProcedure
+    .input(resolveEntitiesInputSchema)
+    .query(async ({ ctx, input }) =>
+      makeService(ctx.db).resolveEntityNames(await requireOrg(), input.refs),
     ),
   pause: managerProcedure
     .input(pauseInputSchema)

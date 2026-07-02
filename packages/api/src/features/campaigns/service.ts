@@ -266,6 +266,18 @@ export class CampaignsService {
     return out;
   }
 
+  /** Resolve bound entities to `scope#id → name` (for the editor's chips). */
+  async resolveEntityNames(
+    orgId: string,
+    refs: { scope: "promo" | "product" | "reward" | "category"; id: string }[],
+  ): Promise<Record<string, string>> {
+    if (refs.length === 0) return {};
+    const map = await this.repo.resolveEntityRefs(orgId, refs);
+    const out: Record<string, string> = {};
+    for (const [key, val] of map) out[key] = val.name;
+    return out;
+  }
+
   // ── Reach preview ───────────────────────────────────────────────────────────
   async countReach(orgId: string, input: CountReachInput): Promise<CampaignReach> {
     const filter = input.audienceFilter

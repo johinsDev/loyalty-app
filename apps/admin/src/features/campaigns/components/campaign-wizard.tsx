@@ -22,7 +22,12 @@ import {
   Textarea,
   type EditorVariable,
 } from "@loyalty/ui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useDebounce } from "ahooks";
 import {
   Bell,
@@ -408,6 +413,37 @@ export function CampaignWizard({ id }: { id?: string }) {
     enabled: step === "audience" || step === "schedule",
   });
 
+  // Resolve bound-entity names in the message so chips loaded from a saved
+  // token show the real product/promo name (not just "Producto").
+  const entityRefs = useMemo(() => {
+    const text = [
+      form.message.push.title,
+      form.message.push.body,
+      form.message.email.subject,
+      form.message.email.body,
+      form.message.sms.text,
+      form.message.whatsapp.text,
+    ].join(" ");
+    const re = /\{\{\s*(promo|product|reward|category)#([a-zA-Z0-9:_-]+)/gi;
+    const seen = new Set<string>();
+    const refs: { scope: EntityScope; id: string }[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      const key = `${m[1]}#${m[2]}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        refs.push({ scope: m[1] as EntityScope, id: m[2]! });
+      }
+    }
+    return refs;
+  }, [form.message]);
+  const entityNamesQuery = useQuery({
+    ...trpc.campaigns.resolveEntities.queryOptions({ refs: entityRefs }),
+    enabled: entityRefs.length > 0,
+    placeholderData: keepPreviousData,
+  });
+  const entityNames = entityNamesQuery.data ?? {};
+
   // Persists the current step, creating the draft first if it doesn't exist yet.
   // Returns the campaign id on success (needed for publish), null on failure.
   async function persistStep(): Promise<string | null> {
@@ -740,6 +776,7 @@ export function CampaignWizard({ id }: { id?: string }) {
                   variables={[...CAMPAIGN_VARS]}
                   entities={ENTITY_KINDS}
                   onRequestEntity={onRequestEntity}
+                entityNames={entityNames}
                 />
               </ChannelBlock>
             ) : null}
@@ -763,6 +800,7 @@ export function CampaignWizard({ id }: { id?: string }) {
                 variables={[...CAMPAIGN_VARS]}
                 entities={ENTITY_KINDS}
                 onRequestEntity={onRequestEntity}
+                entityNames={entityNames}
                 onUploadImage={uploadImage}
               />
             </ChannelBlock>
@@ -778,6 +816,7 @@ export function CampaignWizard({ id }: { id?: string }) {
                   variables={[...CAMPAIGN_VARS]}
                   entities={ENTITY_KINDS}
                   onRequestEntity={onRequestEntity}
+                entityNames={entityNames}
                 />
               </ChannelBlock>
             ) : null}
@@ -792,6 +831,7 @@ export function CampaignWizard({ id }: { id?: string }) {
                   variables={[...CAMPAIGN_VARS]}
                   entities={ENTITY_KINDS}
                   onRequestEntity={onRequestEntity}
+                entityNames={entityNames}
                 />
               </ChannelBlock>
             ) : null}

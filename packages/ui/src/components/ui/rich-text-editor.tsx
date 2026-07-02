@@ -132,18 +132,22 @@ const VariableSuggestion = Extension.create<{
 const escapeHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-/** Friendly chip label for a token: a variable's label, an entity kind's label
- *  (e.g. `{{product#id.href}}` → "Producto"), else the token without braces. */
+/** Friendly chip label for a token: a variable's label, the bound entity's real
+ *  name (`{{product#id.href}}` → "Smoothie de Mango") when resolved, else the
+ *  entity kind ("Producto"), else the token without braces. */
 function labelForToken(
   token: string,
   variables?: EditorVariable[],
   entities?: { scope: string; label: string }[],
+  entityNames?: Record<string, string>,
 ): string {
   const v = variables?.find((x) => x.token === token);
   if (v) return v.label;
-  const scope = /^\{\{\s*([a-z]+)#/i.exec(token)?.[1];
-  if (scope) {
-    const e = entities?.find((x) => x.scope === scope);
+  const m = /^\{\{\s*([a-z]+)#([^.\s}]+)/i.exec(token);
+  if (m) {
+    const ref = `${m[1]}#${m[2]}`;
+    if (entityNames?.[ref]) return entityNames[ref];
+    const e = entities?.find((x) => x.scope === m[1]);
     if (e) return e.label;
   }
   return token.replace(/^\{\{|\}\}$/g, "");
@@ -158,9 +162,11 @@ function plainToHtml(
   text: string,
   variables?: EditorVariable[],
   entities?: { scope: string; label: string }[],
+  entityNames?: Record<string, string>,
 ): string {
   if (!text) return "";
-  const labelOf = (token: string) => labelForToken(token, variables, entities);
+  const labelOf = (token: string) =>
+    labelForToken(token, variables, entities, entityNames);
   const re = /\{\{[^}]+\}\}/g;
   let out = "";
   let last = 0;
@@ -213,9 +219,11 @@ function whatsAppToHtml(
   text: string,
   variables?: EditorVariable[],
   entities?: { scope: string; label: string }[],
+  entityNames?: Record<string, string>,
 ): string {
   if (!text) return "";
-  const labelOf = (token: string) => labelForToken(token, variables, entities);
+  const labelOf = (token: string) =>
+    labelForToken(token, variables, entities, entityNames);
   // Escape + wrap tokens as chips (reuse the plain scan).
   const re = /\{\{[^}]+\}\}/g;
   let out = "";
@@ -443,6 +451,11 @@ export interface RichTextEditorProps {
    */
   onRequestEntity?: (scope: string) => Promise<EditorVariable | null>;
   /**
+   * Resolved bound-entity names, keyed by `scope#id` — so a chip loaded from a
+   * saved token (`{{product#id.href}}`) shows the real name instead of "Producto".
+   */
+  entityNames?: Record<string, string>;
+  /**
    * Optional image uploader. When provided, the image button offers a
    * click-to-upload zone (with a loading state) that stores the file via the
    * app's storage integration and inserts the returned URL. Keeps the storage
@@ -475,6 +488,7 @@ export function RichTextEditor({
   variables,
   entities,
   onRequestEntity,
+  entityNames,
   onUploadImage,
   plain = false,
   whatsapp = false,
@@ -497,9 +511,9 @@ export function RichTextEditor({
         : ed.getHTML();
   const toContent = (v: string) =>
     whatsapp
-      ? whatsAppToHtml(v, variables, entities)
+      ? whatsAppToHtml(v, variables, entities, entityNames)
       : plain
-        ? plainToHtml(v, variables, entities)
+        ? plainToHtml(v, variables, entities, entityNames)
         : v;
 
   const editor = useEditor({
@@ -562,13 +576,20 @@ export function RichTextEditor({
   });
 
   // Sync external value changes (e.g. resetting the form) without clobbering
-  // the cursor while typing.
+  // the cursor while typing. Also re-render when entity names resolve after load
+  // (chips swap the "Producto" fallback for the real name) — but only when the
+  // editor isn't focused, so it never disrupts active editing.
+  const entityNamesKey = JSON.stringify(entityNames ?? {});
+  const lastNamesKey = useRef(entityNamesKey);
   useEffect(() => {
-    if (editor && value !== readValue(editor)) {
+    if (!editor) return;
+    const namesChanged = lastNamesKey.current !== entityNamesKey;
+    lastNamesKey.current = entityNamesKey;
+    if (value !== readValue(editor) || (namesChanged && !editor.isFocused)) {
       editor.commands.setContent(toContent(value), { emitUpdate: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, value]);
+  }, [editor, value, entityNamesKey]);
 
   const [linkPop, setLinkPop] = useState(false);
   const [imgPop, setImgPop] = useState(false);
