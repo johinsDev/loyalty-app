@@ -132,16 +132,35 @@ const VariableSuggestion = Extension.create<{
 const escapeHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+/** Friendly chip label for a token: a variable's label, an entity kind's label
+ *  (e.g. `{{product#id.href}}` → "Producto"), else the token without braces. */
+function labelForToken(
+  token: string,
+  variables?: EditorVariable[],
+  entities?: { scope: string; label: string }[],
+): string {
+  const v = variables?.find((x) => x.token === token);
+  if (v) return v.label;
+  const scope = /^\{\{\s*([a-z]+)#/i.exec(token)?.[1];
+  if (scope) {
+    const e = entities?.find((x) => x.scope === scope);
+    if (e) return e.label;
+  }
+  return token.replace(/^\{\{|\}\}$/g, "");
+}
+
 /**
  * Plain-text (with `{{tokens}}`) → HTML the editor can load, wrapping each token
  * in a variable-chip span so it round-trips. Used by the `plain` channels whose
  * stored value is text, not HTML.
  */
-function plainToHtml(text: string, variables?: EditorVariable[]): string {
+function plainToHtml(
+  text: string,
+  variables?: EditorVariable[],
+  entities?: { scope: string; label: string }[],
+): string {
   if (!text) return "";
-  const labelOf = (token: string) =>
-    variables?.find((v) => v.token === token)?.label ??
-    token.replace(/^\{\{|\}\}$/g, "");
+  const labelOf = (token: string) => labelForToken(token, variables, entities);
   const re = /\{\{[^}]+\}\}/g;
   let out = "";
   let last = 0;
@@ -190,11 +209,13 @@ function docToWhatsApp(editor: Editor): string {
 }
 
 /** WhatsApp markup (with `{{tokens}}`) → HTML the editor loads (chips + marks). */
-function whatsAppToHtml(text: string, variables?: EditorVariable[]): string {
+function whatsAppToHtml(
+  text: string,
+  variables?: EditorVariable[],
+  entities?: { scope: string; label: string }[],
+): string {
   if (!text) return "";
-  const labelOf = (token: string) =>
-    variables?.find((v) => v.token === token)?.label ??
-    token.replace(/^\{\{|\}\}$/g, "");
+  const labelOf = (token: string) => labelForToken(token, variables, entities);
   // Escape + wrap tokens as chips (reuse the plain scan).
   const re = /\{\{[^}]+\}\}/g;
   let out = "";
@@ -475,7 +496,11 @@ export function RichTextEditor({
         ? ed.getText({ blockSeparator: "\n" })
         : ed.getHTML();
   const toContent = (v: string) =>
-    whatsapp ? whatsAppToHtml(v, variables) : plain ? plainToHtml(v, variables) : v;
+    whatsapp
+      ? whatsAppToHtml(v, variables, entities)
+      : plain
+        ? plainToHtml(v, variables, entities)
+        : v;
 
   const editor = useEditor({
     immediatelyRender: false,
