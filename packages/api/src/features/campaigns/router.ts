@@ -7,9 +7,11 @@ import {
   advanceInputSchema,
   bulkIdsSchema,
   campaignAnalyticsInputSchema,
+  campaignsBySourceInputSchema,
   campaignsListInputSchema,
   campaignTimeseriesInputSchema,
   countReachInputSchema,
+  createFromEntityInputSchema,
   deleteTemplateSchema,
   getStateInputSchema,
   pauseInputSchema,
@@ -63,6 +65,16 @@ export const campaignsRouter = router({
     .input(publishInputSchema)
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).publish(await requireOrg(), input.id),
+    ),
+  createFromEntity: managerProcedure
+    .input(createFromEntityInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).createFromEntity(await requireOrg(), ctx.session.user.id, input),
+    ),
+  campaignsBySource: managerProcedure
+    .input(campaignsBySourceInputSchema)
+    .query(async ({ ctx, input }) =>
+      makeService(ctx.db).campaignsBySource(await requireOrg(), input),
     ),
   adminList: managerProcedure
     .input(campaignsListInputSchema)
