@@ -202,6 +202,12 @@ export function CampaignWizard({ id }: { id?: string }) {
   const [draftId, setDraftId] = useQueryState("draft", parseAsString);
   const loadId = id ?? draftId ?? undefined;
   const [campaignId, setCampaignId] = useState<string | undefined>(loadId);
+  // If the draft id only arrives from the URL after mount (hydration), adopt it
+  // so persist/publish target the resumed draft instead of creating a new one.
+  useEffect(() => {
+    if (loadId && !campaignId) setCampaignId(loadId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadId]);
   const [form, setForm] = useState<Form>(EMPTY);
   const [stepIndex, setStepIndex] = useState(0);
   const [dirty, setDirty] = useState(false);
@@ -320,10 +326,11 @@ export function CampaignWizard({ id }: { id?: string }) {
   useEffect(() => {
     if (loadId && stateQuery.data && !seeded.current) {
       const c = stateQuery.data.campaign;
+      const msg = toFormMessage(c.message);
       setForm({
         name: c.name ?? "",
         objective: c.objective ?? "",
-        message: toFormMessage(c.message),
+        message: msg,
         linkUrl: c.linkUrl ?? "",
         channelPriority: (c.channelPriority ?? []).filter((x): x is Channel =>
           (CHANNELS as readonly string[]).includes(x),
@@ -352,6 +359,13 @@ export function CampaignWizard({ id }: { id?: string }) {
         dripMaxAttempts: c.dripMaxAttempts != null ? String(c.dripMaxAttempts) : "3",
       });
       seeded.current = true;
+      // Resume at the first step still missing data (or the review step if all
+      // done), instead of always restarting at Definición.
+      const nameOk = !!c.name;
+      const msgOk =
+        CHANNELS.some((ch) => isChannelComplete(msg, ch)) &&
+        (c.channelPriority?.length ?? 0) > 0;
+      setStepIndex(!nameOk ? 0 : !msgOk ? 1 : STEPS.length - 1);
     }
   }, [loadId, stateQuery.data]);
 
