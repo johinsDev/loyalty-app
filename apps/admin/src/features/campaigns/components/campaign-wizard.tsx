@@ -563,7 +563,8 @@ export function CampaignWizard({ id }: { id?: string }) {
                 value={form.objective}
                 onChange={(e) => set("objective", e.target.value)}
                 placeholder={t("fieldObjectivePlaceholder")}
-                rows={6}
+                rows={10}
+                className="min-h-56"
               />
             </Field>
           </div>
