@@ -44,6 +44,12 @@ export type CampaignAudienceFilter = {
 /** A linked, redeemable offer for the "Canjeados" funnel stage (P3). */
 export type CampaignOffer = { kind: "promo" | "reward"; id: string };
 
+/** Traceability: the entity whose creation spawned this campaign (P-hub). */
+export type CampaignSource = {
+  scope: "banner" | "promo" | "product" | "category" | "reward";
+  id: string;
+};
+
 /**
  * `campaign` — the unified communication entity. In P1 it models the
  * PROMOTIONAL substrate (a generic marketing message sent to an inline
@@ -84,6 +90,9 @@ export const campaign = sqliteTable(
     message: text("message", { mode: "json" }).$type<CampaignMessage>(),
     // Optional linked redeemable offer (P3 "Canjeados" attribution).
     offer: text("offer", { mode: "json" }).$type<CampaignOffer>(),
+    // Entity that spawned this campaign (e.g. a banner's inline "Difusión").
+    // Nullable; reused by promo/product/category/reward in later phases.
+    source: text("source", { mode: "json" }).$type<CampaignSource>(),
     // Optional CTA destination. `{{short_link}}` shortens this per-recipient
     // (attributed to campaign+customer) for the "Clic" funnel stage.
     linkUrl: text("link_url"),
