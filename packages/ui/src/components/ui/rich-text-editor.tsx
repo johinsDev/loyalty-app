@@ -233,12 +233,9 @@ const insertVariableChip = (editor: Editor, token: string, label: string) =>
 function buildVariableSuggestion(refs: {
   variablesRef: RefObject<EditorVariable[] | undefined>;
   entitiesRef: RefObject<{ scope: string; label: string }[] | undefined>;
-  onRequestEntityRef: RefObject<
-    | ((scope: string, field?: "name" | "href") => Promise<EditorVariable | null>)
-    | undefined
-  >;
+  insertEntityRef: RefObject<((scope: string) => void) | undefined>;
 }): Omit<SuggestionOptions<SuggestItem, SuggestItem>, "editor"> {
-  const { variablesRef, entitiesRef, onRequestEntityRef } = refs;
+  const { variablesRef, entitiesRef, insertEntityRef } = refs;
   return {
     char: "{{",
     allowedPrefixes: null,
@@ -263,11 +260,7 @@ function buildVariableSuggestion(refs: {
       if (props.type === "var") {
         insertVariableChip(editor, props.token, props.label);
       } else {
-        const req = onRequestEntityRef.current;
-        if (req)
-          void req(props.scope).then((v) => {
-            if (v) insertVariableChip(editor, v.token, v.label);
-          });
+        insertEntityRef.current?.(props.scope);
       }
     },
     render: () => {
@@ -388,14 +381,11 @@ export interface RichTextEditorProps {
    */
   entities?: { scope: string; label: string }[];
   /**
-   * Asks the app to pick an entity. `field` selects what token to return:
-   * `"name"` (default) → a name chip; `"href"` → the entity's tracked link,
-   * used as a link destination in the link popover.
+   * Asks the app to pick an entity (promo/product/reward/category). Returns
+   * `{ token: {{scope#id.href}}, label: name }` — the editor inserts the name
+   * as a link to that tracked href (or the href chip in plain/WhatsApp mode).
    */
-  onRequestEntity?: (
-    scope: string,
-    field?: "name" | "href",
-  ) => Promise<EditorVariable | null>;
+  onRequestEntity?: (scope: string) => Promise<EditorVariable | null>;
   /**
    * Optional image uploader. When provided, the image button offers a
    * click-to-upload zone (with a loading state) that stores the file via the
@@ -437,10 +427,10 @@ export function RichTextEditor({
   // props, since the extension array is only evaluated on mount.
   const variablesRef = useRef(variables);
   const entitiesRef = useRef(entities);
-  const onRequestEntityRef = useRef(onRequestEntity);
+  // Populated below with the mode-aware entity inserter (linked name / href chip).
+  const insertEntityRef = useRef<((scope: string) => void) | undefined>(undefined);
   variablesRef.current = variables;
   entitiesRef.current = entities;
-  onRequestEntityRef.current = onRequestEntity;
 
   // Plain channels store text; WhatsApp stores markup; both round-trip tokens.
   const readValue = (ed: Editor) =>
@@ -494,7 +484,7 @@ export function RichTextEditor({
         suggestion: buildVariableSuggestion({
           variablesRef,
           entitiesRef,
-          onRequestEntityRef,
+          insertEntityRef,
         }),
       }),
     ],
@@ -523,6 +513,7 @@ export function RichTextEditor({
   const [linkPop, setLinkPop] = useState(false);
   const [imgPop, setImgPop] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
+  const [linkErr, setLinkErr] = useState(false);
   const [imgUrl, setImgUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -539,24 +530,21 @@ export function RichTextEditor({
       ])
       .run();
 
-  const pickEntity = async (scope: string) => {
-    if (!onRequestEntity) return;
-    const v = await onRequestEntity(scope);
-    if (v) insertVariable(v);
-  };
+  // Rich editors can carry a link mark; plain/WhatsApp cannot.
+  const canLink = !plain && !whatsapp;
 
-  const applyLink = () => {
-    const url = linkUrl.trim();
-    if (!url) editor.chain().focus().unsetLink().run();
-    else editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
-    setLinkPop(false);
-  };
-  const linkToEntity = async (scope: string) => {
+  /**
+   * Insert an entity (promo/product/reward/category) as its NAME. In rich mode
+   * the name is editable text linked to the entity's tracked `.href` (so the
+   * admin can rename the visible text without changing the destination); in
+   * plain/WhatsApp — where there are no links — it drops the `.href` token chip
+   * (renders to the short URL at send).
+   */
+  const insertEntity = async (scope: string) => {
     if (!onRequestEntity) return;
-    const v = await onRequestEntity(scope, "href");
+    const v = await onRequestEntity(scope); // { token: {{scope#id.href}}, label: name }
     if (!v) return;
-    if (editor.state.selection.empty) {
-      // No selection: drop the entity name in as the linked text.
+    if (canLink) {
       editor
         .chain()
         .focus()
@@ -568,9 +556,28 @@ export function RichTextEditor({
         .insertContent(" ")
         .run();
     } else {
-      editor.chain().focus().extendMarkRange("link").setLink({ href: v.token }).run();
+      insertVariable(v);
     }
+  };
+  insertEntityRef.current = (scope) => void insertEntity(scope);
+
+  const applyLink = () => {
+    const raw = linkUrl.trim();
+    if (!raw) {
+      editor.chain().focus().unsetLink().run();
+      setLinkPop(false);
+      setLinkErr(false);
+      return;
+    }
+    const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    // Reject anything that isn't a real URL (e.g. "hola", spaces).
+    if (!URL.canParse(url) || !/\.[a-z]{2,}/i.test(url)) {
+      setLinkErr(true);
+      return;
+    }
+    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
     setLinkPop(false);
+    setLinkErr(false);
   };
   const insertImage = () => {
     const url = imgUrl.trim();
@@ -621,6 +628,7 @@ export function RichTextEditor({
           open={linkPop}
           onOpenChange={(o) => {
             setLinkPop(o);
+            setLinkErr(false);
             if (o) setLinkUrl((editor.getAttributes("link").href as string) ?? "");
           }}
         >
@@ -630,11 +638,20 @@ export function RichTextEditor({
           <PopoverContent className="w-72 space-y-2 p-2">
             <input
               value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
+              onChange={(e) => {
+                setLinkUrl(e.target.value);
+                if (linkErr) setLinkErr(false);
+              }}
               onKeyDown={(e) => e.key === "Enter" && applyLink()}
               placeholder="https://…"
-              className="border-input h-9 w-full rounded-lg border bg-transparent px-2.5 text-sm outline-none"
+              className={cn(
+                "h-9 w-full rounded-lg border bg-transparent px-2.5 text-sm outline-none",
+                linkErr ? "border-destructive" : "border-input",
+              )}
             />
+            {linkErr ? (
+              <p className="text-destructive text-[11px]">Ingresa una URL válida.</p>
+            ) : null}
             <div className="flex justify-end gap-2">
               <button
                 type="button"
@@ -654,26 +671,6 @@ export function RichTextEditor({
                 Aplicar
               </button>
             </div>
-            {onRequestEntity && entities && entities.length > 0 ? (
-              <>
-                <div className="text-muted-foreground flex items-center gap-2 text-[11px]">
-                  <span className="bg-border h-px flex-1" />o enlaza a
-                  <span className="bg-border h-px flex-1" />
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {entities.map((e) => (
-                    <button
-                      key={e.scope}
-                      type="button"
-                      onClick={() => void linkToEntity(e.scope)}
-                      className="border-border text-muted-foreground hover:bg-muted rounded-full border border-dashed px-2 py-0.5 text-xs font-semibold transition-colors"
-                    >
-                      + {e.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : null}
           </PopoverContent>
         </Popover>
 
@@ -782,7 +779,7 @@ export function RichTextEditor({
             <button
               key={e.scope}
               type="button"
-              onClick={() => void pickEntity(e.scope)}
+              onClick={() => void insertEntity(e.scope)}
               className="border-border text-muted-foreground hover:bg-muted rounded-full border border-dashed px-2 py-0.5 text-xs font-semibold transition-colors"
             >
               + {e.label}

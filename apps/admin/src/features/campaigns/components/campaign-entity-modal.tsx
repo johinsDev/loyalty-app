@@ -2,7 +2,6 @@
 
 import type { EditorVariable } from "@loyalty/ui";
 import {
-  Button,
   Input,
   ResponsiveModal,
   ResponsiveModalContent,
@@ -11,7 +10,7 @@ import {
 } from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "ahooks";
-import { Link2, Tag } from "lucide-react";
+import { Link2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -27,12 +26,9 @@ type Entity = { id: string; name: string };
  */
 export function CampaignEntityModal({
   scope,
-  field,
   onResolve,
 }: {
   scope: Scope | null;
-  /** When set, each result is a single action returning that field. */
-  field?: "name" | "href";
   onResolve: (v: EditorVariable | null) => void;
 }) {
   const t = useTranslations("Campaigns");
@@ -74,8 +70,9 @@ export function CampaignEntityModal({
                 .map((c) => ({ id: c.id, name: c.name }))
             : [];
 
-  const pick = (ent: Entity, f: "name" | "href") => {
-    onResolve({ token: `{{${scope}#${ent.id}.${f}}}`, label: ent.name });
+  // Always the entity's tracked link; its name is the editable, linked text.
+  const pick = (ent: Entity) => {
+    onResolve({ token: `{{${scope}#${ent.id}.href}}`, label: ent.name });
     setQuery("");
   };
 
@@ -107,50 +104,17 @@ export function CampaignEntityModal({
             {results.length === 0 ? (
               <p className="text-muted-foreground py-6 text-center text-sm">{t("offerEmpty")}</p>
             ) : (
-              results.map((ent) =>
-                field ? (
-                  <button
-                    key={ent.id}
-                    type="button"
-                    onClick={() => pick(ent, field)}
-                    className="border-border hover:bg-muted/50 flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left"
-                  >
-                    {field === "href" ? (
-                      <Link2 className="text-muted-foreground size-4 shrink-0" />
-                    ) : (
-                      <Tag className="text-muted-foreground size-4 shrink-0" />
-                    )}
-                    <span className="flex-1 truncate text-sm font-medium">{ent.name}</span>
-                  </button>
-                ) : (
-                  <div
-                    key={ent.id}
-                    className="border-border hover:bg-muted/50 flex items-center gap-2 rounded-xl border px-3 py-2"
-                  >
-                    <span className="flex-1 truncate text-sm font-medium">{ent.name}</span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-8 gap-1 rounded-lg"
-                      onClick={() => pick(ent, "name")}
-                    >
-                      <Tag className="size-3.5" />
-                      {t("entityInsertName")}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-8 gap-1 rounded-lg"
-                      onClick={() => pick(ent, "href")}
-                    >
-                      <Link2 className="size-3.5" />
-                      {t("entityInsertLink")}
-                    </Button>
-                  </div>
-                ),
-              )
+              results.map((ent) => (
+                <button
+                  key={ent.id}
+                  type="button"
+                  onClick={() => pick(ent)}
+                  className="border-border hover:bg-muted/50 flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left"
+                >
+                  <Link2 className="text-muted-foreground size-4 shrink-0" />
+                  <span className="flex-1 truncate text-sm font-medium">{ent.name}</span>
+                </button>
+              ))
             )}
           </div>
         </div>

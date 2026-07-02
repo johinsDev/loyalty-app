@@ -480,12 +480,11 @@ export function CampaignWizard({ id }: { id?: string }) {
   // resolve the chosen chip back to it.
   const [entityReq, setEntityReq] = useState<{
     scope: EntityScope;
-    field?: "name" | "href";
     resolve: (v: EditorVariable | null) => void;
   } | null>(null);
-  const onRequestEntity = (scope: string, field?: "name" | "href") =>
+  const onRequestEntity = (scope: string) =>
     new Promise<EditorVariable | null>((resolve) =>
-      setEntityReq({ scope: scope as EntityScope, field, resolve }),
+      setEntityReq({ scope: scope as EntityScope, resolve }),
     );
   const uploadImage = useUploadImage();
   const reorderChannel = (from: number, to: number) => {
@@ -660,20 +659,6 @@ export function CampaignWizard({ id }: { id?: string }) {
                     onClick={() => insertToken(v.token)}
                   >
                     {v.label}
-                  </Button>
-                ))}
-                {ENTITY_KINDS.map((e) => (
-                  <Button
-                    key={e.scope}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 rounded-full border-dashed text-xs font-semibold"
-                    onClick={() =>
-                      void onRequestEntity(e.scope).then((v) => v && insertToken(v.token))
-                    }
-                  >
-                    + {e.label}
                   </Button>
                 ))}
               </div>
@@ -978,7 +963,6 @@ export function CampaignWizard({ id }: { id?: string }) {
 
       <CampaignEntityModal
         scope={entityReq?.scope ?? null}
-        field={entityReq?.field}
         onResolve={(v) => {
           entityReq?.resolve(v);
           setEntityReq(null);
