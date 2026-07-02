@@ -43,6 +43,8 @@ const base: CampaignRow = {
   endsAt: null,
   activatedAt: null,
   lastPulseAt: null,
+  dripIntervalDays: null,
+  dripMaxAttempts: null,
   runId: null,
   pausedAt: null,
   sentAt: null,
@@ -315,5 +317,10 @@ describe("displayState — evergreen", () => {
     expect(displayState({ ...base, status: "published", sentAt: now }, now)).toBe(
       "sent",
     );
+  });
+  it("drip is active while running (not 'sent')", () => {
+    expect(
+      displayState({ ...base, status: "published", mode: "drip", sentAt: now }, now),
+    ).toBe("active");
   });
 });

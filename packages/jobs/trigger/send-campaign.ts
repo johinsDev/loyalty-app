@@ -39,8 +39,10 @@ type Payload = {
   organizationId: string;
   campaignId: string;
   onlyCustomerIds?: string[];
-  /** Evergreen cron pulse — keep the campaign "active" (don't flip to "sent"). */
+  /** Evergreen/drip cron pulse — keep the campaign "active" (don't flip to "sent"). */
   pulse?: boolean;
+  /** Drip — bypass the weekly frequency cap (the drip cadence is the limit). */
+  bypassCap?: boolean;
 };
 
 type Resolve = (token: Token) => string | Promise<string>;
@@ -176,7 +178,8 @@ export const sendCampaignTask = task({
 
     for (const r of recipients) {
       // Frequency cap: skip recipients already at the rolling-7-day limit.
-      if (cap != null) {
+      // Drip pulses bypass it (their own cadence is the limit).
+      if (cap != null && !p.bypassCap) {
         const recent = await repo.recentSendCount(p.organizationId, r.customerId, capSince);
         if (recent >= cap) {
           await repo.recordSend({

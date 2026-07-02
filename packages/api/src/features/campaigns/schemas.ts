@@ -80,11 +80,11 @@ export const audienceFilterSchema = z.object({
 });
 export type AudienceFilterInput = z.infer<typeof audienceFilterSchema>;
 
-export const campaignModeSchema = z.enum(["once", "evergreen"]);
+export const campaignModeSchema = z.enum(["once", "evergreen", "drip"]);
 
 export const scheduleStepSchema = z
   .object({
-    // "once" = one-shot broadcast; "evergreen" = standing rule pulsed daily.
+    // "once" = one-shot; "evergreen" = standing rule; "drip" = re-insist non-buyers.
     mode: campaignModeSchema.optional(),
     // once: null/undefined = send now on publish.
     scheduledAt: z.coerce.date().optional(),
@@ -94,6 +94,9 @@ export const scheduleStepSchema = z
     cooldownDays: z.number().int().min(1).max(365).optional(),
     // evergreen: optional auto-stop instant.
     endsAt: z.coerce.date().optional(),
+    // drip: days between insistences + max total attempts (incl. the first).
+    dripIntervalDays: z.number().int().min(1).max(90).optional(),
+    dripMaxAttempts: z.number().int().min(2).max(10).optional(),
   })
   .refine((s) => s.mode !== "evergreen" || s.cooldownDays != null, {
     message: "Elige cada cuántos días puede volver a recibirla",

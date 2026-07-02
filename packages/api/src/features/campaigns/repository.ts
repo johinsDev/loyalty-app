@@ -27,7 +27,7 @@ import {
   type SmartDeliveryRules,
 } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, countDistinct, count, desc, eq, gte, inArray, isNotNull, like, lte, max, sql } from "drizzle-orm";
+import { and, countDistinct, count, desc, eq, gte, inArray, isNotNull, like, lte, max, min, sql } from "drizzle-orm";
 
 import { pageCountOf, pageOffset, type ListResult } from "../_shared/list";
 import {
@@ -75,6 +75,8 @@ export type CampaignPatch = Partial<
     | "mode"
     | "cooldownDays"
     | "endsAt"
+    | "dripIntervalDays"
+    | "dripMaxAttempts"
   >
 >;
 
@@ -93,7 +95,7 @@ export function displayState(
   now = new Date(),
 ): CampaignDisplayState {
   if (row.status !== "published") return "draft";
-  if (row.mode === "evergreen") {
+  if (row.mode === "evergreen" || row.mode === "drip") {
     if (row.sendState === "ended" || (row.endsAt && row.endsAt <= now)) return "ended";
     if (row.pausedAt) return "paused";
     return "active";
@@ -589,9 +591,13 @@ export class CampaignsRepository {
     return Number(rows[0]?.n ?? 0);
   }
 
-  // ── Evergreen ───────────────────────────────────────────────────────────────
-  /** Live evergreen campaigns due for a cron pulse (published, not paused/ended). */
-  async listActiveEvergreen(orgId: string, now = new Date()): Promise<CampaignRow[]> {
+  // ── Recurring (evergreen + drip) ──────────────────────────────────────────
+  /** Live campaigns of a given mode due for a cron pulse (not paused/ended). */
+  async listActiveByMode(
+    orgId: string,
+    mode: string,
+    now = new Date(),
+  ): Promise<CampaignRow[]> {
     const rows = await this.db
       .select()
       .from(campaign)
@@ -599,12 +605,62 @@ export class CampaignsRepository {
         and(
           eq(campaign.organizationId, orgId),
           eq(campaign.status, "published"),
-          eq(campaign.mode, "evergreen"),
+          eq(campaign.mode, mode),
         ),
       );
     return rows.filter(
       (r) => !r.pausedAt && r.sendState !== "ended" && (!r.endsAt || r.endsAt > now),
     );
+  }
+
+  /**
+   * Drip re-insistence targets: cohort members (from the ledger) who are due
+   * (last send ≥ interval ago), under the attempt cap, and haven't purchased
+   * since their first send.
+   */
+  async resolveDripDue(orgId: string, camp: CampaignRow, now = new Date()): Promise<string[]> {
+    const interval = camp.dripIntervalDays ?? 3;
+    const maxAttempts = camp.dripMaxAttempts ?? 3;
+    const sends = await this.db
+      .select({
+        customerId: campaignSend.customerId,
+        first: min(campaignSend.sentAt),
+        last: max(campaignSend.sentAt),
+        n: count(),
+      })
+      .from(campaignSend)
+      .where(
+        and(
+          eq(campaignSend.organizationId, orgId),
+          eq(campaignSend.campaignId, camp.id),
+          eq(campaignSend.status, "sent"),
+        ),
+      )
+      .groupBy(campaignSend.customerId);
+
+    const dueBy = new Date(now.getTime() - interval * 86_400_000);
+    const candidates = sends.filter(
+      (s) => Number(s.n) < maxAttempts && s.last != null && s.last <= dueBy,
+    );
+    if (candidates.length === 0) return [];
+
+    const ids = candidates.map((c) => c.customerId);
+    const purchases = await this.db
+      .select({ customerId: purchase.customerId, last: max(purchase.createdAt) })
+      .from(purchase)
+      .where(
+        and(eq(purchase.organizationId, orgId), inArray(purchase.customerId, ids)),
+      )
+      .groupBy(purchase.customerId);
+    const lastPurchase = new Map(purchases.map((p) => [p.customerId, p.last]));
+
+    // Converted = a purchase at/after their first drip send → drop from the drip.
+    return candidates
+      .filter((c) => {
+        const lp = lastPurchase.get(c.customerId);
+        return !(lp && c.first && lp >= c.first);
+      })
+      .map((c) => c.customerId);
   }
 
   /** Evergreen matchers minus anyone with a successful send inside the cooldown. */

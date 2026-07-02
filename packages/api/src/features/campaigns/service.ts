@@ -37,8 +37,10 @@ type SendCampaignPayload = {
   campaignId: string;
   /** When set, only (re)send to these recipients — used by "Reintentar". */
   onlyCustomerIds?: string[];
-  /** Evergreen cron pulse — the job must NOT flip the campaign to "sent". */
+  /** Evergreen/drip cron pulse — the job must NOT flip the campaign to "sent". */
   pulse?: boolean;
+  /** Drip — bypass the weekly frequency cap (the drip cadence is the limit). */
+  bypassCap?: boolean;
 };
 
 export interface CampaignStateResult {
@@ -121,13 +123,19 @@ export class CampaignsService {
     const offer = deriveOffer(current.message);
     if (offer) await this.repo.patch(orgId, id, { offer });
     const evergreen = current.mode === "evergreen";
+    const drip = current.mode === "drip";
     const published = await this.repo.markPublished(orgId, id, {
-      scheduledAt: evergreen ? null : current.scheduledAt,
+      scheduledAt: evergreen || drip ? null : current.scheduledAt,
       special: current.special,
     });
     if (evergreen) {
       // No immediate dispatch — the daily cron pulses it while active.
       await this.repo.activateEvergreen(orgId, id, new Date());
+    } else if (drip) {
+      // Send attempt 1 to the whole cohort now, but stay "active" so the drip
+      // cron can re-insist non-buyers. Drip bypasses the frequency cap.
+      await this.repo.activateEvergreen(orgId, id, new Date());
+      await this.enqueue(orgId, published, { pulse: true, bypassCap: true });
     } else {
       await this.enqueue(orgId, published);
     }
@@ -138,12 +146,14 @@ export class CampaignsService {
   private async enqueue(
     orgId: string,
     row: CampaignRow,
-    onlyCustomerIds?: string[],
+    opts: { onlyCustomerIds?: string[]; pulse?: boolean; bypassCap?: boolean } = {},
   ): Promise<void> {
     const payload: SendCampaignPayload = {
       organizationId: orgId,
       campaignId: row.id,
-      ...(onlyCustomerIds ? { onlyCustomerIds } : {}),
+      ...(opts.onlyCustomerIds ? { onlyCustomerIds: opts.onlyCustomerIds } : {}),
+      ...(opts.pulse ? { pulse: true } : {}),
+      ...(opts.bypassCap ? { bypassCap: true } : {}),
     };
     const handle = await tasks.trigger(
       "send-campaign",
@@ -192,6 +202,8 @@ export class CampaignsService {
       endsAt: row.endsAt,
       activatedAt: row.activatedAt,
       lastPulseAt: row.lastPulseAt,
+      dripIntervalDays: row.dripIntervalDays,
+      dripMaxAttempts: row.dripMaxAttempts,
       sentAt: row.sentAt,
       createdAt: row.createdAt,
       funnel,
@@ -303,19 +315,40 @@ export class CampaignsService {
    */
   async pulseEvergreen(orgId: string): Promise<{ campaigns: number; recipients: number }> {
     const now = new Date();
-    const camps = await this.repo.listActiveEvergreen(orgId, now);
+    const camps = await this.repo.listActiveByMode(orgId, "evergreen", now);
     let recipients = 0;
     for (const camp of camps) {
       const eligible = await this.repo.resolveEligibleRecipients(orgId, camp, now);
       if (eligible.length > 0) {
-        const payload: SendCampaignPayload = {
-          organizationId: orgId,
-          campaignId: camp.id,
+        await this.enqueue(orgId, { ...camp, scheduledAt: null }, {
           onlyCustomerIds: eligible.map((r) => r.customerId),
           pulse: true,
-        };
-        await tasks.trigger("send-campaign", payload);
+        });
         recipients += eligible.length;
+      }
+      await this.repo.setLastPulse(camp.id, now);
+    }
+    return { campaigns: camps.length, recipients };
+  }
+
+  /**
+   * One daily drip pulse: for each live drip campaign, re-insist the cohort
+   * members who are due, under the attempt cap, and haven't purchased. Bypasses
+   * the frequency cap; still respects quiet hours (in the job).
+   */
+  async pulseDrip(orgId: string): Promise<{ campaigns: number; recipients: number }> {
+    const now = new Date();
+    const camps = await this.repo.listActiveByMode(orgId, "drip", now);
+    let recipients = 0;
+    for (const camp of camps) {
+      const due = await this.repo.resolveDripDue(orgId, camp, now);
+      if (due.length > 0) {
+        await this.enqueue(orgId, { ...camp, scheduledAt: null }, {
+          onlyCustomerIds: due,
+          pulse: true,
+          bypassCap: true,
+        });
+        recipients += due.length;
       }
       await this.repo.setLastPulse(camp.id, now);
     }
@@ -328,7 +361,7 @@ export class CampaignsService {
     const failedIds = await this.repo.failedRecipientIds(orgId, id);
     if (failedIds.length === 0) return { ok: true, recipients: 0 };
     await this.repo.clearSends(id, ["failed"]);
-    await this.enqueue(orgId, { ...row, scheduledAt: null }, failedIds);
+    await this.enqueue(orgId, { ...row, scheduledAt: null }, { onlyCustomerIds: failedIds });
     return { ok: true, recipients: failedIds.length };
   }
 
