@@ -7,7 +7,7 @@ import {
   advanceInputSchema,
   bulkIdsSchema,
   campaignAnalyticsInputSchema,
-  campaignsBySourceInputSchema,
+  campaignSourceSchema,
   campaignsListInputSchema,
   campaignTimeseriesInputSchema,
   countReachInputSchema,
@@ -72,7 +72,7 @@ export const campaignsRouter = router({
       makeService(ctx.db).createFromEntity(await requireOrg(), ctx.session.user.id, input),
     ),
   campaignsBySource: managerProcedure
-    .input(campaignsBySourceInputSchema)
+    .input(campaignSourceSchema)
     .query(async ({ ctx, input }) =>
       makeService(ctx.db).campaignsBySource(await requireOrg(), input),
     ),

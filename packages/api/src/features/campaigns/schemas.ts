@@ -323,5 +323,3 @@ export const createFromEntityInputSchema = z.object({
   scheduledAt: z.coerce.date().optional(),
 });
 export type CreateFromEntityInput = z.infer<typeof createFromEntityInputSchema>;
-
-export const campaignsBySourceInputSchema = campaignSourceSchema;
