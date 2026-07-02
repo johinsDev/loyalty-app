@@ -1,8 +1,19 @@
 "use client";
 
-import { Badge, Button, Input, Switch } from "@loyalty/ui";
+import {
+  Badge,
+  Button,
+  cn,
+  Input,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  Switch,
+} from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Check, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -14,9 +25,9 @@ const CONFIG_CHANNELS = ["push", "mail", "sms", "whatsapp", "database"] as const
 
 /**
  * Automated-trigger config — the umbrella's "Automatizadas" surface. Each keyed
- * notification can be toggled on/off and restricted to a channel subset (the
- * send job consults `notification_config`). Protected/security triggers are
- * always-on and read-only.
+ * notification is an event-driven message the customer gets automatically; the
+ * admin can turn it on/off and pick which channels carry it (the send job
+ * consults `notification_config`). Protected/security triggers are always-on.
  */
 export function AutomatedTriggers() {
   const t = useTranslations("Campaigns");
@@ -26,12 +37,13 @@ export function AutomatedTriggers() {
   const query = useQuery(trpc.notifications.configList.queryOptions());
   const setConfig = useMutation(trpc.notifications.setConfig.mutationOptions());
   const [search, setSearch] = useState("");
+  const [confirmOff, setConfirmOff] = useState<{
+    key: string;
+    name: string;
+    channels: string[] | null;
+  } | null>(null);
 
-  const save = (
-    key: string,
-    enabled: boolean,
-    channels: string[] | null,
-  ) => {
+  const save = (key: string, enabled: boolean, channels: string[] | null) => {
     setConfig.mutate(
       { notificationKey: key as never, enabled, channels: channels as never },
       {
@@ -48,7 +60,7 @@ export function AutomatedTriggers() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
+    <div className="mx-auto w-full max-w-2xl px-5 py-6 lg:px-8">
       <Link
         href="/campaigns"
         className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm font-bold"
@@ -61,8 +73,8 @@ export function AutomatedTriggers() {
       </h1>
       <p className="text-muted-foreground text-sm">{t("automatedSubtitle")}</p>
 
-      <div className="relative mt-6 max-w-sm">
-        <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+      <div className="relative mt-6">
+        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -71,14 +83,15 @@ export function AutomatedTriggers() {
         />
       </div>
 
-      <div className="mt-4 max-w-3xl space-y-2.5">
+      <div className="mt-4 space-y-2.5">
         {query.data && rows.length === 0 ? (
           <p className="text-muted-foreground py-8 text-center text-sm">
             {t("automatedNoResults")}
           </p>
         ) : null}
         {rows.map((row) => {
-          // null channels behave as "all declared"; show all checked.
+          const name = t(`triggers.${row.notificationKey}`);
+          // null channels behave as "all declared"; show all as on.
           const active = new Set(row.channels ?? CONFIG_CHANNELS);
           const toggleChannel = (ch: string) => {
             const next = new Set(active);
@@ -92,49 +105,103 @@ export function AutomatedTriggers() {
               key={row.notificationKey}
               className="bg-card border-border rounded-2xl border p-4 shadow-sm"
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-semibold">
-                    {t(`triggers.${row.notificationKey}`)}
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold">{name}</p>
+                    {row.isProtected ? (
+                      <Badge variant="secondary">{t("triggerAlwaysOn")}</Badge>
+                    ) : null}
+                  </div>
+                  <p className="text-muted-foreground mt-0.5 text-xs">
+                    {t(`triggerDesc.${row.notificationKey}`)}
                   </p>
-                  {row.isProtected ? (
-                    <Badge variant="secondary" className="mt-1">
-                      {t("triggerAlwaysOn")}
-                    </Badge>
-                  ) : null}
                 </div>
                 {row.isProtected ? (
-                  <Switch checked disabled />
+                  <Switch checked disabled className="mt-0.5 shrink-0" />
                 ) : (
                   <Switch
                     checked={row.enabled}
-                    onCheckedChange={(v) =>
-                      save(row.notificationKey, v, row.channels)
-                    }
+                    className="mt-0.5 shrink-0"
+                    onCheckedChange={(v) => {
+                      if (v) save(row.notificationKey, true, row.channels);
+                      else
+                        setConfirmOff({
+                          key: row.notificationKey,
+                          name,
+                          channels: row.channels,
+                        });
+                    }}
                   />
                 )}
               </div>
 
               {!row.isProtected && row.enabled ? (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {CONFIG_CHANNELS.map((ch) => (
-                    <Button
-                      key={ch}
-                      type="button"
-                      size="sm"
-                      variant={active.has(ch) ? "default" : "outline"}
-                      className="h-8 rounded-full"
-                      onClick={() => toggleChannel(ch)}
-                    >
-                      {t(`cfgChannel.${ch}`)}
-                    </Button>
-                  ))}
+                <div className="mt-3 border-t border-border pt-3">
+                  <p className="text-muted-foreground mb-2 text-xs font-semibold">
+                    {t("automatedChannelsLabel")}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CONFIG_CHANNELS.map((ch) => {
+                      const on = active.has(ch);
+                      return (
+                        <button
+                          key={ch}
+                          type="button"
+                          onClick={() => toggleChannel(ch)}
+                          className={cn(
+                            "inline-flex h-8 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition-colors",
+                            on
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:bg-muted",
+                          )}
+                        >
+                          {on ? <Check className="size-3" /> : null}
+                          {t(`cfgChannel.${ch}`)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-muted-foreground/70 mt-2 text-[11px]">
+                    {t("automatedChannelsHint")}
+                  </p>
                 </div>
               ) : null}
             </section>
           );
         })}
       </div>
+
+      <ResponsiveModal open={confirmOff !== null} onOpenChange={(o) => !o && setConfirmOff(null)}>
+        <ResponsiveModalContent>
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>
+              {confirmOff ? t("automatedOffTitle", { name: confirmOff.name }) : ""}
+            </ResponsiveModalTitle>
+          </ResponsiveModalHeader>
+          <p className="text-muted-foreground px-4 pb-2 text-sm">{t("automatedOffBody")}</p>
+          <ResponsiveModalFooter className="gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 rounded-full px-5"
+              onClick={() => setConfirmOff(null)}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 rounded-full px-6 font-semibold"
+              onClick={() => {
+                if (confirmOff) save(confirmOff.key, false, confirmOff.channels);
+                setConfirmOff(null);
+              }}
+            >
+              {t("automatedOffConfirm")}
+            </Button>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </div>
   );
 }
