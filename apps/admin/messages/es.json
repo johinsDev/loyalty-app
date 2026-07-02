@@ -1375,7 +1375,8 @@
       "phone-changed": "Aviso cuando cambia su teléfono. Siempre activo por seguridad."
     },
     "automatedChannelsLabel": "Se envía por:",
-    "automatedChannelsHint": "Toca un canal para activarlo o desactivarlo.",
+    "automatedChannelsHint": "Toca un canal para activarlo o desactivarlo. El Inbox siempre queda como historial.",
+    "automatedInboxLocked": "El Inbox siempre queda como historial en la app.",
     "automatedOffTitle": "¿Desactivar “{name}”?",
     "automatedOffBody": "Los clientes dejarán de recibir este mensaje automático. Puedes reactivarlo cuando quieras.",
     "automatedOffConfirm": "Desactivar",

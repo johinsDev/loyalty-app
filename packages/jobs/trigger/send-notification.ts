@@ -65,6 +65,11 @@ export const sendNotificationTask = task({
         };
       }
       onlyChannels = (cfg?.channels as ChannelName[] | null) ?? undefined;
+      // The Inbox (database) is a permanent record — the config can restrict the
+      // outbound channels but never drops the in-app inbox entry.
+      if (onlyChannels && !onlyChannels.includes("database" as ChannelName)) {
+        onlyChannels = [...onlyChannels, "database" as ChannelName];
+      }
     }
 
     // Per-channel tallies so the run output reflects what actually happened

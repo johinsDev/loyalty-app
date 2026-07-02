@@ -1375,7 +1375,8 @@
       "phone-changed": "Alert when their phone changes. Always on for security."
     },
     "automatedChannelsLabel": "Sent via:",
-    "automatedChannelsHint": "Tap a channel to turn it on or off.",
+    "automatedChannelsHint": "Tap a channel to turn it on or off. The Inbox always keeps a record.",
+    "automatedInboxLocked": "The Inbox always keeps an in-app record.",
     "automatedOffTitle": "Turn off “{name}”?",
     "automatedOffBody": "Customers will stop receiving this automated message. You can re-enable it anytime.",
     "automatedOffConfirm": "Turn off",

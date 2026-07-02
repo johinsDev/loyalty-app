@@ -13,7 +13,7 @@ import {
   Switch,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, Search } from "lucide-react";
+import { ArrowLeft, Check, Lock, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -94,9 +94,11 @@ export function AutomatedTriggers() {
           // null channels behave as "all declared"; show all as on.
           const active = new Set(row.channels ?? CONFIG_CHANNELS);
           const toggleChannel = (ch: string) => {
+            if (ch === "database") return; // Inbox is a permanent record — locked on.
             const next = new Set(active);
             if (next.has(ch)) next.delete(ch);
             else next.add(ch);
+            next.add("database"); // always keep the Inbox record
             if (next.size === 0) return; // keep at least one
             save(row.notificationKey, row.enabled, [...next]);
           };
@@ -143,21 +145,26 @@ export function AutomatedTriggers() {
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {CONFIG_CHANNELS.map((ch) => {
-                      const on = active.has(ch);
+                      const locked = ch === "database"; // Inbox = permanent record
+                      const on = locked || active.has(ch);
                       return (
                         <button
                           key={ch}
                           type="button"
+                          disabled={locked}
                           onClick={() => toggleChannel(ch)}
+                          title={locked ? t("automatedInboxLocked") : undefined}
                           className={cn(
                             "inline-flex h-8 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition-colors",
                             on
                               ? "border-primary bg-primary/10 text-primary"
                               : "border-border text-muted-foreground hover:bg-muted",
+                            locked && "cursor-default opacity-90",
                           )}
                         >
                           {on ? <Check className="size-3" /> : null}
                           {t(`cfgChannel.${ch}`)}
+                          {locked ? <Lock className="size-2.5" /> : null}
                         </button>
                       );
                     })}
