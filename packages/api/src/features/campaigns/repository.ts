@@ -65,6 +65,9 @@ export type CampaignPatch = Partial<
     | "audienceFilter"
     | "scheduledAt"
     | "special"
+    | "mode"
+    | "cooldownDays"
+    | "endsAt"
   >
 >;
 
@@ -83,6 +86,11 @@ export function displayState(
   now = new Date(),
 ): CampaignDisplayState {
   if (row.status !== "published") return "draft";
+  if (row.mode === "evergreen") {
+    if (row.sendState === "ended" || (row.endsAt && row.endsAt <= now)) return "ended";
+    if (row.pausedAt) return "paused";
+    return "active";
+  }
   if (row.pausedAt) return "paused";
   if (row.sendState === "sent" || row.sentAt) return "sent";
   if (row.scheduledAt && row.scheduledAt > now) return "scheduled";
@@ -210,6 +218,7 @@ export class CampaignsRepository {
       name: r.name ?? "Borrador",
       type: r.type,
       status: r.status,
+      mode: r.mode,
       displayState: displayState(r, now),
       channelPriority: r.channelPriority ?? [],
       scheduledAt: r.scheduledAt,
@@ -255,6 +264,7 @@ export class CampaignsRepository {
       name: r.name ?? "Borrador",
       type: r.type,
       status: r.status,
+      mode: r.mode,
       displayState: displayState(r, now),
       channelPriority: r.channelPriority ?? [],
       scheduledAt: r.scheduledAt,
@@ -501,6 +511,77 @@ export class CampaignsRepository {
         ),
       );
     return Number(rows[0]?.n ?? 0);
+  }
+
+  // ── Evergreen ───────────────────────────────────────────────────────────────
+  /** Live evergreen campaigns due for a cron pulse (published, not paused/ended). */
+  async listActiveEvergreen(orgId: string, now = new Date()): Promise<CampaignRow[]> {
+    const rows = await this.db
+      .select()
+      .from(campaign)
+      .where(
+        and(
+          eq(campaign.organizationId, orgId),
+          eq(campaign.status, "published"),
+          eq(campaign.mode, "evergreen"),
+        ),
+      );
+    return rows.filter(
+      (r) => !r.pausedAt && r.sendState !== "ended" && (!r.endsAt || r.endsAt > now),
+    );
+  }
+
+  /** Evergreen matchers minus anyone with a successful send inside the cooldown. */
+  async resolveEligibleRecipients(
+    orgId: string,
+    camp: CampaignRow,
+    now = new Date(),
+  ): Promise<RecipientFacts[]> {
+    const matchers = await this.resolveRecipients(orgId, camp.audienceFilter);
+    const since = new Date(now.getTime() - (camp.cooldownDays ?? 0) * 86_400_000);
+    const sent = await this.db
+      .selectDistinct({ id: campaignSend.customerId })
+      .from(campaignSend)
+      .where(
+        and(
+          eq(campaignSend.organizationId, orgId),
+          eq(campaignSend.campaignId, camp.id),
+          eq(campaignSend.status, "sent"),
+          gte(campaignSend.sentAt, since),
+        ),
+      );
+    const onCooldown = new Set(sent.map((r) => r.id));
+    return matchers.filter((r) => !onCooldown.has(r.customerId));
+  }
+
+  async activateEvergreen(orgId: string, id: string, at: Date): Promise<void> {
+    await this.db
+      .update(campaign)
+      .set({ activatedAt: at, sendState: "active" })
+      .where(and(eq(campaign.organizationId, orgId), eq(campaign.id, id)));
+  }
+
+  async endEvergreen(orgId: string, id: string): Promise<void> {
+    await this.db
+      .update(campaign)
+      .set({ sendState: "ended" })
+      .where(and(eq(campaign.organizationId, orgId), eq(campaign.id, id)));
+  }
+
+  async resume(orgId: string, id: string): Promise<CampaignRow> {
+    const rows = await this.db
+      .update(campaign)
+      .set({ pausedAt: null })
+      .where(and(eq(campaign.organizationId, orgId), eq(campaign.id, id)))
+      .returning();
+    return this.#first(rows, "resume");
+  }
+
+  async setLastPulse(campaignId: string, at: Date): Promise<void> {
+    await this.db
+      .update(campaign)
+      .set({ lastPulseAt: at })
+      .where(eq(campaign.id, campaignId));
   }
 
   // ── Funnel + failures ───────────────────────────────────────────────────────

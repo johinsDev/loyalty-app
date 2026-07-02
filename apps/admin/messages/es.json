@@ -1146,7 +1146,9 @@
       "scheduled": "Programada",
       "sending": "Enviando",
       "sent": "Enviada",
-      "paused": "Pausada"
+      "paused": "Pausada",
+      "active": "Activa",
+      "ended": "Terminada"
     },
     "channel": {
       "push": "Push",
@@ -1170,6 +1172,10 @@
     "delete": "Eliminar",
     "deleted": "Campaña “{name}” eliminada",
     "paused": "Campaña pausada",
+    "resume": "Reanudar",
+    "resumed": "Campaña reanudada",
+    "end": "Terminar",
+    "endedToast": "Campaña terminada",
     "retried": "{n} destinatarios reencolados",
     "deleteTitle": "Eliminar campaña",
     "deleteDescription": "Se eliminará “{name}”. Esta acción no se puede deshacer.",
@@ -1276,6 +1282,21 @@
     "stay": "Seguir editando",
     "leave": "Salir sin guardar",
     "scheduleLabel": "Programación",
+    "mode": {
+      "once": "Una vez",
+      "evergreen": "Evergreen (recurrente)"
+    },
+    "modeHint": {
+      "once": "Se envía una sola vez a la audiencia actual.",
+      "evergreen": "Regla permanente: se envía a quien cumpla el filtro, a diario."
+    },
+    "modeLabel": "Tipo de entrega",
+    "lastPulseLabel": "Último envío",
+    "cooldownLabel": "Reenviar cada",
+    "cooldownHint": "Días de espera antes de que un cliente pueda volver a recibirla.",
+    "cooldownUnit": "días",
+    "endsAtLabel": "Fecha de fin",
+    "noEndDate": "Sin fecha de fin",
     "sentAtLabel": "Enviada",
     "sendNow": "Enviar ahora",
     "specialLabel": "Especial",

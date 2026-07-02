@@ -19,13 +19,18 @@ export type CampaignDisplayState =
   | "scheduled"
   | "sending"
   | "sent"
-  | "paused";
+  | "paused"
+  // Evergreen: a live standing rule ("active") or a stopped one ("ended").
+  | "active"
+  | "ended";
 export const campaignDisplayStateSchema = z.enum([
   "draft",
   "scheduled",
   "sending",
   "sent",
   "paused",
+  "active",
+  "ended",
 ]);
 
 // ─── Per-step input schemas (reused verbatim by the FE forms) ────────────────
@@ -75,12 +80,25 @@ export const audienceFilterSchema = z.object({
 });
 export type AudienceFilterInput = z.infer<typeof audienceFilterSchema>;
 
-export const scheduleStepSchema = z.object({
-  // null/undefined = send now on publish.
-  scheduledAt: z.coerce.date().optional(),
-  // Smart-delivery bypass ("Especial") — wired in P4.
-  special: z.boolean().optional(),
-});
+export const campaignModeSchema = z.enum(["once", "evergreen"]);
+
+export const scheduleStepSchema = z
+  .object({
+    // "once" = one-shot broadcast; "evergreen" = standing rule pulsed daily.
+    mode: campaignModeSchema.optional(),
+    // once: null/undefined = send now on publish.
+    scheduledAt: z.coerce.date().optional(),
+    // Smart-delivery bypass ("Especial").
+    special: z.boolean().optional(),
+    // evergreen: days a customer waits after a send before matching again.
+    cooldownDays: z.number().int().min(1).max(365).optional(),
+    // evergreen: optional auto-stop instant.
+    endsAt: z.coerce.date().optional(),
+  })
+  .refine((s) => s.mode !== "evergreen" || s.cooldownDays != null, {
+    message: "Elige cada cuántos días puede volver a recibirla",
+    path: ["cooldownDays"],
+  });
 
 export type DefinitionStepInput = z.infer<typeof definitionStepSchema>;
 export type MessageContentInput = z.infer<typeof messageContentSchema>;
@@ -146,6 +164,8 @@ export interface CampaignListItem {
   name: string;
   type: string;
   status: string;
+  /** "once" | "evergreen" — badges the recurring rules in the list. */
+  mode: string;
   displayState: CampaignDisplayState;
   channelPriority: string[];
   scheduledAt: Date | null;

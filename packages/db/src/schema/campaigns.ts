@@ -95,6 +95,16 @@ export const campaign = sqliteTable(
     scheduledAt: integer("scheduled_at", { mode: "timestamp" }),
     special: integer("special", { mode: "boolean" }).notNull().default(false),
 
+    // Delivery mode: "once" (one-shot broadcast) | "evergreen" (a standing rule
+    // pulsed daily by the `process-evergreen-campaigns` cron).
+    mode: text("mode").notNull().default("once"),
+    // Evergreen only: days a customer waits after a send before they can match
+    // again; optional auto-stop instant; when the rule went live; last cron pulse.
+    cooldownDays: integer("cooldown_days"),
+    endsAt: integer("ends_at", { mode: "timestamp" }),
+    activatedAt: integer("activated_at", { mode: "timestamp" }),
+    lastPulseAt: integer("last_pulse_at", { mode: "timestamp" }),
+
     // Dispatch bookkeeping.
     runId: text("run_id"),
     pausedAt: integer("paused_at", { mode: "timestamp" }),

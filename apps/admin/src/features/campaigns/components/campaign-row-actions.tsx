@@ -15,7 +15,7 @@ import {
   ResponsiveModalTitle,
 } from "@loyalty/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Eye, MoreHorizontal, Pause, Pencil, Trash2 } from "lucide-react";
+import { CircleStop, Eye, MoreHorizontal, Pause, Pencil, Play, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { parseAsString, useQueryState } from "nuqs";
 import { useState } from "react";
@@ -28,6 +28,7 @@ type RowCampaign = {
   id: string;
   name: string;
   displayState: CampaignDisplayState;
+  mode: string;
   sent: number;
 };
 
@@ -44,10 +45,21 @@ export function CampaignRowActions({ campaign }: { campaign: RowCampaign }) {
   const invalidate = () => queryClient.invalidateQueries(trpc.campaigns.adminList.queryFilter());
   const remove = useMutation(trpc.campaigns.remove.mutationOptions());
   const pause = useMutation(trpc.campaigns.pause.mutationOptions());
+  const resume = useMutation(trpc.campaigns.resume.mutationOptions());
+  const end = useMutation(trpc.campaigns.end.mutationOptions());
 
   const isDraft = campaign.displayState === "draft";
+  const isEvergreen = campaign.mode === "evergreen";
+  // Drafts edit freely; live evergreen rules stay editable (not once ended).
+  const canEdit = isDraft || (isEvergreen && campaign.displayState !== "ended");
   const canPause =
-    campaign.displayState === "scheduled" || campaign.displayState === "sending";
+    campaign.displayState === "scheduled" ||
+    campaign.displayState === "sending" ||
+    campaign.displayState === "active";
+  const canResume = isEvergreen && campaign.displayState === "paused";
+  const canEnd =
+    isEvergreen &&
+    (campaign.displayState === "active" || campaign.displayState === "paused");
 
   const onDelete = () =>
     remove.mutate(
@@ -62,12 +74,15 @@ export function CampaignRowActions({ campaign }: { campaign: RowCampaign }) {
       },
     );
 
-  const onPause = () =>
-    pause.mutate(
+  const runAction = (
+    m: typeof pause,
+    msg: string,
+  ) =>
+    m.mutate(
       { id: campaign.id },
       {
         onSuccess: () => {
-          toast.success(t("paused"));
+          toast.success(msg);
           void invalidate();
         },
         onError: () => toast.error(t("saveError")),
@@ -89,7 +104,7 @@ export function CampaignRowActions({ campaign }: { campaign: RowCampaign }) {
             <Eye className="size-4" />
             {t("viewDetail")}
           </DropdownMenuItem>
-          {isDraft ? (
+          {canEdit ? (
             <DropdownMenuItem
               onClick={() =>
                 router.push({ pathname: "/campaigns/[id]/edit", params: { id: campaign.id } })
@@ -100,9 +115,21 @@ export function CampaignRowActions({ campaign }: { campaign: RowCampaign }) {
             </DropdownMenuItem>
           ) : null}
           {canPause ? (
-            <DropdownMenuItem onClick={onPause}>
+            <DropdownMenuItem onClick={() => runAction(pause, t("paused"))}>
               <Pause className="size-4" />
               {t("pause")}
+            </DropdownMenuItem>
+          ) : null}
+          {canResume ? (
+            <DropdownMenuItem onClick={() => runAction(resume, t("resumed"))}>
+              <Play className="size-4" />
+              {t("resume")}
+            </DropdownMenuItem>
+          ) : null}
+          {canEnd ? (
+            <DropdownMenuItem onClick={() => runAction(end, t("endedToast"))}>
+              <CircleStop className="size-4" />
+              {t("end")}
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuSeparator />

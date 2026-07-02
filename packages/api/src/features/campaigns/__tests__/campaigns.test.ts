@@ -38,6 +38,11 @@ const base: CampaignRow = {
   audienceFilter: null,
   scheduledAt: null,
   special: false,
+  mode: "once",
+  cooldownDays: null,
+  endsAt: null,
+  activatedAt: null,
+  lastPulseAt: null,
   runId: null,
   pausedAt: null,
   sentAt: null,
@@ -286,5 +291,29 @@ describe("campaignWizard", () => {
     expect(
       campaignWizard.state({ ...base, name: "X" }).current,
     ).toBe("message");
+  });
+});
+
+describe("displayState — evergreen", () => {
+  const ever: CampaignRow = { ...base, status: "published", mode: "evergreen" };
+
+  it("is active when published and not paused/ended", () => {
+    expect(displayState(ever, now)).toBe("active");
+  });
+  it("is paused when pausedAt is set", () => {
+    expect(displayState({ ...ever, pausedAt: now }, now)).toBe("paused");
+  });
+  it("is ended when sendState is ended", () => {
+    expect(displayState({ ...ever, sendState: "ended" }, now)).toBe("ended");
+  });
+  it("is ended once past endsAt", () => {
+    expect(
+      displayState({ ...ever, endsAt: new Date("2026-06-14T00:00:00Z") }, now),
+    ).toBe("ended");
+  });
+  it("still one-shot 'sent' when mode is once", () => {
+    expect(displayState({ ...base, status: "published", sentAt: now }, now)).toBe(
+      "sent",
+    );
   });
 });

@@ -1146,7 +1146,9 @@
       "scheduled": "Scheduled",
       "sending": "Sending",
       "sent": "Sent",
-      "paused": "Paused"
+      "paused": "Paused",
+      "active": "Active",
+      "ended": "Ended"
     },
     "channel": {
       "push": "Push",
@@ -1170,6 +1172,10 @@
     "delete": "Delete",
     "deleted": "Campaign “{name}” deleted",
     "paused": "Campaign paused",
+    "resume": "Resume",
+    "resumed": "Campaign resumed",
+    "end": "End",
+    "endedToast": "Campaign ended",
     "retried": "{n} recipients re-queued",
     "deleteTitle": "Delete campaign",
     "deleteDescription": "“{name}” will be deleted. This action cannot be undone.",
@@ -1276,6 +1282,21 @@
     "stay": "Keep editing",
     "leave": "Leave without saving",
     "scheduleLabel": "Schedule",
+    "mode": {
+      "once": "One-time",
+      "evergreen": "Evergreen (recurring)"
+    },
+    "modeHint": {
+      "once": "Sent once to the current audience.",
+      "evergreen": "Standing rule: sent daily to whoever matches the filter."
+    },
+    "modeLabel": "Delivery type",
+    "lastPulseLabel": "Last sent",
+    "cooldownLabel": "Resend every",
+    "cooldownHint": "Days a customer waits before they can receive it again.",
+    "cooldownUnit": "days",
+    "endsAtLabel": "End date",
+    "noEndDate": "No end date",
     "sentAtLabel": "Sent",
     "sendNow": "Send now",
     "specialLabel": "Special",

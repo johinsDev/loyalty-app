@@ -73,6 +73,8 @@ const STATE_STYLE: Record<CampaignDisplayState, string> = {
   sending: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
   paused: "bg-muted text-muted-foreground",
   draft: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  active: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
+  ended: "bg-muted text-muted-foreground",
 };
 
 const CHANNEL_ICON: Record<string, LucideIcon> = {

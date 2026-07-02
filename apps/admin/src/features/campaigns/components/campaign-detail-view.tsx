@@ -24,6 +24,8 @@ const STATE_STYLE: Record<CampaignDisplayState, string> = {
   sending: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
   paused: "bg-muted text-muted-foreground",
   draft: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  active: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
+  ended: "bg-muted text-muted-foreground",
 };
 
 /** Message row → the preview's full-channel shape (missing channels = empty). */
@@ -81,7 +83,7 @@ export function CampaignDetailView({
           <Badge variant="outline">{t(`type.${campaign.type}`)}</Badge>
         </div>
       </div>
-      {state === "draft" ? (
+      {state === "draft" || (campaign.mode === "evergreen" && state !== "ended") ? (
         <Button
           size="sm"
           variant="outline"
@@ -140,12 +142,38 @@ export function CampaignDetailView({
     </section>
   );
 
+  const evergreen = campaign.mode === "evergreen";
   const scheduleBlock = (
     <dl className="text-muted-foreground grid grid-cols-2 gap-y-1 text-sm">
-      <dt>{t("scheduleLabel")}</dt>
-      <dd className="text-right">
-        {campaign.scheduledAt ? formatDate(campaign.scheduledAt, { locale }) : t("sendNow")}
-      </dd>
+      {evergreen ? (
+        <>
+          <dt>{t("modeLabel")}</dt>
+          <dd className="text-right">{t("mode.evergreen")}</dd>
+          <dt>{t("cooldownLabel")}</dt>
+          <dd className="text-right">
+            {campaign.cooldownDays ?? 0} {t("cooldownUnit")}
+          </dd>
+          {campaign.lastPulseAt ? (
+            <>
+              <dt>{t("lastPulseLabel")}</dt>
+              <dd className="text-right">{formatDate(campaign.lastPulseAt, { locale })}</dd>
+            </>
+          ) : null}
+          {campaign.endsAt ? (
+            <>
+              <dt>{t("endsAtLabel")}</dt>
+              <dd className="text-right">{formatDate(campaign.endsAt, { locale })}</dd>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <dt>{t("scheduleLabel")}</dt>
+          <dd className="text-right">
+            {campaign.scheduledAt ? formatDate(campaign.scheduledAt, { locale }) : t("sendNow")}
+          </dd>
+        </>
+      )}
       {campaign.sentAt ? (
         <>
           <dt>{t("sentAtLabel")}</dt>

@@ -39,6 +39,8 @@ type Payload = {
   organizationId: string;
   campaignId: string;
   onlyCustomerIds?: string[];
+  /** Evergreen cron pulse — keep the campaign "active" (don't flip to "sent"). */
+  pulse?: boolean;
 };
 
 type Resolve = (token: Token) => string | Promise<string>;
@@ -123,7 +125,8 @@ export const sendCampaignTask = task({
     const cap = campaign.special ? null : (rules?.frequencyCapPerWeek ?? null);
     const capSince = new Date(Date.now() - 7 * 86_400_000);
 
-    await repo.setSendState(p.campaignId, "sending");
+    // Evergreen pulses keep the campaign "active"; only one-shots flip state.
+    if (!p.pulse) await repo.setSendState(p.campaignId, "sending");
 
     let recipients = await repo.resolveRecipients(p.organizationId, campaign.audienceFilter);
     if (p.onlyCustomerIds) {
@@ -278,7 +281,7 @@ export const sendCampaignTask = task({
       }
     }
 
-    await repo.setSendState(p.campaignId, "sent", { sentAt: new Date() });
+    if (!p.pulse) await repo.setSendState(p.campaignId, "sent", { sentAt: new Date() });
     const output = { recipients: recipients.length, sent, skipped, failed };
     logger.info("send-campaign done", output);
     return output;

@@ -91,8 +91,11 @@ type Form = {
   minPurchases: string;
   signedUpAfter: Date | null;
   signedUpBefore: Date | null;
+  mode: "once" | "evergreen";
   scheduledAt: Date | null;
   special: boolean;
+  cooldownDays: string;
+  endsAt: Date | null;
 };
 
 const EMPTY_MESSAGE: PreviewMessage = {
@@ -114,8 +117,11 @@ const EMPTY: Form = {
   minPurchases: "",
   signedUpAfter: null,
   signedUpBefore: null,
+  mode: "once",
   scheduledAt: null,
   special: false,
+  cooldownDays: "30",
+  endsAt: null,
 };
 
 function toFormMessage(m: CampaignPreset["message"] | null): PreviewMessage {
@@ -336,8 +342,11 @@ export function CampaignWizard({ id }: { id?: string }) {
         signedUpBefore: c.audienceFilter?.signedUpBefore
           ? new Date(c.audienceFilter.signedUpBefore)
           : null,
+        mode: c.mode === "evergreen" ? "evergreen" : "once",
         scheduledAt: c.scheduledAt ?? null,
         special: c.special,
+        cooldownDays: c.cooldownDays != null ? String(c.cooldownDays) : "30",
+        endsAt: c.endsAt ?? null,
       });
       seeded.current = true;
     }
@@ -408,10 +417,17 @@ export function CampaignWizard({ id }: { id?: string }) {
           input: buildAudienceFilter(form) ?? {},
         });
       } else if (step === "schedule") {
+        const evergreen = form.mode === "evergreen";
         await advanceMut.mutateAsync({
           id: campaignId,
           step: "schedule",
-          input: { scheduledAt: form.scheduledAt ?? undefined, special: form.special },
+          input: {
+            mode: form.mode,
+            scheduledAt: evergreen ? undefined : (form.scheduledAt ?? undefined),
+            special: form.special,
+            cooldownDays: evergreen ? Number(form.cooldownDays) || 30 : undefined,
+            endsAt: evergreen ? (form.endsAt ?? undefined) : undefined,
+          },
         });
       }
       return true;
@@ -844,28 +860,86 @@ export function CampaignWizard({ id }: { id?: string }) {
 
             <ReachBox reachable={reach.data?.reachable} audience={reach.data?.audience} />
 
-            <Field label={t("scheduleLabel")} hint={form.scheduledAt ? undefined : t("sendNow")}>
-              <div className="flex items-center gap-2">
-                <DatePicker
-                  value={form.scheduledAt ?? undefined}
-                  onValueChange={(d) => set("scheduledAt", d ?? null)}
-                  placeholder={t("sendNow")}
-                  formatLabel={(d) => formatDate(d, { locale })}
-                  className="flex-1"
-                />
-                {form.scheduledAt ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="size-9 shrink-0 rounded-lg p-0"
-                    aria-label={t("sendNow")}
-                    onClick={() => set("scheduledAt", null)}
-                  >
-                    <X className="size-4" />
-                  </Button>
-                ) : null}
-              </div>
-            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              {(["once", "evergreen"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => set("mode", m)}
+                  className={`rounded-2xl border p-3.5 text-left transition-colors ${
+                    form.mode === m
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <p className="text-sm font-semibold">{t(`mode.${m}`)}</p>
+                  <p className="text-muted-foreground text-xs">{t(`modeHint.${m}`)}</p>
+                </button>
+              ))}
+            </div>
+
+            {form.mode === "once" ? (
+              <Field label={t("scheduleLabel")} hint={form.scheduledAt ? undefined : t("sendNow")}>
+                <div className="flex items-center gap-2">
+                  <DatePicker
+                    value={form.scheduledAt ?? undefined}
+                    onValueChange={(d) => set("scheduledAt", d ?? null)}
+                    placeholder={t("sendNow")}
+                    formatLabel={(d) => formatDate(d, { locale })}
+                    className="flex-1"
+                  />
+                  {form.scheduledAt ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="size-9 shrink-0 rounded-lg p-0"
+                      aria-label={t("sendNow")}
+                      onClick={() => set("scheduledAt", null)}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  ) : null}
+                </div>
+              </Field>
+            ) : (
+              <>
+                <Field label={t("cooldownLabel")} hint={t("cooldownHint")}>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={form.cooldownDays}
+                      onChange={(e) => set("cooldownDays", e.target.value)}
+                      className="h-10 w-24"
+                    />
+                    <span className="text-muted-foreground text-sm">{t("cooldownUnit")}</span>
+                  </div>
+                </Field>
+                <Field label={t("endsAtLabel")} hint={form.endsAt ? undefined : t("noEndDate")}>
+                  <div className="flex items-center gap-2">
+                    <DatePicker
+                      value={form.endsAt ?? undefined}
+                      onValueChange={(d) => set("endsAt", d ?? null)}
+                      placeholder={t("noEndDate")}
+                      formatLabel={(d) => formatDate(d, { locale })}
+                      className="flex-1"
+                    />
+                    {form.endsAt ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="size-9 shrink-0 rounded-lg p-0"
+                        aria-label={t("noEndDate")}
+                        onClick={() => set("endsAt", null)}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    ) : null}
+                  </div>
+                </Field>
+              </>
+            )}
 
             <label className="border-border flex items-start justify-between gap-3 rounded-2xl border p-4">
               <div>

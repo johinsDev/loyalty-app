@@ -37,6 +37,8 @@ type SendCampaignPayload = {
   campaignId: string;
   /** When set, only (re)send to these recipients — used by "Reintentar". */
   onlyCustomerIds?: string[];
+  /** Evergreen cron pulse — the job must NOT flip the campaign to "sent". */
+  pulse?: boolean;
 };
 
 export interface CampaignStateResult {
@@ -85,10 +87,12 @@ export class CampaignsService {
     input: unknown,
   ): Promise<CampaignStateResult> {
     const current = await this.loadDraft(orgId, id);
-    if (current.status === "published") {
+    // One-shots are immutable once published; evergreen rules stay editable
+    // while live (changes apply to the next cron pulse).
+    if (current.status === "published" && current.mode !== "evergreen") {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
-        message: "Cannot edit a published campaign",
+        message: "Cannot edit a published one-time campaign",
       });
     }
     const { draft, state } = await campaignWizard.advance(
@@ -116,11 +120,17 @@ export class CampaignsService {
     // used in the message (no separate offer picker).
     const offer = deriveOffer(current.message);
     if (offer) await this.repo.patch(orgId, id, { offer });
+    const evergreen = current.mode === "evergreen";
     const published = await this.repo.markPublished(orgId, id, {
-      scheduledAt: current.scheduledAt,
+      scheduledAt: evergreen ? null : current.scheduledAt,
       special: current.special,
     });
-    await this.enqueue(orgId, published);
+    if (evergreen) {
+      // No immediate dispatch — the daily cron pulses it while active.
+      await this.repo.activateEvergreen(orgId, id, new Date());
+    } else {
+      await this.enqueue(orgId, published);
+    }
     return { campaign: published, state: campaignWizard.state(published) };
   }
 
@@ -175,8 +185,13 @@ export class CampaignsService {
       offer: row.offer,
       channelPriority: row.channelPriority ?? [],
       audienceFilter: row.audienceFilter,
+      mode: row.mode,
       scheduledAt: row.scheduledAt,
       special: row.special,
+      cooldownDays: row.cooldownDays,
+      endsAt: row.endsAt,
+      activatedAt: row.activatedAt,
+      lastPulseAt: row.lastPulseAt,
       sentAt: row.sentAt,
       createdAt: row.createdAt,
       funnel,
@@ -260,6 +275,44 @@ export class CampaignsService {
     }
     await this.repo.pause(orgId, id);
     return { ok: true };
+  }
+
+  /** Resume a paused evergreen campaign — the cron picks it up again. */
+  async resume(orgId: string, id: string): Promise<{ ok: true }> {
+    await this.repo.resume(orgId, id);
+    return { ok: true };
+  }
+
+  /** Stop an evergreen campaign for good (no more pulses). */
+  async end(orgId: string, id: string): Promise<{ ok: true }> {
+    await this.repo.endEvergreen(orgId, id);
+    return { ok: true };
+  }
+
+  /**
+   * One daily cron pulse: for each live evergreen campaign, dispatch to the
+   * currently-eligible slice (matchers past their cooldown). Reuses the
+   * `send-campaign` job with `pulse: true` so it doesn't flip to "sent".
+   */
+  async pulseEvergreen(orgId: string): Promise<{ campaigns: number; recipients: number }> {
+    const now = new Date();
+    const camps = await this.repo.listActiveEvergreen(orgId, now);
+    let recipients = 0;
+    for (const camp of camps) {
+      const eligible = await this.repo.resolveEligibleRecipients(orgId, camp, now);
+      if (eligible.length > 0) {
+        const payload: SendCampaignPayload = {
+          organizationId: orgId,
+          campaignId: camp.id,
+          onlyCustomerIds: eligible.map((r) => r.customerId),
+          pulse: true,
+        };
+        await tasks.trigger("send-campaign", payload);
+        recipients += eligible.length;
+      }
+      await this.repo.setLastPulse(camp.id, now);
+    }
+    return { campaigns: camps.length, recipients };
   }
 
   /** Re-enqueue only the failed recipients; clears their old failed rows first. */

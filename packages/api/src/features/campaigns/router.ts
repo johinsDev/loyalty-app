@@ -96,6 +96,16 @@ export const campaignsRouter = router({
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).pause(await requireOrg(), input.id),
     ),
+  resume: managerProcedure
+    .input(pauseInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).resume(await requireOrg(), input.id),
+    ),
+  end: managerProcedure
+    .input(pauseInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).end(await requireOrg(), input.id),
+    ),
   retry: managerProcedure
     .input(retryInputSchema)
     .mutation(async ({ ctx, input }) =>

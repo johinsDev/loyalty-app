@@ -104,9 +104,15 @@ export class ScheduleStep extends WizardStep<
     return true;
   }
   persist(ctx: Ctx, d: CampaignRow, input: ScheduleStepInput) {
+    const mode = input.mode ?? "once";
+    const evergreen = mode === "evergreen";
     return ctx.services.repo.patch(ctx.organizationId, d.id, {
-      scheduledAt: input.scheduledAt ?? null,
+      mode,
+      // Evergreen ignores a one-shot schedule; once ignores cooldown/endsAt.
+      scheduledAt: evergreen ? null : (input.scheduledAt ?? null),
       special: input.special ?? false,
+      cooldownDays: evergreen ? (input.cooldownDays ?? null) : null,
+      endsAt: evergreen ? (input.endsAt ?? null) : null,
     });
   }
 }
