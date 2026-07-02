@@ -1331,7 +1331,7 @@
       "mail": "Email",
       "sms": "SMS",
       "whatsapp": "WhatsApp",
-      "database": "En la app"
+      "database": "Inbox"
     },
     "triggers": {
       "new-user": "Bienvenida",
