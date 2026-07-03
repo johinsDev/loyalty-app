@@ -3,6 +3,8 @@
 import { Switch } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
 
+import { Link } from "@/i18n/navigation";
+
 import { EMPTY_AUDIENCE, type AudienceValue } from "../lib/campaign-audience";
 import { EMPTY_MESSAGE, type CampaignMessageValue } from "../lib/campaign-message";
 import { CampaignAudienceFields } from "./campaign-audience-fields";
@@ -48,16 +50,27 @@ export function AnnounceComposer({
   onChange: (v: AnnounceValue) => void;
   disabled?: boolean;
   disabledReason?: string;
-  priorCampaigns?: number;
+  priorCampaigns?: { id: string; name: string | null }[];
   /** Surface the "at least one channel required" error (wizard's attempted state). */
   showError?: boolean;
 }) {
   const t = useTranslations("Campaigns.announce");
 
   const priorNote =
-    priorCampaigns && priorCampaigns > 0 ? (
+    priorCampaigns && priorCampaigns.length > 0 ? (
       <p className="bg-muted/50 text-muted-foreground rounded-lg px-3 py-2 text-xs">
-        {t("prior", { n: priorCampaigns })}
+        {t("prior", { n: priorCampaigns.length })}{" "}
+        {priorCampaigns.map((c, i) => (
+          <span key={c.id}>
+            {i > 0 ? ", " : null}
+            <Link
+              href={{ pathname: "/campaigns/[id]", params: { id: c.id } }}
+              className="text-primary font-medium hover:underline"
+            >
+              {c.name || t("untitled")}
+            </Link>
+          </span>
+        ))}
       </p>
     ) : null;
 

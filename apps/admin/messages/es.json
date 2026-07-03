@@ -1125,7 +1125,8 @@
     "announce": {
       "toggle": "Anunciar este banner",
       "linkHint": "Se agrega un enlace corto al final que lleva al destino del banner.",
-      "prior": "Este banner ya tiene {n} campaña(s).",
+      "prior": "Este banner ya tiene {n} campaña(s):",
+      "untitled": "Sin nombre",
       "needsPublish": "Publicá el banner para poder anunciarlo.",
       "launched": "Anuncio lanzado 🎉",
       "failed": "Banner guardado ✓ — no pudimos lanzar el anuncio. Reintentá desde el banner."

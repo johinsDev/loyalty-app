@@ -1125,7 +1125,8 @@
     "announce": {
       "toggle": "Announce this banner",
       "linkHint": "A short link to the banner's destination is appended automatically.",
-      "prior": "This banner already has {n} campaign(s).",
+      "prior": "This banner already has {n} campaign(s):",
+      "untitled": "Untitled",
       "needsPublish": "Publish the banner to announce it.",
       "launched": "Announcement sent 🎉",
       "failed": "Banner saved ✓ — we couldn't launch the announcement. Retry from the banner."

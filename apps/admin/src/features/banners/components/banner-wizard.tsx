@@ -592,7 +592,7 @@ export function BannerWizard({ id }: { id?: string }) {
             onChange={setAnnounce}
             disabled={willBeDraft}
             disabledReason={tc("needsPublish")}
-            priorCampaigns={priorCampaignsQuery.data?.length ?? 0}
+            priorCampaigns={priorCampaignsQuery.data ?? []}
             showError={attempted}
           />
         ) : (
