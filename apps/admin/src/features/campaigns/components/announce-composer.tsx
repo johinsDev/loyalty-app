@@ -5,8 +5,8 @@ import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 
-import { EMPTY_AUDIENCE, type AudienceValue } from "../lib/campaign-audience";
-import { EMPTY_MESSAGE, type CampaignMessageValue } from "../lib/campaign-message";
+import type { AudienceValue } from "../lib/campaign-audience";
+import type { CampaignMessageValue } from "../lib/campaign-message";
 import { CampaignAudienceFields } from "./campaign-audience-fields";
 import { CampaignMessageFields } from "./campaign-message-fields";
 import { CampaignMessagePreview } from "./campaign-message-preview";
@@ -20,23 +20,6 @@ export type AnnounceValue = {
   /** Derived from the banner (no UI control in Phase 1). */
   scheduledAt?: Date;
 };
-
-/** Seed the composer: push-only, disabled, banner name/description prefilled. */
-export function announceInitial(seed: {
-  title: string;
-  body: string;
-  linkUrl: string;
-}): AnnounceValue {
-  return {
-    enabled: false,
-    message: {
-      message: { ...EMPTY_MESSAGE, push: { title: seed.title, body: seed.body } },
-      channelPriority: ["push"],
-      linkUrl: seed.linkUrl,
-    },
-    audience: EMPTY_AUDIENCE,
-  };
-}
 
 export function AnnounceComposer({
   value,
@@ -98,6 +81,8 @@ export function AnnounceComposer({
             value={value.message}
             onChange={(m) => onChange({ ...value, message: m })}
             showError={showError}
+            showPresets={false}
+            showTemplates={false}
           />
           <CampaignMessagePreview
             message={value.message.message}

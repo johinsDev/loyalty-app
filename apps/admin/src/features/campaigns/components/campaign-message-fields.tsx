@@ -71,11 +71,17 @@ export function CampaignMessageFields({
   value,
   onChange,
   showError,
+  showPresets = true,
+  showTemplates = true,
 }: {
   value: CampaignMessageValue;
   onChange: (next: CampaignMessageValue) => void;
   /** Render the "at least one channel required" error (wizard's attempted state). */
   showError?: boolean;
+  /** Generic message presets/gallery — off for entity-tied announcements. */
+  showPresets?: boolean;
+  /** Saved org templates — off for entity-tied announcements. */
+  showTemplates?: boolean;
 }) {
   const t = useTranslations("Campaigns");
   const trpc = useTRPC();
@@ -266,6 +272,7 @@ export function CampaignMessageFields({
         ) : null}
       </div>
 
+      {showPresets ? (
       <div className="space-y-2">
         <Label className="text-xs">{t("presetsLabel")}</Label>
         <div className="flex flex-wrap items-center gap-2">
@@ -294,13 +301,16 @@ export function CampaignMessageFields({
           </Button>
         </div>
       </div>
+      ) : null}
 
-      <CampaignTemplates
-        getMessage={() => buildMessageInput(value.message)}
-        getChannelPriority={() => value.channelPriority}
-        canSave={messageValid}
-        onLoad={applyTemplate}
-      />
+      {showTemplates ? (
+        <CampaignTemplates
+          getMessage={() => buildMessageInput(value.message)}
+          getChannelPriority={() => value.channelPriority}
+          canSave={messageValid}
+          onLoad={applyTemplate}
+        />
+      ) : null}
 
       <div className="space-y-1.5">
         <div className="flex items-center gap-1.5">
@@ -425,11 +435,13 @@ export function CampaignMessageFields({
         }}
       />
       <CampaignVariablesHelp open={helpOpen} onOpenChange={setHelpOpen} />
-      <CampaignPresetsGallery
-        open={galleryOpen}
-        onOpenChange={setGalleryOpen}
-        onPick={applyPreset}
-      />
+      {showPresets ? (
+        <CampaignPresetsGallery
+          open={galleryOpen}
+          onOpenChange={setGalleryOpen}
+          onPick={applyPreset}
+        />
+      ) : null}
     </div>
   );
 }
