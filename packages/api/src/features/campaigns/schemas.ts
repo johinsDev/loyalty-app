@@ -316,7 +316,9 @@ export type CampaignSourceInput = z.infer<typeof campaignSourceSchema>;
 export const createFromEntityInputSchema = z.object({
   source: campaignSourceSchema,
   name: z.string().min(1).max(120),
-  message: messageContentSchema,
+  message: messageContentSchema.refine((m) => !!(m.push || m.email || m.sms || m.whatsapp), {
+    message: "Escribe el mensaje para al menos un canal",
+  }),
   channelPriority: z.array(campaignChannelSchema).min(1),
   audienceFilter: audienceFilterSchema.optional(),
   scheduledAt: z.coerce.date().optional(),
