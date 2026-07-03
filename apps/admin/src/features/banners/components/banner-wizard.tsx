@@ -1,5 +1,6 @@
 "use client";
 
+import type { MessageContentInput } from "@loyalty/api/features/campaigns/schemas";
 import { formatDate } from "@loyalty/date";
 import {
   BackgroundPicker,
@@ -30,14 +31,18 @@ import { toast } from "sonner";
 import { WizardShell } from "@/components/wizard-shell";
 import {
   AnnounceComposer,
-  announceAudienceFilter,
-  type AnnounceChannel,
   type AnnounceValue,
 } from "@/features/campaigns/components/announce-composer";
 import {
   bannerAnnounceInitial,
   bannerLinkUrl,
 } from "@/features/campaigns/lib/banner-announce";
+import { buildAudienceFilter } from "@/features/campaigns/lib/campaign-audience";
+import {
+  buildMessageInput,
+  isMessageComplete,
+  type Channel,
+} from "@/features/campaigns/lib/campaign-message";
 import { FileUpload } from "@/features/storage/components/file-upload";
 import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 import { useRouter } from "@/i18n/navigation";
@@ -275,11 +280,8 @@ export function BannerWizard({ id }: { id?: string }) {
       (form.ctaTarget !== "product" || form.ctaValue.trim().length > 0),
     design: true,
     schedule: true,
-    // Block finishing when the announcement is on but has no title/message.
-    difusion:
-      announce === null ||
-      !announce.enabled ||
-      (announce.title.trim().length > 0 && announce.body.trim().length > 0),
+    // Block finishing when the announcement is on but has no publishable message.
+    difusion: announce === null || !announce.enabled || isMessageComplete(announce.message),
     review: true,
   };
   const navigable: string[] = [];
@@ -367,24 +369,20 @@ export function BannerWizard({ id }: { id?: string }) {
       let announced = false;
       if (announce?.enabled && !willBeDraft) {
         announced = true;
-        const channels: AnnounceChannel[] = announce.channels.length
-          ? announce.channels
+        const channelPriority: Channel[] = announce.message.channelPriority.length
+          ? announce.message.channelPriority
           : ["push"];
         try {
           await createFromEntityMut.mutateAsync({
             source: { scope: "banner", id: bannerId },
             name: form.name,
-            push: { title: announce.title, body: announce.body },
-            ...(channels.includes("email")
-              ? { email: { subject: announce.title, body: announce.body } }
-              : {}),
-            ...(channels.includes("whatsapp")
-              ? { whatsapp: { text: `${announce.title}\n\n${announce.body}` } }
-              : {}),
-            channelPriority: channels,
-            linkUrl: bannerLinkUrl(formToBannerLike()),
-            audienceFilter: announceAudienceFilter(announce),
-            scheduledAt: announce.when === "schedule" ? announce.scheduledAt : undefined,
+            message: {
+              ...(buildMessageInput(announce.message.message) as MessageContentInput),
+              linkUrl: bannerLinkUrl(formToBannerLike()),
+            },
+            channelPriority,
+            audienceFilter: buildAudienceFilter(announce.audience),
+            scheduledAt: announce.scheduledAt,
           });
           toast.success(tc("launched"));
         } catch {
@@ -595,6 +593,7 @@ export function BannerWizard({ id }: { id?: string }) {
             disabled={willBeDraft}
             disabledReason={tc("needsPublish")}
             priorCampaigns={priorCampaignsQuery.data?.length ?? 0}
+            showError={attempted}
           />
         ) : (
           <p className="text-muted-foreground text-sm">…</p>

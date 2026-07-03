@@ -20,8 +20,9 @@ export function bannerAnnounceInitial(b: BannerLike): AnnounceValue {
   const base = announceInitial({
     title: b.name.slice(0, 80),
     body: ((b.shortDescription ?? "").trim() || GENERIC_BODY).slice(0, 180),
+    linkUrl: bannerLinkUrl(b),
   });
   const from = b.displayFrom ? new Date(b.displayFrom) : null;
   const future = from != null && from.getTime() > Date.now();
-  return future ? { ...base, when: "schedule", scheduledAt: from } : base;
+  return future ? { ...base, scheduledAt: from } : base;
 }

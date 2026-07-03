@@ -20,6 +20,15 @@ export type AudienceValue = {
   signedUpBefore: Date | null;
 };
 
+export const EMPTY_AUDIENCE: AudienceValue = {
+  tiers: [],
+  lastPurchaseOp: "gte",
+  lastPurchaseDays: "",
+  minPurchases: "",
+  signedUpAfter: null,
+  signedUpBefore: null,
+};
+
 export function buildAudienceFilter(v: AudienceValue): AudienceFilter | undefined {
   const f: AudienceFilter = {};
   if (v.tiers.length > 0) f.tiers = v.tiers;
