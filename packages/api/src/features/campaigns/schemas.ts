@@ -56,8 +56,18 @@ export const messageContentSchema = z.object({
   email: emailContentSchema.optional(),
   sms: smsContentSchema.optional(),
   whatsapp: whatsappContentSchema.optional(),
-  /** CTA destination for `{{short_link}}` (shortened per-recipient at send). */
-  linkUrl: z.string().url().optional().or(z.literal("")),
+  /**
+   * CTA destination for `{{short_link}}` (shortened per-recipient at send).
+   * Accepts an absolute URL or a root-relative path — stored campaign links may
+   * be relative (e.g. a banner's `/banner/:slug`), so a bare `.url()` is too strict.
+   */
+  linkUrl: z
+    .string()
+    .max(2000)
+    .refine((s) => s === "" || s.startsWith("/") || /^https?:\/\//i.test(s), {
+      message: "Ingresa un enlace válido",
+    })
+    .optional(),
 });
 
 export const messageStepSchema = messageContentSchema
@@ -306,19 +316,8 @@ export type CampaignSourceInput = z.infer<typeof campaignSourceSchema>;
 export const createFromEntityInputSchema = z.object({
   source: campaignSourceSchema,
   name: z.string().min(1).max(120),
-  push: z.object({
-    title: z.string().min(1).max(80),
-    body: z.string().min(1).max(180),
-  }),
-  email: z
-    .object({
-      subject: z.string().min(1).max(160),
-      body: z.string().min(1).max(4000),
-    })
-    .optional(),
-  whatsapp: z.object({ text: z.string().min(1).max(1024) }).optional(),
+  message: messageContentSchema,
   channelPriority: z.array(campaignChannelSchema).min(1),
-  linkUrl: z.string().max(2000).optional(),
   audienceFilter: audienceFilterSchema.optional(),
   scheduledAt: z.coerce.date().optional(),
 });

@@ -163,6 +163,9 @@ export class CampaignsService {
     input: CreateFromEntityInput,
   ): Promise<CampaignStateResult> {
     const draft = await this.repo.createDraft(orgId, userId);
+    // Split the link out of the message JSON (it lives in its own column,
+    // mirroring the wizard's message-step persist).
+    const { linkUrl, ...content } = input.message;
     const audienceFilter = input.audienceFilter
       ? {
           ...input.audienceFilter,
@@ -172,13 +175,9 @@ export class CampaignsService {
       : null;
     await this.repo.patch(orgId, draft.id, {
       name: input.name,
-      message: {
-        push: input.push,
-        ...(input.email ? { email: input.email } : {}),
-        ...(input.whatsapp ? { whatsapp: input.whatsapp } : {}),
-      },
+      message: content,
       channelPriority: input.channelPriority,
-      linkUrl: input.linkUrl ?? null,
+      linkUrl: linkUrl?.trim() ? linkUrl.trim() : null,
       audienceFilter,
       scheduledAt: input.scheduledAt ?? null,
       mode: "once",
