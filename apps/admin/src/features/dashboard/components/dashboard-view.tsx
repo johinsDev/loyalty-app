@@ -13,6 +13,7 @@ import { useState } from "react";
 
 import { CampaignsKpiStrip } from "@/features/campaigns/components/campaigns-kpi-strip";
 import { DashboardPromoCard } from "@/features/promotions/components/dashboard-promo-card";
+import { PromoKpiStrip } from "@/features/promotions/components/promo-kpi-strip";
 import { useFadeUp } from "@/lib/animate";
 
 import {
@@ -116,9 +117,12 @@ export function DashboardView() {
         ))}
       </div>
 
-      {/* Campaigns — real stats (last 30d) */}
+      {/* Campaigns + promos — real stats (last 30d) */}
       <div className="mt-3" style={fade(i++)}>
         <CampaignsKpiStrip />
+      </div>
+      <div className="mt-3" style={fade(i++)}>
+        <PromoKpiStrip />
       </div>
 
       {/* Purchases + engagement */}

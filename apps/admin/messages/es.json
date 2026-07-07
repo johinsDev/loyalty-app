@@ -788,7 +788,8 @@
       "detailTitle": "Actividad",
       "lastUsed": "Última vez: {when}",
       "period": "Últimos 30 días",
-      "viewAll": "Ver detalle"
+      "viewAll": "Ver detalle",
+      "stripTitle": "Promociones"
     }
   },
   "Cashier": {
