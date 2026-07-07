@@ -172,7 +172,7 @@ export function RefsField({
                 <SelectTrigger className="h-10 w-44 text-sm">
                   <SelectValue>{() => t("pickOption")}</SelectValue>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent align="start" sideOffset={6} alignItemWithTrigger={false}>
                   {(toppingOptions.data?.modifierOptions ?? []).map((o) => (
                     <SelectItem key={o.id} value={o.id}>
                       {o.label}
@@ -320,7 +320,7 @@ function ProductRefChip({
             </SelectValue>
             <ChevronDown className="size-3" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent align="start" sideOffset={6} alignItemWithTrigger={false} className="min-w-48">
             <SelectItem value="__any__">{t("anySize")}</SelectItem>
             {variants.map((v) => (
               <SelectItem key={v.id} value={v.id}>
