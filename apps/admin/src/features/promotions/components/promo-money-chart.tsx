@@ -13,9 +13,11 @@ import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 export function PromoMoneyChart({
   series,
   labels,
+  height = 224,
 }: {
   series: PromoStatPoint[];
   labels: { revenue: string; discount: string };
+  height?: number;
 }) {
   const config = {
     revenue: { label: labels.revenue, color: "#1BAD9D" },
@@ -29,7 +31,7 @@ export function PromoMoneyChart({
   }));
 
   return (
-    <ChartContainer config={config} className="aspect-auto w-full" style={{ height: 224 }}>
+    <ChartContainer config={config} className="aspect-auto w-full" style={{ height }}>
       <BarChart data={data} margin={{ top: 6, right: 6, bottom: 0, left: 0 }} barCategoryGap="20%">
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} fontSize={11} />

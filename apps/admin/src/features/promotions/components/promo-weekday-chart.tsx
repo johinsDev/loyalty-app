@@ -12,14 +12,16 @@ import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 export function PromoWeekdayChart({
   data,
   label,
+  height = 200,
 }: {
   data: { label: string; uses: number }[];
   label: string;
+  height?: number;
 }) {
   const config = { uses: { label, color: "#7c5cff" } } satisfies ChartConfig;
 
   return (
-    <ChartContainer config={config} className="aspect-auto w-full" style={{ height: 200 }}>
+    <ChartContainer config={config} className="aspect-auto w-full" style={{ height }}>
       <BarChart data={data} margin={{ top: 6, right: 6, bottom: 0, left: 0 }} barCategoryGap="24%">
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} fontSize={11} />

@@ -793,7 +793,8 @@
       "weekdayTitle": "Uso por día de la semana",
       "weekdaySubtitle": "Cuándo se usan las promos (valida tu programación).",
       "moneyTitle": "Ventas vs descuento",
-      "moneySubtitle": "Lo que entra con promo vs lo que regalas, por día."
+      "moneySubtitle": "Lo que entra con promo vs lo que regalas, por día.",
+      "expand": "Expandir"
     }
   },
   "Cashier": {

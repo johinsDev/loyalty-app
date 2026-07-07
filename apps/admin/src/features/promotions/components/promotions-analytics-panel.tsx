@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { ExpandableCard } from "./expandable-card";
 import { PromoMoneyChart } from "./promo-money-chart";
 import { PromoStatsChart } from "./promo-stats-chart";
 import { PromoWeekdayChart } from "./promo-weekday-chart";
@@ -57,89 +58,90 @@ export function PromotionsAnalyticsPanel() {
         <Kpi label={t("statCustomers")} value={data.totals.customers.toLocaleString("es-CO")} />
       </div>
 
-      <div className="bg-card rounded-3xl border p-5 shadow-sm">
-        <h2 className="font-display mb-1 text-lg font-semibold tracking-tight">{t("trendTitle")}</h2>
-        <p className="text-muted-foreground mb-3 text-xs font-semibold">{t("trendSubtitle")}</p>
-        {data.series.some((p) => p.uses > 0) ? (
-          <PromoStatsChart series={data.series} label={t("statUses")} />
-        ) : (
-          <p className="text-muted-foreground text-sm">{t("empty")}</p>
-        )}
-      </div>
+      <ExpandableCard title={t("trendTitle")} subtitle={t("trendSubtitle")}
+        render={(expanded) =>
+          data.series.some((p) => p.uses > 0) ? (
+            <PromoStatsChart series={data.series} label={t("statUses")} height={expanded ? 420 : 224} />
+          ) : (
+            <p className="text-muted-foreground text-sm">{t("empty")}</p>
+          )
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="bg-card rounded-3xl border p-5 shadow-sm">
-          <h2 className="font-display mb-1 text-lg font-semibold tracking-tight">
-            {t("weekdayTitle")}
-          </h2>
-          <p className="text-muted-foreground mb-3 text-xs font-semibold">{t("weekdaySubtitle")}</p>
-          {data.totals.uses > 0 ? (
-            <PromoWeekdayChart
-              label={t("statUses")}
-              data={WEEKDAY_ORDER.map((i) => ({
-                label: td(WEEKDAY_KEY[i]),
-                uses: data.byWeekday.find((w) => w.weekday === i)?.uses ?? 0,
-              }))}
-            />
-          ) : (
-            <p className="text-muted-foreground text-sm">{t("empty")}</p>
-          )}
-        </div>
+        <ExpandableCard title={t("weekdayTitle")} subtitle={t("weekdaySubtitle")}
+          render={(expanded) =>
+            data.totals.uses > 0 ? (
+              <PromoWeekdayChart
+                label={t("statUses")}
+                height={expanded ? 380 : 200}
+                data={WEEKDAY_ORDER.map((i) => ({
+                  label: td(WEEKDAY_KEY[i]),
+                  uses: data.byWeekday.find((w) => w.weekday === i)?.uses ?? 0,
+                }))}
+              />
+            ) : (
+              <p className="text-muted-foreground text-sm">{t("empty")}</p>
+            )
+          }
+        />
 
-        <div className="bg-card rounded-3xl border p-5 shadow-sm">
-          <h2 className="font-display mb-1 text-lg font-semibold tracking-tight">
-            {t("moneyTitle")}
-          </h2>
-          <p className="text-muted-foreground mb-3 text-xs font-semibold">{t("moneySubtitle")}</p>
-          {data.series.some((p) => p.uses > 0) ? (
-            <PromoMoneyChart
-              series={data.series}
-              labels={{ revenue: t("statRevenue"), discount: t("statDiscount") }}
-            />
-          ) : (
-            <p className="text-muted-foreground text-sm">{t("empty")}</p>
-          )}
-        </div>
+        <ExpandableCard title={t("moneyTitle")} subtitle={t("moneySubtitle")}
+          render={(expanded) =>
+            data.series.some((p) => p.uses > 0) ? (
+              <PromoMoneyChart
+                series={data.series}
+                labels={{ revenue: t("statRevenue"), discount: t("statDiscount") }}
+                height={expanded ? 420 : 224}
+              />
+            ) : (
+              <p className="text-muted-foreground text-sm">{t("empty")}</p>
+            )
+          }
+        />
       </div>
 
-      <div className="bg-card rounded-3xl border p-5 shadow-sm">
-        <h2 className="font-display mb-3 text-lg font-semibold tracking-tight">{t("topTitle")}</h2>
-        {data.top.length > 0 ? (
-          <div className="divide-border divide-y text-sm">
-            {data.top.map((p, i) => (
-              <div key={p.id} className="flex items-center gap-3 py-2.5">
-                <span className="text-muted-foreground w-5 text-center font-bold">{i + 1}</span>
-                <div className="min-w-0 flex-1">
-                  <Link
-                    href={{ pathname: "/promotions/[id]", params: { id: p.id } }}
-                    className="truncate font-semibold hover:underline"
-                  >
-                    {p.name || t("untitled")}
-                  </Link>
-                </div>
-                <div className="text-muted-foreground grid grid-cols-3 gap-4 text-right text-xs font-semibold">
-                  <span>
-                    {p.uses.toLocaleString("es-CO")}
-                    <span className="block text-[10px] font-bold uppercase">{t("statUses")}</span>
-                  </span>
-                  <span className="text-foreground">
-                    {money(p.discountCents)}
-                    <span className="text-muted-foreground block text-[10px] font-bold uppercase">
-                      {t("statDiscount")}
+      <ExpandableCard title={t("topTitle")}
+        render={() =>
+          data.top.length > 0 ? (
+            <div className="divide-border divide-y text-sm">
+              {data.top.map((p, i) => (
+                <div key={p.id} className="flex items-center gap-3 py-2.5">
+                  <span className="text-muted-foreground w-5 text-center font-bold">{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={{ pathname: "/promotions/[id]", params: { id: p.id } }}
+                      className="truncate font-semibold hover:underline"
+                    >
+                      {p.name || t("untitled")}
+                    </Link>
+                  </div>
+                  <div className="text-muted-foreground grid grid-cols-3 gap-4 text-right text-xs font-semibold">
+                    <span>
+                      {p.uses.toLocaleString("es-CO")}
+                      <span className="block text-[10px] font-bold uppercase">{t("statUses")}</span>
                     </span>
-                  </span>
-                  <span>
-                    {p.customers.toLocaleString("es-CO")}
-                    <span className="block text-[10px] font-bold uppercase">{t("statCustomers")}</span>
-                  </span>
+                    <span className="text-foreground">
+                      {money(p.discountCents)}
+                      <span className="text-muted-foreground block text-[10px] font-bold uppercase">
+                        {t("statDiscount")}
+                      </span>
+                    </span>
+                    <span>
+                      {p.customers.toLocaleString("es-CO")}
+                      <span className="block text-[10px] font-bold uppercase">
+                        {t("statCustomers")}
+                      </span>
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground text-sm">{t("empty")}</p>
-        )}
-      </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">{t("empty")}</p>
+          )
+        }
+      />
     </div>
   );
 }

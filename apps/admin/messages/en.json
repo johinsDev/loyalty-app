@@ -793,7 +793,8 @@
       "weekdayTitle": "Uses by weekday",
       "weekdaySubtitle": "When promos get used (validates your scheduling).",
       "moneyTitle": "Sales vs discount",
-      "moneySubtitle": "What promo tickets bring in vs what you give away, per day."
+      "moneySubtitle": "What promo tickets bring in vs what you give away, per day.",
+      "expand": "Expand"
     }
   },
   "Cashier": {
