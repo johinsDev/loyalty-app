@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { CampaignsKpiStrip } from "@/features/campaigns/components/campaigns-kpi-strip";
+import { DashboardPromoCard } from "@/features/promotions/components/dashboard-promo-card";
 import { useFadeUp } from "@/lib/animate";
 
 import {
@@ -24,7 +25,6 @@ import {
   impact,
   type Kpi,
   kpis,
-  promoPerformance,
   purchasesSeries,
   recentClaims,
   recentPurchases,
@@ -228,30 +228,7 @@ export function DashboardView() {
           </table>
         </ChartCard>
 
-        <ChartCard
-          title={t("promoPerfTitle")}
-          subtitle={t("promoPerfSubtitle")}
-          style={fade(i++)}
-        >
-          <ul className="space-y-3">
-            {promoPerformance.map((p) => (
-              <li key={p.name}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="font-bold">{p.name}</span>
-                  <span className="text-muted-foreground font-semibold">
-                    {p.reach.toLocaleString()} · {p.rate}%
-                  </span>
-                </div>
-                <div className="bg-muted h-2 overflow-hidden rounded-full">
-                  <span
-                    className="from-primary to-primary/60 block h-full rounded-full bg-gradient-to-r"
-                    style={{ width: `${p.rate}%` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </ChartCard>
+        <DashboardPromoCard style={fade(i++)} />
       </div>
 
       {/* Recent purchases + top customers */}

@@ -191,7 +191,7 @@
     "cohortsSubtitle": "Weekly cohorts, 5-week return",
     "cohort": "Cohort",
     "promoPerfTitle": "Promotion performance",
-    "promoPerfSubtitle": "Reach · redemption rate",
+    "promoPerfSubtitle": "Uses · discount given",
     "recentPurchasesTitle": "Recent purchases",
     "topCustomersTitle": "Top customers by LTV",
     "topCustomersSubtitle": "Highest value this month",
@@ -784,7 +784,11 @@
       "trendSubtitle": "How many times a promo was applied each day (last 30 days).",
       "topTitle": "Most-used promos",
       "empty": "No activity yet.",
-      "untitled": "Untitled"
+      "untitled": "Untitled",
+      "detailTitle": "Activity",
+      "lastUsed": "Last used: {when}",
+      "period": "Last 30 days",
+      "viewAll": "View all"
     }
   },
   "Cashier": {

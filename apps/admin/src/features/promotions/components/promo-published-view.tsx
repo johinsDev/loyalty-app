@@ -26,6 +26,7 @@ import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 import { useRouter } from "@/i18n/navigation";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { PromoStatsBlock } from "./promo-stats-block";
 import { PromoPreview } from "./promo-wizard";
 
 type ContentForm = {
@@ -141,7 +142,11 @@ export function PromoPublishedView({ id }: { id: string }) {
       </div>
       <p className="text-muted-foreground mt-1 text-sm">{t("publishedImmutableHint")}</p>
 
-      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
+      <div className="mt-6">
+        <PromoStatsBlock id={id} />
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="bg-card border-border space-y-4 rounded-3xl border p-6 shadow-sm lg:col-span-2">
           <div className="bg-muted/40 rounded-xl px-3 py-2">
             <p className="text-muted-foreground text-xs font-bold tracking-wider uppercase">

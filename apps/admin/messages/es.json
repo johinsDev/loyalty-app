@@ -191,7 +191,7 @@
     "cohortsSubtitle": "Cohortes semanales, retorno a 5 semanas",
     "cohort": "Cohorte",
     "promoPerfTitle": "Rendimiento de promociones",
-    "promoPerfSubtitle": "Alcance · tasa de canje",
+    "promoPerfSubtitle": "Usos · descuento entregado",
     "recentPurchasesTitle": "Compras recientes",
     "topCustomersTitle": "Top clientes por LTV",
     "topCustomersSubtitle": "Mayor valor este mes",
@@ -784,7 +784,11 @@
       "trendSubtitle": "Cuántas veces se aplicó una promo cada día (últimos 30 días).",
       "topTitle": "Promos con más uso",
       "empty": "Sin actividad todavía.",
-      "untitled": "Sin nombre"
+      "untitled": "Sin nombre",
+      "detailTitle": "Actividad",
+      "lastUsed": "Última vez: {when}",
+      "period": "Últimos 30 días",
+      "viewAll": "Ver detalle"
     }
   },
   "Cashier": {

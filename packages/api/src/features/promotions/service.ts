@@ -17,6 +17,7 @@ import type {
   PromoAnalytics,
   PromoCard,
   PromoDetail,
+  PromoStats,
   PublicListInput,
 } from "./schemas";
 import type { ListResult } from "../_shared/list";
@@ -208,6 +209,14 @@ export class PromoService {
     const now = new Date();
     const since = from ?? new Date(now.getTime() - 30 * 86_400_000);
     return this.repo.orgAnalytics(orgId, since, now);
+  }
+
+  /** Per-promo activity for the detail screen. Defaults to the last 30 days. */
+  async promoStats(orgId: string, id: string, from?: Date): Promise<PromoStats> {
+    await this.load(orgId, id);
+    const now = new Date();
+    const since = from ?? new Date(now.getTime() - 30 * 86_400_000);
+    return this.repo.promoStats(orgId, id, since, now);
   }
 
   get(orgId: string, id: string): Promise<PromoRow> {

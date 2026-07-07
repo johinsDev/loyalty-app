@@ -118,6 +118,11 @@ export const promocionesRouter = router({
   analytics: managerProcedure
     .input(promoAnalyticsInputSchema)
     .query(async ({ ctx, input }) => makeService(ctx.db).analytics(await requireOrg(), input.from)),
+  promoStats: managerProcedure
+    .input(promoAnalyticsInputSchema.extend({ id: idInputSchema.shape.id }))
+    .query(async ({ ctx, input }) =>
+      makeService(ctx.db).promoStats(await requireOrg(), input.id, input.from),
+    ),
   remove: managerProcedure
     .input(idInputSchema)
     .mutation(async ({ ctx, input }) => makeService(ctx.db).remove(await requireOrg(), input.id)),

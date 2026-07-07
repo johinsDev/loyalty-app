@@ -37,6 +37,7 @@ export {
   type PromoCard,
   type PromoDetail,
   type PromoStatPoint,
+  type PromoStats,
   type PromoType,
   type PublicListInput,
   type RuleInput,

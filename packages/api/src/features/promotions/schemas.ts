@@ -230,16 +230,24 @@ export interface PromoAnalyticsRow {
   discountCents: number;
   customers: number;
 }
+export interface PromoTotals {
+  uses: number;
+  /** Money given away across all applications. */
+  discountCents: number;
+  /** Net revenue collected on tickets that used a promo. */
+  revenueCents: number;
+  /** Distinct customers who redeemed at least one promo. */
+  customers: number;
+}
 export interface PromoAnalytics {
-  totals: {
-    uses: number;
-    /** Money given away across all applications. */
-    discountCents: number;
-    /** Net revenue collected on tickets that used a promo. */
-    revenueCents: number;
-    /** Distinct customers who redeemed at least one promo. */
-    customers: number;
-  };
+  totals: PromoTotals;
   series: PromoStatPoint[];
   top: PromoAnalyticsRow[];
+}
+
+/** Per-promo activity for the detail screen. */
+export interface PromoStats {
+  totals: PromoTotals;
+  series: PromoStatPoint[];
+  lastUsedAt: string | null;
 }

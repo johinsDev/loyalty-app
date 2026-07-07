@@ -33,6 +33,7 @@ import type {
   PromoCard,
   PromoDetail,
   PromoStatPoint,
+  PromoStats,
   PublicListInput,
 } from "./schemas";
 
@@ -58,6 +59,26 @@ function promoDenseDays(since: Date, now: Date): string[] {
     }
   }
   return days;
+}
+/** Bucket raw redemption rows into a dense per-day series. */
+function buildSeries(
+  rows: { appliedAt: Date; discountCents: number }[],
+  since: Date,
+  now: Date,
+): PromoStatPoint[] {
+  const buckets = new Map<string, { uses: number; discountCents: number }>();
+  for (const r of rows) {
+    const day = promoDayKey(r.appliedAt);
+    const b = buckets.get(day) ?? { uses: 0, discountCents: 0 };
+    b.uses += 1;
+    b.discountCents += Number(r.discountCents);
+    buckets.set(day, b);
+  }
+  return promoDenseDays(since, now).map((day) => ({
+    day,
+    uses: buckets.get(day)?.uses ?? 0,
+    discountCents: buckets.get(day)?.discountCents ?? 0,
+  }));
 }
 
 /** Columns a wizard step / content patch may write. */
@@ -233,19 +254,7 @@ export class PromoRepository {
       .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
       .where(scope);
 
-    const buckets = new Map<string, { uses: number; discountCents: number }>();
-    for (const r of rows) {
-      const day = promoDayKey(r.appliedAt);
-      const b = buckets.get(day) ?? { uses: 0, discountCents: 0 };
-      b.uses += 1;
-      b.discountCents += Number(r.discountCents);
-      buckets.set(day, b);
-    }
-    const series: PromoStatPoint[] = promoDenseDays(since, now).map((day) => ({
-      day,
-      uses: buckets.get(day)?.uses ?? 0,
-      discountCents: buckets.get(day)?.discountCents ?? 0,
-    }));
+    const series = buildSeries(rows, since, now);
 
     const all: PromoAnalyticsRow[] = perPromo.map((r) => ({
       id: r.promoId,
@@ -266,6 +275,59 @@ export class PromoRepository {
       },
       series,
       top,
+    };
+  }
+
+  /** Per-promo activity for the detail screen (totals + daily series). */
+  async promoStats(
+    orgId: string,
+    promoId: string,
+    since: Date,
+    now = new Date(),
+  ): Promise<PromoStats> {
+    const scope = and(
+      eq(promoRedemption.promoId, promoId),
+      eq(promo.organizationId, orgId),
+      gte(promoRedemption.appliedAt, since),
+    );
+
+    const [tot] = await this.db
+      .select({
+        uses: sql<number>`count(*)`,
+        discount: sql<number>`coalesce(sum(${promoRedemption.discountCents}), 0)`,
+        customers: sql<number>`count(distinct ${promoRedemption.customerId})`,
+        lastUsed: sql<number | null>`max(${promoRedemption.appliedAt})`,
+      })
+      .from(promoRedemption)
+      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+      .where(scope);
+
+    const [rev] = await this.db
+      .select({ revenue: sql<number>`coalesce(sum(${purchase.priceCents}), 0)` })
+      .from(promoRedemption)
+      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+      .innerJoin(purchase, eq(purchase.id, promoRedemption.purchaseId))
+      .where(scope);
+
+    const rows = await this.db
+      .select({
+        appliedAt: promoRedemption.appliedAt,
+        discountCents: promoRedemption.discountCents,
+      })
+      .from(promoRedemption)
+      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+      .where(scope);
+
+    const lastUsed = tot?.lastUsed;
+    return {
+      totals: {
+        uses: Number(tot?.uses ?? 0),
+        discountCents: Number(tot?.discount ?? 0),
+        revenueCents: Number(rev?.revenue ?? 0),
+        customers: Number(tot?.customers ?? 0),
+      },
+      series: buildSeries(rows, since, now),
+      lastUsedAt: lastUsed != null ? new Date(Number(lastUsed) * 1000).toISOString() : null,
     };
   }
 
