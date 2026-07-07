@@ -49,11 +49,11 @@ export function ExpandableCard({
       {render(false)}
 
       <ResponsiveModal open={open} onOpenChange={setOpen}>
-        <ResponsiveModalContent className="max-w-4xl">
+        <ResponsiveModalContent className="sm:w-[92vw] sm:max-w-6xl">
           <ResponsiveModalHeader>
             <ResponsiveModalTitle>{title}</ResponsiveModalTitle>
           </ResponsiveModalHeader>
-          <div className="px-4 pb-6 pt-2">{render(true)}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-2 sm:px-6">{render(true)}</div>
         </ResponsiveModalContent>
       </ResponsiveModal>
     </div>

@@ -61,7 +61,7 @@ export function PromotionsAnalyticsPanel() {
       <ExpandableCard title={t("trendTitle")} subtitle={t("trendSubtitle")}
         render={(expanded) =>
           data.series.some((p) => p.uses > 0) ? (
-            <PromoStatsChart series={data.series} label={t("statUses")} height={expanded ? 420 : 224} />
+            <PromoStatsChart series={data.series} label={t("statUses")} height={expanded ? 540 : 224} />
           ) : (
             <p className="text-muted-foreground text-sm">{t("empty")}</p>
           )
@@ -74,7 +74,7 @@ export function PromotionsAnalyticsPanel() {
             data.totals.uses > 0 ? (
               <PromoWeekdayChart
                 label={t("statUses")}
-                height={expanded ? 380 : 200}
+                height={expanded ? 480 : 200}
                 data={WEEKDAY_ORDER.map((i) => ({
                   label: td(WEEKDAY_KEY[i]),
                   uses: data.byWeekday.find((w) => w.weekday === i)?.uses ?? 0,
@@ -92,7 +92,7 @@ export function PromotionsAnalyticsPanel() {
               <PromoMoneyChart
                 series={data.series}
                 labels={{ revenue: t("statRevenue"), discount: t("statDiscount") }}
-                height={expanded ? 420 : 224}
+                height={expanded ? 540 : 224}
               />
             ) : (
               <p className="text-muted-foreground text-sm">{t("empty")}</p>
