@@ -84,7 +84,7 @@ function buildSeries(rows: RawRedemption[], since: Date, now: Date): PromoStatPo
 
 /** Uses per org-local weekday (dense 0..6). */
 function buildWeekday(rows: RawRedemption[]): PromoWeekdayPoint[] {
-  const uses = new Array<number>(7).fill(0);
+  const uses = Array.from<number>({ length: 7 }).fill(0);
   for (const r of rows) {
     // Weekday of the org-local calendar date (noon UTC of that date avoids edges).
     const weekday = new Date(`${promoDayKey(r.appliedAt)}T12:00:00Z`).getUTCDay();
