@@ -17,7 +17,7 @@ import {
 } from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "ahooks";
-import { ChevronDown, CupSoda, Plus, Tag, X } from "lucide-react";
+import { CupSoda, Plus, Tag, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
 
@@ -172,7 +172,7 @@ export function RefsField({
                 <SelectTrigger className="h-10 w-44 text-sm">
                   <SelectValue>{() => t("pickOption")}</SelectValue>
                 </SelectTrigger>
-                <SelectContent align="start" sideOffset={6} alignItemWithTrigger={false}>
+                <SelectContent align="start" sideOffset={6} alignItemWithTrigger={false} className="w-auto min-w-44">
                   {(toppingOptions.data?.modifierOptions ?? []).map((o) => (
                     <SelectItem key={o.id} value={o.id}>
                       {o.label}
@@ -310,7 +310,7 @@ function ProductRefChip({
               onSwap({ kind: "variant", id: v }, `${productName} · ${variant.label}`);
           }}
         >
-          <SelectTrigger className="text-primary h-6 gap-0.5 rounded-full border-none bg-transparent px-1.5 text-xs font-bold shadow-none">
+          <SelectTrigger className="text-primary h-6 gap-0.5 rounded-full border-none bg-transparent px-1.5 text-xs font-bold shadow-none [&_svg]:size-3.5 [&_svg]:text-primary">
             <SelectValue>
               {() =>
                 itemRef.kind === "variant"
@@ -318,9 +318,8 @@ function ProductRefChip({
                   : t("anySize")
               }
             </SelectValue>
-            <ChevronDown className="size-3" />
           </SelectTrigger>
-          <SelectContent align="start" sideOffset={6} alignItemWithTrigger={false} className="min-w-48">
+          <SelectContent align="start" sideOffset={6} alignItemWithTrigger={false} className="w-auto min-w-44">
             <SelectItem value="__any__">{t("anySize")}</SelectItem>
             {variants.map((v) => (
               <SelectItem key={v.id} value={v.id}>
