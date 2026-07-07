@@ -443,7 +443,7 @@ export class PurchasesRepository {
         name: promo.name,
         slug: promo.slug,
         type: promo.type,
-        benefit: promo.benefit,
+        rule: promo.rule,
       })
       .from(promo)
       .where(eq(promo.id, promoId))
@@ -458,10 +458,16 @@ export class PurchasesRepository {
         freeItemLabel: null,
       };
     }
+    // A fully-free get-side (crossSell at 100%) reads as "free item" in history.
     let freeItemLabel: string | null = null;
-    if (pr.type === "freeItem" && pr.benefit && "freeRef" in pr.benefit) {
-      freeItemLabel = await this.freeRefLabel(pr.benefit.freeRef);
-    }
+    const rule = pr.rule;
+    const freeRef =
+      rule?.effect.kind === "percentOff" &&
+      rule.effect.target === "get" &&
+      rule.effect.percent === 100
+        ? (rule.get?.requirements[0]?.refs[0] ?? null)
+        : null;
+    if (freeRef) freeItemLabel = await this.freeRefLabel(freeRef);
     return {
       promoId: pr.id,
       name: pr.name ?? null,
@@ -472,7 +478,7 @@ export class PurchasesRepository {
   }
 
   private async freeRefLabel(freeRef: {
-    kind: "product" | "variant" | "modifier";
+    kind: "product" | "variant" | "category" | "modifierOption";
     id: string;
   }): Promise<string | null> {
     if (freeRef.kind === "product") {
@@ -483,7 +489,7 @@ export class PurchasesRepository {
         .limit(1);
       return rows[0]?.name ?? null;
     }
-    if (freeRef.kind === "modifier") {
+    if (freeRef.kind === "modifierOption") {
       const rows = await this.db
         .select({ name: modifierOption.name })
         .from(modifierOption)
@@ -491,6 +497,7 @@ export class PurchasesRepository {
         .limit(1);
       return rows[0]?.name ?? null;
     }
+    if (freeRef.kind === "category") return null;
     // variant → its option-value labels.
     const labels = await this.variantLabels([freeRef.id]);
     return labels.get(freeRef.id) ?? null;

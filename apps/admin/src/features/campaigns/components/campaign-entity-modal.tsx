@@ -37,7 +37,7 @@ export function CampaignEntityModal({
   const debounced = useDebounce(query, { wait: 250 });
 
   const promos = useQuery({
-    ...trpc.promociones.list.queryOptions({ page: 1, pageSize: 20, search: debounced || undefined }),
+    ...trpc.promociones.adminList.queryOptions({ page: 1, perPage: 20, sort: [], q: debounced || undefined }),
     enabled: scope === "promo",
   });
   const products = useQuery({

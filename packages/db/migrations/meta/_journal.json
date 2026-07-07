@@ -218,6 +218,27 @@
       "when": 1783033307755,
       "tag": "0030_concerned_kingpin",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1783383071679,
+      "tag": "0031_equal_madelyne_pryor",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1783383131679,
+      "tag": "0032_promos_v2_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1783383213958,
+      "tag": "0033_redundant_sally_floyd",
+      "breakpoints": true
     }
   ]
 }

@@ -1,8 +1,8 @@
 /**
  * Seeds demo promotions for the primary org (idempotent — clears the org's
- * promos first). Covers every benefit type (nForM / percentage / freeItem /
- * pointsMultiplier / fixed), a couple of conditions (days, first-purchase,
- * min-purchase, max-per-customer), product/category/order scopes, and one EN
+ * promos first). Covers several curated types (nxm / percentOff / crossSell /
+ * pointsMultiplier / cartThreshold / secondUnit), schedules (weekdays,
+ * weekends), conditions (first-purchase, max-per-customer) and one EN
  * translation — so the customer home rail + /promos hub + the cashier apply
  * flow all have real data to exercise.
  *
@@ -14,7 +14,7 @@
 import { eq, inArray } from "drizzle-orm";
 
 import { db, getPrimaryOrganizationId } from "./index";
-import type { PromoBenefit, PromoConditions, PromoScope } from "./schema";
+import type { PromoConditions, PromoRule, PromoSchedule } from "./schema";
 import { category, member, product, promo, promoTranslation } from "./schema";
 
 const COP = (pesos: number) => pesos * 100; // cents convention (matches seed-menu)
@@ -68,11 +68,9 @@ type Seed = {
   category?: string;
   featured?: boolean;
   type: string;
-  benefit: PromoBenefit;
-  scopeKind: "order" | "products" | "categories";
-  scope: PromoScope;
+  rule: PromoRule;
+  schedule?: PromoSchedule;
   conditions?: PromoConditions;
-  stackable?: boolean;
   en?: { name: string; short: string; long: string; badge: string };
 };
 
@@ -86,11 +84,22 @@ const seeds: Seed[] = [
     bg: "linear-gradient(135deg, #1BAD9D, #0e6f64)",
     category: "destacada",
     featured: true,
-    type: "nForM",
-    benefit: { buyQty: 2, payQty: 1 },
-    scopeKind: "products",
-    scope: { productIds: [pid("classic-milk-tea"), pid("taro-milk-tea")] },
-    conditions: { daysOfWeek: [1, 2, 3, 4, 5] },
+    type: "nxm",
+    rule: {
+      buy: {
+        requirements: [
+          {
+            refs: [
+              { kind: "product", id: pid("classic-milk-tea") },
+              { kind: "product", id: pid("taro-milk-tea") },
+            ],
+            qty: 2,
+          },
+        ],
+      },
+      effect: { kind: "freeUnits", count: 1, target: "buy" },
+    },
+    schedule: { recurrence: { kind: "weekly", days: [1, 2, 3, 4, 5] } },
     en: {
       name: "Weekday 2-for-1",
       short: "Buy two milk teas, pay for one — Monday to Friday.",
@@ -107,24 +116,35 @@ const seeds: Seed[] = [
     bg: "linear-gradient(135deg, #f0a868, #e0467c)",
     category: "novedades",
     featured: true,
-    type: "percentage",
-    benefit: { percent: 20, maxDiscountCents: COP(8000) },
-    scopeKind: "categories",
-    scope: { categoryIds: [cid("frutales")] },
+    type: "percentOff",
+    rule: {
+      buy: { requirements: [{ refs: [{ kind: "category", id: cid("frutales") }], qty: 1 }] },
+      effect: {
+        kind: "percentOff",
+        percent: 20,
+        target: "buy",
+        maxDiscountCents: COP(8000),
+      },
+    },
   },
   {
-    slug: "topping-gratis-bienvenida",
-    name: "Topping gratis de bienvenida",
+    slug: "milk-tea-bienvenida",
+    name: "Milk tea de bienvenida",
     short: "Tu primera compra lleva un Classic Milk Tea de regalo.",
     long: "<p>¡Bienvenido a T4 Lovers! En tu <strong>primera compra</strong> te regalamos un Classic Milk Tea.</p>",
     badge: "Gratis",
     bg: "radial-gradient(at 20% 25%, #7c5cff 0, transparent 50%), #1f2937",
     category: "novedades",
-    type: "freeItem",
-    benefit: { freeRef: { kind: "product", id: pid("classic-milk-tea") } },
-    scopeKind: "products",
-    scope: { productIds: [pid("classic-milk-tea")] },
-    conditions: { firstPurchaseOnly: true, maxPerCustomer: 1 },
+    type: "crossSell",
+    rule: {
+      buy: { requirements: [] },
+      get: {
+        requirements: [{ refs: [{ kind: "product", id: pid("classic-milk-tea") }], qty: 1 }],
+      },
+      effect: { kind: "percentOff", percent: 100, target: "get" },
+      maxApplicationsPerOrder: 1,
+    },
+    conditions: { purchaseCount: { max: 0 }, maxPerCustomer: 1 },
   },
   {
     slug: "doble-puntos-finde",
@@ -135,11 +155,11 @@ const seeds: Seed[] = [
     bg: "linear-gradient(135deg, #3b73d6, #1f3a8a)",
     category: "destacada",
     type: "pointsMultiplier",
-    benefit: { multiplier: 2 },
-    scopeKind: "order",
-    scope: {},
-    conditions: { daysOfWeek: [0, 6] },
-    stackable: true,
+    rule: {
+      buy: { requirements: [] },
+      effect: { kind: "pointsMultiplier", multiplier: 2 },
+    },
+    schedule: { recurrence: { kind: "weekly", days: [0, 6] } },
   },
   {
     slug: "5000-de-descuento",
@@ -148,11 +168,37 @@ const seeds: Seed[] = [
     long: "<p>Lleva <strong>$5.000 de descuento</strong> en compras iguales o mayores a $30.000.</p>",
     badge: "-$5K",
     bg: "linear-gradient(135deg, #0e6f64, #1BAD9D)",
-    type: "fixed",
-    benefit: { amountCents: COP(5000) },
-    scopeKind: "order",
-    scope: {},
-    conditions: { minPurchaseCents: COP(30000) },
+    type: "cartThreshold",
+    rule: {
+      buy: { requirements: [], minSubtotalCents: COP(30000) },
+      effect: { kind: "amountOff", amountCents: COP(5000), target: "order" },
+      maxApplicationsPerOrder: 1,
+    },
+  },
+  {
+    slug: "segundo-al-50",
+    name: "Segundo té al 50%",
+    short: "Compra un té frutal y el segundo va a mitad de precio.",
+    long: "<p>Lleva dos tés frutales y el segundo (el de menor valor) va con <strong>50% de descuento</strong>.</p>",
+    badge: "2º -50%",
+    bg: "linear-gradient(135deg, #e0467c, #7c2249)",
+    category: "destacada",
+    type: "secondUnit",
+    rule: {
+      buy: { requirements: [{ refs: [{ kind: "category", id: cid("frutales") }], qty: 2 }] },
+      effect: {
+        kind: "percentOff",
+        percent: 50,
+        target: "buy",
+        select: { count: 1, pick: "cheapest" },
+      },
+    },
+    en: {
+      name: "Second tea 50% off",
+      short: "Buy one fruit tea, get the second at half price.",
+      long: "<p>Take two fruit teas and the second (cheapest) one is <strong>50% off</strong>.</p>",
+      badge: "2nd -50%",
+    },
   },
 ];
 
@@ -169,12 +215,10 @@ for (const [i, s] of seeds.entries()) {
       slug: s.slug,
       name: s.name,
       type: s.type,
-      benefit: s.benefit,
-      scopeKind: s.scopeKind,
-      scope: s.scope,
+      rule: s.rule,
+      schedule: s.schedule ?? null,
       conditions: s.conditions ?? null,
       audienceType: "all",
-      stackable: s.stackable ?? false,
       shortDescription: s.short,
       longDescription: s.long,
       badgeLabel: s.badge,

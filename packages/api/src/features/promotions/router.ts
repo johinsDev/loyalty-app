@@ -1,18 +1,20 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 
 import { loadLocaleContext } from "../_shared/localize";
 import { managerProcedure, publicProcedure, router, staffProcedure } from "../../trpc";
 import { PromoRepository } from "./repository";
 import {
+  adminListInputSchema,
   applicableInputSchema,
   idInputSchema,
-  listInputSchema,
+  patchContentSchema,
   publicListInputSchema,
   slugInputSchema,
-  updateInputSchema,
 } from "./schemas";
 import { PromoService } from "./service";
+import { PROMO_TEMPLATES } from "./templates";
 
 function makeService(db: typeof Db): PromoService {
   return new PromoService(db, new PromoRepository(db));
@@ -25,9 +27,10 @@ async function requireOrg(): Promise<string> {
 }
 
 /**
- * Promotions. Public localized reads (home rail + /promos hub + detail), a
- * manager CRUD authoring flow (create draft → patch → publish), and the staff
- * `applicable` evaluation used at checkout (eligibility + computed discount).
+ * Promotions. Public localized reads (home rail + /promos hub + detail), the
+ * manager server-driven wizard (create → getState/advance → publish → archive),
+ * the data-table adminList, and the staff `applicable` evaluation used at
+ * checkout (eligibility + computed discount + upsell hints).
  */
 export const promocionesRouter = router({
   // ── Public (cacheable, localized) ──────────────────────────────────────────
@@ -47,22 +50,56 @@ export const promocionesRouter = router({
     return makeService(ctx.db).promoBySlug(id, input.slug, lc);
   }),
 
-  // ── Admin (managers + owners) ──────────────────────────────────────────────
-  create: managerProcedure.mutation(async ({ ctx }) =>
-    makeService(ctx.db).create(await requireOrg(), ctx.session.user.id),
-  ),
-  get: managerProcedure
+  // ── Admin wizard (managers + owners) ───────────────────────────────────────
+  templates: managerProcedure.query(async ({ ctx }) => {
+    const id = await requireOrg();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    const en = lc.locale === "en";
+    return PROMO_TEMPLATES.map((t) => ({
+      key: t.key,
+      type: t.type,
+      name: en ? t.name.en : t.name.es,
+      badgeLabel: t.badgeLabel,
+      backgroundCss: t.backgroundCss,
+      shortDescription: en ? t.shortDescription.en : t.shortDescription.es,
+    }));
+  }),
+  create: managerProcedure
+    .input(z.object({ templateKey: z.string().optional() }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const id = await requireOrg();
+      const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+      return makeService(ctx.db).create(id, ctx.session.user.id, input?.templateKey, lc);
+    }),
+  getState: managerProcedure
     .input(idInputSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).get(await requireOrg(), input.id)),
-  update: managerProcedure
-    .input(updateInputSchema)
-    .mutation(async ({ ctx, input }) => makeService(ctx.db).update(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => makeService(ctx.db).getState(await requireOrg(), input.id)),
+  advance: managerProcedure
+    .input(z.object({ id: z.string().uuid(), step: z.string(), input: z.unknown() }))
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).advance(
+        await requireOrg(),
+        ctx.session.user.id,
+        input.id,
+        input.step,
+        input.input,
+      ),
+    ),
   publish: managerProcedure
     .input(idInputSchema)
     .mutation(async ({ ctx, input }) => makeService(ctx.db).publish(await requireOrg(), input.id)),
-  list: managerProcedure
-    .input(listInputSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).list(await requireOrg(), input)),
+  archive: managerProcedure
+    .input(idInputSchema)
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).archive(await requireOrg(), input.id)),
+  patchContent: managerProcedure
+    .input(patchContentSchema)
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).patchContent(await requireOrg(), input)),
+  get: managerProcedure
+    .input(idInputSchema)
+    .query(async ({ ctx, input }) => makeService(ctx.db).get(await requireOrg(), input.id)),
+  adminList: managerProcedure
+    .input(adminListInputSchema)
+    .query(async ({ ctx, input }) => makeService(ctx.db).adminList(await requireOrg(), input)),
   remove: managerProcedure
     .input(idInputSchema)
     .mutation(async ({ ctx, input }) => makeService(ctx.db).remove(await requireOrg(), input.id)),

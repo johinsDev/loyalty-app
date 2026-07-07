@@ -46,7 +46,7 @@ export function CtaEntityPicker({
     enabled: kind === "product",
   });
   const promos = useQuery({
-    ...trpc.promociones.list.queryOptions({ search: debounced || undefined, pageSize: 20 }),
+    ...trpc.promociones.adminList.queryOptions({ q: debounced || undefined, page: 1, perPage: 20, sort: [] }),
     enabled: kind === "promo",
   });
 

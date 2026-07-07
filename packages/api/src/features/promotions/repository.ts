@@ -1,7 +1,10 @@
 import type { db as Db } from "@loyalty/db";
 import {
+  category,
   customer,
+  modifierOption,
   pointsAccount,
+  product,
   productCategory,
   promo,
   promoRedemption,
@@ -12,23 +15,28 @@ import {
   type PromoTranslationRow,
 } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gte, inArray, isNull, like, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, gt, gte, inArray, isNull, like, lt, lte, or, sql, type SQL } from "drizzle-orm";
 
+import { buildOrderBy, pageCountOf, pageOffset, type ListResult } from "../_shared/list";
 import type { LocaleContext } from "../_shared/localize";
 import { slugify, slugSuffix } from "../_shared/slugify";
-import type { ListInput, PromoCard, PromoDetail, PublicListInput } from "./schemas";
+import { benefitSummary, type SummaryLocale } from "./format";
+import type { ItemRef } from "./schemas";
+import type { AdminListInput, PromoCard, PromoDetail, PublicListInput } from "./schemas";
 
-/** Columns an admin edit may write. */
+/** Columns a wizard step / content patch may write. */
 export type PromoPatch = Partial<
   Pick<
     PromoInsert,
     | "name" | "slug" | "shortDescription" | "longDescription" | "badgeLabel" | "icon"
-    | "backgroundCss" | "mainImageUrl" | "type" | "benefit" | "scopeKind" | "scope"
-    | "conditions" | "audienceType" | "tierKey" | "audienceCustomerIds" | "stackable"
-    | "category" | "featured" | "startsAt" | "endsAt" | "seoTitle" | "seoDescription"
-    | "ogImageUrl"
+    | "backgroundCss" | "mainImageUrl" | "type" | "rule" | "schedule" | "conditions"
+    | "audienceType" | "tierKey" | "audienceCustomerIds" | "category" | "featured"
+    | "sortOrder" | "startsAt" | "endsAt" | "seoTitle" | "seoDescription" | "ogImageUrl"
   >
 >;
+
+const summaryLocale = (ctx: LocaleContext): SummaryLocale =>
+  ctx.locale === "en" ? "en" : "es";
 
 function localizedText(
   row: PromoRow,
@@ -51,13 +59,19 @@ function localizedText(
   };
 }
 
-function toCard(row: PromoRow, tr: PromoTranslationRow | undefined, ctx: LocaleContext): PromoCard {
+function toCard(
+  row: PromoRow,
+  tr: PromoTranslationRow | undefined,
+  ctx: LocaleContext,
+  names?: ReadonlyMap<string, string>,
+): PromoCard {
   const loc = localizedText(row, tr, ctx);
   return {
     id: row.id,
     slug: row.slug ?? "",
     name: loc.name,
     shortDescription: loc.shortDescription,
+    benefitSummary: benefitSummary(row.type, row.rule, summaryLocale(ctx), names),
     badgeLabel: loc.badgeLabel,
     icon: row.icon,
     backgroundCss: row.backgroundCss,
@@ -67,17 +81,14 @@ function toCard(row: PromoRow, tr: PromoTranslationRow | undefined, ctx: LocaleC
   };
 }
 
-export interface AdminListResult {
-  rows: PromoRow[];
-  total: number;
-}
+export type AdminPromoRow = PromoRow & { uses: number };
 
 /** Drizzle access for `promo`. Only layer that touches the db; org-scoped. */
 export class PromoRepository {
   constructor(private readonly db: typeof Db) {}
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────
-  async createDraft(orgId: string, userId: string): Promise<PromoRow> {
+  async createDraft(orgId: string, userId: string, preseed: PromoPatch = {}): Promise<PromoRow> {
     const rows = await this.db
       .insert(promo)
       .values({
@@ -85,6 +96,7 @@ export class PromoRepository {
         createdByUserId: userId,
         status: "draft",
         slug: `borrador-${slugSuffix()}`,
+        ...preseed,
       })
       .returning();
     return this.#first(rows, "insert");
@@ -118,28 +130,80 @@ export class PromoRepository {
     return this.#first(rows, "publish");
   }
 
+  async markArchived(orgId: string, id: string): Promise<PromoRow> {
+    const rows = await this.db
+      .update(promo)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(and(eq(promo.id, id), eq(promo.organizationId, orgId)))
+      .returning();
+    return this.#first(rows, "archive");
+  }
+
   async remove(orgId: string, id: string): Promise<void> {
     await this.db.delete(promo).where(and(eq(promo.id, id), eq(promo.organizationId, orgId)));
   }
 
-  async list(orgId: string, input: ListInput): Promise<AdminListResult> {
-    const offset = (input.page - 1) * input.pageSize;
-    const conds = [eq(promo.organizationId, orgId)];
-    if (input.status) conds.push(eq(promo.status, input.status));
-    if (input.search) conds.push(like(promo.name, `%${input.search}%`));
-    const where = and(...conds);
-    const rows = (await this.db
-      .select()
+  async redemptionCount(promoId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ value: sql<number>`count(*)` })
+      .from(promoRedemption)
+      .where(eq(promoRedemption.promoId, promoId));
+    return Number(row?.value ?? 0);
+  }
+
+  async adminList(orgId: string, input: AdminListInput, now = new Date()): Promise<ListResult<AdminPromoRow>> {
+    const usesExpr = sql<number>`(select count(*) from ${promoRedemption} where ${promoRedemption.promoId} = ${promo.id})`;
+
+    const conds: (SQL | undefined)[] = [eq(promo.organizationId, orgId)];
+    if (input.q) conds.push(like(promo.name, `%${input.q}%`));
+    if (input.status?.length) conds.push(inArray(promo.status, input.status));
+    if (input.type?.length) conds.push(inArray(promo.type, input.type));
+    if (input.audience?.length) conds.push(inArray(promo.audienceType, input.audience));
+    if (input.startsFrom) conds.push(gte(promo.startsAt, input.startsFrom));
+    if (input.startsTo) conds.push(lte(promo.startsAt, input.startsTo));
+    if (input.vigency?.length) {
+      const published = eq(promo.status, "published");
+      const byKey: Record<string, SQL | undefined> = {
+        active: and(
+          published,
+          or(isNull(promo.startsAt), lte(promo.startsAt, now)),
+          or(isNull(promo.endsAt), gte(promo.endsAt, now)),
+        ),
+        scheduled: and(published, gt(promo.startsAt, now)),
+        expired: and(published, lt(promo.endsAt, now)),
+      };
+      conds.push(or(...input.vigency.map((v) => byKey[v]).filter((c): c is SQL => Boolean(c))));
+    }
+    const where = and(...conds.filter((c): c is SQL => Boolean(c)));
+
+    const orderBy = buildOrderBy(
+      input.sort,
+      {
+        name: promo.name,
+        createdAt: promo.createdAt,
+        startsAt: promo.startsAt,
+        uses: usesExpr,
+      },
+      [asc(promo.sortOrder), desc(promo.updatedAt)],
+    );
+
+    const rows = await this.db
+      .select({ ...getTableColumns(promo), uses: usesExpr })
       .from(promo)
       .where(where)
-      .orderBy(asc(promo.sortOrder), desc(promo.updatedAt))
-      .limit(input.pageSize)
-      .offset(offset)) as PromoRow[];
+      .orderBy(...orderBy)
+      .limit(input.perPage)
+      .offset(pageOffset(input.page, input.perPage));
     const totalRows = await this.db
       .select({ value: sql<number>`count(*)` })
       .from(promo)
       .where(where);
-    return { rows, total: totalRows[0]?.value ?? 0 };
+    const total = Number(totalRows[0]?.value ?? 0);
+    return {
+      rows: rows.map((r) => ({ ...r, uses: Number(r.uses) })),
+      total,
+      pageCount: pageCountOf(total, input.perPage),
+    };
   }
 
   async slugExists(orgId: string, slug: string, excludeId?: string): Promise<boolean> {
@@ -211,12 +275,12 @@ export class PromoRepository {
     const row = rows[0];
     if (!row) return null;
     const tr = (await this.#translationsFor([row.id], ctx)).get(row.id);
-    const card = toCard(row, tr, ctx);
+    const names = await this.refNames(collectRefs(row));
+    const card = toCard(row, tr, ctx, names);
     return {
       ...card,
       longDescription: localizedText(row, tr, ctx).longDescription,
       type: row.type,
-      stackable: row.stackable,
       seo: { title: row.seoTitle, description: row.seoDescription, ogImageUrl: row.ogImageUrl },
     };
   }
@@ -234,7 +298,7 @@ export class PromoRepository {
   async customerFacts(
     orgId: string,
     customerId: string,
-  ): Promise<{ tierKey: string | null; purchaseCount: number }> {
+  ): Promise<{ tierKey: string | null; purchaseCount: number; lastPurchaseAt: Date | null }> {
     const [acc] = await this.db
       .select({ tierKey: pointsAccount.currentTierKey })
       .from(pointsAccount)
@@ -243,10 +307,18 @@ export class PromoRepository {
       )
       .limit(1);
     const [cnt] = await this.db
-      .select({ value: sql<number>`count(*)` })
+      .select({
+        value: sql<number>`count(*)`,
+        last: sql<number | null>`max(${purchase.createdAt})`,
+      })
       .from(purchase)
       .where(and(eq(purchase.organizationId, orgId), eq(purchase.customerId, customerId)));
-    return { tierKey: acc?.tierKey ?? null, purchaseCount: cnt?.value ?? 0 };
+    const last = cnt?.last;
+    return {
+      tierKey: acc?.tierKey ?? null,
+      purchaseCount: Number(cnt?.value ?? 0),
+      lastPurchaseAt: last != null ? new Date(Number(last) * 1000) : null,
+    };
   }
 
   async redemptionCounts(
@@ -288,6 +360,41 @@ export class PromoRepository {
       const arr = map.get(r.productId) ?? [];
       arr.push(r.categoryId);
       map.set(r.productId, arr);
+    }
+    return map;
+  }
+
+  /** price delta per modifier option (so the engine can discount modifiers). */
+  async modifierOptionDeltas(ids: string[]): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (ids.length === 0) return map;
+    const rows = await this.db
+      .select({ id: modifierOption.id, delta: modifierOption.priceDeltaCents })
+      .from(modifierOption)
+      .where(inArray(modifierOption.id, ids));
+    for (const r of rows) map.set(r.id, r.delta);
+    return map;
+  }
+
+  /** Display names for rule refs (products + categories; other kinds keep the
+   *  formatter's generic phrasing). */
+  async refNames(refs: ItemRef[]): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    const productIds = refs.filter((r) => r.kind === "product").map((r) => r.id);
+    const categoryIds = refs.filter((r) => r.kind === "category").map((r) => r.id);
+    if (productIds.length > 0) {
+      const rows = await this.db
+        .select({ id: product.id, name: product.name })
+        .from(product)
+        .where(inArray(product.id, productIds));
+      for (const r of rows) map.set(r.id, r.name);
+    }
+    if (categoryIds.length > 0) {
+      const rows = await this.db
+        .select({ id: category.id, name: category.name })
+        .from(category)
+        .where(inArray(category.id, categoryIds));
+      for (const r of rows) map.set(r.id, r.name);
     }
     return map;
   }
@@ -337,4 +444,12 @@ export class PromoRepository {
     }
     return row;
   }
+}
+
+/** Every catalog ref a promo's rule mentions (for name resolution). */
+export function collectRefs(row: PromoRow): ItemRef[] {
+  const rule = row.rule;
+  if (!rule) return [];
+  const reqs = [...rule.buy.requirements, ...(rule.get?.requirements ?? [])];
+  return reqs.flatMap((r) => r.refs);
 }
