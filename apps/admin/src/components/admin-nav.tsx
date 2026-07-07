@@ -15,7 +15,6 @@ import {
 } from "@loyalty/ui";
 import {
   BarChart3,
-  Bell,
   BookOpen,
   ChevronRight,
   FlaskConical,
@@ -79,16 +78,7 @@ const GROUPS: Group[] = [
     label: "groupMarketing",
     min: "manager",
     items: [
-      {
-        href: "/campaigns",
-        key: "campaigns",
-        icon: Send,
-        sub: [
-          { href: "/campaigns", key: "campaignsList" },
-          { href: "/campaigns/templates", key: "templates" },
-        ],
-      },
-      { href: "/notifications", key: "notifications", icon: Bell },
+      { href: "/campaigns", key: "campaigns", icon: Send },
       { href: "/banners", key: "banners", icon: ImageIcon },
     ],
   },
@@ -102,6 +92,7 @@ const GROUPS: Group[] = [
         icon: BarChart3,
         sub: [
           { href: "/analytics", key: "overview" },
+          { href: "/analytics/promotions", key: "promotions" },
           { href: "/analytics/cohorts", key: "cohorts" },
           { href: "/analytics/funnel", key: "funnel" },
         ],

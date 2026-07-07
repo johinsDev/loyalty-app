@@ -413,7 +413,7 @@ export class ProductsRepository {
   async categories(
     orgId: string,
     ctx: LocaleContext,
-  ): Promise<{ slug: string; name: string }[]> {
+  ): Promise<{ id: string; slug: string; name: string }[]> {
     const rows = await this.db
       .select({ id: category.id, slug: category.slug, name: category.name })
       .from(category)
@@ -421,7 +421,7 @@ export class ProductsRepository {
       .orderBy(asc(category.sortOrder), asc(category.name));
 
     if (ctx.locale === ctx.defaultLocale || rows.length === 0) {
-      return rows.map((r) => ({ slug: r.slug, name: r.name }));
+      return rows.map((r) => ({ id: r.id, slug: r.slug, name: r.name }));
     }
     const trs = await this.db
       .select()
@@ -433,7 +433,7 @@ export class ProductsRepository {
         ),
       );
     const nameById = new Map(trs.map((t) => [t.categoryId, t.name]));
-    return rows.map((r) => ({ slug: r.slug, name: nameById.get(r.id) ?? r.name }));
+    return rows.map((r) => ({ id: r.id, slug: r.slug, name: nameById.get(r.id) ?? r.name }));
   }
 
   async favoriteProductIds(orgId: string, customerId: string): Promise<string[]> {

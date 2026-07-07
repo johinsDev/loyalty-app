@@ -77,6 +77,20 @@ describe("PointsService.earnForPurchase", () => {
     expect(repo.earn).not.toHaveBeenCalled();
     expect(realtime.publish).not.toHaveBeenCalled();
   });
+
+  it("applies a promo points multiplier to the earn", async () => {
+    const { service } = build(repo);
+    const doubled = await service.earnForPurchase(ORG, CUSTOMER, 100_000, "p1", STORE, {
+      multiplier: 2,
+    });
+    expect(doubled.earned).toBe(80); // 40 base × 2
+    const half = await service.earnForPurchase(ORG, CUSTOMER, 100_000, "p2", STORE, {
+      multiplier: 1.5,
+    });
+    expect(half.earned).toBe(60); // rounded
+    const noop = await service.earnForPurchase(ORG, CUSTOMER, 100_000, "p3", STORE, {});
+    expect(noop.earned).toBe(40);
+  });
 });
 
 describe("PointsService.recompute", () => {

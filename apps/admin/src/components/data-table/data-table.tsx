@@ -25,12 +25,15 @@ export function DataTable<T>({
   isFetching = false,
   emptyState,
   renderGrid,
+  onRowClick,
 }: {
   table: TanstackTable<T>;
   view?: ViewMode;
   isFetching?: boolean;
   emptyState: ReactNode;
   renderGrid?: (rows: T[]) => ReactNode;
+  /** Whole-row navigation; interactive cells must stopPropagation. */
+  onRowClick?: (row: T) => void;
 }) {
   const rows = table.getRowModel().rows;
   const colCount = table.getVisibleLeafColumns().length;
@@ -85,7 +88,12 @@ export function DataTable<T>({
             </TableRow>
           ) : (
             rows.map((row) => (
-              <TableRow key={row.id} data-state={row.getIsSelected() ? "selected" : undefined}>
+              <TableRow
+                key={row.id}
+                data-state={row.getIsSelected() ? "selected" : undefined}
+                className={onRowClick ? "cursor-pointer" : undefined}
+                onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+              >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

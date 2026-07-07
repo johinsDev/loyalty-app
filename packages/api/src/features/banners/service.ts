@@ -1,7 +1,6 @@
 import { CacheManager } from "@loyalty/cache";
 import type { db as Db } from "@loyalty/db";
 import type { BannerRow } from "@loyalty/db/schema";
-import { runs, tasks } from "@trigger.dev/sdk/v3";
 import { TRPCError } from "@trpc/server";
 
 import { SUPPORTED_LOCALES, type LocaleContext } from "../_shared/localize";
@@ -13,16 +12,12 @@ import {
 } from "./repository";
 import type { ListResult } from "../_shared/list";
 import type {
-  AudienceReach,
   BannerAnalytics,
   BannerCard,
   BannerDetail,
   BannerListItem,
-  BannerNotificationView,
   BannersListInput,
   BannerStats,
-  CountByAudienceInput,
-  CreateNotificationInput,
   ListInput,
   BannerStepKey,
 } from "./schemas";
@@ -44,19 +39,6 @@ const cache = new CacheManager({
   default: "memory",
   stores: { memory: { provider: "memory" } },
 });
-
-// Untyped trigger payload — typing it would make @loyalty/api depend on
-// @loyalty/jobs (which already depends on api → cycle). Stays in sync with
-// packages/jobs/trigger/send-banner-notification.ts.
-type SendBannerNotificationPayload = {
-  organizationId: string;
-  bannerId: string;
-  notificationId: string;
-  audienceType: "all" | "tier" | "specific";
-  tierKey?: string;
-  customerIds?: string[];
-  channels: string[];
-};
 
 export interface BannerStateResult {
   banner: BannerRow;
@@ -160,27 +142,16 @@ export class BannersService {
   }
 
   async bulkRemove(orgId: string, ids: string[]): Promise<{ ok: true }> {
-    for (const id of ids) {
-      const notifs = await this.repo.listNotifications(id).catch(() => []);
-      await Promise.all(
-        notifs
-          .filter((n) => n.status === "scheduled" && n.runId)
-          .map((n) => runs.cancel(n.runId!).catch(() => undefined)),
-      );
-    }
     await this.repo.bulkRemove(orgId, ids);
     await this.invalidate(orgId);
     return { ok: true };
   }
 
   /** Read-only admin detail: banner fields (for the preview) + display state +
-   *  notifications + CTR stats. */
+   *  CTR stats. */
   async detail(orgId: string, id: string) {
     const row = await this.loadDraft(orgId, id);
-    const [notifications, stats] = await Promise.all([
-      this.listNotifications(id),
-      this.stats(orgId, id),
-    ]);
+    const stats = await this.stats(orgId, id);
     return {
       id: row.id,
       slug: row.slug,
@@ -201,34 +172,8 @@ export class BannersService {
       displayFrom: row.displayFrom,
       displayUntil: row.displayUntil,
       createdAt: row.createdAt,
-      notifications,
       stats,
     };
-  }
-
-  // ── Reach preview (audience − marketing opt-outs) ─────────────────────────
-  async countByAudience(orgId: string, input: CountByAudienceInput): Promise<AudienceReach> {
-    const optOut = await this.repo.marketingOptOutIds(orgId);
-    if (input.audienceType === "all") {
-      const audience = await this.repo.countCustomers(orgId);
-      return { audience, eligible: Math.max(0, audience - optOut.size) };
-    }
-    if (input.audienceType === "tier") {
-      const ids = await this.repo.listCustomerIdsByTier(orgId, input.tierKey!);
-      return { audience: ids.length, eligible: ids.filter((id) => !optOut.has(id)).length };
-    }
-    const ids = input.customerIds ?? [];
-    return { audience: ids.length, eligible: ids.filter((id) => !optOut.has(id)).length };
-  }
-
-  private async audienceSize(
-    orgId: string,
-    type: string,
-    audienceValue: { tierKey?: string; customerIds?: string[] },
-  ): Promise<number> {
-    if (type === "all") return this.repo.countCustomers(orgId);
-    if (type === "tier") return this.repo.countCustomersByTier(orgId, audienceValue.tierKey ?? "");
-    return audienceValue.customerIds?.length ?? 0;
   }
 
   // ── CTR: ingest (from the customer web app) + read ────────────────────────
@@ -253,21 +198,11 @@ export class BannersService {
     );
     const impressions = series.reduce((s, r) => s + r.impressions, 0);
     const clicks = series.reduce((s, r) => s + r.clicks, 0);
-    const notifs = await this.repo.listNotifications(bannerId);
-    let reach = 0;
-    for (const n of notifs) {
-      const parsed = n.audienceValue
-        ? (JSON.parse(n.audienceValue) as { tierKey?: string; customerIds?: string[] })
-        : {};
-      reach += await this.audienceSize(orgId, n.audienceType, parsed);
-    }
     return {
       impressions,
       clicks,
       ctr: impressions > 0 ? clicks / impressions : 0,
       series,
-      notifications: notifs.length,
-      reach,
     };
   }
 
@@ -277,13 +212,6 @@ export class BannersService {
 
   async remove(orgId: string, id: string): Promise<{ ok: true }> {
     const row = await this.loadDraft(orgId, id);
-    // Cancel any still-scheduled Trigger runs before deleting.
-    const notifs = await this.repo.listNotifications(id);
-    await Promise.all(
-      notifs
-        .filter((n) => n.status === "scheduled" && n.runId)
-        .map((n) => runs.cancel(n.runId!).catch(() => undefined)),
-    );
     await this.repo.remove(orgId, id);
     await this.invalidate(orgId, row.slug);
     return { ok: true };
@@ -297,85 +225,6 @@ export class BannersService {
 
   slugAvailable(orgId: string, slug: string, excludeId?: string): Promise<boolean> {
     return this.repo.slugExists(orgId, slug, excludeId).then((exists) => !exists);
-  }
-
-  // ── Notifications (Trigger owns execution) ─────────────────────────────────
-  async createNotification(
-    orgId: string,
-    input: CreateNotificationInput,
-  ): Promise<BannerNotificationView> {
-    const banner = await this.loadDraft(orgId, input.bannerId);
-    const audienceValue =
-      input.audienceType === "tier"
-        ? JSON.stringify({ tierKey: input.tierKey })
-        : input.audienceType === "specific"
-          ? JSON.stringify({ customerIds: input.customerIds })
-          : null;
-
-    const row = await this.repo.createNotification({
-      bannerId: banner.id,
-      audienceType: input.audienceType,
-      audienceValue,
-      channels: JSON.stringify(input.channels),
-      scheduledAt: input.scheduledAt ?? null,
-      status: "scheduled",
-    });
-
-    const payload: SendBannerNotificationPayload = {
-      organizationId: orgId,
-      bannerId: banner.id,
-      notificationId: row.id,
-      audienceType: input.audienceType,
-      tierKey: input.tierKey,
-      customerIds: input.customerIds,
-      channels: input.channels,
-    };
-    const handle = await tasks.trigger(
-      "send-banner-notification",
-      payload,
-      input.scheduledAt ? { delay: input.scheduledAt } : undefined,
-    );
-    await this.repo.setNotificationRun(row.id, handle.id);
-    return this.toNotificationView({ ...row, runId: handle.id });
-  }
-
-  async listNotifications(bannerId: string): Promise<BannerNotificationView[]> {
-    const rows = await this.repo.listNotifications(bannerId);
-    return rows.map((r) => this.toNotificationView(r));
-  }
-
-  async cancelNotification(id: string): Promise<{ ok: true }> {
-    const row = await this.repo.getNotification(id);
-    if (!row) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "notification not found" });
-    }
-    if (row.runId) await runs.cancel(row.runId).catch(() => undefined);
-    await this.repo.setNotificationStatus(id, "canceled");
-    return { ok: true };
-  }
-
-  private toNotificationView(row: {
-    id: string;
-    audienceType: string;
-    audienceValue: string | null;
-    channels: string;
-    scheduledAt: Date | null;
-    status: string;
-    runId: string | null;
-  }): BannerNotificationView {
-    const parsed = row.audienceValue
-      ? (JSON.parse(row.audienceValue) as { tierKey?: string; customerIds?: string[] })
-      : {};
-    return {
-      id: row.id,
-      audienceType: row.audienceType as "all" | "tier" | "specific",
-      tierKey: parsed.tierKey ?? null,
-      customerCount: parsed.customerIds?.length ?? null,
-      channels: JSON.parse(row.channels) as string[],
-      scheduledAt: row.scheduledAt,
-      status: row.status,
-      runId: row.runId,
-    };
   }
 
   /** Derive the admin display state (also exported via repository). */

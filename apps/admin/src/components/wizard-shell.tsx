@@ -29,6 +29,7 @@ export function WizardShell({
   onExit,
   exitLabel,
   saving = false,
+  saved = true,
   children,
 }: {
   title: string;
@@ -51,6 +52,8 @@ export function WizardShell({
   exitLabel?: string;
   /** Persisting the current step — shows a "saving…" state + blocks nav. */
   saving?: boolean;
+  /** Whether a draft exists yet — gates the "draft saved" badge (default true). */
+  saved?: boolean;
   children: ReactNode;
 }) {
   const t = useTranslations("Wizard");
@@ -77,12 +80,12 @@ export function WizardShell({
               <Loader2 className="size-3.5 animate-spin" />
               {t("saving")}
             </>
-          ) : (
+          ) : saved ? (
             <>
               <Check className="size-3.5 text-emerald-600" />
               {t("draftSaved")}
             </>
-          )}
+          ) : null}
         </span>
       </div>
 

@@ -155,6 +155,90 @@
       "when": 1782888141714,
       "tag": "0021_damp_blazing_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1782927136125,
+      "tag": "0022_numerous_puff_adder",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1782931744156,
+      "tag": "0023_lucky_magneto",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1782932715516,
+      "tag": "0024_bitter_slipstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1782933159304,
+      "tag": "0025_shallow_blockbuster",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1782934684830,
+      "tag": "0026_wandering_inhumans",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1782947915587,
+      "tag": "0027_glossy_maddog",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1783010419384,
+      "tag": "0028_windy_turbo",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1783016407098,
+      "tag": "0029_equal_caretaker",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1783033307755,
+      "tag": "0030_concerned_kingpin",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1783383071679,
+      "tag": "0031_equal_madelyne_pryor",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1783383131679,
+      "tag": "0032_promos_v2_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1783383213958,
+      "tag": "0033_redundant_sally_floyd",
+      "breakpoints": true
     }
   ]
 }

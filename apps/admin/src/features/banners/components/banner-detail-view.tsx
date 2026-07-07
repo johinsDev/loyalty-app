@@ -4,11 +4,13 @@ import type { AppRouter } from "@loyalty/api";
 import { formatDate } from "@loyalty/date";
 import { Badge, Button } from "@loyalty/ui";
 import type { inferRouterOutputs } from "@trpc/server";
-import { Bell, MousePointerClick, Pencil, Users } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { MousePointerClick, Pencil, Users } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+import { useTRPC } from "@/lib/trpc/client";
 
 import { BannerStatsChart } from "./banner-stats-chart";
 
@@ -27,7 +29,7 @@ const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 /**
  * Read-only banner summary — rendered as the `?detalle=` modal (over the list)
  * and as the full `/banners/[id]` page. Shows the rendered banner preview,
- * schedule, CTR stats and its notifications. "Editar" → `/banners/[id]/edit`.
+ * schedule and CTR stats. "Editar" → `/banners/[id]/edit`.
  */
 export function BannerDetailView({
   banner,
@@ -39,7 +41,41 @@ export function BannerDetailView({
   const t = useTranslations("Banners");
   const locale = useLocale();
   const router = useRouter();
+  const trpc = useTRPC();
   const state = banner.displayState as BannerState;
+
+  const campaigns = useQuery(
+    trpc.campaigns.campaignsBySource.queryOptions({ scope: "banner", id: banner.id }),
+  );
+
+  const campaignsBlock = (
+    <section className="bg-card border-border rounded-3xl border p-5 shadow-sm">
+      <h3 className="font-display mb-3 text-sm font-semibold">
+        {t("campaigns.title", { n: campaigns.data?.length ?? 0 })}
+      </h3>
+      {campaigns.isPending ? (
+        <div className="bg-muted/50 h-5 w-40 animate-pulse rounded" />
+      ) : campaigns.data && campaigns.data.length > 0 ? (
+        <ul className="divide-border divide-y">
+          {campaigns.data.map((c) => (
+            <li key={c.id} className="flex items-center justify-between py-2">
+              <Link
+                href={{ pathname: "/campaigns/[id]", params: { id: c.id } }}
+                className="text-sm hover:underline"
+              >
+                {c.name ?? t("campaigns.untitled")}
+              </Link>
+              <span className="text-muted-foreground text-xs">
+                {t(`campaigns.status.${c.status === "published" ? "published" : "draft"}`)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-muted-foreground text-sm">{t("campaigns.empty")}</p>
+      )}
+    </section>
+  );
 
   const header = (
     <div className="flex items-start justify-between gap-3">
@@ -111,7 +147,7 @@ export function BannerDetailView({
   );
 
   const kpis = (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
       <Kpi icon={<Users className="size-4" />} label={t("statImpressions")} value={banner.stats.impressions} />
       <Kpi
         icon={<MousePointerClick className="size-4" />}
@@ -119,7 +155,6 @@ export function BannerDetailView({
         value={banner.stats.clicks}
       />
       <Kpi label={t("statCtr")} value={pct(banner.stats.ctr)} />
-      <Kpi icon={<Bell className="size-4" />} label={t("statReach")} value={banner.stats.reach} />
     </div>
   );
 
@@ -140,40 +175,6 @@ export function BannerDetailView({
     </section>
   );
 
-  const notificationsBlock = (
-    <section className="space-y-2">
-      <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase">
-        <Bell className="size-3.5" />
-        {t("notify.title")}
-      </p>
-      {banner.notifications.length > 0 ? (
-        <div className="bg-card border-border divide-border divide-y rounded-2xl border">
-          {banner.notifications.map((n) => (
-            <div key={n.id} className="flex items-center justify-between gap-2 px-4 py-2.5 text-sm">
-              <div className="min-w-0">
-                <p className="font-medium">
-                  {n.audienceType === "all"
-                    ? t("notify.audAll")
-                    : n.audienceType === "tier"
-                      ? `${t("notify.audTier")} · ${n.tierKey ?? ""}`
-                      : `${t("notify.audSpecific")} · ${n.customerCount ?? 0}`}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {n.channels.map((c) => t(`notify.ch.${c}`)).join(" · ")}
-                  {" · "}
-                  {n.scheduledAt ? formatDate(n.scheduledAt, { locale }) : t("notify.now")}
-                </p>
-              </div>
-              <Badge variant="outline">{t(`notify.status.${n.status}`)}</Badge>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-muted-foreground text-sm">{t("notify.empty")}</p>
-      )}
-    </section>
-  );
-
   if (variant === "modal") {
     return (
       <div className="max-h-[85dvh] space-y-5 overflow-y-auto p-5">
@@ -181,7 +182,7 @@ export function BannerDetailView({
         {preview}
         {statsBlock}
         {scheduleBlock}
-        {notificationsBlock}
+        {campaignsBlock}
       </div>
     );
   }
@@ -194,9 +195,11 @@ export function BannerDetailView({
           {preview}
           {statsBlock}
         </div>
-        <div className="bg-card border-border h-fit space-y-5 rounded-3xl border p-5 shadow-sm">
-          {scheduleBlock}
-          <div className="border-border border-t pt-4">{notificationsBlock}</div>
+        <div className="h-fit space-y-5">
+          <div className="bg-card border-border space-y-5 rounded-3xl border p-5 shadow-sm">
+            {scheduleBlock}
+          </div>
+          {campaignsBlock}
         </div>
       </div>
     </div>

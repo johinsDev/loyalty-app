@@ -1,6 +1,7 @@
 export * from "./audit-log";
 export * from "./auth";
 export * from "./banners";
+export * from "./campaigns";
 export * from "./email-outbox";
 export * from "./loyalty";
 export * from "./notifications";

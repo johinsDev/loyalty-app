@@ -9,6 +9,13 @@ export interface ShortenOptions {
   slug?: string;
   expiresAt?: Date;
   createdByUserId?: string;
+  /**
+   * Per-recipient campaign attribution. When both are set the link is minted
+   * fresh (dedupe is skipped) so each recipient gets a unique, attributable
+   * slug for the campaign "Clic" funnel.
+   */
+  campaignId?: string;
+  customerId?: string;
 }
 
 /** Result of a `shorten()`. With the `null` provider, `shortUrl === original`. */
@@ -43,6 +50,8 @@ export interface ShortlinkStore {
     organizationId: string;
     expiresAt?: Date;
     createdByUserId?: string;
+    campaignId?: string;
+    customerId?: string;
   }): Promise<{ slug: string }>;
 }
 

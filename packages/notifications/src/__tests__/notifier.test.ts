@@ -162,6 +162,18 @@ describe("Notifier", () => {
     expect(byChannel.mail?.status).toBe("sent");
   });
 
+  it("restricts delivery to onlyChannels (automated-trigger channel override)", async () => {
+    const { notifier } = buildNotifier();
+    const result = await notifier.send(
+      { customerId: "cust-1", organizationId: ORG },
+      new NewUserNotification("Lucia"),
+      { onlyChannels: ["mail", "sms"] },
+    );
+    // NewUser declares 6 channels; the override narrows to the 2 allowed.
+    expect(result.results.map((r) => r.channel).sort()).toEqual(["mail", "sms"]);
+    expect(result.results.every((r) => r.status === "sent")).toBe(true);
+  });
+
   it("ignores opt-out for transactional notifications", async () => {
     const { notifier } = buildNotifier({
       optedOut: new Set(["sms", "mail", "push"]),

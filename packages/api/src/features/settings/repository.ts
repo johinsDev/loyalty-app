@@ -22,6 +22,7 @@ type SettingsPatch = Partial<
     | "seoKeywords"
     | "ogImageUrl"
     | "faviconUrl"
+    | "smartDelivery"
   >
 >;
 

@@ -2,14 +2,8 @@ import type { db as Db } from "@loyalty/db";
 import {
   banner,
   bannerDailyStat,
-  bannerNotification,
   bannerTranslation,
-  customer,
-  notificationPreference,
-  pointsAccount,
   type BannerInsert,
-  type BannerNotificationInsert,
-  type BannerNotificationRow,
   type BannerRow,
   type BannerTranslationRow,
 } from "@loyalty/db/schema";
@@ -76,7 +70,6 @@ export type BannerPatch = Partial<
 export interface AdminListItem {
   banner: BannerRow;
   displayState: BannerDisplayState;
-  notificationCount: number;
 }
 export interface AdminListResult {
   rows: AdminListItem[];
@@ -125,9 +118,9 @@ export function displayState(row: BannerRow, now = new Date()): BannerDisplaySta
 }
 
 /**
- * Drizzle access for `banner` + `banner_notification`. Only layer that touches
- * the db; every read/write is org-scoped. Public reads return mapped
- * `BannerCard`/`BannerDetail`; admin CRUD returns rows for the wizard.
+ * Drizzle access for `banner`. Only layer that touches the db; every read/write
+ * is org-scoped. Public reads return mapped `BannerCard`/`BannerDetail`; admin
+ * CRUD returns rows for the wizard.
  */
 export class BannersRepository {
   constructor(private readonly db: typeof Db) {}
@@ -260,20 +253,6 @@ export class BannersRepository {
       .limit(input.pageSize)
       .offset(offset)) as BannerRow[];
 
-    const counts = await this.db
-      .select({
-        bannerId: bannerNotification.bannerId,
-        n: sql<number>`count(*)`,
-      })
-      .from(bannerNotification)
-      .where(
-        rows.length
-          ? or(...rows.map((r) => eq(bannerNotification.bannerId, r.id)))
-          : sql`0 = 1`,
-      )
-      .groupBy(bannerNotification.bannerId);
-    const countByBanner = new Map(counts.map((c) => [c.bannerId, Number(c.n)]));
-
     const totalRows = await this.db
       .select({ value: sql<number>`count(*)` })
       .from(banner)
@@ -283,7 +262,6 @@ export class BannersRepository {
       rows: rows.map((r) => ({
         banner: r,
         displayState: displayState(r),
-        notificationCount: countByBanner.get(r.id) ?? 0,
       })),
       total: totalRows[0]?.value ?? 0,
     };
@@ -326,65 +304,6 @@ export class BannersRepository {
     return (rows[0]?.max ?? -1) + 1;
   }
 
-  // ── Notifications ─────────────────────────────────────────────────────────
-  async createNotification(values: BannerNotificationInsert): Promise<BannerNotificationRow> {
-    const rows = await this.db.insert(bannerNotification).values(values).returning();
-    return this.#firstN(rows);
-  }
-
-  async listNotifications(bannerId: string): Promise<BannerNotificationRow[]> {
-    return this.db
-      .select()
-      .from(bannerNotification)
-      .where(eq(bannerNotification.bannerId, bannerId))
-      .orderBy(desc(bannerNotification.createdAt));
-  }
-
-  async getNotification(id: string): Promise<BannerNotificationRow | null> {
-    const rows = await this.db
-      .select()
-      .from(bannerNotification)
-      .where(eq(bannerNotification.id, id))
-      .limit(1);
-    return rows[0] ?? null;
-  }
-
-  async setNotificationRun(id: string, runId: string | null): Promise<void> {
-    await this.db
-      .update(bannerNotification)
-      .set({ runId, updatedAt: new Date() })
-      .where(eq(bannerNotification.id, id));
-  }
-
-  async setNotificationStatus(id: string, status: string): Promise<void> {
-    await this.db
-      .update(bannerNotification)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(bannerNotification.id, id));
-  }
-
-  // ── Audience resolution ───────────────────────────────────────────────────
-  async listActiveCustomerIds(orgId: string): Promise<string[]> {
-    const rows = await this.db
-      .select({ id: customer.id })
-      .from(customer)
-      .where(eq(customer.organizationId, orgId));
-    return rows.map((r) => r.id);
-  }
-
-  async listCustomerIdsByTier(orgId: string, tierKey: string): Promise<string[]> {
-    const rows = await this.db
-      .select({ id: pointsAccount.customerId })
-      .from(pointsAccount)
-      .where(
-        and(
-          eq(pointsAccount.organizationId, orgId),
-          eq(pointsAccount.currentTierKey, tierKey),
-        ),
-      );
-    return rows.map((r) => r.id);
-  }
-
   // ── Admin data-table list ─────────────────────────────────────────────────
   /** Paginated/filtered/sorted list for the admin data-table. Banner counts per
    *  org are small, so derived-state filter + sort + pagination run in memory. */
@@ -401,7 +320,6 @@ export class BannersRepository {
     if (input.createdTo) conds.push(lte(banner.createdAt, input.createdTo));
 
     const all = await this.db.select().from(banner).where(and(...conds));
-    const counts = await this.#notificationCounts(all.map((r) => r.id));
     const now = new Date();
 
     let items: BannerListItem[] = all.map((r) => ({
@@ -414,7 +332,6 @@ export class BannersRepository {
       mainImageUrl: r.mainImageUrl,
       displayFrom: r.displayFrom,
       displayUntil: r.displayUntil,
-      notificationCount: counts.get(r.id) ?? 0,
       sortOrder: r.sortOrder,
       createdAt: r.createdAt,
     }));
@@ -449,7 +366,6 @@ export class BannersRepository {
       .select()
       .from(banner)
       .where(and(eq(banner.organizationId, orgId), inArray(banner.id, ids)));
-    const counts = await this.#notificationCounts(rows.map((r) => r.id));
     const now = new Date();
     return rows.map((r) => ({
       id: r.id,
@@ -461,62 +377,15 @@ export class BannersRepository {
       mainImageUrl: r.mainImageUrl,
       displayFrom: r.displayFrom,
       displayUntil: r.displayUntil,
-      notificationCount: counts.get(r.id) ?? 0,
       sortOrder: r.sortOrder,
       createdAt: r.createdAt,
     }));
-  }
-
-  async #notificationCounts(ids: string[]): Promise<Map<string, number>> {
-    if (ids.length === 0) return new Map();
-    const rows = await this.db
-      .select({ bannerId: bannerNotification.bannerId, n: sql<number>`count(*)` })
-      .from(bannerNotification)
-      .where(inArray(bannerNotification.bannerId, ids))
-      .groupBy(bannerNotification.bannerId);
-    return new Map(rows.map((c) => [c.bannerId, Number(c.n)]));
   }
 
   async bulkRemove(orgId: string, ids: string[]): Promise<void> {
     await this.db
       .delete(banner)
       .where(and(eq(banner.organizationId, orgId), inArray(banner.id, ids)));
-  }
-
-  // ── Reach (audience count − marketing opt-outs) ───────────────────────────
-  async countCustomers(orgId: string): Promise<number> {
-    const rows = await this.db
-      .select({ n: sql<number>`count(*)` })
-      .from(customer)
-      .where(eq(customer.organizationId, orgId));
-    return Number(rows[0]?.n ?? 0);
-  }
-
-  async countCustomersByTier(orgId: string, tierKey: string): Promise<number> {
-    const rows = await this.db
-      .select({ n: sql<number>`count(*)` })
-      .from(pointsAccount)
-      .where(
-        and(
-          eq(pointsAccount.organizationId, orgId),
-          eq(pointsAccount.currentTierKey, tierKey),
-        ),
-      );
-    return Number(rows[0]?.n ?? 0);
-  }
-
-  /** Distinct customers in the org who opted out of marketing on any channel. */
-  async marketingOptOutIds(orgId: string): Promise<Set<string>> {
-    const rows = await this.db
-      .selectDistinct({ id: notificationPreference.customerId })
-      .from(notificationPreference)
-      .where(
-        and(
-          eq(notificationPreference.organizationId, orgId),
-          eq(notificationPreference.marketingEnabled, false),
-        ),
-      );
-    return new Set(rows.map((r) => r.id));
   }
 
   // ── CTR stats ─────────────────────────────────────────────────────────────
@@ -637,17 +506,6 @@ export class BannersRepository {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: `banner ${op} returned no row`,
-      });
-    }
-    return row;
-  }
-
-  #firstN(rows: BannerNotificationRow[]): BannerNotificationRow {
-    const row = rows[0];
-    if (!row) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "banner_notification insert returned no row",
       });
     }
     return row;

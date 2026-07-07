@@ -215,7 +215,7 @@ jobs:
           --path=/ci --token="$INFISICAL_TOKEN" -- bash -c '
             # jobs (a realtime publisher) point at this PR dedicated party too.
             export PARTYKIT_HOST="partykit.pr-${PR_NUMBER}.t4diverclub.app"
-            cd packages/jobs && bunx trigger.dev@latest deploy --env preview --branch "$GIT_BRANCH"
+            cd packages/jobs && bunx trigger.dev@4.4.6 deploy --env preview --branch "$GIT_BRANCH"
           '
 
       # Point web/admin at the PR's Trigger preview branch (branch-scoped, so

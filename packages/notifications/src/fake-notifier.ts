@@ -3,6 +3,7 @@ import type {
   ChannelName,
   ChannelResult,
   NotifiableInput,
+  SendOptions,
   SendResult,
 } from "./types";
 
@@ -35,8 +36,13 @@ export class FakeNotifier {
   async send(
     target: NotifiableInput,
     notification: Notification,
+    opts?: SendOptions,
   ): Promise<SendResult> {
-    const channels = [...(await notification.via(target))];
+    let channels = [...(await notification.via(target))];
+    if (opts?.onlyChannels) {
+      const allow = new Set(opts.onlyChannels);
+      channels = channels.filter((c) => allow.has(c));
+    }
     this.sent.push({
       notification,
       customerId: target.customerId,

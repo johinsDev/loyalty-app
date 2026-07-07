@@ -9,12 +9,8 @@ import {
   bannersListInputSchema,
   bannerStatsInputSchema,
   bulkIdsSchema,
-  cancelNotificationInputSchema,
-  countByAudienceInputSchema,
-  createNotificationInputSchema,
   getStateInputSchema,
   listInputSchema,
-  listNotificationsInputSchema,
   publishInputSchema,
   recordStatInputSchema,
   removeInputSchema,
@@ -41,7 +37,7 @@ async function requireOrg(): Promise<string> {
 /**
  * Banners. Public cached reads (gated by the page guard in v1, public-ready) +
  * a server-driven manager wizard (create → getState → advance per step →
- * publish) + scheduled notifications (Trigger.dev owns execution).
+ * publish).
  */
 export const bannersRouter = router({
   // ── Public (cacheable) ─────────────────────────────────────────────────────
@@ -115,11 +111,6 @@ export const bannersRouter = router({
     .query(async ({ ctx, input }) =>
       makeService(ctx.db).detail(await requireOrg(), input.id),
     ),
-  countByAudience: managerProcedure
-    .input(countByAudienceInputSchema)
-    .query(async ({ ctx, input }) =>
-      makeService(ctx.db).countByAudience(await requireOrg(), input),
-    ),
   stats: managerProcedure
     .input(bannerStatsInputSchema)
     .query(async ({ ctx, input }) =>
@@ -150,23 +141,4 @@ export const bannersRouter = router({
     .query(async ({ ctx, input }) =>
       makeService(ctx.db).slugAvailable(await requireOrg(), input.slug, input.excludeId),
     ),
-
-  // ── Notifications ──────────────────────────────────────────────────────────
-  notifications: router({
-    list: managerProcedure
-      .input(listNotificationsInputSchema)
-      .query(async ({ ctx, input }) =>
-        makeService(ctx.db).listNotifications(input.bannerId),
-      ),
-    create: managerProcedure
-      .input(createNotificationInputSchema)
-      .mutation(async ({ ctx, input }) =>
-        makeService(ctx.db).createNotification(await requireOrg(), input),
-      ),
-    cancel: managerProcedure
-      .input(cancelNotificationInputSchema)
-      .mutation(async ({ ctx, input }) =>
-        makeService(ctx.db).cancelNotification(input.id),
-      ),
-  }),
 });

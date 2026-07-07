@@ -104,21 +104,16 @@ export function ItemizedPurchase({
       { enabled: cart.length > 0 },
     ),
   );
-  const promos = applicable.data ?? [];
+  const promos = applicable.data?.applicable ?? [];
+  const hints = applicable.data?.hints ?? [];
 
-  // Auto-apply the best promo (max discount, then best points) whenever the
-  // applicable set changes, so the total always shows the final charge. The
+  // Auto-apply the best promo whenever the applicable set changes, so the
+  // total always shows the final charge. The server sorts best-first
+  // (discount desc, then multiplier), so the first entry is the best. The
   // cashier can still pick a different one or deselect (until the cart changes).
   useEffect(() => {
-    const list = applicable.data ?? [];
-    if (list.length === 0) {
-      setChosenPromoId(null);
-      return;
-    }
-    const best = [...list].sort(
-      (a, b) => b.discountCents - a.discountCents || b.pointsMultiplier - a.pointsMultiplier,
-    )[0];
-    setChosenPromoId(best?.promo.id ?? null);
+    const list = applicable.data?.applicable ?? [];
+    setChosenPromoId(list[0]?.promo.id ?? null);
   }, [applicable.data]);
 
   // Rewards this customer can redeem right now — offered as an optional inline
@@ -315,7 +310,14 @@ export function ItemizedPurchase({
                     }
                   >
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-bold">{ap.promo.name}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-sm font-bold">{ap.promo.name}</span>
+                        {ap.applications > 1 ? (
+                          <span className="bg-primary/10 text-primary shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold">
+                            {t("promoApplications", { count: ap.applications })}
+                          </span>
+                        ) : null}
+                      </div>
                       <div className="text-muted-foreground text-xs font-semibold">
                         {ap.discountCents > 0
                           ? `− ${formatCop(ap.discountCents)}`
@@ -330,6 +332,15 @@ export function ItemizedPurchase({
               })}
             </div>
           )}
+          {hints.length > 0 ? (
+            <div className="bg-muted mt-2 space-y-1 rounded-xl p-2.5">
+              {hints.map((h) => (
+                <p key={h.promo.id} className="text-muted-foreground text-xs font-semibold">
+                  {t("promoHint", { name: h.promo.name })}
+                </p>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

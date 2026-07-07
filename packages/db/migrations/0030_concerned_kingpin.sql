@@ -1,0 +1,1 @@
+ALTER TABLE `campaign` ADD `source` text;

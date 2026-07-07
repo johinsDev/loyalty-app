@@ -2,348 +2,608 @@
 
 import { formatDate } from "@loyalty/date";
 import {
+  Button,
   DatePicker,
   Input,
-  Label,
-  SegmentedControl,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  Switch,
   Textarea,
-  TimeInput,
 } from "@loyalty/ui";
-import {
-  Bell,
-  CalendarClock,
-  Mail,
-  MessageCircle,
-  MessageSquare,
-  Repeat,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDebounce } from "ahooks";
+import { X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { parseAsString, useQueryState } from "nuqs";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { WizardShell } from "@/components/wizard-shell";
 import { useRouter } from "@/i18n/navigation";
+import { useNavigationGuard } from "@/lib/use-unsaved-guard";
+import { useTRPC } from "@/lib/trpc/client";
 
 import {
-  type CampaignDraft,
-  type Channel,
+  TIERS,
+  buildAudienceFilter,
+  type Tier,
+} from "../lib/campaign-audience";
+import {
   CHANNELS,
-  emptyCampaignDraft,
-  EVENTS,
-  FREQUENCIES,
-  getCampaignDraft,
-  type Segment,
-  SEGMENTS,
-} from "../data";
-import { ChannelPreview } from "./channel-preview";
+  EMPTY_MESSAGE,
+  buildMessageInput,
+  isChannelComplete,
+  isMessageComplete,
+  toFormMessage,
+  type Channel,
+} from "../lib/campaign-message";
+import { CampaignAudienceFields, ReachBox } from "./campaign-audience-fields";
+import { CampaignMessageFields } from "./campaign-message-fields";
+import { CampaignMessagePreview, type PreviewMessage } from "./campaign-message-preview";
+import { ErrorText, Field } from "./campaign-field";
 
-const STEPS = ["content", "channels", "segment", "schedule", "review"] as const;
+const STEPS = ["definition", "message", "audience", "schedule"] as const;
 type Step = (typeof STEPS)[number];
-const CHANNEL_ICON: Record<Channel, LucideIcon> = {
-  push: Bell,
-  email: Mail,
-  sms: MessageSquare,
-  whatsapp: MessageCircle,
+
+type Form = {
+  name: string;
+  objective: string;
+  message: PreviewMessage;
+  linkUrl: string;
+  channelPriority: Channel[];
+  tiers: Tier[];
+  lastPurchaseOp: "gte" | "lte";
+  lastPurchaseDays: string;
+  minPurchases: string;
+  signedUpAfter: Date | null;
+  signedUpBefore: Date | null;
+  mode: "once" | "evergreen" | "drip";
+  scheduledAt: Date | null;
+  special: boolean;
+  cooldownDays: string;
+  endsAt: Date | null;
+  dripIntervalDays: string;
+  dripMaxAttempts: string;
 };
-const SCHEDULE_ICON = { event: Zap, recurring: Repeat, date: CalendarClock };
+
+const EMPTY: Form = {
+  name: "",
+  objective: "",
+  message: EMPTY_MESSAGE,
+  linkUrl: "",
+  channelPriority: [],
+  tiers: [],
+  lastPurchaseOp: "gte",
+  lastPurchaseDays: "",
+  minPurchases: "",
+  signedUpAfter: null,
+  signedUpBefore: null,
+  mode: "once",
+  scheduledAt: null,
+  special: false,
+  cooldownDays: "30",
+  endsAt: null,
+  dripIntervalDays: "3",
+  dripMaxAttempts: "3",
+};
 
 /**
- * Campaign create/edit wizard (contenido → canales → segmento → programación →
- * revisar) with a live per-channel preview (the richest CRUD). Design-first:
- * step state is local; finish toasts + returns to the list. Seam: the Phase D
- * notifications engine + Trigger.dev scheduling.
+ * Server-driven campaign wizard (definition → message → channels → audience →
+ * schedule). On "new" it creates a draft immediately; each Next persists the
+ * step via `advance`, and Finish publishes (enqueues the send).
  */
 export function CampaignWizard({ id }: { id?: string }) {
   const t = useTranslations("Campaigns");
   const locale = useLocale();
   const router = useRouter();
-  const [draft, setDraft] = useState<CampaignDraft>(
-    id ? getCampaignDraft(id) : emptyCampaignDraft,
-  );
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
+  // A new campaign's draft id is mirrored into `?draft=` so reloading mid-wizard
+  // resumes the same draft instead of starting over (and spawning another one).
+  const [draftId, setDraftId] = useQueryState("draft", parseAsString);
+  const loadId = id ?? draftId ?? undefined;
+  const [campaignId, setCampaignId] = useState<string | undefined>(loadId);
+  // If the draft id only arrives from the URL after mount (hydration), adopt it
+  // so persist/publish target the resumed draft instead of creating a new one.
+  useEffect(() => {
+    if (loadId && !campaignId) setCampaignId(loadId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadId]);
+  const [form, setForm] = useState<Form>(EMPTY);
   const [stepIndex, setStepIndex] = useState(0);
+  const [dirty, setDirty] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const seeded = useRef(false);
 
-  const step = STEPS[stepIndex]!;
-  const set = <K extends keyof CampaignDraft>(key: K, value: CampaignDraft[K]) =>
-    setDraft((d) => ({ ...d, [key]: value }));
-  const toggleChannel = (c: Channel) =>
-    set(
-      "channels",
-      draft.channels.includes(c)
-        ? draft.channels.filter((x) => x !== c)
-        : [...draft.channels, c],
-    );
-
-  const steps = STEPS.map((key) => ({ key, label: t(`step.${key}`) }));
-  const completed = STEPS.slice(0, stepIndex);
-
-  const onNext = () => {
-    if (stepIndex === STEPS.length - 1) {
-      toast.success(
-        id ? t("updated", { name: draft.name }) : t("created", { name: draft.name }),
-      );
-      router.push("/campaigns");
-      return;
-    }
-    setStepIndex((n) => n + 1);
+  const set = <K extends keyof Form>(key: K, value: Form[K]) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setDirty(true);
   };
 
-  return (
-    <WizardShell
-      title={id ? t("editTitle") : t("newTitle")}
-      steps={steps}
-      current={step}
-      completed={completed}
-      onStepSelect={(key) => {
-        const idx = STEPS.indexOf(key as Step);
-        if (idx <= stepIndex) setStepIndex(idx);
-      }}
-      onBack={() => setStepIndex((n) => Math.max(0, n - 1))}
-      onNext={onNext}
-      isFirst={stepIndex === 0}
-      isLast={stepIndex === STEPS.length - 1}
-      finishLabel={id ? t("saveChanges") : t("launch")}
-      preview={
-        <div className="space-y-4">
-          {draft.channels.length === 0 ? (
-            <p className="text-muted-foreground text-sm font-semibold">
-              {t("previewEmpty")}
-            </p>
-          ) : (
-            draft.channels.map((c) => (
-              <ChannelPreview key={c} channel={c} draft={draft} />
-            ))
-          )}
-        </div>
+  // Guard every attempt to navigate away with unsaved edits (links + tab close).
+  const bypass = useNavigationGuard(dirty, (href) => {
+    setPendingHref(href);
+    setExitOpen(true);
+  });
+  const confirmLeave = () => {
+    bypass.current = true;
+    setDirty(false);
+    setExitOpen(false);
+    if (pendingHref && pendingHref !== "__back__") window.location.href = pendingHref;
+    else router.push("/campaigns");
+  };
+  const tryExit = () => {
+    if (dirty) {
+      setPendingHref(null);
+      setExitOpen(true);
+    } else {
+      router.push("/campaigns");
+    }
+  };
+
+  // New campaign → the draft is created LAZILY on the first save (not on mount),
+  // so opening — or reloading — the wizard never spawns empty drafts.
+  const createMut = useMutation(trpc.campaigns.create.mutationOptions());
+  async function ensureDraft(): Promise<string | null> {
+    if (campaignId) return campaignId;
+    try {
+      const res = await createMut.mutateAsync();
+      setCampaignId(res.campaign.id);
+      seeded.current = true;
+      // Mirror into the URL so a mid-wizard reload resumes this same draft.
+      void setDraftId(res.campaign.id);
+      return res.campaign.id;
+    } catch {
+      toast.error(t("createError"));
+      return null;
+    }
+  }
+
+  // Edit campaign → load + seed once.
+  const stateQuery = useQuery({
+    ...trpc.campaigns.getState.queryOptions({ id: loadId ?? "" }),
+    enabled: Boolean(loadId),
+  });
+  useEffect(() => {
+    if (loadId && stateQuery.data && !seeded.current) {
+      const c = stateQuery.data.campaign;
+      const msg = toFormMessage(c.message);
+      setForm({
+        name: c.name ?? "",
+        objective: c.objective ?? "",
+        message: msg,
+        linkUrl: c.linkUrl ?? "",
+        channelPriority: (c.channelPriority ?? []).filter((x): x is Channel =>
+          (CHANNELS as readonly string[]).includes(x),
+        ),
+        tiers: (c.audienceFilter?.tiers ?? []).filter((x): x is Tier =>
+          (TIERS as readonly string[]).includes(x),
+        ),
+        lastPurchaseOp: c.audienceFilter?.lastPurchase?.op ?? "gte",
+        lastPurchaseDays: c.audienceFilter?.lastPurchase
+          ? String(c.audienceFilter.lastPurchase.days)
+          : "",
+        minPurchases: c.audienceFilter?.minPurchases ? String(c.audienceFilter.minPurchases) : "",
+        signedUpAfter: c.audienceFilter?.signedUpAfter
+          ? new Date(c.audienceFilter.signedUpAfter)
+          : null,
+        signedUpBefore: c.audienceFilter?.signedUpBefore
+          ? new Date(c.audienceFilter.signedUpBefore)
+          : null,
+        mode:
+          c.mode === "evergreen" ? "evergreen" : c.mode === "drip" ? "drip" : "once",
+        scheduledAt: c.scheduledAt ?? null,
+        special: c.special,
+        cooldownDays: c.cooldownDays != null ? String(c.cooldownDays) : "30",
+        endsAt: c.endsAt ?? null,
+        dripIntervalDays: c.dripIntervalDays != null ? String(c.dripIntervalDays) : "3",
+        dripMaxAttempts: c.dripMaxAttempts != null ? String(c.dripMaxAttempts) : "3",
+      });
+      seeded.current = true;
+      // Resume at the first step still missing data (or the review step if all
+      // done), instead of always restarting at Definición.
+      const nameOk = !!c.name;
+      const msgOk =
+        CHANNELS.some((ch) => isChannelComplete(msg, ch)) &&
+        (c.channelPriority?.length ?? 0) > 0;
+      setStepIndex(!nameOk ? 0 : !msgOk ? 1 : STEPS.length - 1);
+    }
+  }, [loadId, stateQuery.data]);
+
+  const advanceMut = useMutation(trpc.campaigns.advance.mutationOptions());
+  const publishMut = useMutation(trpc.campaigns.publish.mutationOptions());
+
+  const step = STEPS[stepIndex]!;
+  const steps = STEPS.map((key) => ({ key, label: t(`step.${key}`) }));
+
+  const valid: Record<Step, boolean> = {
+    definition: form.name.trim().length > 0,
+    message: isMessageComplete({
+      message: form.message,
+      channelPriority: form.channelPriority,
+      linkUrl: form.linkUrl,
+    }),
+    audience: true,
+    schedule: true,
+  };
+  const navigable: string[] = [];
+  for (let i = 0; i < STEPS.length; i++) {
+    if (STEPS.slice(0, i).every((s) => valid[s])) navigable.push(STEPS[i]!);
+  }
+  const completed = STEPS.slice(0, stepIndex).filter((s) => valid[s]);
+
+  // Live reach for the schedule step (debounced; audience − opt-outs). The
+  // audience step renders its own reach inside CampaignAudienceFields.
+  const audienceFilter = buildAudienceFilter(form);
+  const reachInput = useMemo(
+    () => ({
+      audienceFilter,
+      channelPriority: form.channelPriority.length > 0 ? form.channelPriority : undefined,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(audienceFilter), form.channelPriority.join(",")],
+  );
+  const debouncedReach = useDebounce(reachInput, { wait: 400 });
+  const reach = useQuery({
+    ...trpc.campaigns.countReach.queryOptions(debouncedReach),
+    enabled: step === "schedule",
+  });
+
+  // Persists the current step, creating the draft first if it doesn't exist yet.
+  // Returns the campaign id on success (needed for publish), null on failure.
+  async function persistStep(): Promise<string | null> {
+    const cid = await ensureDraft();
+    if (!cid) return null;
+    try {
+      if (step === "definition") {
+        await advanceMut.mutateAsync({
+          id: cid,
+          step: "definition",
+          input: {
+            name: form.name,
+            objective: form.objective || undefined,
+          },
+        });
+      } else if (step === "message") {
+        await advanceMut.mutateAsync({
+          id: cid,
+          step: "message",
+          input: {
+            ...buildMessageInput(form.message),
+            channelPriority: form.channelPriority,
+            linkUrl: form.linkUrl || undefined,
+          },
+        });
+      } else if (step === "audience") {
+        await advanceMut.mutateAsync({
+          id: cid,
+          step: "audience",
+          input: buildAudienceFilter(form) ?? {},
+        });
+      } else if (step === "schedule") {
+        const evergreen = form.mode === "evergreen";
+        const drip = form.mode === "drip";
+        await advanceMut.mutateAsync({
+          id: cid,
+          step: "schedule",
+          input: {
+            mode: form.mode,
+            scheduledAt: evergreen || drip ? undefined : (form.scheduledAt ?? undefined),
+            special: form.special,
+            cooldownDays: evergreen ? Number(form.cooldownDays) || 30 : undefined,
+            endsAt: evergreen ? (form.endsAt ?? undefined) : undefined,
+            dripIntervalDays: drip ? Number(form.dripIntervalDays) || 3 : undefined,
+            dripMaxAttempts: drip ? Number(form.dripMaxAttempts) || 3 : undefined,
+          },
+        });
       }
-    >
-      {step === "content" ? (
-        <div className="space-y-4">
-          <Field label={t("fieldName")}>
-            <Input
-              value={draft.name}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder={t("fieldNamePlaceholder")}
-              className="h-10"
-              autoFocus
-            />
-          </Field>
-          <Field label={t("fieldTitle")}>
-            <Input
-              value={draft.title}
-              onChange={(e) => set("title", e.target.value)}
-              placeholder={t("fieldTitlePlaceholder")}
-              className="h-10"
-            />
-          </Field>
-          <Field label={t("fieldBody")}>
-            <Textarea
-              value={draft.body}
-              onChange={(e) => set("body", e.target.value)}
-              placeholder={t("fieldBodyPlaceholder")}
-              rows={4}
-              className="min-h-28 rounded-xl"
-            />
-          </Field>
-          <Field label={t("fieldCta")} hint={t("optional")}>
-            <Input
-              value={draft.cta}
-              onChange={(e) => set("cta", e.target.value)}
-              placeholder={t("fieldCtaPlaceholder")}
-              className="h-10"
-            />
-          </Field>
-        </div>
-      ) : step === "channels" ? (
-        <div className="space-y-3">
-          <p className="text-muted-foreground text-sm font-semibold">
-            {t("channelsHint")}
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {CHANNELS.map((c) => {
-              const Icon = CHANNEL_ICON[c];
-              const on = draft.channels.includes(c);
-              return (
+      return cid;
+    } catch {
+      toast.error(t("saveError"));
+      return null;
+    }
+  }
+
+  async function goTo(targetIndex: number) {
+    if (targetIndex === stepIndex) return;
+    setAttempted(false);
+    if (valid[step] && !(await persistStep())) return;
+    setStepIndex(targetIndex);
+  }
+
+  async function onNext() {
+    if (step !== "schedule" && !valid[step]) {
+      setAttempted(true);
+      return;
+    }
+    if (step === "schedule") {
+      const cid = await persistStep();
+      if (!cid) return;
+      try {
+        await publishMut.mutateAsync({ id: cid });
+        bypass.current = true;
+        setDirty(false);
+        await queryClient.invalidateQueries(trpc.campaigns.adminList.queryFilter());
+        toast.success(id ? t("updated", { name: form.name }) : t("created", { name: form.name }));
+        router.push("/campaigns");
+      } catch {
+        toast.error(t("publishError"));
+      }
+      return;
+    }
+    if (await persistStep()) {
+      setAttempted(false);
+      setStepIndex((n) => n + 1);
+    }
+  }
+
+  const saving = createMut.isPending || advanceMut.isPending || publishMut.isPending;
+
+  return (
+    <>
+      <WizardShell
+        title={id ? t("editTitle") : t("newTitle")}
+        steps={steps}
+        current={step}
+        completed={completed}
+        navigable={navigable}
+        onStepSelect={(key) => {
+          if (!saving) void goTo(STEPS.indexOf(key as Step));
+        }}
+        onBack={() => goTo(Math.max(0, stepIndex - 1))}
+        onNext={onNext}
+        isFirst={stepIndex === 0}
+        isLast={step === "schedule"}
+        finishLabel={id ? t("saveChanges") : t("publish")}
+        saving={saving}
+        saved={Boolean(campaignId)}
+        maxWidthClassName="max-w-7xl"
+        onExit={tryExit}
+        exitLabel={t("title")}
+        preview={
+          <CampaignMessagePreview message={form.message} channelPriority={form.channelPriority} />
+        }
+      >
+        {step === "definition" ? (
+          <div className="space-y-4">
+            <Field label={t("fieldName")}>
+              <Input
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder={t("fieldNamePlaceholder")}
+                className="h-10"
+                aria-invalid={attempted && !form.name.trim() ? true : undefined}
+                autoFocus
+              />
+              {attempted && !form.name.trim() ? <ErrorText>{t("nameRequired")}</ErrorText> : null}
+            </Field>
+            <Field label={t("fieldObjective")} hint={t("optional")}>
+              <Textarea
+                value={form.objective}
+                onChange={(e) => set("objective", e.target.value)}
+                placeholder={t("fieldObjectivePlaceholder")}
+                rows={10}
+                className="min-h-56"
+              />
+            </Field>
+          </div>
+        ) : step === "message" ? (
+          <CampaignMessageFields
+            value={{
+              message: form.message,
+              channelPriority: form.channelPriority,
+              linkUrl: form.linkUrl,
+            }}
+            onChange={(next) => {
+              setForm((f) => ({
+                ...f,
+                message: next.message,
+                channelPriority: next.channelPriority,
+                linkUrl: next.linkUrl,
+              }));
+              setDirty(true);
+            }}
+            showError={attempted}
+          />
+        ) : step === "audience" ? (
+          <CampaignAudienceFields
+            value={{
+              tiers: form.tiers,
+              lastPurchaseOp: form.lastPurchaseOp,
+              lastPurchaseDays: form.lastPurchaseDays,
+              minPurchases: form.minPurchases,
+              signedUpAfter: form.signedUpAfter,
+              signedUpBefore: form.signedUpBefore,
+            }}
+            onChange={(next) => {
+              setForm((f) => ({ ...f, ...next }));
+              setDirty(true);
+            }}
+            channelPriority={form.channelPriority}
+          />
+        ) : (
+          <div className="space-y-5">
+            <h2 className="font-display text-lg font-semibold tracking-tight">{t("reviewTitle")}</h2>
+            <dl className="divide-border divide-y text-sm">
+              <ReviewRow label={t("fieldName")} value={form.name || "—"} />
+              <ReviewRow
+                label={t("colChannels")}
+                value={
+                  form.channelPriority.length > 0
+                    ? form.channelPriority.map((c) => t(`channel.${c}`)).join(" › ")
+                    : "—"
+                }
+              />
+              <ReviewRow label={t("audienceLabel")} value={audienceSummary(form, t)} />
+            </dl>
+
+            <ReachBox reachable={reach.data?.reachable} audience={reach.data?.audience} />
+
+            <div className="grid grid-cols-3 gap-2">
+              {(["once", "evergreen", "drip"] as const).map((m) => (
                 <button
-                  key={c}
+                  key={m}
                   type="button"
-                  onClick={() => toggleChannel(c)}
-                  className={`flex items-center gap-2.5 rounded-xl border p-3 text-left text-sm font-semibold transition-colors ${
-                    on
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground hover:text-foreground"
+                  onClick={() => set("mode", m)}
+                  className={`rounded-2xl border p-3.5 text-left transition-colors ${
+                    form.mode === m
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/40"
                   }`}
                 >
-                  <Icon className="size-4" />
-                  {t(`channel.${c}`)}
+                  <p className="text-sm font-semibold">{t(`mode.${m}`)}</p>
+                  <p className="text-muted-foreground text-xs">{t(`modeHint.${m}`)}</p>
                 </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : step === "segment" ? (
-        <div className="space-y-4">
-          <Field label={t("fieldSegment")} hint={t("segmentHint")}>
-            <Select
-              value={draft.segment}
-              onValueChange={(v) => set("segment", v as Segment)}
-            >
-              <SelectTrigger size="lg" className="w-full text-sm">
-                <SelectValue>{(v) => t(`segment.${v as Segment}`)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {SEGMENTS.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {t(`segment.${s}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <div className="bg-muted/40 text-muted-foreground rounded-2xl p-4 text-sm font-semibold">
-            {t("segmentReach", { n: SEGMENT_REACH[draft.segment] })}
-          </div>
-        </div>
-      ) : step === "schedule" ? (
-        <div className="space-y-5">
-          <Field label={t("scheduleMode")}>
-            <SegmentedControl<CampaignDraft["scheduleMode"]>
-              value={draft.scheduleMode}
-              onValueChange={(v) => set("scheduleMode", v)}
-              options={[
-                { value: "event", label: t("modeEvent"), icon: SCHEDULE_ICON.event },
-                { value: "recurring", label: t("modeRecurring"), icon: SCHEDULE_ICON.recurring },
-                { value: "date", label: t("modeDate"), icon: SCHEDULE_ICON.date },
-              ]}
-            />
-          </Field>
-
-          {draft.scheduleMode === "event" ? (
-            <Field label={t("fieldEvent")}>
-              <Select
-                value={draft.event}
-                onValueChange={(v) => set("event", v ?? "")}
-              >
-                <SelectTrigger size="lg" className="w-full text-sm">
-                  <SelectValue>{(v) => t(`event.${v as string}`)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {EVENTS.map((e) => (
-                    <SelectItem key={e} value={e}>
-                      {t(`event.${e}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          ) : draft.scheduleMode === "recurring" ? (
-            <Field label={t("fieldFrequency")}>
-              <Select
-                value={draft.frequency}
-                onValueChange={(v) => set("frequency", v ?? "")}
-              >
-                <SelectTrigger size="lg" className="w-full text-sm">
-                  <SelectValue>{(v) => t(`frequency.${v as string}`)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {FREQUENCIES.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {t(`frequency.${f}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label={t("fieldDate")}>
-                <DatePicker
-                  value={draft.date ?? undefined}
-                  onValueChange={(d) => set("date", d ?? null)}
-                  placeholder={t("datePlaceholder")}
-                  formatLabel={(d) => formatDate(d, { locale })}
-                />
-              </Field>
-              <Field label={t("fieldTime")}>
-                <TimeInput value={draft.time} onChange={(v) => set("time", v)} />
-              </Field>
+              ))}
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <h2 className="font-display text-lg font-semibold tracking-tight">
-            {t("reviewTitle")}
-          </h2>
-          <dl className="divide-border divide-y text-sm">
-            <ReviewRow label={t("fieldName")} value={draft.name || "—"} />
-            <ReviewRow
-              label={t("channelsLabel")}
-              value={
-                draft.channels.length
-                  ? draft.channels.map((c) => t(`channel.${c}`)).join(", ")
-                  : "—"
-              }
-            />
-            <ReviewRow
-              label={t("fieldSegment")}
-              value={t(`segment.${draft.segment}`)}
-            />
-            <ReviewRow
-              label={t("scheduleMode")}
-              value={
-                draft.scheduleMode === "event"
-                  ? t(`event.${draft.event}`)
-                  : draft.scheduleMode === "recurring"
-                    ? t(`frequency.${draft.frequency}`)
-                    : draft.date
-                      ? `${formatDate(draft.date, { locale })} · ${draft.time}`
-                      : t("modeDate")
-              }
-            />
-          </dl>
-        </div>
-      )}
-    </WizardShell>
+
+            {form.mode === "once" ? (
+              <Field label={t("scheduleLabel")} hint={form.scheduledAt ? undefined : t("sendNow")}>
+                <div className="flex max-w-xs items-center gap-2">
+                  <DatePicker
+                    value={form.scheduledAt ?? undefined}
+                    onValueChange={(d) => set("scheduledAt", d ?? null)}
+                    placeholder={t("sendNow")}
+                    formatLabel={(d) => formatDate(d, { locale })}
+                    className="flex-1"
+                  />
+                  {form.scheduledAt ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="size-9 shrink-0 rounded-lg p-0"
+                      aria-label={t("sendNow")}
+                      onClick={() => set("scheduledAt", null)}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  ) : null}
+                </div>
+              </Field>
+            ) : form.mode === "evergreen" ? (
+              <>
+                <Field label={t("cooldownLabel")} hint={t("cooldownHint")}>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={form.cooldownDays}
+                      onChange={(e) => set("cooldownDays", e.target.value)}
+                      className="h-10 w-24"
+                    />
+                    <span className="text-muted-foreground text-sm">{t("cooldownUnit")}</span>
+                  </div>
+                </Field>
+                <Field label={t("endsAtLabel")} hint={form.endsAt ? undefined : t("noEndDate")}>
+                  <div className="flex max-w-xs items-center gap-2">
+                    <DatePicker
+                      value={form.endsAt ?? undefined}
+                      onValueChange={(d) => set("endsAt", d ?? null)}
+                      placeholder={t("noEndDate")}
+                      formatLabel={(d) => formatDate(d, { locale })}
+                      className="flex-1"
+                    />
+                    {form.endsAt ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="size-9 shrink-0 rounded-lg p-0"
+                        aria-label={t("noEndDate")}
+                        onClick={() => set("endsAt", null)}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    ) : null}
+                  </div>
+                </Field>
+              </>
+            ) : (
+              <>
+                <Field label={t("dripIntervalLabel")} hint={t("dripIntervalHint")}>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={90}
+                      value={form.dripIntervalDays}
+                      onChange={(e) => set("dripIntervalDays", e.target.value)}
+                      className="h-10 w-24"
+                    />
+                    <span className="text-muted-foreground text-sm">{t("cooldownUnit")}</span>
+                  </div>
+                </Field>
+                <Field label={t("dripAttemptsLabel")} hint={t("dripAttemptsHint")}>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={2}
+                      max={10}
+                      value={form.dripMaxAttempts}
+                      onChange={(e) => set("dripMaxAttempts", e.target.value)}
+                      className="h-10 w-24"
+                    />
+                    <span className="text-muted-foreground text-sm">{t("dripAttemptsUnit")}</span>
+                  </div>
+                </Field>
+              </>
+            )}
+
+            <label className="border-border flex items-start justify-between gap-3 rounded-2xl border p-4">
+              <div>
+                <p className="text-sm font-semibold">{t("specialLabel")}</p>
+                <p className="text-muted-foreground text-xs">{t("specialHint")}</p>
+              </div>
+              <Switch checked={form.special} onCheckedChange={(v) => set("special", v)} />
+            </label>
+          </div>
+        )}
+      </WizardShell>
+
+      <ResponsiveModal open={exitOpen} onOpenChange={setExitOpen}>
+        <ResponsiveModalContent>
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>{t("unsavedTitle")}</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
+          <p className="text-muted-foreground px-4 pb-2 text-sm">{t("unsavedHint")}</p>
+          <ResponsiveModalFooter className="gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 rounded-full px-5"
+              onClick={() => setExitOpen(false)}
+            >
+              {t("stay")}
+            </Button>
+            <Button
+              type="button"
+              className="h-10 rounded-full px-6 font-semibold"
+              onClick={confirmLeave}
+            >
+              {t("leave")}
+            </Button>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
+    </>
   );
 }
 
-const SEGMENT_REACH: Record<Segment, string> = {
-  all: "12,800",
-  vip: "1,240",
-  atRisk: "860",
-  new: "318",
-  inactive: "2,100",
-};
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs">{label}</Label>
-        {hint ? (
-          <span className="text-muted-foreground/70 text-xs font-semibold">
-            {hint}
-          </span>
-        ) : null}
-      </div>
-      {children}
-    </div>
-  );
+function audienceSummary(form: Form, t: ReturnType<typeof useTranslations>): string {
+  const parts: string[] = [];
+  if (form.tiers.length > 0) parts.push(`${t("audienceTiers")}: ${form.tiers.join(", ")}`);
+  if (form.lastPurchaseDays.trim()) {
+    const op = form.lastPurchaseOp === "gte" ? "≥" : "≤";
+    parts.push(`${t("audienceLastPurchase")} ${op} ${form.lastPurchaseDays}d`);
+  }
+  if (form.minPurchases.trim()) parts.push(`${t("audienceMinPurchases")}: ${form.minPurchases}`);
+  return parts.length > 0 ? parts.join(" · ") : t("audienceEveryone");
 }
 
 function ReviewRow({ label, value }: { label: string; value: string }) {

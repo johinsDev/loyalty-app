@@ -74,3 +74,37 @@ export type ListCustomersInput = z.infer<typeof listCustomersInputSchema>;
 export type PreferenceChannel = z.infer<typeof preferenceChannelSchema>;
 export type NotificationKey = z.infer<typeof notificationKeySchema>;
 export type FeedFilter = z.infer<typeof feedFilterSchema>;
+
+// ─── Automated-trigger config ────────────────────────────────────────────────
+/**
+ * Security/critical triggers that ALWAYS send — the config UI shows them
+ * read-only and the send job ignores any config row for them.
+ */
+export const PROTECTED_NOTIFICATION_KEYS = [
+  "reward-claim-code",
+  "phone-changed",
+] as const;
+
+/** Channels the admin can configure a trigger to use. */
+export const configChannelSchema = z.enum([
+  "push",
+  "mail",
+  "sms",
+  "whatsapp",
+  "database",
+]);
+
+export const setConfigInputSchema = z.object({
+  notificationKey: notificationKeySchema,
+  enabled: z.boolean(),
+  /** null = use the notification's declared channels. */
+  channels: z.array(configChannelSchema).min(1).nullable(),
+});
+
+export interface NotificationConfigView {
+  notificationKey: string;
+  enabled: boolean;
+  channels: string[] | null;
+  /** Protected triggers are always-on and not editable. */
+  isProtected: boolean;
+}

@@ -73,6 +73,7 @@ function SelectContent({
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner
+        positionMethod="fixed"
         side={side}
         sideOffset={sideOffset}
         align={align}

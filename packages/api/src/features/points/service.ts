@@ -66,6 +66,7 @@ export class PointsService {
     priceCents: number,
     purchaseId: string,
     storeId: string,
+    opts: { multiplier?: number } = {},
   ): Promise<{
     earned: number;
     balance: number;
@@ -74,7 +75,7 @@ export class PointsService {
     if (!POINTS_ENABLED) {
       return { earned: 0, balance: await this.repo.balance(organizationId, customerId) };
     }
-    const points = pointsForPrice(priceCents);
+    const points = Math.round(pointsForPrice(priceCents) * (opts.multiplier ?? 1));
     if (points <= 0) {
       return { earned: 0, balance: await this.repo.balance(organizationId, customerId) };
     }

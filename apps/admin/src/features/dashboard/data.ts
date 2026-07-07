@@ -59,14 +59,6 @@ export const cohorts: CohortRow[] = [
   { label: "Jun", size: 638, weeks: [100, 83, null, null, null] },
 ];
 
-export type PromoPerf = { name: string; reach: number; rate: number };
-export const promoPerformance: PromoPerf[] = [
-  { name: "Spring Drop 2×1", reach: 1204, rate: 92 },
-  { name: "Miércoles 2× puntos", reach: 860, rate: 74 },
-  { name: "Topping gratis", reach: 612, rate: 58 },
-  { name: "20% en frutales", reach: 388, rate: 41 },
-];
-
 export type Purchase = { initials: string; name: string; item: string; amount: string; points: string; store: string; time: string };
 export const recentPurchases: Purchase[] = [
   { initials: "AT", name: "Ari Tanaka", item: "Iced Matcha Latte", amount: "$6.25", points: "+12", store: "Centro", time: "2 min" },

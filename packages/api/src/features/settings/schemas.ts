@@ -76,6 +76,26 @@ export const loyaltyScopeSchema = z.enum(["org", "store"]);
 export const setLoyaltyScopeInputSchema = z.object({ loyaltyScope: loyaltyScopeSchema });
 export type SetLoyaltyScopeInput = z.infer<typeof setLoyaltyScopeInputSchema>;
 
+// ─── Smart Delivery (campaign global rules) ──────────────────────────────────
+const hhMm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm");
+export const updateSmartDeliveryInputSchema = z
+  .object({
+    frequencyCapPerWeek: z.number().int().min(1).max(50).nullable(),
+    quietHoursStart: hhMm.nullable(),
+    quietHoursEnd: hhMm.nullable(),
+  })
+  .refine((v) => (v.quietHoursStart == null) === (v.quietHoursEnd == null), {
+    message: "Set both quiet-hours ends or neither",
+    path: ["quietHoursEnd"],
+  });
+export type UpdateSmartDeliveryInput = z.infer<typeof updateSmartDeliveryInputSchema>;
+
+export interface SmartDeliveryView {
+  frequencyCapPerWeek: number | null;
+  quietHoursStart: string | null;
+  quietHoursEnd: string | null;
+}
+
 export interface BrandingView {
   name: string;
   description: string | null;

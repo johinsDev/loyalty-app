@@ -1,8 +1,12 @@
 "use client";
 
+import type { BenefitConfig } from "@loyalty/api/features/promotions/rule-compile";
+import { benefitConfigSchema, compileRule, decompileRule } from "@loyalty/api/features/promotions/rule-compile";
+import { benefitSummary } from "@loyalty/api/features/promotions/format";
+import type { MessageContentInput } from "@loyalty/api/features/campaigns/schemas";
+import type { PromoType } from "@loyalty/api/features/promotions/schemas";
 import { formatDate } from "@loyalty/date";
 import {
-  Badge,
   BackgroundPicker,
   Button,
   Checkbox,
@@ -10,6 +14,11 @@ import {
   Input,
   Label,
   NumberInput,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
   RichTextEditor,
   Select,
   SelectContent,
@@ -19,299 +28,362 @@ import {
   Switch,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { WizardShell } from "@/components/wizard-shell";
+import {
+  AnnounceComposer,
+  type AnnounceValue,
+} from "@/features/campaigns/components/announce-composer";
+import { buildAudienceFilter } from "@/features/campaigns/lib/campaign-audience";
+import {
+  buildMessageInput,
+  isMessageComplete,
+  type Channel,
+} from "@/features/campaigns/lib/campaign-message";
 import { FileUpload } from "@/features/storage/components/file-upload";
 import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 import { useRouter } from "@/i18n/navigation";
+import { useNavigationGuard } from "@/lib/use-unsaved-guard";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { promoAnnounceInitial, promoLinkUrl } from "../lib/promo-announce";
+import { BenefitConfigFields, defaultConfigFor } from "./benefit-forms";
 import { HourSelect } from "./hour-select";
-import { ProductCombobox } from "./product-combobox";
 
-const STEPS = ["content", "design", "benefit", "rules", "schedule", "review"] as const;
+const STEPS = ["essence", "benefit", "conditions", "design", "broadcast", "review"] as const;
 type Step = (typeof STEPS)[number];
 
-const TYPES = ["percentage", "fixed", "nForM", "freeItem", "pointsMultiplier"] as const;
-type PromoType = (typeof TYPES)[number];
-const SCOPES = ["order", "products", "categories"] as const;
-type ScopeKind = (typeof SCOPES)[number];
+const TYPES: PromoType[] = [
+  "percentOff",
+  "amountOff",
+  "nxm",
+  "secondUnit",
+  "bundle",
+  "combo",
+  "crossSell",
+  "cartThreshold",
+  "volumeTiered",
+  "pointsMultiplier",
+];
 const TIERS = ["hoja", "flor", "oro"] as const;
 type TierKey = (typeof TIERS)[number];
 type AudienceType = "all" | "tier" | "specific";
-const CHANNELS = ["push", "database", "realtime"] as const;
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+type RecurrenceMode = "always" | "weekly" | "monthlyDay" | "monthlyNthWeekday" | "dates";
 
 const centsToUnits = (c: number | null | undefined): number | undefined =>
   c == null ? undefined : Math.round(c) / 100;
 const unitsToCents = (u: number | undefined): number | undefined =>
   u == null ? undefined : Math.round(u * 100);
 
+const pad = (n: number) => String(n).padStart(2, "0");
+const toDateKey = (d: Date): string =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
 type Form = {
   name: string;
-  slug: string;
-  shortDescription: string;
-  longDescription: string;
-  badgeLabel: string;
-  icon: string;
-  category: string;
-  featured: boolean;
-  backgroundCss: string;
-  mainImageUrl: string | null;
   type: PromoType;
-  percent?: number;
-  maxDiscountUnits?: number;
-  amountUnits?: number;
-  buyQty?: number;
-  payQty?: number;
-  multiplier?: number;
-  freeItemId: string;
-  scopeKind: ScopeKind;
-  productIds: string[];
-  categoryIds: string[];
+  config: BenefitConfig;
+  // conditions
   minPurchaseUnits?: number;
   maxUsesTotal?: number;
   maxPerCustomer?: number;
-  firstPurchaseOnly: boolean;
-  daysOfWeek: number[];
-  hoursFrom: string;
-  hoursTo: string;
+  purchaseCountMin?: number;
+  purchaseCountMax?: number;
+  lastPurchaseOlderThanDays?: number;
   audienceType: AudienceType;
   tierKey: TierKey;
   audienceCustomerIds: string[];
-  stackable: boolean;
   startsAt: Date | null;
   endsAt: Date | null;
+  // schedule
+  recurrenceMode: RecurrenceMode;
+  weeklyDays: number[];
+  monthlyDay?: number;
+  nth: 1 | 2 | 3 | 4 | -1;
+  nthWeekday: number;
+  dates: string[];
+  hoursFrom: string;
+  hoursTo: string;
+  // design
+  backgroundCss: string;
+  mainImageUrl: string | null;
+  badgeLabel: string;
+  icon: string;
+  shortDescription: string;
+  longDescription: string;
+  category: string;
+  featured: boolean;
 };
 
 const EMPTY: Form = {
   name: "",
-  slug: "",
-  shortDescription: "",
-  longDescription: "",
-  badgeLabel: "",
-  icon: "",
-  category: "",
-  featured: false,
-  backgroundCss: "linear-gradient(135deg, #1BAD9D, #0e6f64)",
-  mainImageUrl: null,
-  type: "percentage",
-  percent: 10,
-  buyQty: 2,
-  payQty: 1,
-  multiplier: 2,
-  freeItemId: "",
-  scopeKind: "order",
-  productIds: [],
-  categoryIds: [],
-  firstPurchaseOnly: false,
-  daysOfWeek: [],
-  hoursFrom: "",
-  hoursTo: "",
+  type: "percentOff",
+  config: defaultConfigFor("percentOff"),
   audienceType: "all",
   tierKey: "oro",
   audienceCustomerIds: [],
-  stackable: false,
   startsAt: null,
   endsAt: null,
+  recurrenceMode: "always",
+  weeklyDays: [],
+  nth: 1,
+  nthWeekday: 1,
+  dates: [],
+  hoursFrom: "",
+  hoursTo: "",
+  backgroundCss: "linear-gradient(135deg, #1BAD9D, #0e6f64)",
+  mainImageUrl: null,
+  badgeLabel: "",
+  icon: "",
+  shortDescription: "",
+  longDescription: "",
+  category: "",
+  featured: false,
 };
 
-function slugify(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-}
-
 /**
- * Promotion editor (content → design → benefit → rules → schedule → review). On
- * "new" it creates a draft immediately; each Next persists the relevant fields
- * via `promociones.update`, and Finish publishes. The schedule step manages
- * scheduled notifications (one-shot or weekly), delivered by Trigger.dev.
+ * Server-driven promo wizard (essence → benefit → conditions → design →
+ * broadcast → review). The draft already exists (the gallery creates it); each
+ * Next persists via `advance`, Finish publishes and — when the broadcast toggle
+ * is on — fires `campaigns.createFromEntity` best-effort (banner pattern).
+ * Broadcast is intentionally a client-only step.
  */
-export function PromoWizard({ id }: { id?: string }) {
+export function PromoWizard({ id }: { id: string }) {
   const t = useTranslations("Promotions");
+  const tc = useTranslations("Campaigns.announce");
   const locale = useLocale();
   const router = useRouter();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const uploadImage = useUploadImage();
 
-  const [promoId, setPromoId] = useState<string | undefined>(id);
   const [form, setForm] = useState<Form>(EMPTY);
-  const [slugTouched, setSlugTouched] = useState(Boolean(id));
+  const [announce, setAnnounce] = useState<AnnounceValue | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
+  const [dirty, setDirty] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const seeded = useRef(false);
-  const creating = useRef(false);
+  const finishing = useRef(false);
 
-  const set = <K extends keyof Form>(key: K, value: Form[K]) =>
+  const set = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
+    setDirty(true);
+  };
 
-  // New promo → create a draft once.
-  const createMut = useMutation(trpc.promociones.create.mutationOptions());
-  useEffect(() => {
-    if (id || promoId || creating.current) return;
-    creating.current = true;
-    createMut.mutate(undefined, {
-      onSuccess: (res) => {
-        setPromoId(res.id);
-        seeded.current = true;
-      },
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, promoId]);
-
-  // Edit promo → load + seed once.
-  const getQuery = useQuery({
-    ...trpc.promociones.get.queryOptions({ id: id ?? "" }),
-    enabled: Boolean(id),
+  const bypass = useNavigationGuard(dirty, (href) => {
+    setPendingHref(href);
+    setExitOpen(true);
   });
+  const confirmLeave = () => {
+    bypass.current = true;
+    setDirty(false);
+    setExitOpen(false);
+    if (pendingHref && pendingHref !== "__back__") window.location.href = pendingHref;
+    else router.push("/promotions");
+  };
+  const tryExit = () => {
+    if (dirty) {
+      setPendingHref(null);
+      setExitOpen(true);
+    } else {
+      router.push("/promotions");
+    }
+  };
+
+  const stateQuery = useQuery(trpc.promociones.getState.queryOptions({ id }));
+  const promo = stateQuery.data?.promo;
+
+  // Seed once from the draft, then resume at the server-derived current step.
   useEffect(() => {
-    if (!id || !getQuery.data || seeded.current) return;
-    const p = getQuery.data;
-    const b = (p.benefit ?? {}) as Record<string, unknown>;
-    const c = (p.conditions ?? {}) as Record<string, unknown>;
-    const scope = (p.scope ?? {}) as { productIds?: string[]; categoryIds?: string[] };
-    const freeRef = (b.freeRef ?? {}) as { id?: string };
+    if (!stateQuery.data || seeded.current) return;
+    const p = stateQuery.data.promo;
+    const type = (TYPES as string[]).includes(p.type ?? "") ? (p.type as PromoType) : "percentOff";
+    const config =
+      (p.rule ? decompileRule(type, p.rule) : null) ?? defaultConfigFor(type);
+    const c = p.conditions ?? {};
+    const sched = p.schedule ?? {};
+    const rec = sched.recurrence;
     setForm({
       ...EMPTY,
       name: p.name ?? "",
-      slug: p.slug && !p.slug.startsWith("borrador-") ? p.slug : "",
-      shortDescription: p.shortDescription ?? "",
-      longDescription: p.longDescription ?? "",
-      badgeLabel: p.badgeLabel ?? "",
-      icon: p.icon ?? "",
-      category: p.category ?? "",
-      featured: p.featured ?? false,
-      backgroundCss: p.backgroundCss ?? EMPTY.backgroundCss,
-      mainImageUrl: p.mainImageUrl,
-      type: (p.type as PromoType) ?? "percentage",
-      percent: typeof b.percent === "number" ? b.percent : EMPTY.percent,
-      maxDiscountUnits: centsToUnits(b.maxDiscountCents as number | undefined),
-      amountUnits: centsToUnits(b.amountCents as number | undefined),
-      buyQty: typeof b.buyQty === "number" ? b.buyQty : EMPTY.buyQty,
-      payQty: typeof b.payQty === "number" ? b.payQty : EMPTY.payQty,
-      multiplier: typeof b.multiplier === "number" ? b.multiplier : EMPTY.multiplier,
-      freeItemId: freeRef.id ?? "",
-      scopeKind: (p.scopeKind as ScopeKind) ?? "order",
-      productIds: scope.productIds ?? [],
-      categoryIds: scope.categoryIds ?? [],
-      minPurchaseUnits: centsToUnits(c.minPurchaseCents as number | undefined),
-      maxUsesTotal: c.maxUsesTotal as number | undefined,
-      maxPerCustomer: c.maxPerCustomer as number | undefined,
-      firstPurchaseOnly: Boolean(c.firstPurchaseOnly),
-      daysOfWeek: (c.daysOfWeek as number[] | undefined) ?? [],
-      hoursFrom: (c.hoursFrom as string | undefined) ?? "",
-      hoursTo: (c.hoursTo as string | undefined) ?? "",
+      type,
+      config,
+      minPurchaseUnits: centsToUnits(c.minPurchaseCents),
+      maxUsesTotal: c.maxUsesTotal,
+      maxPerCustomer: c.maxPerCustomer,
+      purchaseCountMin: c.purchaseCount?.min,
+      purchaseCountMax: c.purchaseCount?.max,
+      lastPurchaseOlderThanDays: c.lastPurchaseOlderThanDays,
       audienceType: (p.audienceType as AudienceType) ?? "all",
       tierKey: (p.tierKey as TierKey) ?? "oro",
       audienceCustomerIds: p.audienceCustomerIds ?? [],
-      stackable: p.stackable ?? false,
       startsAt: p.startsAt,
       endsAt: p.endsAt,
+      recurrenceMode: rec?.kind ?? "always",
+      weeklyDays: rec?.kind === "weekly" ? rec.days : [],
+      monthlyDay: rec?.kind === "monthlyDay" ? rec.day : undefined,
+      nth: rec?.kind === "monthlyNthWeekday" ? rec.nth : 1,
+      nthWeekday: rec?.kind === "monthlyNthWeekday" ? rec.weekday : 1,
+      dates: rec?.kind === "dates" ? rec.dates : [],
+      hoursFrom: sched.timeWindow?.from ?? "",
+      hoursTo: sched.timeWindow?.to ?? "",
+      backgroundCss: p.backgroundCss ?? EMPTY.backgroundCss,
+      mainImageUrl: p.mainImageUrl,
+      badgeLabel: p.badgeLabel ?? "",
+      icon: p.icon ?? "",
+      shortDescription: p.shortDescription ?? "",
+      longDescription: p.longDescription ?? "",
+      category: p.category ?? "",
+      featured: p.featured ?? false,
     });
     seeded.current = true;
-  }, [id, getQuery.data]);
+    const current = stateQuery.data.state.current;
+    const idx = (STEPS as readonly string[]).indexOf(current);
+    setStepIndex(current === "review" ? STEPS.indexOf("review") : idx >= 0 ? idx : 0);
+  }, [stateQuery.data]);
 
-  const updateMut = useMutation(trpc.promociones.update.mutationOptions());
+  const advanceMut = useMutation(trpc.promociones.advance.mutationOptions());
   const publishMut = useMutation(trpc.promociones.publish.mutationOptions());
+  const createFromEntityMut = useMutation(trpc.campaigns.createFromEntity.mutationOptions());
+
+  const priorCampaignsQuery = useQuery(
+    trpc.campaigns.campaignsBySource.queryOptions({ scope: "promo", id }),
+  );
 
   const step = STEPS[stepIndex]!;
   const steps = STEPS.map((key) => ({ key, label: t(`step.${key}`) }));
-  const completed = STEPS.slice(0, stepIndex);
 
-  function buildBenefit(): Record<string, unknown> | undefined {
-    switch (form.type) {
-      case "percentage":
-        return {
-          percent: form.percent && form.percent >= 1 ? form.percent : 1,
-          ...(form.maxDiscountUnits ? { maxDiscountCents: unitsToCents(form.maxDiscountUnits) } : {}),
-        };
-      case "fixed":
-        return { amountCents: unitsToCents(form.amountUnits) ?? 0 };
-      case "nForM":
-        return { buyQty: form.buyQty ?? 2, payQty: form.payQty ?? 1 };
-      case "freeItem":
-        return form.freeItemId ? { freeRef: { kind: "product", id: form.freeItemId } } : undefined;
-      case "pointsMultiplier":
-        return { multiplier: form.multiplier && form.multiplier >= 1 ? form.multiplier : 2 };
+  // Seed the announcement the first time the admin reaches Difusión.
+  useEffect(() => {
+    if (step === "broadcast" && announce === null && promo) {
+      setAnnounce(
+        promoAnnounceInitial({
+          slug: promo.slug ?? "",
+          name: form.name || (promo.name ?? ""),
+          shortDescription: form.shortDescription,
+          benefitSummary: liveSummary(),
+          startsAt: form.startsAt,
+        }),
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, announce, promo]);
+
+  const configValid = benefitConfigSchema.safeParse(form.config).success;
+  const valid: Record<Step, boolean> = {
+    essence: form.name.trim().length > 0,
+    benefit: configValid,
+    conditions: true,
+    design: form.backgroundCss.trim().length > 0,
+    broadcast: announce === null || !announce.enabled || isMessageComplete(announce.message),
+    review: true,
+  };
+  const navigable: string[] = [];
+  for (let i = 0; i < STEPS.length; i++) {
+    if (STEPS.slice(0, i).every((s) => valid[s])) navigable.push(STEPS[i]!);
+  }
+  const completed = STEPS.slice(0, stepIndex).filter((s) => valid[s]);
+
+  function liveSummary(): string | null {
+    if (!configValid) return null;
+    try {
+      return benefitSummary(form.type, compileRule(form.config), locale === "en" ? "en" : "es");
+    } catch {
+      return null;
     }
   }
 
-  function buildConditions(): Record<string, unknown> {
-    const c: Record<string, unknown> = {};
-    const min = unitsToCents(form.minPurchaseUnits);
-    if (min) c.minPurchaseCents = min;
-    if (form.maxUsesTotal) c.maxUsesTotal = form.maxUsesTotal;
-    if (form.maxPerCustomer) c.maxPerCustomer = form.maxPerCustomer;
-    if (form.firstPurchaseOnly) c.firstPurchaseOnly = true;
-    if (form.daysOfWeek.length) c.daysOfWeek = [...form.daysOfWeek].sort();
-    if (/^\d{2}:\d{2}$/.test(form.hoursFrom)) c.hoursFrom = form.hoursFrom;
-    if (/^\d{2}:\d{2}$/.test(form.hoursTo)) c.hoursTo = form.hoursTo;
-    return c;
+  function buildSchedule() {
+    const recurrence =
+      form.recurrenceMode === "weekly" && form.weeklyDays.length > 0
+        ? { kind: "weekly" as const, days: [...form.weeklyDays].sort() }
+        : form.recurrenceMode === "monthlyDay" && form.monthlyDay
+          ? { kind: "monthlyDay" as const, day: form.monthlyDay }
+          : form.recurrenceMode === "monthlyNthWeekday"
+            ? { kind: "monthlyNthWeekday" as const, nth: form.nth, weekday: form.nthWeekday }
+            : form.recurrenceMode === "dates" && form.dates.length > 0
+              ? { kind: "dates" as const, dates: form.dates }
+              : undefined;
+    const timeWindow =
+      /^\d{2}:\d{2}$/.test(form.hoursFrom) && /^\d{2}:\d{2}$/.test(form.hoursTo)
+        ? { from: form.hoursFrom, to: form.hoursTo }
+        : undefined;
+    if (!recurrence && !timeWindow) return null;
+    return { ...(recurrence ? { recurrence } : {}), ...(timeWindow ? { timeWindow } : {}) };
   }
 
   async function persistStep(): Promise<boolean> {
-    if (!promoId) return false;
     try {
-      if (step === "content") {
-        await updateMut.mutateAsync({
-          id: promoId,
-          name: form.name || undefined,
-          ...(form.slug ? { slug: form.slug } : {}),
-          shortDescription: form.shortDescription || undefined,
-          longDescription: form.longDescription || undefined,
-          badgeLabel: form.badgeLabel || undefined,
-          category: form.category || undefined,
-          featured: form.featured,
+      if (step === "essence") {
+        const res = await advanceMut.mutateAsync({
+          id,
+          step: "essence",
+          input: { name: form.name, type: form.type },
         });
-      } else if (step === "design") {
-        await updateMut.mutateAsync({
-          id: promoId,
-          backgroundCss: form.backgroundCss,
-          mainImageUrl: form.mainImageUrl ?? "",
-          icon: form.icon || undefined,
-        });
+        // A type change resets the rule server-side; mirror it locally.
+        if (res.promo.rule === null && form.config.type !== form.type) {
+          setForm((f) => ({ ...f, config: defaultConfigFor(f.type) }));
+        }
       } else if (step === "benefit") {
-        const benefit = buildBenefit();
-        await updateMut.mutateAsync({
-          id: promoId,
-          type: form.type,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ...(benefit ? { benefit: benefit as any } : {}),
-          scopeKind: form.scopeKind,
-          scope: {
-            ...(form.scopeKind === "products" ? { productIds: form.productIds } : {}),
-            ...(form.scopeKind === "categories" ? { categoryIds: form.categoryIds } : {}),
+        await advanceMut.mutateAsync({ id, step: "benefit", input: form.config });
+      } else if (step === "conditions") {
+        const conditions = {
+          ...(unitsToCents(form.minPurchaseUnits)
+            ? { minPurchaseCents: unitsToCents(form.minPurchaseUnits) }
+            : {}),
+          ...(form.maxUsesTotal ? { maxUsesTotal: form.maxUsesTotal } : {}),
+          ...(form.maxPerCustomer ? { maxPerCustomer: form.maxPerCustomer } : {}),
+          ...(form.lastPurchaseOlderThanDays
+            ? { lastPurchaseOlderThanDays: form.lastPurchaseOlderThanDays }
+            : {}),
+          ...(form.purchaseCountMin != null || form.purchaseCountMax != null
+            ? {
+                purchaseCount: {
+                  ...(form.purchaseCountMin != null ? { min: form.purchaseCountMin } : {}),
+                  ...(form.purchaseCountMax != null ? { max: form.purchaseCountMax } : {}),
+                },
+              }
+            : {}),
+        };
+        await advanceMut.mutateAsync({
+          id,
+          step: "conditions",
+          input: {
+            conditions,
+            audienceType: form.audienceType,
+            ...(form.audienceType === "tier" ? { tierKey: form.tierKey } : {}),
+            ...(form.audienceType === "specific"
+              ? { audienceCustomerIds: form.audienceCustomerIds }
+              : {}),
+            startsAt: form.startsAt,
+            endsAt: form.endsAt,
+            schedule: buildSchedule(),
           },
         });
-      } else if (step === "rules") {
-        await updateMut.mutateAsync({
-          id: promoId,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          conditions: buildConditions() as any,
-          audienceType: form.audienceType,
-          ...(form.audienceType === "tier" ? { tierKey: form.tierKey } : {}),
-          ...(form.audienceType === "specific"
-            ? { audienceCustomerIds: form.audienceCustomerIds }
-            : {}),
-          stackable: form.stackable,
-        });
-      } else if (step === "schedule") {
-        await updateMut.mutateAsync({
-          id: promoId,
-          startsAt: form.startsAt ?? undefined,
-          endsAt: form.endsAt ?? undefined,
+      } else if (step === "design") {
+        await advanceMut.mutateAsync({
+          id,
+          step: "design",
+          input: {
+            backgroundCss: form.backgroundCss,
+            mainImageUrl: form.mainImageUrl ?? "",
+            badgeLabel: form.badgeLabel || null,
+            icon: form.icon || null,
+            shortDescription: form.shortDescription || null,
+            longDescription: form.longDescription || null,
+            category: form.category || null,
+            featured: form.featured,
+          },
         });
       }
+      await queryClient.invalidateQueries(trpc.promociones.getState.queryFilter({ id }));
       return true;
     } catch {
       toast.error(t("saveError"));
@@ -319,410 +391,539 @@ export function PromoWizard({ id }: { id?: string }) {
     }
   }
 
-  async function onNext() {
-    if (step === "review") {
-      if (!promoId) return;
-      try {
-        await publishMut.mutateAsync({ id: promoId });
-        await queryClient.invalidateQueries(trpc.promociones.list.queryFilter());
-        toast.success(id ? t("updated", { name: form.name }) : t("created", { name: form.name }));
-        router.push("/promotions");
-      } catch {
-        toast.error(t("publishError"));
-      }
-      return;
-    }
-    const ok = await persistStep();
-    if (ok) setStepIndex((n) => n + 1);
+  async function goTo(targetIndex: number) {
+    if (targetIndex === stepIndex) return;
+    setAttempted(false);
+    const isServerStep = stepIndex < 4;
+    if (isServerStep && valid[step] && !(await persistStep())) return;
+    setStepIndex(targetIndex);
   }
 
-  const busy = createMut.isPending && !promoId;
+  async function onNext() {
+    if (!valid[step]) {
+      setAttempted(true);
+      return;
+    }
+    if (step === "review") {
+      if (finishing.current) return;
+      finishing.current = true;
+      try {
+        await publishMut.mutateAsync({ id });
+      } catch {
+        toast.error(t("publishError"));
+        finishing.current = false;
+        return;
+      }
+      bypass.current = true;
+      setDirty(false);
+      await queryClient.invalidateQueries(trpc.promociones.adminList.queryFilter());
+      let announced = false;
+      if (announce?.enabled) {
+        announced = true;
+        const channelPriority: Channel[] = announce.message.channelPriority.length
+          ? announce.message.channelPriority
+          : ["push"];
+        try {
+          await createFromEntityMut.mutateAsync({
+            source: { scope: "promo", id },
+            name: form.name,
+            message: {
+              ...(buildMessageInput(announce.message.message) as MessageContentInput),
+              linkUrl: promoLinkUrl({ slug: promo?.slug ?? "", name: form.name }),
+            },
+            channelPriority,
+            audienceFilter: buildAudienceFilter(announce.audience),
+            scheduledAt: announce.scheduledAt,
+          });
+          toast.success(tc("launched"));
+        } catch {
+          toast.error(tc("failed"));
+        }
+      }
+      if (!announced) toast.success(t("created", { name: form.name }));
+      router.push("/promotions");
+      return;
+    }
+    const isServerStep = stepIndex < 4;
+    if (!isServerStep || (await persistStep())) {
+      setAttempted(false);
+      setStepIndex((n) => n + 1);
+    }
+  }
+
+  const saving =
+    advanceMut.isPending || publishMut.isPending || createFromEntityMut.isPending;
+
+  const summary = liveSummary();
 
   return (
-    <WizardShell
-      title={id ? t("editTitle") : t("newTitle")}
-      steps={steps}
-      current={step}
-      completed={completed}
-      onStepSelect={(key) => {
-        const idx = STEPS.indexOf(key as Step);
-        if (idx <= stepIndex) setStepIndex(idx);
-      }}
-      onBack={() => setStepIndex((n) => Math.max(0, n - 1))}
-      onNext={onNext}
-      isFirst={stepIndex === 0}
-      isLast={step === "review"}
-      finishLabel={id ? t("saveChanges") : t("publish")}
-      preview={<PromoPreview form={form} />}
-    >
-      {busy ? (
-        <p className="text-muted-foreground text-sm">…</p>
-      ) : step === "content" ? (
-        <div className="space-y-4">
-          <Field label={t("fieldName")}>
-            <Input
-              value={form.name}
-              onChange={(e) => {
-                set("name", e.target.value);
-                if (!slugTouched) set("slug", slugify(e.target.value));
-              }}
-              placeholder={t("fieldNamePlaceholder")}
-              className="h-10"
-              autoFocus
-            />
-          </Field>
-          <Field label={t("fieldSlug")}>
-            <Input
-              value={form.slug}
-              onChange={(e) => {
-                setSlugTouched(true);
-                set("slug", slugify(e.target.value));
-              }}
-              placeholder="2x1-entre-semana"
-              className="h-10"
-            />
-          </Field>
-          <Field label={t("fieldShort")}>
-            <Input
-              value={form.shortDescription}
-              onChange={(e) => set("shortDescription", e.target.value)}
-              placeholder={t("fieldShortPlaceholder")}
-              className="h-10"
-            />
-          </Field>
-          <Field label={t("fieldLong")} hint={t("optional")}>
-            <RichTextEditor
-              value={form.longDescription}
-              onValueChange={(html) => set("longDescription", html)}
-            />
-          </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label={t("fieldBadge")} hint={t("optional")}>
+    <>
+      <WizardShell
+        title={t("newTitle")}
+        steps={steps}
+        current={step}
+        completed={completed}
+        navigable={navigable}
+        onStepSelect={(key) => {
+          if (!saving) void goTo(STEPS.indexOf(key as Step));
+        }}
+        onBack={() => goTo(Math.max(0, stepIndex - 1))}
+        onNext={onNext}
+        isFirst={stepIndex === 0}
+        isLast={step === "review"}
+        finishLabel={t("publish")}
+        saving={saving}
+        onExit={tryExit}
+        exitLabel={t("title")}
+        preview={
+          <PromoPreview
+            name={form.name}
+            badge={form.badgeLabel || summary || ""}
+            short={form.shortDescription || summary || ""}
+            backgroundCss={form.backgroundCss}
+            mainImageUrl={form.mainImageUrl}
+          />
+        }
+      >
+        {!seeded.current ? (
+          <p className="text-muted-foreground text-sm">…</p>
+        ) : step === "essence" ? (
+          <div className="space-y-4">
+            <Field label={t("fieldName")}>
               <Input
-                value={form.badgeLabel}
-                onChange={(e) => set("badgeLabel", e.target.value)}
-                placeholder={t("fieldBadgePlaceholder")}
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder={t("fieldNamePlaceholder")}
                 className="h-10"
+                aria-invalid={attempted && !form.name.trim() ? true : undefined}
+                autoFocus
               />
             </Field>
-            <Field label={t("fieldCategory")} hint={t("optional")}>
-              <Input
-                value={form.category}
-                onChange={(e) => set("category", e.target.value)}
-                placeholder={t("fieldCategoryPlaceholder")}
-                className="h-10"
-              />
+            <Field label={t("fieldType")} hint={t("typeHint")}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {TYPES.map((ty) => (
+                  <button
+                    key={ty}
+                    type="button"
+                    onClick={() => {
+                      set("type", ty);
+                      if (form.config.type !== ty) set("config", defaultConfigFor(ty));
+                    }}
+                    className={`rounded-xl border p-3 text-left transition-colors ${
+                      form.type === ty
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold">{t(`types.${ty}`)}</p>
+                    <p className="text-muted-foreground text-xs">{t(`typeHints.${ty}`)}</p>
+                  </button>
+                ))}
+              </div>
             </Field>
           </div>
-          <ToggleRow
-            label={t("fieldFeatured")}
-            hint={t("featuredHint")}
-            checked={form.featured}
-            onChange={(v) => set("featured", v)}
-          />
-        </div>
-      ) : step === "design" ? (
-        <div className="space-y-4">
-          <Field label={t("fieldBg")}>
-            <BackgroundPicker
-              value={form.backgroundCss}
-              onValueChange={(bg) => set("backgroundCss", bg)}
-              onUploadImage={uploadImage}
-            />
-          </Field>
-          <Field label={t("fieldMainImage")} hint={t("optional")}>
-            <FileUpload
-              value={form.mainImageUrl ? [form.mainImageUrl] : []}
-              onChange={(urls) => set("mainImageUrl", urls[urls.length - 1] ?? null)}
-              accept={{ "image/*": [] }}
-              multiple={false}
-            />
-          </Field>
-          <Field label={t("fieldIcon")} hint={t("optional")}>
-            <Input
-              value={form.icon}
-              onChange={(e) => set("icon", e.target.value)}
-              placeholder="🎁"
-              className="h-10"
-            />
-          </Field>
-        </div>
-      ) : step === "benefit" ? (
-        <div className="space-y-4">
-          <Field label={t("fieldType")}>
-            <Select value={form.type} onValueChange={(v) => set("type", (v as PromoType) ?? "percentage")}>
-              <SelectTrigger size="lg" className="w-full text-sm">
-                <SelectValue>{(v) => t(`type.${v as string}`)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {TYPES.map((ty) => (
-                  <SelectItem key={ty} value={ty}>
-                    {t(`type.${ty}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          {form.type === "percentage" ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label={t("fieldPercent")}>
-                <NumberInput value={form.percent} onValueChange={(v) => set("percent", v)} suffix=" %" className="h-10" />
-              </Field>
-              <Field label={t("fieldMaxDiscount")} hint={t("optional")}>
+        ) : step === "benefit" ? (
+          <div className="space-y-4">
+            <BenefitConfigFields value={form.config} onChange={(config) => set("config", config)} />
+            {summary ? (
+              <div className="border-primary/20 bg-primary/5 flex items-center gap-2.5 rounded-2xl border px-4 py-3">
+                <Sparkles className="text-primary size-4 shrink-0" />
+                <div>
+                  <p className="text-primary/70 text-[10px] font-extrabold tracking-wider uppercase">
+                    {t("summaryLabel")}
+                  </p>
+                  <p className="text-sm font-semibold">{summary}</p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : step === "conditions" ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field label={t("fieldMinPurchase")} hint={t("optional")}>
                 <NumberInput
-                  value={form.maxDiscountUnits}
-                  onValueChange={(v) => set("maxDiscountUnits", v)}
+                  value={form.minPurchaseUnits}
+                  onValueChange={(v) => set("minPurchaseUnits", v)}
+                  className="h-10"
+                />
+              </Field>
+              <Field label={t("fieldMaxUses")} hint={t("optional")}>
+                <NumberInput
+                  value={form.maxUsesTotal}
+                  onValueChange={(v) => set("maxUsesTotal", v)}
+                  className="h-10"
+                />
+              </Field>
+              <Field label={t("fieldMaxPerCustomer")} hint={t("optional")}>
+                <NumberInput
+                  value={form.maxPerCustomer}
+                  onValueChange={(v) => set("maxPerCustomer", v)}
                   className="h-10"
                 />
               </Field>
             </div>
-          ) : form.type === "fixed" ? (
-            <Field label={t("fieldAmount")}>
-              <NumberInput value={form.amountUnits} onValueChange={(v) => set("amountUnits", v)} className="h-10" />
-            </Field>
-          ) : form.type === "nForM" ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label={t("fieldBuyQty")}>
-                <NumberInput value={form.buyQty} onValueChange={(v) => set("buyQty", v)} className="h-10" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field label={t("fieldPurchaseCountMin")} hint={t("optional")}>
+                <NumberInput
+                  value={form.purchaseCountMin}
+                  onValueChange={(v) => set("purchaseCountMin", v)}
+                  className="h-10"
+                />
               </Field>
-              <Field label={t("fieldPayQty")}>
-                <NumberInput value={form.payQty} onValueChange={(v) => set("payQty", v)} className="h-10" />
+              <Field label={t("fieldPurchaseCountMax")} hint={t("purchaseCountMaxHint")}>
+                <NumberInput
+                  value={form.purchaseCountMax}
+                  onValueChange={(v) => set("purchaseCountMax", v)}
+                  className="h-10"
+                />
+              </Field>
+              <Field label={t("fieldRecency")} hint={t("recencyHint")}>
+                <NumberInput
+                  value={form.lastPurchaseOlderThanDays}
+                  onValueChange={(v) => set("lastPurchaseOlderThanDays", v)}
+                  className="h-10"
+                />
               </Field>
             </div>
-          ) : form.type === "freeItem" ? (
-            <Field label={t("fieldFreeItem")}>
-              <ProductCombobox
-                max={1}
-                value={form.freeItemId ? [form.freeItemId] : []}
-                onChange={(ids) => set("freeItemId", ids[0] ?? "")}
-                placeholder={t("productSearch")}
-              />
-            </Field>
-          ) : (
-            <Field label={t("fieldMultiplier")}>
-              <NumberInput value={form.multiplier} onValueChange={(v) => set("multiplier", v)} suffix="x" className="h-10" />
-            </Field>
-          )}
 
-          <Field label={t("fieldScope")} hint={t("scopeHint")}>
-            <Select value={form.scopeKind} onValueChange={(v) => set("scopeKind", (v as ScopeKind) ?? "order")}>
-              <SelectTrigger size="lg" className="w-full text-sm">
-                <SelectValue>{(v) => t(`scope.${v as string}`)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {SCOPES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {t(`scope.${s}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          {form.scopeKind === "products" ? (
-            <ProductCombobox
-              value={form.productIds}
-              onChange={(ids) => set("productIds", ids)}
-              placeholder={t("productSearch")}
-            />
-          ) : form.scopeKind === "categories" ? (
-            <CategoryPicker selected={form.categoryIds} onChange={(ids) => set("categoryIds", ids)} />
-          ) : null}
-        </div>
-      ) : step === "rules" ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label={t("fieldMinPurchase")} hint={t("optional")}>
-              <NumberInput
-                value={form.minPurchaseUnits}
-                onValueChange={(v) => set("minPurchaseUnits", v)}
-                className="h-10"
-              />
-            </Field>
-            <Field label={t("fieldMaxUses")} hint={t("optional")}>
-              <NumberInput value={form.maxUsesTotal} onValueChange={(v) => set("maxUsesTotal", v)} className="h-10" />
-            </Field>
-            <Field label={t("fieldMaxPerCustomer")} hint={t("optional")}>
-              <NumberInput
-                value={form.maxPerCustomer}
-                onValueChange={(v) => set("maxPerCustomer", v)}
-                className="h-10"
-              />
-            </Field>
-          </div>
-          <Field label={t("fieldDays")} hint={t("optional")}>
-            <div className="flex flex-wrap gap-2">
-              {DAY_KEYS.map((d, idx) => {
-                const active = form.daysOfWeek.includes(idx);
-                return (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() =>
-                      set(
-                        "daysOfWeek",
-                        active ? form.daysOfWeek.filter((x) => x !== idx) : [...form.daysOfWeek, idx],
-                      )
-                    }
-                    className={
-                      active
-                        ? "bg-primary text-primary-foreground rounded-lg px-3 py-1.5 text-xs font-bold"
-                        : "border-border text-muted-foreground rounded-lg border px-3 py-1.5 text-xs font-bold"
-                    }
-                  >
-                    {t(`day.${d}`)}
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label={t("hoursFrom")} hint={t("optional")}>
-              <HourSelect value={form.hoursFrom} onChange={(v) => set("hoursFrom", v)} />
-            </Field>
-            <Field label={t("hoursTo")} hint={t("optional")}>
-              <HourSelect value={form.hoursTo} onChange={(v) => set("hoursTo", v)} />
-            </Field>
-          </div>
-          <ToggleRow
-            label={t("fieldFirstPurchase")}
-            hint={t("firstPurchaseHint")}
-            checked={form.firstPurchaseOnly}
-            onChange={(v) => set("firstPurchaseOnly", v)}
-          />
-
-          <div className="border-border space-y-4 rounded-2xl border p-4">
-            <Field label={t("fieldAudience")}>
-              <Select
-                value={form.audienceType}
-                onValueChange={(v) => set("audienceType", (v as AudienceType) ?? "all")}
-              >
-                <SelectTrigger size="lg" className="w-full text-sm">
-                  <SelectValue>{(v) => t(`audience.${v as string}`)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("audience.all")}</SelectItem>
-                  <SelectItem value="tier">{t("audience.tier")}</SelectItem>
-                  <SelectItem value="specific">{t("audience.specific")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            {form.audienceType === "tier" ? (
-              <Field label={t("tier")}>
-                <Select value={form.tierKey} onValueChange={(v) => set("tierKey", (v as TierKey) ?? "oro")}>
-                  <SelectTrigger size="lg" className="w-full text-sm">
-                    <SelectValue>{(v) => v as string}</SelectValue>
+            <div className="border-border space-y-4 rounded-2xl border p-4">
+              <Field label={t("fieldAudience")}>
+                <Select
+                  value={form.audienceType}
+                  onValueChange={(v) => set("audienceType", (v as AudienceType) ?? "all")}
+                >
+                  <SelectTrigger className="h-10 w-full text-sm">
+                    <SelectValue>{(v) => t(`audience.${v as string}`)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {TIERS.map((tier) => (
-                      <SelectItem key={tier} value={tier}>
-                        {tier}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="all">{t("audience.all")}</SelectItem>
+                    <SelectItem value="tier">{t("audience.tier")}</SelectItem>
+                    <SelectItem value="specific">{t("audience.specific")}</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
-            ) : form.audienceType === "specific" ? (
-              <CustomerPicker
-                selected={form.audienceCustomerIds}
-                onChange={(ids) => set("audienceCustomerIds", ids)}
-              />
-            ) : null}
-          </div>
+              {form.audienceType === "tier" ? (
+                <Field label={t("tier")}>
+                  <Select
+                    value={form.tierKey}
+                    onValueChange={(v) => set("tierKey", (v as TierKey) ?? "oro")}
+                  >
+                    <SelectTrigger className="h-10 w-full text-sm">
+                      <SelectValue>{(v) => v as string}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIERS.map((tier) => (
+                        <SelectItem key={tier} value={tier}>
+                          {tier}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              ) : form.audienceType === "specific" ? (
+                <CustomerPicker
+                  selected={form.audienceCustomerIds}
+                  onChange={(ids) => set("audienceCustomerIds", ids)}
+                />
+              ) : null}
+            </div>
 
-          <ToggleRow
-            label={t("fieldStackable")}
-            hint={t("stackableHint")}
-            checked={form.stackable}
-            onChange={(v) => set("stackable", v)}
-          />
-        </div>
-      ) : step === "schedule" ? (
-        <div className="space-y-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label={t("start")} hint={t("optional")}>
-              <DatePicker
-                value={form.startsAt ?? undefined}
-                onValueChange={(d) => set("startsAt", d ?? null)}
-                placeholder={t("datePlaceholder")}
-                formatLabel={(d) => formatDate(d, { locale })}
+            <div className="border-border space-y-4 rounded-2xl border p-4">
+              <p className="text-sm font-semibold">{t("scheduleTitle")}</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label={t("start")} hint={t("optional")}>
+                  <DatePicker
+                    value={form.startsAt ?? undefined}
+                    onValueChange={(d) => set("startsAt", d ?? null)}
+                    placeholder={t("datePlaceholder")}
+                    formatLabel={(d) => formatDate(d, { locale })}
+                  />
+                </Field>
+                <Field label={t("end")} hint={t("optional")}>
+                  <DatePicker
+                    value={form.endsAt ?? undefined}
+                    onValueChange={(d) => set("endsAt", d ?? null)}
+                    placeholder={t("datePlaceholder")}
+                    formatLabel={(d) => formatDate(d, { locale })}
+                  />
+                </Field>
+              </div>
+
+              <Field label={t("recurrence")} hint={t("recurrenceHint")}>
+                <Select
+                  value={form.recurrenceMode}
+                  onValueChange={(v) => set("recurrenceMode", (v as RecurrenceMode) ?? "always")}
+                >
+                  <SelectTrigger className="h-10 w-full text-sm">
+                    <SelectValue>{(v) => t(`recurrenceMode.${v as string}`)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(["always", "weekly", "monthlyDay", "monthlyNthWeekday", "dates"] as const).map(
+                      (m) => (
+                        <SelectItem key={m} value={m}>
+                          {t(`recurrenceMode.${m}`)}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              {form.recurrenceMode === "weekly" ? (
+                <div className="flex flex-wrap gap-2">
+                  {DAY_KEYS.map((d, idx) => {
+                    const active = form.weeklyDays.includes(idx);
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() =>
+                          set(
+                            "weeklyDays",
+                            active
+                              ? form.weeklyDays.filter((x) => x !== idx)
+                              : [...form.weeklyDays, idx],
+                          )
+                        }
+                        className={
+                          active
+                            ? "bg-primary text-primary-foreground rounded-lg px-3 py-1.5 text-xs font-bold"
+                            : "border-border text-muted-foreground rounded-lg border px-3 py-1.5 text-xs font-bold"
+                        }
+                      >
+                        {t(`day.${d}`)}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : form.recurrenceMode === "monthlyDay" ? (
+                <Field label={t("monthlyDayLabel")}>
+                  <NumberInput
+                    value={form.monthlyDay}
+                    onValueChange={(v) => set("monthlyDay", v)}
+                    className="h-10 w-24"
+                  />
+                </Field>
+              ) : form.recurrenceMode === "monthlyNthWeekday" ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label={t("nthLabel")}>
+                    <Select
+                      value={String(form.nth)}
+                      onValueChange={(v) => set("nth", Number(v) as Form["nth"])}
+                    >
+                      <SelectTrigger className="h-10 w-full text-sm">
+                        <SelectValue>{(v) => t(`nth.${v as string}`)}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["1", "2", "3", "4", "-1"].map((n) => (
+                          <SelectItem key={n} value={n}>
+                            {t(`nth.${n}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label={t("weekdayLabel")}>
+                    <Select
+                      value={String(form.nthWeekday)}
+                      onValueChange={(v) => set("nthWeekday", Number(v))}
+                    >
+                      <SelectTrigger className="h-10 w-full text-sm">
+                        <SelectValue>
+                          {(v) => t(`day.${DAY_KEYS[Number(v)] ?? "mon"}`)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DAY_KEYS.map((d, idx) => (
+                          <SelectItem key={d} value={String(idx)}>
+                            {t(`day.${d}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+              ) : form.recurrenceMode === "dates" ? (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {form.dates.map((d) => (
+                      <span
+                        key={d}
+                        className="bg-muted inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold"
+                      >
+                        {d}
+                        <button
+                          type="button"
+                          aria-label={t("removeDate")}
+                          onClick={() => set("dates", form.dates.filter((x) => x !== d))}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <DatePicker
+                    value={undefined}
+                    onValueChange={(d) => {
+                      if (!d) return;
+                      const key = toDateKey(d);
+                      if (!form.dates.includes(key)) set("dates", [...form.dates, key].sort());
+                    }}
+                    placeholder={t("addDate")}
+                    formatLabel={(d) => formatDate(d, { locale })}
+                  />
+                </div>
+              ) : null}
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label={t("hoursFrom")} hint={t("optional")}>
+                  <HourSelect value={form.hoursFrom} onChange={(v) => set("hoursFrom", v)} />
+                </Field>
+                <Field label={t("hoursTo")} hint={t("optional")}>
+                  <HourSelect value={form.hoursTo} onChange={(v) => set("hoursTo", v)} />
+                </Field>
+              </div>
+            </div>
+          </div>
+        ) : step === "design" ? (
+          <div className="space-y-4">
+            <Field label={t("fieldBg")}>
+              <BackgroundPicker
+                value={form.backgroundCss}
+                onValueChange={(bg) => set("backgroundCss", bg)}
+                onUploadImage={uploadImage}
               />
             </Field>
-            <Field label={t("end")} hint={t("optional")}>
-              <DatePicker
-                value={form.endsAt ?? undefined}
-                onValueChange={(d) => set("endsAt", d ?? null)}
-                placeholder={t("datePlaceholder")}
-                formatLabel={(d) => formatDate(d, { locale })}
+            <Field label={t("fieldMainImage")} hint={t("optional")}>
+              <FileUpload
+                value={form.mainImageUrl ? [form.mainImageUrl] : []}
+                onChange={(urls) => set("mainImageUrl", urls[urls.length - 1] ?? null)}
+                accept={{ "image/*": [] }}
+                multiple={false}
               />
             </Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label={t("fieldBadge")} hint={t("badgeHint")}>
+                <Input
+                  value={form.badgeLabel}
+                  onChange={(e) => set("badgeLabel", e.target.value)}
+                  placeholder={summary ?? t("fieldBadgePlaceholder")}
+                  className="h-10"
+                />
+              </Field>
+              <Field label={t("fieldIcon")} hint={t("optional")}>
+                <Input
+                  value={form.icon}
+                  onChange={(e) => set("icon", e.target.value)}
+                  placeholder="🎁"
+                  className="h-10"
+                />
+              </Field>
+            </div>
+            <Field label={t("fieldShort")} hint={t("shortHint")}>
+              <Input
+                value={form.shortDescription}
+                onChange={(e) => set("shortDescription", e.target.value)}
+                placeholder={summary ?? t("fieldShortPlaceholder")}
+                className="h-10"
+              />
+            </Field>
+            <Field label={t("fieldLong")} hint={t("optional")}>
+              <RichTextEditor
+                value={form.longDescription}
+                onValueChange={(html) => set("longDescription", html)}
+              />
+            </Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label={t("fieldCategory")} hint={t("optional")}>
+                <Input
+                  value={form.category}
+                  onChange={(e) => set("category", e.target.value)}
+                  placeholder={t("fieldCategoryPlaceholder")}
+                  className="h-10"
+                />
+              </Field>
+              <div className="border-border flex items-center justify-between gap-4 rounded-2xl border p-4">
+                <div>
+                  <p className="text-sm font-semibold">{t("fieldFeatured")}</p>
+                  <p className="text-muted-foreground text-xs">{t("featuredHint")}</p>
+                </div>
+                <Switch checked={form.featured} onCheckedChange={(v) => set("featured", v)} />
+              </div>
+            </div>
           </div>
-          {promoId ? <NotificationsPanel promoId={promoId} /> : null}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <h2 className="font-display text-lg font-semibold tracking-tight">{t("reviewTitle")}</h2>
-          <dl className="divide-border divide-y text-sm">
-            <ReviewRow label={t("fieldName")} value={form.name || "—"} />
-            <ReviewRow label={t("fieldSlug")} value={form.slug || "—"} />
-            <ReviewRow label={t("fieldType")} value={t(`type.${form.type}`)} />
-            <ReviewRow label={t("fieldScope")} value={t(`scope.${form.scopeKind}`)} />
-            <ReviewRow label={t("fieldAudience")} value={t(`audience.${form.audienceType}`)} />
-            <ReviewRow label={t("fieldStackable")} value={form.stackable ? t("yes") : t("no")} />
-            <ReviewRow
-              label={t("start")}
-              value={form.startsAt ? formatDate(form.startsAt, { locale }) : "—"}
+        ) : step === "broadcast" ? (
+          announce ? (
+            <AnnounceComposer
+              value={announce}
+              onChange={(v) => {
+                setAnnounce(v);
+                setDirty(true);
+              }}
+              priorCampaigns={priorCampaignsQuery.data ?? []}
+              showError={attempted}
             />
-            <ReviewRow
-              label={t("end")}
-              value={form.endsAt ? formatDate(form.endsAt, { locale }) : "—"}
-            />
-          </dl>
-        </div>
-      )}
-    </WizardShell>
-  );
-}
+          ) : (
+            <p className="text-muted-foreground text-sm">…</p>
+          )
+        ) : (
+          <div className="space-y-3">
+            <h2 className="font-display text-lg font-semibold tracking-tight">
+              {t("reviewTitle")}
+            </h2>
+            <dl className="divide-border divide-y text-sm">
+              <ReviewRow label={t("fieldName")} value={form.name || "—"} />
+              <ReviewRow label={t("fieldType")} value={t(`types.${form.type}`)} />
+              <ReviewRow label={t("reviewBenefit")} value={summary ?? "—"} />
+              <ReviewRow label={t("fieldAudience")} value={t(`audience.${form.audienceType}`)} />
+              <ReviewRow
+                label={t("recurrence")}
+                value={t(`recurrenceMode.${form.recurrenceMode}`)}
+              />
+              <ReviewRow
+                label={t("start")}
+                value={form.startsAt ? formatDate(form.startsAt, { locale }) : "—"}
+              />
+              <ReviewRow
+                label={t("end")}
+                value={form.endsAt ? formatDate(form.endsAt, { locale }) : "—"}
+              />
+              <ReviewRow
+                label={t("reviewBroadcast")}
+                value={announce?.enabled ? t("yes") : t("no")}
+              />
+            </dl>
+          </div>
+        )}
+      </WizardShell>
 
-/** Category multiselect backed by `menu.categories` (value = category slug). */
-function CategoryPicker({
-  selected,
-  onChange,
-}: {
-  selected: string[];
-  onChange: (ids: string[]) => void;
-}) {
-  const t = useTranslations("Promotions");
-  const trpc = useTRPC();
-  const { data } = useQuery(trpc.menu.categories.queryOptions());
-  const cats = data ?? [];
-  const toggle = (slug: string) =>
-    onChange(selected.includes(slug) ? selected.filter((x) => x !== slug) : [...selected, slug]);
-
-  return (
-    <div className="border-border flex flex-wrap gap-2 rounded-2xl border p-3">
-      {cats.length === 0 ? (
-        <p className="text-muted-foreground text-xs">{t("noCategories")}</p>
-      ) : (
-        cats.map((c) => {
-          const active = selected.includes(c.slug);
-          return (
-            <button
-              key={c.slug}
+      <ResponsiveModal open={exitOpen} onOpenChange={setExitOpen}>
+        <ResponsiveModalContent>
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>{t("unsavedTitle")}</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
+          <p className="text-muted-foreground px-4 pb-2 text-sm">{t("unsavedHint")}</p>
+          <ResponsiveModalFooter className="gap-3">
+            <Button
               type="button"
-              onClick={() => toggle(c.slug)}
-              className={
-                active
-                  ? "bg-primary text-primary-foreground rounded-lg px-3 py-1.5 text-xs font-bold"
-                  : "border-border text-muted-foreground rounded-lg border px-3 py-1.5 text-xs font-bold"
-              }
+              variant="outline"
+              className="h-10 rounded-full px-5"
+              onClick={() => setExitOpen(false)}
             >
-              {c.name}
-            </button>
-          );
-        })
-      )}
-    </div>
+              {t("stay")}
+            </Button>
+            <Button
+              type="button"
+              className="h-10 rounded-full px-6 font-semibold"
+              onClick={confirmLeave}
+            >
+              {t("leave")}
+            </Button>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
+    </>
   );
 }
 
@@ -769,236 +970,52 @@ function CustomerPicker({
   );
 }
 
-/** Scheduled-notifications manager for a promo (one-shot or weekly). */
-function NotificationsPanel({ promoId }: { promoId: string }) {
-  const t = useTranslations("Promotions");
-  const locale = useLocale();
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
-
-  const list = useQuery(trpc.promociones.notifications.list.queryOptions({ promoId }));
-  const invalidate = () =>
-    queryClient.invalidateQueries(trpc.promociones.notifications.list.queryFilter({ promoId }));
-  const create = useMutation(
-    trpc.promociones.notifications.create.mutationOptions({ onSuccess: () => invalidate() }),
-  );
-  const cancel = useMutation(
-    trpc.promociones.notifications.cancel.mutationOptions({ onSuccess: () => invalidate() }),
-  );
-
-  const [audienceType, setAudienceType] = useState<AudienceType>("all");
-  const [tierKey, setTierKey] = useState<TierKey>("oro");
-  const [channels, setChannels] = useState<string[]>(["push", "database", "realtime"]);
-  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
-  const [repeat, setRepeat] = useState<"none" | "weekly">("none");
-  const [selected, setSelected] = useState<string[]>([]);
-
-  const toggleChannel = (c: string) =>
-    setChannels((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
-
-  const onAdd = () => {
-    if (channels.length === 0) return toast.error(t("notify.needChannel"));
-    if (repeat === "weekly" && !scheduledAt) return toast.error(t("notify.needSchedule"));
-    create.mutate(
-      {
-        promoId,
-        audienceType,
-        tierKey: audienceType === "tier" ? tierKey : undefined,
-        customerIds: audienceType === "specific" ? selected : undefined,
-        channels: channels as ("push" | "database" | "realtime")[],
-        scheduledAt: scheduledAt ?? undefined,
-        repeat,
-      },
-      {
-        onSuccess: () => {
-          toast.success(t("notify.added"));
-          setSelected([]);
-        },
-        onError: () => toast.error(t("notify.addError")),
-      },
-    );
-  };
-
-  return (
-    <div className="border-border space-y-4 rounded-2xl border p-4">
-      <div className="flex items-center gap-2">
-        <Bell className="text-muted-foreground size-4" />
-        <h3 className="text-sm font-bold">{t("notify.title")}</h3>
-      </div>
-
-      {(list.data ?? []).length > 0 ? (
-        <ul className="space-y-2">
-          {list.data!.map((n) => (
-            <li
-              key={n.id}
-              className="bg-muted/40 flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-semibold">
-                  {n.audienceType === "all"
-                    ? t("audience.all")
-                    : n.audienceType === "tier"
-                      ? `${t("audience.tier")} · ${n.tierKey}`
-                      : `${t("audience.specific")} · ${n.customerCount ?? 0}`}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {n.channels.join(", ")} ·{" "}
-                  {n.scheduledAt ? formatDate(n.scheduledAt, { locale }) : t("notify.now")}
-                  {n.repeat === "weekly" ? ` · ${t("notify.weekly")}` : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{t(`notify.status.${n.status}`)}</Badge>
-                {n.status === "scheduled" ? (
-                  <Button
-                    variant="ghost"
-                    className="size-7 rounded-lg p-0"
-                    aria-label={t("notify.cancel")}
-                    onClick={() => cancel.mutate({ id: n.id })}
-                  >
-                    <X className="size-4" />
-                  </Button>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-muted-foreground text-xs">{t("notify.empty")}</p>
-      )}
-
-      <div className="space-y-3 border-t border-dashed pt-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label={t("notify.audience")}>
-            <Select value={audienceType} onValueChange={(v) => setAudienceType((v as AudienceType) ?? "all")}>
-              <SelectTrigger size="lg" className="w-full text-sm">
-                <SelectValue>{(v) => t(`audience.${v as string}`)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("audience.all")}</SelectItem>
-                <SelectItem value="tier">{t("audience.tier")}</SelectItem>
-                <SelectItem value="specific">{t("audience.specific")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-          {audienceType === "tier" ? (
-            <Field label={t("tier")}>
-              <Select value={tierKey} onValueChange={(v) => setTierKey((v as TierKey) ?? "oro")}>
-                <SelectTrigger size="lg" className="w-full text-sm">
-                  <SelectValue>{(v) => v as string}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {TIERS.map((tier) => (
-                    <SelectItem key={tier} value={tier}>
-                      {tier}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          ) : null}
-          <Field label={t("notify.when")} hint={t("notify.now")}>
-            <DatePicker
-              value={scheduledAt ?? undefined}
-              onValueChange={(d) => setScheduledAt(d ?? null)}
-              placeholder={t("notify.now")}
-              formatLabel={(d) => formatDate(d, { locale })}
-            />
-          </Field>
-          <Field label={t("notify.repeat")}>
-            <Select value={repeat} onValueChange={(v) => setRepeat((v as "none" | "weekly") ?? "none")}>
-              <SelectTrigger size="lg" className="w-full text-sm">
-                <SelectValue>{(v) => t(`notify.repeat_${v as string}`)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">{t("notify.repeat_none")}</SelectItem>
-                <SelectItem value="weekly">{t("notify.repeat_weekly")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-        </div>
-
-        {audienceType === "specific" ? (
-          <CustomerPicker selected={selected} onChange={setSelected} />
-        ) : null}
-
-        <Field label={t("notify.channels")}>
-          <div className="flex flex-wrap gap-3">
-            {CHANNELS.map((c) => (
-              <label key={c} className="flex items-center gap-2 text-sm font-semibold">
-                <Checkbox checked={channels.includes(c)} onCheckedChange={() => toggleChannel(c)} />
-                {t(`notify.ch.${c}`)}
-              </label>
-            ))}
-          </div>
-        </Field>
-
-        <Button className="h-10 rounded-xl" onClick={onAdd} disabled={create.isPending}>
-          {scheduledAt ? t("notify.schedule") : t("notify.sendNow")}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 /** Mirrors the customer hub card (apps/web promo-card) so the editor preview is
  *  faithful: full-bleed gradient/cover image + badge + name + short over it. */
-function PromoPreview({ form }: { form: Form }) {
+export function PromoPreview({
+  name,
+  badge,
+  short,
+  backgroundCss,
+  mainImageUrl,
+}: {
+  name: string;
+  badge: string;
+  short: string;
+  backgroundCss: string;
+  mainImageUrl: string | null;
+}) {
   return (
     <div
       className="preview-customer relative h-44 w-full overflow-hidden rounded-3xl shadow-lg shadow-black/10 ring-1 ring-black/5 lg:h-52"
-      style={{ background: form.backgroundCss }}
+      style={{ background: backgroundCss }}
     >
-      {form.mainImageUrl ? (
+      {mainImageUrl ? (
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${form.mainImageUrl})` }}
+          style={{ backgroundImage: `url(${mainImageUrl})` }}
         />
       ) : null}
       <div
         className={
-          form.mainImageUrl
+          mainImageUrl
             ? "absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/15"
             : "absolute inset-0 bg-gradient-to-r from-black/35 via-black/10 to-transparent"
         }
       />
       <div className="relative z-10 flex h-full max-w-[72%] flex-col justify-center p-5 text-white">
-        {form.badgeLabel ? (
+        {badge ? (
           <span className="mb-2 inline-flex w-fit rounded-full bg-white/25 px-3 py-1 text-xs font-extrabold tracking-wide backdrop-blur-sm">
-            {form.badgeLabel}
+            {badge}
           </span>
         ) : null}
         <p className="font-display text-xl leading-tight font-semibold drop-shadow-sm">
-          {form.name || "—"}
+          {name || "—"}
         </p>
-        {form.shortDescription ? (
-          <p className="mt-1 line-clamp-2 text-sm text-white/85 drop-shadow-sm">
-            {form.shortDescription}
-          </p>
+        {short ? (
+          <p className="mt-1 line-clamp-2 text-sm text-white/85 drop-shadow-sm">{short}</p>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function ToggleRow({
-  label,
-  hint,
-  checked,
-  onChange,
-}: {
-  label: string;
-  hint?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="border-border flex items-center justify-between gap-4 rounded-2xl border p-4">
-      <div>
-        <p className="text-sm font-semibold">{label}</p>
-        {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
-      </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import type {
   NotifierLogLevel,
   NotifierLogger,
   ResolvedNotifiable,
+  SendOptions,
   SendResult,
 } from "./types";
 
@@ -57,11 +58,18 @@ export class Notifier {
   async send(
     target: NotifiableInput,
     notification: Notification,
+    opts?: SendOptions,
   ): Promise<SendResult> {
-    if (this.#fake) return this.#fake.send(target, notification);
+    if (this.#fake) return this.#fake.send(target, notification, opts);
 
     const who = await this.#resolve(target);
-    const declared = [...(await notification.via(who))];
+    let declared = [...(await notification.via(who))];
+    // Per-org channel override (automated-trigger config): restrict to the
+    // allowlist. An empty result means every declared channel was excluded.
+    if (opts?.onlyChannels) {
+      const allow = new Set(opts.onlyChannels);
+      declared = declared.filter((c) => allow.has(c));
+    }
 
     const allowed = await resolveChannels({
       declared,

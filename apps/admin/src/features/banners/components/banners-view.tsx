@@ -16,7 +16,7 @@ import {
 } from "@loyalty/ui";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bell, Download, Plus, Trash2 } from "lucide-react";
+import { Download, Plus, Trash2 } from "lucide-react";
 import { parseAsArrayOf, parseAsIsoDate, parseAsString, useQueryState } from "nuqs";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
@@ -195,23 +195,6 @@ export function BannersView({ initialData }: { initialData?: BannersListResult }
         ),
       },
       {
-        accessorKey: "notificationCount",
-        enableSorting: false,
-        meta: { label: t("colNotifications") },
-        header: () => (
-          <span className="text-muted-foreground text-xs font-bold">{t("colNotifications")}</span>
-        ),
-        cell: ({ row }) =>
-          row.original.notificationCount > 0 ? (
-            <span className="text-muted-foreground inline-flex items-center gap-1 text-sm">
-              <Bell className="size-3.5" />
-              {row.original.notificationCount}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          ),
-      },
-      {
         accessorKey: "createdAt",
         meta: { label: t("colCreated") },
         header: ({ column }) => <DataTableColumnHeader column={column} title={t("colCreated")} />,
@@ -250,7 +233,6 @@ export function BannersView({ initialData }: { initialData?: BannersListResult }
         { header: t("colName"), value: (b) => b.name },
         { header: t("colSlug"), value: (b) => b.slug },
         { header: t("colState"), value: (b) => b.displayState },
-        { header: t("colNotifications"), value: (b) => String(b.notificationCount) },
         { header: t("colCreated"), value: (b) => formatDate(b.createdAt, { locale }) },
       ]),
       `banners-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -399,12 +381,6 @@ export function BannersView({ initialData }: { initialData?: BannersListResult }
                     <p className="text-muted-foreground mt-0.5 font-mono text-xs">/{b.slug}</p>
                     <div className="text-muted-foreground mt-3 flex items-center gap-3 text-xs font-semibold">
                       <span>{scheduleLabel(b)}</span>
-                      {b.notificationCount > 0 ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Bell className="size-3.5" />
-                          {b.notificationCount}
-                        </span>
-                      ) : null}
                     </div>
                   </div>
                 </div>

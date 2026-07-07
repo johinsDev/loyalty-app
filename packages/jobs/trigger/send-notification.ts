@@ -1,4 +1,10 @@
-import type { NotificationKey } from "@loyalty/api/features/notifications";
+import {
+  NotificationConfigRepository,
+  PROTECTED_NOTIFICATION_KEYS,
+  type NotificationKey,
+} from "@loyalty/api/features/notifications";
+import { db } from "@loyalty/db";
+import type { ChannelName } from "@loyalty/notifications";
 import { logger, task } from "@trigger.dev/sdk/v3";
 
 import { createNotification } from "../notifications-registry";
@@ -39,6 +45,33 @@ export const sendNotificationTask = task({
       recipients: customerIds.length,
     });
 
+    // Automated-trigger config (per-org): a disabled trigger is suppressed
+    // entirely; a channel override restricts delivery. Protected/security
+    // triggers ignore the config and always send.
+    let onlyChannels: ChannelName[] | undefined;
+    if (!(PROTECTED_NOTIFICATION_KEYS as readonly string[]).includes(notificationKey)) {
+      const cfg = await new NotificationConfigRepository(db).get(
+        organizationId,
+        notificationKey,
+      );
+      if (cfg && !cfg.enabled) {
+        logger.info("send-notification: trigger disabled, skipping", {
+          notificationKey,
+        });
+        return {
+          recipients: customerIds.length,
+          disabled: true,
+          notificationKey,
+        };
+      }
+      onlyChannels = (cfg?.channels as ChannelName[] | null) ?? undefined;
+      // The Inbox (database) is a permanent record — the config can restrict the
+      // outbound channels but never drops the in-app inbox entry.
+      if (onlyChannels && !onlyChannels.includes("database" as ChannelName)) {
+        onlyChannels = [...onlyChannels, "database" as ChannelName];
+      }
+    }
+
     // Per-channel tallies so the run output reflects what actually happened
     // (a recipient counts as "with failures" if ANY channel failed, but the
     // per-channel breakdown shows mail/sms/database succeeded even when
@@ -61,6 +94,7 @@ export const sendNotificationTask = task({
             ? { customerId, organizationId, ...recipient }
             : { customerId, organizationId },
           createNotification(notificationKey, payload),
+          onlyChannels ? { onlyChannels } : undefined,
         );
         for (const r of result.results) {
           const tally = (channels[r.channel] ??= {

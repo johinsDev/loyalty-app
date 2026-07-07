@@ -1,0 +1,1 @@
+ALTER TABLE `organization_settings` ADD `smart_delivery` text;

@@ -45,6 +45,8 @@ export class ShortlinkRepository {
     organizationId: string;
     expiresAt?: Date;
     createdByUserId?: string;
+    campaignId?: string;
+    customerId?: string;
   }): Promise<ShortlinkRow> {
     const rows = await this.db
       .insert(shortlink)
@@ -54,6 +56,8 @@ export class ShortlinkRepository {
         organizationId: input.organizationId,
         expiresAt: input.expiresAt,
         createdByUserId: input.createdByUserId,
+        campaignId: input.campaignId,
+        customerId: input.customerId,
       })
       .returning();
     return rows[0] as ShortlinkRow;

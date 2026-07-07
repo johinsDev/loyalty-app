@@ -61,8 +61,12 @@ export const stampsRouter = router({
 
       // Itemized sale → resolve the net price + chosen-promo discount
       // server-side (never trust a client-sent discount). Points earn on net.
+      // An inline reward's freebie never appears in `items` (it's redeemed via
+      // `inlineReward` inside the tx), so promos naturally evaluate over the
+      // paid lines only — rewards first, promos on the remainder.
       let resolved: typeof input & { subtotalCents?: number; discountCents?: number } = input;
       let netPrice = input.priceCents;
+      let pointsMultiplier = 1;
       if (input.items && input.items.length > 0) {
         const subtotal = input.items.reduce((s, it) => s + it.unitAmountCents * it.qty, 0);
         let discount = 0;
@@ -70,7 +74,7 @@ export const stampsRouter = router({
         if (input.appliedPromoId) {
           const lc = await loadLocaleContext(ctx.db, org, ctx.headers);
           const promoSvc = new PromoService(ctx.db, new PromoRepository(ctx.db));
-          const applicable = await promoSvc.applicable(
+          const { applicable } = await promoSvc.applicable(
             org,
             input.customerId,
             { currency: input.currency ?? "COP", lines: input.items },
@@ -81,6 +85,7 @@ export const stampsRouter = router({
             throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PROMO_NOT_APPLICABLE" });
           }
           discount = chosen.discountCents;
+          pointsMultiplier = chosen.pointsMultiplier;
           appliedPromoId = input.appliedPromoId;
         }
         netPrice = Math.max(0, subtotal - discount);
@@ -110,7 +115,9 @@ export const stampsRouter = router({
       );
       // Points + streak: best-effort, idempotent; never fail the purchase.
       const points = await buildPointsService(ctx)
-        .earnForPurchase(org, input.customerId, netPrice, purchaseId, storeId)
+        .earnForPurchase(org, input.customerId, netPrice, purchaseId, storeId, {
+          multiplier: pointsMultiplier,
+        })
         .catch(() => ({ earned: 0, balance: 0, tierUp: null }));
       await buildStreaksService(ctx)
         .advanceForPurchase(org, input.customerId)

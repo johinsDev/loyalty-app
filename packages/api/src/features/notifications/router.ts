@@ -1,4 +1,5 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { TRPCError } from "@trpc/server";
 
 import {
   managerProcedure,
@@ -7,6 +8,7 @@ import {
   router,
   staffProcedure,
 } from "../../trpc";
+import { NotificationConfigRepository } from "./config-repository";
 import { DrizzleNotificationPreferences } from "./preferences-repository";
 import { NotificationRepository } from "./repository";
 import {
@@ -14,10 +16,16 @@ import {
   listCustomersInputSchema,
   listMineInputSchema,
   markReadInputSchema,
+  notificationKeySchema,
+  PROTECTED_NOTIFICATION_KEYS,
   sendInputSchema,
+  setConfigInputSchema,
   setPreferenceInputSchema,
+  type NotificationConfigView,
 } from "./schemas";
 import { NotificationService } from "./service";
+
+const PROTECTED = new Set<string>(PROTECTED_NOTIFICATION_KEYS);
 
 function buildService(db: typeof Db): NotificationService {
   return new NotificationService(
@@ -93,4 +101,40 @@ export const notificationsRouter = router({
     .mutation(async ({ ctx, input }) =>
       buildService(ctx.db).send(await orgId(), input),
     ),
+
+  // ---- Automated-trigger config ---------------------------------------
+  configList: managerProcedure.query(async ({ ctx }): Promise<NotificationConfigView[]> => {
+    const stored = new Map(
+      (await new NotificationConfigRepository(ctx.db).list(await orgId())).map((r) => [
+        r.notificationKey,
+        r,
+      ]),
+    );
+    return notificationKeySchema.options.map((key) => {
+      const row = stored.get(key);
+      return {
+        notificationKey: key,
+        enabled: row?.enabled ?? true,
+        channels: row?.channels ?? null,
+        isProtected: PROTECTED.has(key),
+      };
+    });
+  }),
+
+  setConfig: managerProcedure
+    .input(setConfigInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (PROTECTED.has(input.notificationKey)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This trigger is protected and cannot be configured",
+        });
+      }
+      await new NotificationConfigRepository(ctx.db).upsert(
+        await orgId(),
+        input.notificationKey,
+        { enabled: input.enabled, channels: input.channels },
+      );
+      return { ok: true as const };
+    }),
 });

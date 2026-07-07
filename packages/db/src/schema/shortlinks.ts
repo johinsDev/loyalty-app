@@ -39,6 +39,11 @@ export const shortlink = sqliteTable(
     createdByUserId: text("created_by_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    // Per-recipient campaign attribution (plain columns, no FK — kept for the
+    // "Clic" funnel even if the campaign/customer is later removed). Set when a
+    // campaign send mints a `{{short_link}}` for a specific recipient.
+    campaignId: text("campaign_id"),
+    customerId: text("customer_id"),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -54,6 +59,8 @@ export const shortlink = sqliteTable(
       t.organizationId,
       t.createdAt,
     ),
+    // Powers the campaign "Clic" funnel (join clicks → shortlink by campaign).
+    campaignIdx: index("shortlink_campaign_idx").on(t.campaignId),
   }),
 );
 

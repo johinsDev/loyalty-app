@@ -1,4 +1,5 @@
 import { bannersRouter } from "../features/banners";
+import { campaignsRouter } from "../features/campaigns";
 import { emailOutboxRouter } from "../features/email-outbox";
 import { employeesRouter } from "../features/employees";
 import { flagsRouter } from "../features/flags";
@@ -36,6 +37,7 @@ export const appRouter = router({
   rewards: rewardsRouter,
   menu: menuRouter,
   banners: bannersRouter,
+  campaigns: campaignsRouter,
   settings: settingsRouter,
   employees: employeesRouter,
   notifications: notificationsRouter,

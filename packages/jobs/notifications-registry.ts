@@ -739,118 +739,47 @@ export class TierNearNotification
 }
 
 /**
- * Banner announcement — marketing (respects opt-out). Built directly by the
- * `send-banner-notification` job (not via the keyed registry below), since its
- * audience is resolved at fire time and its channels are admin-selected. Deep
- * links to the CTA target if present, else the banner detail.
+ * Promotional campaign — marketing (respects opt-out). Built by the
+ * `send-campaign` job with content ALREADY rendered for the single channel the
+ * reachability resolver picked (so `via()` returns exactly that channel and the
+ * matching `toX()` supplies the pre-rendered copy). See the campaigns feature.
  */
-export class BannerNotification
+export class CampaignNotification
   extends Notification
   implements NotificationRenderers
 {
   readonly category = "marketing" as const;
 
   constructor(
+    private readonly channel: ChannelName,
     private readonly content: {
-      name: string;
-      shortDescription: string;
-      slug: string;
-      ctaHref: string | null;
+      push?: { title: string; body: string; clickAction?: string };
+      mail?: { subject: string; html: string };
+      sms?: { body: string };
+      whatsapp?: { body: string };
     },
-    private readonly channels: ChannelName[],
   ) {
     super();
   }
 
   via(): ChannelName[] {
-    return this.channels;
-  }
-
-  #clickAction(): string {
-    return this.content.ctaHref ?? `/banner/${this.content.slug}`;
+    return [this.channel];
   }
 
   toPush() {
-    return {
-      title: this.content.name,
-      body: this.content.shortDescription,
-      data: { kind: "banner", slug: this.content.slug },
-      clickAction: this.#clickAction(),
-    };
+    return this.content.push ?? { title: "", body: "" };
   }
 
-  toRealtime() {
-    return {
-      event: "notification",
-      data: {
-        type: "banner",
-        title: this.content.name,
-        body: this.content.shortDescription,
-        slug: this.content.slug,
-      },
-    };
+  toMail() {
+    return this.content.mail ?? { subject: "", html: "" };
   }
 
-  toDatabase() {
-    return {
-      type: "banner",
-      title: this.content.name,
-      body: this.content.shortDescription,
-      data: { slug: this.content.slug, ctaHref: this.content.ctaHref },
-    };
-  }
-}
-
-/**
- * Promo announcement — marketing (respects opt-out). Built by the
- * `send-promo-notification` job (distinct from the keyed `PromoNotification`
- * above). Deep-links to the promo detail.
- */
-export class PromoAnnouncementNotification
-  extends Notification
-  implements NotificationRenderers
-{
-  readonly category = "marketing" as const;
-
-  constructor(
-    private readonly content: { name: string; shortDescription: string; slug: string },
-    private readonly channels: ChannelName[],
-  ) {
-    super();
+  toSms() {
+    return this.content.sms ?? { body: "" };
   }
 
-  via(): ChannelName[] {
-    return this.channels;
-  }
-
-  toPush() {
-    return {
-      title: this.content.name,
-      body: this.content.shortDescription,
-      data: { kind: "promo", slug: this.content.slug },
-      clickAction: `/promos/${this.content.slug}`,
-    };
-  }
-
-  toRealtime() {
-    return {
-      event: "notification",
-      data: {
-        type: "promo",
-        title: this.content.name,
-        body: this.content.shortDescription,
-        slug: this.content.slug,
-      },
-    };
-  }
-
-  toDatabase() {
-    return {
-      type: "promo",
-      title: this.content.name,
-      body: this.content.shortDescription,
-      data: { slug: this.content.slug },
-    };
+  toWhatsApp() {
+    return this.content.whatsapp ?? { body: "" };
   }
 }
 

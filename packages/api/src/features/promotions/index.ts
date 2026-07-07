@@ -1,22 +1,46 @@
 export { promocionesRouter } from "./router";
-export { PromoRepository, type AdminListResult, type PromoPatch } from "./repository";
-export { PromoService } from "./service";
+export { PromoRepository, collectRefs, type AdminPromoRow, type PromoPatch } from "./repository";
+export { PromoService, type PromoWizardResult } from "./service";
 export {
-  computeDiscount,
+  evaluatePromo,
   ineligibleReason,
   isEligible,
+  pickBest,
+  subtotalCents,
   type Cart,
   type CartLine,
+  type CustomerFacts,
+  type IneligibleReason,
+  type PromoEvaluation,
+  type PromoView,
 } from "./engine";
+export { benefitConfigSchema, compileRule, decompileRule, type BenefitConfig } from "./rule-compile";
+export { benefitSummary, type SummaryLocale } from "./format";
+export { PROMO_TEMPLATES, promoTemplate, type PromoTemplate } from "./templates";
 export {
-  benefitSchema,
+  adminListInputSchema,
   conditionsSchema,
+  itemRefSchema,
+  promoAnalyticsInputSchema,
+  promoStatusSchema,
   promoTypeSchema,
-  scopeSchema,
+  ruleSchema,
+  scheduleSchema,
+  type AdminListInput,
+  type ApplicableHint,
   type ApplicablePromo,
-  type ListInput,
+  type ApplicableResult,
+  type ConditionsInput,
+  type ItemRef,
+  type PromoAnalytics,
+  type PromoAnalyticsRow,
   type PromoCard,
   type PromoDetail,
+  type PromoStatPoint,
+  type PromoStats,
+  type PromoType,
+  type PromoWeekdayPoint,
   type PublicListInput,
-  type UpdateInput,
+  type RuleInput,
+  type ScheduleInput,
 } from "./schemas";
