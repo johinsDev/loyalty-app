@@ -7,7 +7,13 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { PromoMoneyChart } from "./promo-money-chart";
 import { PromoStatsChart } from "./promo-stats-chart";
+import { PromoWeekdayChart } from "./promo-weekday-chart";
+
+// Monday-first display order over the 0=Sun…6=Sat weekday buckets.
+const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
+const WEEKDAY_KEY = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
 const cop = new Intl.NumberFormat("es-CO", {
   style: "currency",
@@ -25,6 +31,7 @@ const money = (cents: number) => cop.format(Math.round(cents / 100));
  */
 export function PromotionsAnalyticsPanel() {
   const t = useTranslations("Promotions.analytics");
+  const td = useTranslations("Promotions.day");
   const trpc = useTRPC();
   const { data, isLoading } = useQuery(trpc.promociones.analytics.queryOptions({}));
 
@@ -58,6 +65,41 @@ export function PromotionsAnalyticsPanel() {
         ) : (
           <p className="text-muted-foreground text-sm">{t("empty")}</p>
         )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="bg-card rounded-3xl border p-5 shadow-sm">
+          <h2 className="font-display mb-1 text-lg font-semibold tracking-tight">
+            {t("weekdayTitle")}
+          </h2>
+          <p className="text-muted-foreground mb-3 text-xs font-semibold">{t("weekdaySubtitle")}</p>
+          {data.totals.uses > 0 ? (
+            <PromoWeekdayChart
+              label={t("statUses")}
+              data={WEEKDAY_ORDER.map((i) => ({
+                label: td(WEEKDAY_KEY[i]),
+                uses: data.byWeekday.find((w) => w.weekday === i)?.uses ?? 0,
+              }))}
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">{t("empty")}</p>
+          )}
+        </div>
+
+        <div className="bg-card rounded-3xl border p-5 shadow-sm">
+          <h2 className="font-display mb-1 text-lg font-semibold tracking-tight">
+            {t("moneyTitle")}
+          </h2>
+          <p className="text-muted-foreground mb-3 text-xs font-semibold">{t("moneySubtitle")}</p>
+          {data.series.some((p) => p.uses > 0) ? (
+            <PromoMoneyChart
+              series={data.series}
+              labels={{ revenue: t("statRevenue"), discount: t("statDiscount") }}
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">{t("empty")}</p>
+          )}
+        </div>
       </div>
 
       <div className="bg-card rounded-3xl border p-5 shadow-sm">

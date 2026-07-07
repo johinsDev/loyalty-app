@@ -34,6 +34,7 @@ import type {
   PromoDetail,
   PromoStatPoint,
   PromoStats,
+  PromoWeekdayPoint,
   PublicListInput,
 } from "./schemas";
 
@@ -60,25 +61,36 @@ function promoDenseDays(since: Date, now: Date): string[] {
   }
   return days;
 }
-/** Bucket raw redemption rows into a dense per-day series. */
-function buildSeries(
-  rows: { appliedAt: Date; discountCents: number }[],
-  since: Date,
-  now: Date,
-): PromoStatPoint[] {
-  const buckets = new Map<string, { uses: number; discountCents: number }>();
+type RawRedemption = { appliedAt: Date; discountCents: number; priceCents: number };
+
+/** Bucket raw redemption rows into a dense per-day series (uses/discount/revenue). */
+function buildSeries(rows: RawRedemption[], since: Date, now: Date): PromoStatPoint[] {
+  const buckets = new Map<string, { uses: number; discountCents: number; revenueCents: number }>();
   for (const r of rows) {
     const day = promoDayKey(r.appliedAt);
-    const b = buckets.get(day) ?? { uses: 0, discountCents: 0 };
+    const b = buckets.get(day) ?? { uses: 0, discountCents: 0, revenueCents: 0 };
     b.uses += 1;
     b.discountCents += Number(r.discountCents);
+    b.revenueCents += Number(r.priceCents);
     buckets.set(day, b);
   }
   return promoDenseDays(since, now).map((day) => ({
     day,
     uses: buckets.get(day)?.uses ?? 0,
     discountCents: buckets.get(day)?.discountCents ?? 0,
+    revenueCents: buckets.get(day)?.revenueCents ?? 0,
   }));
+}
+
+/** Uses per org-local weekday (dense 0..6). */
+function buildWeekday(rows: RawRedemption[]): PromoWeekdayPoint[] {
+  const uses = new Array<number>(7).fill(0);
+  for (const r of rows) {
+    // Weekday of the org-local calendar date (noon UTC of that date avoids edges).
+    const weekday = new Date(`${promoDayKey(r.appliedAt)}T12:00:00Z`).getUTCDay();
+    uses[weekday] = (uses[weekday] ?? 0) + 1;
+  }
+  return uses.map((u, weekday) => ({ weekday, uses: u }));
 }
 
 /** Columns a wizard step / content patch may write. */
@@ -249,9 +261,11 @@ export class PromoRepository {
       .select({
         appliedAt: promoRedemption.appliedAt,
         discountCents: promoRedemption.discountCents,
+        priceCents: purchase.priceCents,
       })
       .from(promoRedemption)
       .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+      .innerJoin(purchase, eq(purchase.id, promoRedemption.purchaseId))
       .where(scope);
 
     const series = buildSeries(rows, since, now);
@@ -274,6 +288,7 @@ export class PromoRepository {
         customers: Number(uniq?.customers ?? 0),
       },
       series,
+      byWeekday: buildWeekday(rows),
       top,
     };
   }
@@ -313,9 +328,11 @@ export class PromoRepository {
       .select({
         appliedAt: promoRedemption.appliedAt,
         discountCents: promoRedemption.discountCents,
+        priceCents: purchase.priceCents,
       })
       .from(promoRedemption)
       .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+      .innerJoin(purchase, eq(purchase.id, promoRedemption.purchaseId))
       .where(scope);
 
     const lastUsed = tot?.lastUsed;

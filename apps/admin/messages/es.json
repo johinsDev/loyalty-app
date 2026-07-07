@@ -789,7 +789,11 @@
       "lastUsed": "Última vez: {when}",
       "period": "Últimos 30 días",
       "viewAll": "Ver detalle",
-      "stripTitle": "Promociones"
+      "stripTitle": "Promociones",
+      "weekdayTitle": "Uso por día de la semana",
+      "weekdaySubtitle": "Cuándo se usan las promos (valida tu programación).",
+      "moneyTitle": "Ventas vs descuento",
+      "moneySubtitle": "Lo que entra con promo vs lo que regalas, por día."
     }
   },
   "Cashier": {

@@ -221,6 +221,13 @@ export interface PromoStatPoint {
   day: string;
   uses: number;
   discountCents: number;
+  /** Net revenue collected on that day's promo tickets. */
+  revenueCents: number;
+}
+/** Uses bucketed by org-local weekday (0 = Sunday … 6 = Saturday). */
+export interface PromoWeekdayPoint {
+  weekday: number;
+  uses: number;
 }
 export interface PromoAnalyticsRow {
   id: string;
@@ -242,6 +249,7 @@ export interface PromoTotals {
 export interface PromoAnalytics {
   totals: PromoTotals;
   series: PromoStatPoint[];
+  byWeekday: PromoWeekdayPoint[];
   top: PromoAnalyticsRow[];
 }
 

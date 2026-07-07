@@ -39,6 +39,7 @@ export {
   type PromoStatPoint,
   type PromoStats,
   type PromoType,
+  type PromoWeekdayPoint,
   type PublicListInput,
   type RuleInput,
   type ScheduleInput,

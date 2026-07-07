@@ -29,10 +29,12 @@ const customers = await db
 if (customers.length === 0) throw new Error("no customers to attribute redemptions to");
 
 const purchases = await db
-  .select({ id: purchase.id })
+  .select({ id: purchase.id, priceCents: purchase.priceCents })
   .from(purchase)
   .where(eq(purchase.organizationId, org));
 if (purchases.length === 0) throw new Error("no purchases — seed some purchases first");
+// Prefer higher-value tickets so demo revenue reads sensibly against the discount.
+purchases.sort((a, b) => b.priceCents - a.priceCents);
 
 const promos = await db
   .select({ id: promo.id, slug: promo.slug })
@@ -75,22 +77,25 @@ function pickDate(bias: Weekday): Date {
 
 await db.delete(promoRedemption).where(like(promoRedemption.id, "demo-%"));
 
-// Distinct purchase per redemption (shuffled) so revenue isn't double-counted.
-const shuffled = [...purchases].sort(() => rand() - 0.5);
+// Distinct purchase per redemption (from the higher-value tickets first) so
+// revenue isn't double-counted and stays above the discount.
 let purchaseIdx = 0;
 let n = 0;
 
 for (const plan of PLANS) {
   const promoId = bySlug(plan.slug);
   if (!promoId) continue;
-  for (let i = 0; i < plan.count && purchaseIdx < shuffled.length; i++) {
+  for (let i = 0; i < plan.count && purchaseIdx < purchases.length; i++) {
+    const ticket = purchases[purchaseIdx++]!;
     const [lo, hi] = plan.discount;
-    const discountCents = lo === hi ? lo : lo + Math.floor(rand() * (hi - lo));
+    const planned = lo === hi ? lo : lo + Math.floor(rand() * (hi - lo));
+    // Never give away more than ~80% of the ticket (keeps the demo believable).
+    const discountCents = Math.min(planned, Math.round(ticket.priceCents * 0.8));
     await db.insert(promoRedemption).values({
       id: `demo-${n++}`,
       promoId,
       customerId: pick(customers).id,
-      purchaseId: shuffled[purchaseIdx++]!.id,
+      purchaseId: ticket.id,
       discountCents,
       currency: "COP",
       appliedAt: pickDate(plan.bias),
