@@ -28,7 +28,7 @@ import {
   Switch,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -526,9 +526,15 @@ export function PromoWizard({ id }: { id: string }) {
           <div className="space-y-4">
             <BenefitConfigFields value={form.config} onChange={(config) => set("config", config)} />
             {summary ? (
-              <p className="bg-muted/50 text-muted-foreground rounded-lg px-3 py-2 text-xs font-semibold">
-                {summary}
-              </p>
+              <div className="border-primary/20 bg-primary/5 flex items-center gap-2.5 rounded-2xl border px-4 py-3">
+                <Sparkles className="text-primary size-4 shrink-0" />
+                <div>
+                  <p className="text-primary/70 text-[10px] font-extrabold tracking-wider uppercase">
+                    {t("summaryLabel")}
+                  </p>
+                  <p className="text-sm font-semibold">{summary}</p>
+                </div>
+              </div>
             ) : null}
           </div>
         ) : step === "conditions" ? (

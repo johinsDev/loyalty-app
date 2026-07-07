@@ -673,7 +673,7 @@
       "amongHint": "Empty = any item",
       "anyItem": "Any item",
       "maxApps": "Max times per order",
-      "maxAppsHint": "Empty = unlimited",
+      "maxAppsHint": "No limit",
       "comboPrice": "Combo price ($)",
       "comboPriceHint": "The full set is charged at this price",
       "buySide": "Must buy",
@@ -695,18 +695,27 @@
       "removeRequirement": "Remove requirement",
       "noRequirement": "No purchase requirement (always applies)",
       "secondUnitPercent": "Discount on the 2nd unit",
-      "secondUnitHint": "On the cheapest unit of the pair"
+      "secondUnitHint": "On the cheapest unit of the pair",
+      "takes": "Takes",
+      "of": "of:"
     },
     "refs": {
-      "any": "Any item",
+      "any": "Any item on the menu",
       "kind": {
         "product": "Product",
         "category": "Category",
         "variant": "Variant",
-        "modifierOption": "Add-on"
+        "modifierOption": "Topping"
       },
+      "searchPlaceholder": "Search a product or category…",
+      "noResults": "No results",
+      "groupCategories": "Categories",
+      "groupProducts": "Products",
+      "anySize": "Any size",
+      "addTopping": "Topping or add-on",
+      "toppingOf": "Topping of",
       "pickProduct": "Pick the product",
-      "pickOption": "Pick the option",
+      "pickOption": "Pick the topping",
       "noVariants": "This product has no variants",
       "noModifiers": "This product has no add-ons",
       "remove": "Remove"
@@ -764,7 +773,8 @@
     "archiveDescription": "It will stop applying at the register and disappear from the app. Usage history is kept.",
     "archived": "{name} archived",
     "archiveError": "Couldn't archive",
-    "publishedImmutableHint": "A published promo's mechanics can't be edited: archive it and create a new one. Design and copy stay editable."
+    "publishedImmutableHint": "A published promo's mechanics can't be edited: archive it and create a new one. Design and copy stay editable.",
+    "summaryLabel": "Reads as"
   },
   "Cashier": {
     "registerAt": "Register · {store}",

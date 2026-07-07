@@ -326,15 +326,16 @@ function RequirementsField({
         <p className="text-muted-foreground text-xs">{t("noRequirement")}</p>
       ) : null}
       {value.map((req, i) => (
-        <div key={i} className="border-border space-y-2 rounded-xl border p-3">
+        <div key={i} className="border-border space-y-2.5 rounded-2xl border p-3.5">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Label className="text-xs">{t("qty")}</Label>
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <span>{t("takes")}</span>
               <NumberInput
                 value={req.qty}
                 onValueChange={(v) => setRow(i, { ...req, qty: v ?? 1 })}
-                className="h-10 w-20"
+                className="h-9 w-16 text-center"
               />
+              <span>{t("of")}</span>
             </div>
             {value.length > (allowEmpty ? 0 : 1) ? (
               <Button
@@ -492,8 +493,13 @@ function MaxAppsField({
 }) {
   const t = useTranslations("Promotions.benefit");
   return (
-    <Field label={t("maxApps")} hint={t("maxAppsHint")}>
-      <NumberInput value={value} onValueChange={onChange} className="h-10 w-32" />
+    <Field label={t("maxApps")}>
+      <NumberInput
+        value={value}
+        onValueChange={onChange}
+        placeholder={t("maxAppsHint")}
+        className="h-10 w-40"
+      />
     </Field>
   );
 }

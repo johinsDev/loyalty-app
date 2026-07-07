@@ -673,7 +673,7 @@
       "amongHint": "Vacío = cualquier producto",
       "anyItem": "Cualquier producto",
       "maxApps": "Máx. veces por compra",
-      "maxAppsHint": "Vacío = sin límite",
+      "maxAppsHint": "Sin límite",
       "comboPrice": "Precio del combo ($)",
       "comboPriceHint": "El conjunto completo se cobra a este precio",
       "buySide": "Debe comprar",
@@ -695,18 +695,27 @@
       "removeRequirement": "Quitar requisito",
       "noRequirement": "Sin requisito de compra (aplica siempre)",
       "secondUnitPercent": "Descuento en la 2.ª unidad",
-      "secondUnitHint": "Sobre la unidad de menor valor"
+      "secondUnitHint": "Sobre la unidad de menor valor",
+      "takes": "Lleva",
+      "of": "de:"
     },
     "refs": {
-      "any": "Cualquier producto",
+      "any": "Cualquier producto de la carta",
       "kind": {
         "product": "Producto",
         "category": "Categoría",
         "variant": "Variante",
-        "modifierOption": "Adicional"
+        "modifierOption": "Topping"
       },
+      "searchPlaceholder": "Busca un producto o una categoría…",
+      "noResults": "Sin resultados",
+      "groupCategories": "Categorías",
+      "groupProducts": "Productos",
+      "anySize": "Cualquier presentación",
+      "addTopping": "Topping o adicional",
+      "toppingOf": "Topping de",
       "pickProduct": "Elige el producto",
-      "pickOption": "Elige la opción",
+      "pickOption": "Elige el topping",
       "noVariants": "Este producto no tiene variantes",
       "noModifiers": "Este producto no tiene adicionales",
       "remove": "Quitar"
@@ -764,7 +773,8 @@
     "archiveDescription": "Dejará de aplicar en caja y de verse en la app. El historial de usos se conserva.",
     "archived": "{name} archivada",
     "archiveError": "No se pudo archivar",
-    "publishedImmutableHint": "La mecánica de una promo publicada no se edita: archívala y crea una nueva. El diseño y los textos sí se pueden ajustar."
+    "publishedImmutableHint": "La mecánica de una promo publicada no se edita: archívala y crea una nueva. El diseño y los textos sí se pueden ajustar.",
+    "summaryLabel": "Así se lee"
   },
   "Cashier": {
     "registerAt": "Caja · {store}",
