@@ -62,17 +62,25 @@ tRPC errorFormatter surfaces `zodError`), then `persist`. Covered by
 ## A step — `features/promotions/steps.ts`
 
 ```ts
-export class ProductsStep extends WizardStep<PromoRow, ProductsStepInput, PromoStepServices> {
-  readonly key = "products";
-  readonly schema = productsStepSchema;
-  override canEnter(d) { return d.name != null && d.segmentId != null; } // gated behind segment
-  isComplete(d) { return Array.isArray(d.productIds) && d.productIds.length > 0; }
-  persist(ctx, d, input) { return ctx.services.repo.patch(ctx.organizationId, d.id, { productIds: input.productIds }); }
+export class BenefitStep extends WizardStep<PromoRow, BenefitConfig, PromoStepServices> {
+  readonly key = "benefit";
+  readonly schema = benefitConfigSchema;
+  override canEnter(d) { return Boolean(d.type); }        // gated behind essence
+  isComplete(d) { return d.rule !== null; }
+  persist(ctx, d, input) { return ctx.services.repo.patch(ctx.organizationId, d.id, { rule: compileRule(input) }); }
 }
 ```
 
-`promoWizard = new Wizard([new SegmentStep(), new ProductsStep(), new BrandingStep(), new ScheduleStep()])`
-— the array order **is** the sequence.
+`promoWizard = new Wizard([new EssenceStep(), new BenefitStep(), new ConditionsStep(), new DesignStep()])`
+— the array order **is** the sequence. Two extra tricks Promociones uses:
+
+- **All-optional step ⇒ "visited = complete":** `ConditionsStep.persist` always
+  writes at least `{}` into its column so `isComplete` (`!== null`) flips.
+- **Optional client-only step:** the FE inserts a `broadcast` step (announce a
+  campaign) between `design` and `review` that is NOT a server step — it fires
+  `campaigns.createFromEntity` best-effort at publish (the banner pattern). An
+  always-optional server step would either block `canPublish` or be vacuously
+  complete.
 
 ## Service + router
 
@@ -88,9 +96,10 @@ as `promociones` in `_app.ts`. Same `router → service → repository` layering
 
 - The draft **id lives in the URL** (`/promotions/[id]`) — no client store needed;
   the server `getState` query is the source of truth (server-driven → nothing to
-  duplicate). The **list** page `/promotions` (RSC `list`) has a "New" button that
-  `create`s a draft + redirects to its `[id]`; **resume** any draft by opening its
-  `[id]`. A nav entry (gated to manager+) points at `/promotions`.
+  duplicate). `/promotions/new` is a **template gallery**: picking one calls
+  `create({ templateKey })` (preseeded draft) and redirects to its `[id]`;
+  **resume** any draft by opening its `[id]` (the FE seeds once, then jumps to
+  `state.current`). A nav entry (gated to manager+) points at `/promotions`.
 - `components/promo-wizard.tsx` — given an `id`, loop `getState` → `<Stepper>` +
   the step component for `state.current` → `advance` → invalidate `getState`, and
   `publish` when `state.current === "review"`.

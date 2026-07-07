@@ -41,6 +41,9 @@ export function PromoDetail({ promo }: { promo: PromoDetailData }) {
 
       <div className="px-6 pt-5 pb-8 sm:px-8">
         <h1 className="font-display text-2xl font-semibold tracking-tight">{promo.name}</h1>
+        {promo.benefitSummary ? (
+          <p className="text-primary mt-1 text-sm font-semibold">{promo.benefitSummary}</p>
+        ) : null}
         {promo.shortDescription ? (
           <p className="text-muted-foreground mt-1 text-sm">{promo.shortDescription}</p>
         ) : null}

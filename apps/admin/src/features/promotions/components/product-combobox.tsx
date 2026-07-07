@@ -29,11 +29,14 @@ export function ProductCombobox({
   onChange,
   max,
   placeholder,
+  onPick,
 }: {
   value: string[];
   onChange: (ids: string[]) => void;
   max?: number;
   placeholder?: string;
+  /** Fires with the picked item (id + label) whenever the selection grows. */
+  onPick?: (item: { id: string; name: string }) => void;
 }) {
   const trpc = useTRPC();
   const [query, setQuery] = useState("");
@@ -55,6 +58,10 @@ export function ProductCombobox({
       value={selected}
       onValueChange={(v: Item[]) => {
         const ids = v.map((i) => i.id);
+        if (onPick && ids.length > value.length) {
+          const added = v[v.length - 1];
+          if (added) onPick({ id: added.id, name: labels.current[added.id] ?? added.name });
+        }
         onChange(max ? ids.slice(-max) : ids);
       }}
       itemToStringLabel={(i: Item) => i.name}

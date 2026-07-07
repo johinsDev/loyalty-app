@@ -9,6 +9,7 @@ import {
   adminListInputSchema,
   applicableInputSchema,
   idInputSchema,
+  itemRefSchema,
   patchContentSchema,
   publicListInputSchema,
   slugInputSchema,
@@ -97,6 +98,19 @@ export const promocionesRouter = router({
   get: managerProcedure
     .input(idInputSchema)
     .query(async ({ ctx, input }) => makeService(ctx.db).get(await requireOrg(), input.id)),
+  refOptions: managerProcedure
+    .input(z.object({ productId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      await requireOrg();
+      return new PromoRepository(ctx.db).productRefOptions(input.productId);
+    }),
+  refLabels: managerProcedure
+    .input(z.object({ refs: z.array(itemRefSchema).max(100) }))
+    .query(async ({ ctx, input }) => {
+      await requireOrg();
+      const map = await new PromoRepository(ctx.db).refNames(input.refs);
+      return Object.fromEntries(map);
+    }),
   adminList: managerProcedure
     .input(adminListInputSchema)
     .query(async ({ ctx, input }) => makeService(ctx.db).adminList(await requireOrg(), input)),

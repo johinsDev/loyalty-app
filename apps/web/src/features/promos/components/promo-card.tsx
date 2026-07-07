@@ -36,9 +36,9 @@ export function PromoCard({ promo }: { promo: PromoCardData }) {
         />
 
         <div className="relative z-10 flex h-full max-w-[72%] flex-col justify-center p-5 text-white">
-          {promo.badgeLabel ? (
-            <span className="mb-2 inline-flex w-fit rounded-full bg-white/25 px-3 py-1 text-xs font-extrabold tracking-wide backdrop-blur-sm">
-              {promo.badgeLabel}
+          {promo.badgeLabel ?? promo.benefitSummary ? (
+            <span className="mb-2 inline-flex w-fit max-w-full rounded-full bg-white/25 px-3 py-1 text-xs font-extrabold tracking-wide backdrop-blur-sm">
+              <span className="truncate">{promo.badgeLabel ?? promo.benefitSummary}</span>
             </span>
           ) : null}
           <p className="font-display text-xl leading-tight font-semibold drop-shadow-sm">

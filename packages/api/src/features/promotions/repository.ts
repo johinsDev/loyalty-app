@@ -2,10 +2,14 @@ import type { db as Db } from "@loyalty/db";
 import {
   category,
   customer,
+  modifierGroup,
   modifierOption,
   pointsAccount,
   product,
   productCategory,
+  productOptionValue,
+  productVariant,
+  productVariantValue,
   promo,
   promoRedemption,
   promoTranslation,
@@ -376,12 +380,15 @@ export class PromoRepository {
     return map;
   }
 
-  /** Display names for rule refs (products + categories; other kinds keep the
-   *  formatter's generic phrasing). */
+  /** Display names for rule refs, keyed by ref id. */
   async refNames(refs: ItemRef[]): Promise<Map<string, string>> {
     const map = new Map<string, string>();
-    const productIds = refs.filter((r) => r.kind === "product").map((r) => r.id);
-    const categoryIds = refs.filter((r) => r.kind === "category").map((r) => r.id);
+    const byKind = (kind: ItemRef["kind"]) =>
+      refs.filter((r) => r.kind === kind).map((r) => r.id);
+    const productIds = byKind("product");
+    const categoryIds = byKind("category");
+    const variantIds = byKind("variant");
+    const modifierIds = byKind("modifierOption");
     if (productIds.length > 0) {
       const rows = await this.db
         .select({ id: product.id, name: product.name })
@@ -396,7 +403,91 @@ export class PromoRepository {
         .where(inArray(category.id, categoryIds));
       for (const r of rows) map.set(r.id, r.name);
     }
+    if (variantIds.length > 0) {
+      const rows = await this.db
+        .select({
+          variantId: productVariantValue.variantId,
+          label: productOptionValue.label,
+          productName: product.name,
+        })
+        .from(productVariantValue)
+        .innerJoin(
+          productOptionValue,
+          eq(productVariantValue.optionValueId, productOptionValue.id),
+        )
+        .innerJoin(productVariant, eq(productVariantValue.variantId, productVariant.id))
+        .innerJoin(product, eq(productVariant.productId, product.id))
+        .where(inArray(productVariantValue.variantId, variantIds));
+      const grouped = new Map<string, { productName: string; labels: string[] }>();
+      for (const r of rows) {
+        const g = grouped.get(r.variantId) ?? { productName: r.productName, labels: [] };
+        g.labels.push(r.label);
+        grouped.set(r.variantId, g);
+      }
+      for (const [id, g] of grouped) map.set(id, `${g.productName} · ${g.labels.join(" / ")}`);
+    }
+    if (modifierIds.length > 0) {
+      const rows = await this.db
+        .select({ id: modifierOption.id, name: modifierOption.name })
+        .from(modifierOption)
+        .where(inArray(modifierOption.id, modifierIds));
+      for (const r of rows) map.set(r.id, r.name);
+    }
     return map;
+  }
+
+  /** Variant + modifier choices for one product (the benefit-form ref picker). */
+  async productRefOptions(productId: string): Promise<{
+    variants: { id: string; label: string }[];
+    modifierOptions: { id: string; label: string }[];
+  }> {
+    const variants = await this.db
+      .select({ id: productVariant.id, sku: productVariant.sku })
+      .from(productVariant)
+      .where(eq(productVariant.productId, productId))
+      .orderBy(asc(productVariant.sortOrder));
+    const labelRows =
+      variants.length === 0
+        ? []
+        : await this.db
+            .select({
+              variantId: productVariantValue.variantId,
+              label: productOptionValue.label,
+            })
+            .from(productVariantValue)
+            .innerJoin(
+              productOptionValue,
+              eq(productVariantValue.optionValueId, productOptionValue.id),
+            )
+            .where(
+              inArray(
+                productVariantValue.variantId,
+                variants.map((v) => v.id),
+              ),
+            );
+    const labelsByVariant = new Map<string, string[]>();
+    for (const r of labelRows) {
+      const arr = labelsByVariant.get(r.variantId) ?? [];
+      arr.push(r.label);
+      labelsByVariant.set(r.variantId, arr);
+    }
+    const mods = await this.db
+      .select({
+        id: modifierOption.id,
+        name: modifierOption.name,
+        groupName: modifierGroup.name,
+      })
+      .from(modifierOption)
+      .innerJoin(modifierGroup, eq(modifierOption.groupId, modifierGroup.id))
+      .where(eq(modifierGroup.productId, productId))
+      .orderBy(asc(modifierGroup.sortOrder), asc(modifierOption.sortOrder));
+    return {
+      variants: variants.map((v) => ({
+        id: v.id,
+        label: labelsByVariant.get(v.id)?.join(" / ") ?? v.sku ?? v.id.slice(0, 8),
+      })),
+      modifierOptions: mods.map((m) => ({ id: m.id, label: `${m.groupName} · ${m.name}` })),
+    };
   }
 
   /** Verify a customer belongs to the org (for the apply flow). */
