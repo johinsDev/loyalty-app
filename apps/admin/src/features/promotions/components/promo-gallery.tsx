@@ -67,7 +67,7 @@ export function PromoGallery() {
             type="button"
             onClick={() => start(tpl.key)}
             disabled={createMut.isPending}
-            className="group overflow-hidden rounded-3xl text-left shadow-sm ring-1 ring-black/5 transition-transform hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60"
+            className="group bg-card overflow-hidden rounded-3xl text-left shadow-sm ring-1 ring-black/5 transition-transform hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60"
           >
             <div
               className="relative flex h-36 flex-col justify-end p-4 text-white"
@@ -82,7 +82,7 @@ export function PromoGallery() {
                 {tpl.name}
               </p>
             </div>
-            <div className="bg-card border-border border border-t-0 p-3.5">
+            <div className="p-3.5">
               <p className="text-muted-foreground line-clamp-2 text-xs">{tpl.shortDescription}</p>
               <p className="text-primary mt-2 text-xs font-bold opacity-0 transition-opacity group-hover:opacity-100">
                 {t("useTemplate")}
