@@ -97,6 +97,7 @@
         "src/seed-org.ts",
         "src/seed-menu.ts",
         "src/seed-banners.ts",
+        "src/seed-campaigns.ts",
         "src/seed-promos.ts",
         "src/seed-stores.ts",
         "src/seed-rewards.ts",
@@ -202,6 +203,7 @@
   "ignoreExportsUsedInFile": true,
   "ignore": [
     ".claude/**",
-    ".agents/**"
+    ".agents/**",
+    ".design-sync/**"
   ]
 }
