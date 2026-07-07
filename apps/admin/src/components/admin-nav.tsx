@@ -92,6 +92,7 @@ const GROUPS: Group[] = [
         icon: BarChart3,
         sub: [
           { href: "/analytics", key: "overview" },
+          { href: "/analytics/promotions", key: "promotions" },
           { href: "/analytics/cohorts", key: "cohorts" },
           { href: "/analytics/funnel", key: "funnel" },
         ],

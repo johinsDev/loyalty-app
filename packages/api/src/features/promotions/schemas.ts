@@ -211,3 +211,35 @@ export interface ApplicableResult {
   applicable: ApplicablePromo[];
   hints: ApplicableHint[];
 }
+
+// ─── Analytics ───────────────────────────────────────────────────────────────
+export const promoAnalyticsInputSchema = z.object({ from: z.coerce.date().optional() });
+export type PromoAnalyticsInput = z.infer<typeof promoAnalyticsInputSchema>;
+
+/** One day of promo activity (org-local day, YYYY-MM-DD). */
+export interface PromoStatPoint {
+  day: string;
+  uses: number;
+  discountCents: number;
+}
+export interface PromoAnalyticsRow {
+  id: string;
+  name: string;
+  slug: string;
+  uses: number;
+  discountCents: number;
+  customers: number;
+}
+export interface PromoAnalytics {
+  totals: {
+    uses: number;
+    /** Money given away across all applications. */
+    discountCents: number;
+    /** Net revenue collected on tickets that used a promo. */
+    revenueCents: number;
+    /** Distinct customers who redeemed at least one promo. */
+    customers: number;
+  };
+  series: PromoStatPoint[];
+  top: PromoAnalyticsRow[];
+}

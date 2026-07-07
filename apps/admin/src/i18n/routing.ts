@@ -69,6 +69,7 @@ export const routing = defineRouting({
     "/analytics": { es: "/analitica", en: "/analytics" },
     "/analytics/cohorts": { es: "/analitica/cohortes", en: "/analytics/cohorts" },
     "/analytics/funnel": { es: "/analitica/embudo", en: "/analytics/funnel" },
+    "/analytics/promotions": { es: "/analitica/promociones", en: "/analytics/promotions" },
     "/settings": { es: "/ajustes", en: "/settings" },
     "/settings/team": { es: "/ajustes/equipo", en: "/settings/team" },
     "/settings/integrations": { es: "/ajustes/integraciones", en: "/settings/integrations" },

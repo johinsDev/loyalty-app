@@ -14,6 +14,7 @@ import type {
   ApplicablePromo,
   ApplicableResult,
   PatchContentInput,
+  PromoAnalytics,
   PromoCard,
   PromoDetail,
   PublicListInput,
@@ -200,6 +201,13 @@ export class PromoService {
 
   adminList(orgId: string, input: AdminListInput): Promise<ListResult<AdminPromoRow>> {
     return this.repo.adminList(orgId, input);
+  }
+
+  /** Org promo activity for the Analytics section. Defaults to the last 30 days. */
+  analytics(orgId: string, from?: Date): Promise<PromoAnalytics> {
+    const now = new Date();
+    const since = from ?? new Date(now.getTime() - 30 * 86_400_000);
+    return this.repo.orgAnalytics(orgId, since, now);
   }
 
   get(orgId: string, id: string): Promise<PromoRow> {

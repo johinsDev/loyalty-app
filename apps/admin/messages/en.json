@@ -774,7 +774,18 @@
     "archived": "{name} archived",
     "archiveError": "Couldn't archive",
     "publishedImmutableHint": "A published promo's mechanics can't be edited: archive it and create a new one. Design and copy stay editable.",
-    "summaryLabel": "Reads as"
+    "summaryLabel": "Reads as",
+    "analytics": {
+      "statUses": "Uses",
+      "statDiscount": "Discount given",
+      "statRevenue": "Promo sales",
+      "statCustomers": "Customers reached",
+      "trendTitle": "Uses per day",
+      "trendSubtitle": "How many times a promo was applied each day (last 30 days).",
+      "topTitle": "Most-used promos",
+      "empty": "No activity yet.",
+      "untitled": "Untitled"
+    }
   },
   "Cashier": {
     "registerAt": "Register · {store}",
@@ -2272,7 +2283,8 @@
       "team": "Team",
       "banners": "Banners",
       "cohorts": "Cohorts",
-      "funnel": "Funnel"
+      "funnel": "Funnel",
+      "promotions": "Promotions"
     },
     "growthTitle": "Customer growth",
     "growthSubtitle": "New members per month",

@@ -774,7 +774,18 @@
     "archived": "{name} archivada",
     "archiveError": "No se pudo archivar",
     "publishedImmutableHint": "La mecánica de una promo publicada no se edita: archívala y crea una nueva. El diseño y los textos sí se pueden ajustar.",
-    "summaryLabel": "Así se lee"
+    "summaryLabel": "Así se lee",
+    "analytics": {
+      "statUses": "Usos",
+      "statDiscount": "Descuento entregado",
+      "statRevenue": "Ventas con promo",
+      "statCustomers": "Clientes alcanzados",
+      "trendTitle": "Usos por día",
+      "trendSubtitle": "Cuántas veces se aplicó una promo cada día (últimos 30 días).",
+      "topTitle": "Promos con más uso",
+      "empty": "Sin actividad todavía.",
+      "untitled": "Sin nombre"
+    }
   },
   "Cashier": {
     "registerAt": "Caja · {store}",
@@ -2272,7 +2283,8 @@
       "team": "Equipo",
       "banners": "Banners",
       "cohorts": "Cohortes",
-      "funnel": "Embudo"
+      "funnel": "Embudo",
+      "promotions": "Promociones"
     },
     "growthTitle": "Crecimiento de clientes",
     "growthSubtitle": "Nuevos socios por mes",

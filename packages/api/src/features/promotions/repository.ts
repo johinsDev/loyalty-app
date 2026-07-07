@@ -26,7 +26,39 @@ import type { LocaleContext } from "../_shared/localize";
 import { slugify, slugSuffix } from "../_shared/slugify";
 import { benefitSummary, type SummaryLocale } from "./format";
 import type { ItemRef } from "./schemas";
-import type { AdminListInput, PromoCard, PromoDetail, PublicListInput } from "./schemas";
+import type {
+  AdminListInput,
+  PromoAnalytics,
+  PromoAnalyticsRow,
+  PromoCard,
+  PromoDetail,
+  PromoStatPoint,
+  PublicListInput,
+} from "./schemas";
+
+// Per-day bucketing in the org timezone (Bogota), mirroring the campaigns
+// analytics helpers. Fixed offset — no DST since 1993.
+const PROMO_TZ = "America/Bogota";
+const DAY_MS = 86_400_000;
+const promoDayFmt = new Intl.DateTimeFormat("en-CA", {
+  timeZone: PROMO_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const promoDayKey = (d: Date): string => promoDayFmt.format(d);
+function promoDenseDays(since: Date, now: Date): string[] {
+  const days: string[] = [];
+  const seen = new Set<string>();
+  for (let t = since.getTime(); t <= now.getTime() + DAY_MS; t += DAY_MS) {
+    const k = promoDayKey(new Date(t));
+    if (!seen.has(k)) {
+      seen.add(k);
+      days.push(k);
+    }
+  }
+  return days;
+}
 
 /** Columns a wizard step / content patch may write. */
 export type PromoPatch = Partial<
@@ -153,6 +185,88 @@ export class PromoRepository {
       .from(promoRedemption)
       .where(eq(promoRedemption.promoId, promoId));
     return Number(row?.value ?? 0);
+  }
+
+  /**
+   * Org promo activity for the window [since, now]: totals (uses, discount
+   * given, net revenue on promo tickets, unique redeemers), a dense per-day
+   * series, and the top promos by usage. Computed on the fly from
+   * `promo_redemption` (no rollup table). `promo_redemption` is org-scoped via
+   * its `promo` join; one redemption maps 1:1 to a `purchase`.
+   */
+  async orgAnalytics(orgId: string, since: Date, now = new Date()): Promise<PromoAnalytics> {
+    const scope = and(eq(promo.organizationId, orgId), gte(promoRedemption.appliedAt, since));
+
+    const perPromo = await this.db
+      .select({
+        promoId: promoRedemption.promoId,
+        name: promo.name,
+        slug: promo.slug,
+        uses: sql<number>`count(*)`,
+        discount: sql<number>`coalesce(sum(${promoRedemption.discountCents}), 0)`,
+        customers: sql<number>`count(distinct ${promoRedemption.customerId})`,
+      })
+      .from(promoRedemption)
+      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+      .where(scope)
+      .groupBy(promoRedemption.promoId);
+
+    const [rev] = await this.db
+      .select({ revenue: sql<number>`coalesce(sum(${purchase.priceCents}), 0)` })
+      .from(promoRedemption)
+      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+      .innerJoin(purchase, eq(purchase.id, promoRedemption.purchaseId))
+      .where(scope);
+
+    const [uniq] = await this.db
+      .select({ customers: sql<number>`count(distinct ${promoRedemption.customerId})` })
+      .from(promoRedemption)
+      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+      .where(scope);
+
+    const rows = await this.db
+      .select({
+        appliedAt: promoRedemption.appliedAt,
+        discountCents: promoRedemption.discountCents,
+      })
+      .from(promoRedemption)
+      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+      .where(scope);
+
+    const buckets = new Map<string, { uses: number; discountCents: number }>();
+    for (const r of rows) {
+      const day = promoDayKey(r.appliedAt);
+      const b = buckets.get(day) ?? { uses: 0, discountCents: 0 };
+      b.uses += 1;
+      b.discountCents += Number(r.discountCents);
+      buckets.set(day, b);
+    }
+    const series: PromoStatPoint[] = promoDenseDays(since, now).map((day) => ({
+      day,
+      uses: buckets.get(day)?.uses ?? 0,
+      discountCents: buckets.get(day)?.discountCents ?? 0,
+    }));
+
+    const all: PromoAnalyticsRow[] = perPromo.map((r) => ({
+      id: r.promoId,
+      name: r.name ?? "",
+      slug: r.slug ?? "",
+      uses: Number(r.uses),
+      discountCents: Number(r.discount),
+      customers: Number(r.customers),
+    }));
+    const top = [...all].sort((a, b) => b.uses - a.uses).slice(0, 10);
+
+    return {
+      totals: {
+        uses: all.reduce((s, r) => s + r.uses, 0),
+        discountCents: all.reduce((s, r) => s + r.discountCents, 0),
+        revenueCents: Number(rev?.revenue ?? 0),
+        customers: Number(uniq?.customers ?? 0),
+      },
+      series,
+      top,
+    };
   }
 
   async adminList(orgId: string, input: AdminListInput, now = new Date()): Promise<ListResult<AdminPromoRow>> {

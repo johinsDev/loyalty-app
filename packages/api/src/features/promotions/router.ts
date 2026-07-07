@@ -11,6 +11,7 @@ import {
   idInputSchema,
   itemRefSchema,
   patchContentSchema,
+  promoAnalyticsInputSchema,
   publicListInputSchema,
   slugInputSchema,
 } from "./schemas";
@@ -114,6 +115,9 @@ export const promocionesRouter = router({
   adminList: managerProcedure
     .input(adminListInputSchema)
     .query(async ({ ctx, input }) => makeService(ctx.db).adminList(await requireOrg(), input)),
+  analytics: managerProcedure
+    .input(promoAnalyticsInputSchema)
+    .query(async ({ ctx, input }) => makeService(ctx.db).analytics(await requireOrg(), input.from)),
   remove: managerProcedure
     .input(idInputSchema)
     .mutation(async ({ ctx, input }) => makeService(ctx.db).remove(await requireOrg(), input.id)),
