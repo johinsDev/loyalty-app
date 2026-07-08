@@ -105,6 +105,8 @@ export interface ProductDetail {
   options: DetailOption[];
   variants: DetailVariant[];
   modifierGroups: DetailModifierGroup[];
+  /** Customer-visible ingredients ("Contiene …") — union across variants. */
+  ingredients: string[];
   categorySlugs: string[];
   seo: { title: string | null; description: string | null; ogImageUrl: string | null };
 }

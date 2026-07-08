@@ -11,6 +11,7 @@ import {
   router,
 } from "../../trpc";
 import { ProductsAdminRepository } from "./admin-repository";
+import { IngredientsRepository } from "./ingredients-repository";
 import { ProductsRepository } from "./repository";
 import {
   listInputSchema,
@@ -20,6 +21,9 @@ import {
 } from "./schemas";
 import { MenuService } from "./service";
 import {
+  ingredientCreateSchema,
+  ingredientListInputSchema,
+  ingredientUpdateSchema,
   productAdminListInputSchema,
   productStatusSchema,
   productUpsertInputSchema,
@@ -63,6 +67,28 @@ export const menuRouter = router({
     .input(productAdminListInputSchema)
     .query(async ({ ctx, input }) =>
       new ProductsAdminRepository(ctx.db).adminList(await orgId(), input),
+    ),
+
+  // ---- Ingredient catalog (manager) ----------------------------------------
+  ingredients: managerProcedure
+    .input(ingredientListInputSchema)
+    .query(async ({ ctx, input }) =>
+      new IngredientsRepository(ctx.db).list(await orgId(), input.search),
+    ),
+  ingredientCreate: managerProcedure
+    .input(ingredientCreateSchema)
+    .mutation(async ({ ctx, input }) =>
+      new IngredientsRepository(ctx.db).create(await orgId(), input),
+    ),
+  ingredientUpdate: managerProcedure
+    .input(ingredientUpdateSchema)
+    .mutation(async ({ ctx, input }) =>
+      new IngredientsRepository(ctx.db).update(await orgId(), input),
+    ),
+  ingredientRemove: managerProcedure
+    .input(idInput)
+    .mutation(async ({ ctx, input }) =>
+      new IngredientsRepository(ctx.db).remove(await orgId(), input.id),
     ),
 
   // ---- Public (cacheable) — gated by the page guard in v1, ready for public --

@@ -25,6 +25,13 @@ const optionInput = z.object({
   values: z.array(optionValueInput).min(1),
 });
 
+const variantIngredientInput = z.object({
+  ingredientId: z.string().min(1),
+  quantity: z.number().min(0),
+  visibleToCustomer: z.boolean().default(false),
+  sortOrder: z.number().int().default(0),
+});
+
 const variantInput = z.object({
   id: z.string().min(1),
   sku: z.string().max(80).nullish(),
@@ -34,7 +41,31 @@ const variantInput = z.object({
   // The option-value combo this variant represents (client-side value ids that
   // this same payload also creates/keeps).
   optionValueIds: z.array(z.string().min(1)),
+  // The variant's recipe (replaced wholesale on save).
+  ingredients: z.array(variantIngredientInput).default([]),
 });
+
+// ---- Ingredient catalog (org-level) ----------------------------------------
+export const ingredientCreateSchema = z.object({
+  name: z.string().min(1).max(80),
+  unit: z.string().min(1).max(12).default("u"),
+  costPerUnitCents: z.number().int().min(0).default(0),
+});
+export const ingredientUpdateSchema = ingredientCreateSchema.extend({
+  id: z.string().min(1),
+});
+export const ingredientListInputSchema = z.object({
+  search: z.string().trim().max(80).optional(),
+});
+export type IngredientCreateInput = z.infer<typeof ingredientCreateSchema>;
+export type IngredientUpdateInput = z.infer<typeof ingredientUpdateSchema>;
+
+export interface IngredientRow {
+  id: string;
+  name: string;
+  unit: string;
+  costPerUnitCents: number;
+}
 
 const modifierOptionInput = z.object({
   id: z.string().min(1),
@@ -152,6 +183,19 @@ export interface ProductAdminDetail {
     isDefault: boolean;
     sortOrder: number;
     optionValueIds: string[];
+    ingredients: {
+      ingredientId: string;
+      name: string;
+      unit: string;
+      quantity: number;
+      visibleToCustomer: boolean;
+      costPerUnitCents: number;
+      sortOrder: number;
+    }[];
+    /** Σ(quantity × ingredient cost) — the variant's COGS. */
+    costCents: number;
+    /** (price − cost) / price, 0..100; null when price is 0. */
+    marginPct: number | null;
   }[];
   modifierGroups: {
     id: string;

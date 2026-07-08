@@ -10,6 +10,7 @@ import {
   productOptionValue,
   productVariant,
   productVariantValue,
+  variantIngredient,
 } from "@loyalty/db/schema";
 import { and, asc, desc, eq, inArray, like, sql } from "drizzle-orm";
 
@@ -86,7 +87,16 @@ export class ProductsAdminRepository {
           orderBy: asc(productOption.sortOrder),
           with: { values: { orderBy: asc(productOptionValue.sortOrder) } },
         },
-        variants: { orderBy: asc(productVariant.sortOrder), with: { values: true } },
+        variants: {
+          orderBy: asc(productVariant.sortOrder),
+          with: {
+            values: true,
+            ingredients: {
+              orderBy: asc(variantIngredient.sortOrder),
+              with: { ingredient: true },
+            },
+          },
+        },
         modifierGroups: {
           orderBy: asc(modifierGroup.sortOrder),
           with: { options: { orderBy: asc(modifierOption.sortOrder) } },
@@ -122,14 +132,35 @@ export class ProductsAdminRepository {
         sortOrder: o.sortOrder,
         values: o.values.map((v) => ({ id: v.id, label: v.label, sortOrder: v.sortOrder })),
       })),
-      variants: p.variants.map((v) => ({
-        id: v.id,
-        sku: v.sku,
-        priceCents: v.priceCents,
-        isDefault: v.isDefault,
-        sortOrder: v.sortOrder,
-        optionValueIds: v.values.map((vv) => vv.optionValueId),
-      })),
+      variants: p.variants.map((v) => {
+        const ingredients = v.ingredients.map((vi) => ({
+          ingredientId: vi.ingredientId,
+          name: vi.ingredient.name,
+          unit: vi.ingredient.unit,
+          quantity: vi.quantity,
+          visibleToCustomer: vi.visibleToCustomer,
+          costPerUnitCents: vi.ingredient.costPerUnitCents,
+          sortOrder: vi.sortOrder,
+        }));
+        const costCents = Math.round(
+          ingredients.reduce((s, i) => s + i.quantity * i.costPerUnitCents, 0),
+        );
+        const marginPct =
+          v.priceCents > 0
+            ? Math.round(((v.priceCents - costCents) / v.priceCents) * 100)
+            : null;
+        return {
+          id: v.id,
+          sku: v.sku,
+          priceCents: v.priceCents,
+          isDefault: v.isDefault,
+          sortOrder: v.sortOrder,
+          optionValueIds: v.values.map((vv) => vv.optionValueId),
+          ingredients,
+          costCents,
+          marginPct,
+        };
+      }),
       modifierGroups: p.modifierGroups.map((g) => ({
         id: g.id,
         name: g.name,
@@ -271,6 +302,21 @@ export class ProductsAdminRepository {
           await tx
             .insert(productVariantValue)
             .values(v.optionValueIds.map((optionValueId) => ({ variantId: v.id, optionValueId })));
+        }
+        // Recipe lines: no external refs → replaced wholesale per variant.
+        await tx
+          .delete(variantIngredient)
+          .where(eq(variantIngredient.variantId, v.id));
+        if (v.ingredients.length > 0) {
+          await tx.insert(variantIngredient).values(
+            v.ingredients.map((ing) => ({
+              variantId: v.id,
+              ingredientId: ing.ingredientId,
+              quantity: ing.quantity,
+              visibleToCustomer: ing.visibleToCustomer,
+              sortOrder: ing.sortOrder,
+            })),
+          );
         }
       }
 

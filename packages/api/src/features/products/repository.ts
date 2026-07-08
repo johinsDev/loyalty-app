@@ -17,6 +17,7 @@ import {
   productVariantPrice,
   section,
   sectionProduct,
+  variantIngredient,
 } from "@loyalty/db/schema";
 import { and, asc, eq, gt, inArray, like, or, sql } from "drizzle-orm";
 
@@ -246,7 +247,13 @@ export class ProductsRepository {
         },
         variants: {
           orderBy: asc(productVariant.sortOrder),
-          with: { values: true },
+          with: {
+            values: true,
+            ingredients: {
+              where: eq(variantIngredient.visibleToCustomer, true),
+              with: { ingredient: true },
+            },
+          },
         },
         modifierGroups: {
           orderBy: asc(modifierGroup.sortOrder),
@@ -360,6 +367,11 @@ export class ProductsRepository {
           priceDeltaCents: amountFor(mo.priceDeltaCents, optionPriceById.get(mo.id)),
         })),
       })),
+      ingredients: [
+        ...new Set(
+          p.variants.flatMap((v) => v.ingredients.map((vi) => vi.ingredient.name)),
+        ),
+      ],
       categorySlugs: p.categories.map((pc) => pc.category.slug),
       seo: {
         title: p.seoTitle,
