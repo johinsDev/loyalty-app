@@ -201,12 +201,12 @@ export function RecipeEditor({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-2">
               <Label className="text-xs">{t("recipe.name")}</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} className="h-11" autoFocus />
+              <Input value={name} onChange={(e) => setName(e.target.value)} className="h-10" autoFocus />
             </div>
             <div className="space-y-2">
               <Label className="text-xs">{t("recipe.unit")}</Label>
               <Select value={unit} onValueChange={(v) => setUnit(v ?? "u")}>
-                <SelectTrigger size="lg" className="h-11 w-full text-sm">
+                <SelectTrigger size="lg" className="w-full text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -220,7 +220,7 @@ export function RecipeEditor({
             </div>
             <div className="space-y-2">
               <Label className="text-xs">{t("recipe.unitCost")}</Label>
-              <NumberInput value={cost} onValueChange={setCost} className="h-11" />
+              <NumberInput value={cost} onValueChange={setCost} className="h-10" />
             </div>
           </div>
           <div className="flex gap-2">
