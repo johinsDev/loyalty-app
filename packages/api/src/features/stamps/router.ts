@@ -13,7 +13,9 @@ import { tasks } from "@trigger.dev/sdk/v3";
 import { loadLocaleContext } from "../_shared/localize";
 import { resolveActiveStoreId } from "../_shared/store-context";
 import { buildPointsService } from "../points";
-import { PromoRepository, PromoService } from "../promotions";
+import { PromoRepository, PromoService, type UnitExclusion } from "../promotions";
+import { enrichCart } from "../promotions/stitch";
+import { evaluateRewardForCart } from "../rewards/pos-evaluate";
 import { buildRewardsService, RewardsRepository } from "../rewards";
 import { buildStreaksService } from "../streaks";
 import { StampsRepository } from "./repository";
@@ -59,42 +61,86 @@ export const stampsRouter = router({
         input.storeId,
       );
 
-      // Itemized sale → resolve the net price + chosen-promo discount
-      // server-side (never trust a client-sent discount). Points earn on net.
-      // An inline reward's freebie never appears in `items` (it's redeemed via
-      // `inlineReward` inside the tx), so promos naturally evaluate over the
-      // paid lines only — rewards first, promos on the remainder.
-      let resolved: typeof input & { subtotalCents?: number; discountCents?: number } = input;
+      // Itemized sale → resolve the net price server-side (never trust a
+      // client-sent discount). Rewards first (the reward consumes its units),
+      // promos on the remainder; points earn on net. Both discounts are
+      // computed from the SAME enriched cart so they can't drift.
+      let resolved: typeof input & {
+        subtotalCents?: number;
+        discountCents?: number;
+        promoDiscountCents?: number;
+        rewardDiscountCents?: number;
+        grantStamp?: boolean;
+      } = input;
       let netPrice = input.priceCents;
       let pointsMultiplier = 1;
+      let grantStamp = true;
       if (input.items && input.items.length > 0) {
         const subtotal = input.items.reduce((s, it) => s + it.unitAmountCents * it.qty, 0);
-        let discount = 0;
+        const promoRepo = new PromoRepository(ctx.db);
+        const enriched = await enrichCart(promoRepo, {
+          currency: input.currency ?? "COP",
+          lines: input.items,
+        });
+
+        // Reward first: evaluate + exclude its units.
+        let rewardDiscount = 0;
+        let exclusions: UnitExclusion[] = [];
+        if (input.inlineReward) {
+          const rw = await new RewardsRepository(ctx.db).getReward(
+            org,
+            input.inlineReward.rewardId,
+          );
+          if (!rw || rw.status !== "published") {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "reward-not-redeemable" });
+          }
+          const evalResult = evaluateRewardForCart(rw, enriched);
+          if (!evalResult.ok) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: "reward-item-not-in-cart",
+            });
+          }
+          rewardDiscount = evalResult.discountCents;
+          exclusions = evalResult.exclusions;
+        }
+
+        // Promo on the remainder (reward-consumed units excluded).
+        let promoDiscount = 0;
         let appliedPromoId: string | undefined;
         if (input.appliedPromoId) {
           const lc = await loadLocaleContext(ctx.db, org, ctx.headers);
-          const promoSvc = new PromoService(ctx.db, new PromoRepository(ctx.db));
+          const promoSvc = new PromoService(ctx.db, promoRepo);
           const { applicable } = await promoSvc.applicable(
             org,
             input.customerId,
             { currency: input.currency ?? "COP", lines: input.items },
             lc,
+            { exclusions, enriched },
           );
           const chosen = applicable.find((a) => a.promo.id === input.appliedPromoId);
           if (!chosen) {
             throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PROMO_NOT_APPLICABLE" });
           }
-          discount = chosen.discountCents;
+          promoDiscount = chosen.discountCents;
           pointsMultiplier = chosen.pointsMultiplier;
           appliedPromoId = input.appliedPromoId;
         }
-        netPrice = Math.max(0, subtotal - discount);
+
+        const discountTotal = rewardDiscount + promoDiscount;
+        netPrice = Math.max(0, subtotal - discountTotal);
+        // A redemption-only ticket (net $0 with a reward) is a claim, not a
+        // purchase — no stamp, no streak advance.
+        grantStamp = !(netPrice === 0 && Boolean(input.inlineReward));
         resolved = {
           ...input,
           priceCents: netPrice,
           subtotalCents: subtotal,
-          discountCents: discount,
+          discountCents: discountTotal,
+          promoDiscountCents: promoDiscount,
+          rewardDiscountCents: rewardDiscount,
           appliedPromoId,
+          grantStamp,
         };
       }
 
@@ -119,9 +165,11 @@ export const stampsRouter = router({
           multiplier: pointsMultiplier,
         })
         .catch(() => ({ earned: 0, balance: 0, tierUp: null }));
-      await buildStreaksService(ctx)
-        .advanceForPurchase(org, input.customerId)
-        .catch(() => {});
+      if (grantStamp) {
+        await buildStreaksService(ctx)
+          .advanceForPurchase(org, input.customerId)
+          .catch(() => {});
+      }
 
       // One consolidated per-purchase recap (WhatsApp + feed) combining whatever
       // routine earn happened — avoids a separate WhatsApp per loyalty track.

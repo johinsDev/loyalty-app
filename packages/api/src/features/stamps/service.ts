@@ -55,7 +55,13 @@ export class StampsService {
     // The store the sale happened at (resolved from the register store-switcher).
     storeId: string,
     // The router resolves net price + discount server-side for itemized sales.
-    input: RecordPurchaseInput & { subtotalCents?: number; discountCents?: number },
+    input: RecordPurchaseInput & {
+      subtotalCents?: number;
+      discountCents?: number;
+      promoDiscountCents?: number;
+      rewardDiscountCents?: number;
+      grantStamp?: boolean;
+    },
   ): Promise<{ wallet: WalletView; purchaseId: string }> {
     const result = await this.repo.recordPurchase({
       orgId: organizationId,
@@ -66,6 +72,9 @@ export class StampsService {
       idempotencyKey: input.idempotencyKey,
       subtotalCents: input.subtotalCents,
       discountCents: input.discountCents,
+      promoDiscountCents: input.promoDiscountCents,
+      rewardDiscountCents: input.rewardDiscountCents,
+      grantStamp: input.grantStamp,
       currency: input.currency,
       appliedPromoId: input.appliedPromoId ?? null,
       items: input.items,

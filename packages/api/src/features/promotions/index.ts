@@ -13,6 +13,7 @@ export {
   type IneligibleReason,
   type PromoEvaluation,
   type PromoView,
+  type UnitExclusion,
 } from "./engine";
 export { benefitConfigSchema, compileRule, decompileRule, type BenefitConfig } from "./rule-compile";
 export { benefitSummary, type SummaryLocale } from "./format";
