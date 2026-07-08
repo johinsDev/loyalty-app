@@ -2472,9 +2472,8 @@
     "funnelTitle": "Campaign funnel",
     "funnelSubtitle": "From send to redeem",
     "stage": {
-      "reached": "Reached",
-      "opened": "Opened",
-      "visited": "Visited",
+      "members": "Members",
+      "purchased": "Purchased",
       "redeemed": "Redeemed"
     },
     "tier": {
@@ -2482,7 +2481,8 @@
       "silver": "Silver",
       "gold": "Gold",
       "diamond": "Diamond"
-    }
+    },
+    "noData": "No data yet"
   },
   "Audit": {
     "title": "Activity log",

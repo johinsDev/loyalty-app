@@ -2472,9 +2472,8 @@
     "funnelTitle": "Embudo de campaña",
     "funnelSubtitle": "De envío a canje",
     "stage": {
-      "reached": "Alcanzados",
-      "opened": "Abrieron",
-      "visited": "Visitaron",
+      "members": "Socios",
+      "purchased": "Compraron",
       "redeemed": "Canjearon"
     },
     "tier": {
@@ -2482,7 +2481,8 @@
       "silver": "Plata",
       "gold": "Oro",
       "diamond": "Diamante"
-    }
+    },
+    "noData": "Sin datos aún"
   },
   "Audit": {
     "title": "Registro de actividad",

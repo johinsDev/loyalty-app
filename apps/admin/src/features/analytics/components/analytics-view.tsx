@@ -11,7 +11,10 @@ import {
   Trophy,
   type LucideIcon,
 } from "lucide-react";
+import { Skeleton } from "@loyalty/ui";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useState } from "react";
 
 import { BannersAnalyticsPanel } from "@/features/banners/components/banners-analytics-panel";
@@ -20,18 +23,18 @@ import { AreaChart, Bars, Donut } from "@/features/dashboard/components/charts";
 import { TeamLeaderboardPanel } from "@/features/employees/components/team-leaderboard-panel";
 import { PromotionsAnalyticsPanel } from "@/features/promotions/components/promotions-analytics-panel";
 import { useFadeUp } from "@/lib/animate";
+import { useTRPC } from "@/lib/trpc/client";
 
 import {
-  cohorts,
   engagementClick,
   engagementOpen,
-  funnel,
   growthSeries,
   revenueBars,
   tierMix,
 } from "../data";
 
-const PERIODS = ["24h", "7d", "30d", "90d", "ytd"] as const;
+const PERIODS = ["7d", "30d", "90d"] as const;
+type Period = (typeof PERIODS)[number];
 
 const SECTIONS = [
   "overview",
@@ -64,7 +67,13 @@ export function AnalyticsView({ section = "overview" }: { section?: Section }) {
   const t = useTranslations("Analytics");
   const fade = useFadeUp({ step: 40 });
   const [active, setActive] = useState<Section>(section);
-  const [period, setPeriod] = useState<(typeof PERIODS)[number]>("30d");
+  // Period lives in the URL (shareable, back-button works). The section queries
+  // are keyed on it, so changing it refetches them (client-side; no server
+  // round-trip needed since the data is fetched via react-query).
+  const [period, setPeriod] = useQueryState(
+    "period",
+    parseAsStringLiteral(PERIODS).withDefault("30d").withOptions({ history: "push" }),
+  );
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
@@ -83,14 +92,14 @@ export function AnalyticsView({ section = "overview" }: { section?: Section }) {
             <button
               key={p}
               type="button"
-              onClick={() => setPeriod(p)}
+              onClick={() => void setPeriod(p)}
               className={`h-8 rounded-full px-4 text-sm font-bold transition-colors ${
                 period === p
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {p === "ytd" ? t("ytd") : p}
+              {p}
             </button>
           ))}
         </div>
@@ -137,7 +146,7 @@ export function AnalyticsView({ section = "overview" }: { section?: Section }) {
           ) : active === "cohorts" ? (
             <Cohorts fade={fade} />
           ) : (
-            <FunnelSection fade={fade} />
+            <FunnelSection fade={fade} period={period} />
           )}
         </div>
       </div>
@@ -225,25 +234,37 @@ function Overview({ fade }: { fade: Fade }) {
 
 function Cohorts({ fade }: { fade: Fade }) {
   const t = useTranslations("Analytics");
+  const trpc = useTRPC();
+  const q = useQuery(trpc.dashboard.cohorts.queryOptions());
+  const weeks = q.data?.weeks ?? 5;
+  const rows = (q.data?.cohorts ?? []).map((c) => ({
+    label: new Date(c.label).toLocaleDateString("es-CO", { day: "numeric", month: "short" }),
+    weeks: c.retention,
+  }));
   return (
     <ChartCard
       title={t("cohortsTitle")}
       subtitle={t("cohortsSubtitle")}
       style={fade(0)}
     >
+      {q.isPending ? (
+        <Skeleton className="h-40 w-full rounded-xl" />
+      ) : rows.length === 0 ? (
+        <p className="text-muted-foreground py-4 text-sm font-semibold">{t("noData")}</p>
+      ) : (
       <table className="w-full text-center text-xs">
         <thead>
           <tr className="text-muted-foreground/70 font-bold">
             <th className="py-1 text-left font-bold">{t("cohort")}</th>
-            {["S0", "S1", "S2", "S3", "S4"].map((w) => (
-              <th key={w} className="py-1 font-bold">
-                {w}
+            {Array.from({ length: weeks }, (_, k) => (
+              <th key={`S${k}`} className="py-1 font-bold">
+                S{k}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {cohorts.map((row) => (
+          {rows.map((row) => (
             <tr key={row.label}>
               <td className="text-muted-foreground py-1 text-left font-bold">
                 {row.label}
@@ -269,22 +290,29 @@ function Cohorts({ fade }: { fade: Fade }) {
           ))}
         </tbody>
       </table>
+      )}
     </ChartCard>
   );
 }
 
-function FunnelSection({ fade }: { fade: Fade }) {
+function FunnelSection({ fade, period }: { fade: Fade; period: Period }) {
   const t = useTranslations("Analytics");
-  const max = funnel[0]?.value ?? 1;
+  const trpc = useTRPC();
+  const q = useQuery(trpc.dashboard.funnel.queryOptions({ period }));
+  const stages = q.data?.stages ?? [];
+  const max = stages[0]?.value ?? 1;
   return (
     <ChartCard
       title={t("funnelTitle")}
       subtitle={t("funnelSubtitle")}
       style={fade(0)}
     >
+      {q.isPending ? (
+        <Skeleton className="h-40 w-full rounded-xl" />
+      ) : (
       <ul className="space-y-4">
-        {funnel.map((stage, idx) => {
-          const prev = idx === 0 ? null : funnel[idx - 1];
+        {stages.map((stage, idx) => {
+          const prev = idx === 0 ? null : stages[idx - 1];
           const drop =
             prev && prev.value > 0
               ? Math.round((1 - stage.value / prev.value) * 100)
@@ -310,6 +338,7 @@ function FunnelSection({ fade }: { fade: Fade }) {
           );
         })}
       </ul>
+      )}
     </ChartCard>
   );
 }

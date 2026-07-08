@@ -28,22 +28,6 @@ export const revenueBars = [
 export const engagementOpen = [62, 66, 64, 70, 74, 72, 78, 82, 80, 86];
 export const engagementClick = [24, 28, 26, 31, 35, 33, 38, 42, 40, 46];
 
-export type CohortRow = { label: string; weeks: (number | null)[] };
 
-export const cohorts: CohortRow[] = [
-  { label: "Feb", weeks: [100, 70, 56, 47, 40] },
-  { label: "Mar", weeks: [100, 73, 59, 50, 43] },
-  { label: "Abr", weeks: [100, 76, 62, 53, null] },
-  { label: "May", weeks: [100, 80, 66, null, null] },
-  { label: "Jun", weeks: [100, 83, null, null, null] },
-];
 
-export type FunnelKey = "reached" | "opened" | "visited" | "redeemed";
-export type FunnelStage = { key: FunnelKey; value: number };
 
-export const funnel: FunnelStage[] = [
-  { key: "reached", value: 12480 },
-  { key: "opened", value: 8640 },
-  { key: "visited", value: 3920 },
-  { key: "redeemed", value: 1480 },
-];
