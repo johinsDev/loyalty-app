@@ -3,6 +3,12 @@
 import {
   Button,
   Checkbox,
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
   Input,
   Label,
   NumberInput,
@@ -26,6 +32,11 @@ const fmtCop = (cents: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(
     Math.round(cents) / 100,
   );
+
+/** Common measurement units for the ingredient catalog. */
+const UNITS = ["u", "g", "kg", "ml", "l", "oz", "cda", "cdta"] as const;
+
+type CatalogItem = { id: string; name: string; unit: string; costPerUnitCents: number };
 
 /** Per-variant recipe editor: assign catalog ingredients + quantities, mark the
  *  ones the customer sees, and show the variant's COGS + margin live. */
@@ -113,26 +124,34 @@ export function RecipeEditor({
                 return (
                   // eslint-disable-next-line react/no-array-index-key -- recipe lines have no stable id in v1
                   <div key={li} className="flex items-center gap-2">
-                    <Select
-                      value={line.ingredientId}
-                      onValueChange={(val) =>
+                    <Combobox<CatalogItem>
+                      items={ingredients}
+                      value={ing ?? null}
+                      onValueChange={(sel) =>
                         setLines(
                           idx,
-                          v.ingredients.map((l, i) => (i === li ? { ...l, ingredientId: val ?? l.ingredientId } : l)),
+                          v.ingredients.map((l, i) =>
+                            i === li ? { ...l, ingredientId: sel?.id ?? l.ingredientId } : l,
+                          ),
                         )
                       }
+                      itemToStringLabel={(i) => i.name}
                     >
-                      <SelectTrigger size="sm" className="h-10 flex-1 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ingredients.map((i) => (
-                          <SelectItem key={i.id} value={i.id}>
-                            {i.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <ComboboxInput
+                        placeholder={t("recipe.pickIngredient")}
+                        className="h-10 flex-1"
+                      />
+                      <ComboboxContent>
+                        <ComboboxEmpty className="py-3">{t("recipe.noneFound")}</ComboboxEmpty>
+                        <ComboboxList className="p-1.5">
+                          {ingredients.map((i) => (
+                            <ComboboxItem key={i.id} value={i} className="rounded-lg">
+                              {i.name}
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                     <NumberInput
                       value={line.quantity}
                       onValueChange={(val) =>
@@ -186,7 +205,18 @@ export function RecipeEditor({
             </div>
             <div>
               <Label className="text-xs">{t("recipe.unit")}</Label>
-              <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="g / ml / u" className="h-10" />
+              <Select value={unit} onValueChange={(v) => setUnit(v ?? "u")}>
+                <SelectTrigger className="h-10 w-full text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {UNITS.map((u) => (
+                    <SelectItem key={u} value={u}>
+                      {u}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className="text-xs">{t("recipe.unitCost")}</Label>

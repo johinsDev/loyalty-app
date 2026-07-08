@@ -111,6 +111,7 @@ export const productUpsertInputSchema = z.object({
   stockQty: z.number().int().min(0).nullish(),
   productType: productTypeSchema.default("physical"),
   sortOrder: z.number().int().default(0),
+  recipeNotes: z.string().nullish(),
   seoTitle: z.string().max(160).nullish(),
   seoDescription: z.string().max(320).nullish(),
   ogImageUrl: z.string().url().nullish().or(z.literal("")),
@@ -170,6 +171,7 @@ export interface ProductAdminDetail {
   stockMode: string;
   stockQty: number | null;
   productType: string;
+  recipeNotes: string | null;
   sortOrder: number;
   seoTitle: string | null;
   seoDescription: string | null;

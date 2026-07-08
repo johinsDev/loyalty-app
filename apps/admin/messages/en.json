@@ -1361,7 +1361,11 @@
       "unitCost": "Cost per unit",
       "saveIngredient": "Save",
       "cancel": "Cancel",
-      "newIngredient": "Create ingredient"
+      "newIngredient": "Create ingredient",
+      "pickIngredient": "Search ingredient…",
+      "noneFound": "No results",
+      "notes": "Prep notes",
+      "notesHint": "Internal instructions (staff only — not shown to the customer)."
     }
   },
   "Command": {

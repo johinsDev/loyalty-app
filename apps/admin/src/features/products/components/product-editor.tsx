@@ -673,6 +673,12 @@ export function ProductEditor({ id }: { id?: string }) {
               variants={draft.variants}
               onChange={(next) => set("variants", next)}
             />
+            <Field label={t("recipe.notes")} hint={t("recipe.notesHint")}>
+              <RichTextEditor
+                value={draft.recipeNotes}
+                onValueChange={(html) => set("recipeNotes", html)}
+              />
+            </Field>
           </Block>
         ) : null}
         </div>

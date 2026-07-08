@@ -89,6 +89,7 @@ export function detailToDraft(d: AdminDetail): {
     seoTitle: d.seoTitle ?? "",
     seoDescription: d.seoDescription ?? "",
     slug: d.slug,
+    recipeNotes: d.recipeNotes ?? "",
     options: d.options.map((o) => ({ id: o.id, name: o.name, values: o.values.map((v) => v.label) })),
     variants,
   };
@@ -187,6 +188,7 @@ export function draftToUpsert(
     stockQty: draft.stockMode === "limited" ? draft.stock : null,
     productType: draft.type,
     sortOrder: 0,
+    recipeNotes: draft.recipeNotes || null,
     seoTitle: draft.seoTitle.trim() || null,
     seoDescription: draft.seoDescription.trim() || null,
     ogImageUrl: null,

@@ -107,6 +107,7 @@ export type ProductDraft = {
   seoTitle: string;
   seoDescription: string;
   slug: string;
+  recipeNotes: string;
   options: ProductOption[];
   variants: Variant[];
 };
@@ -147,6 +148,7 @@ export const emptyProductDraft: ProductDraft = {
   seoTitle: "",
   seoDescription: "",
   slug: "",
+  recipeNotes: "",
   options: [],
   variants: [],
 };

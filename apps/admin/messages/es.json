@@ -1361,7 +1361,11 @@
       "unitCost": "Costo por unidad",
       "saveIngredient": "Guardar",
       "cancel": "Cancelar",
-      "newIngredient": "Crear ingrediente"
+      "newIngredient": "Crear ingrediente",
+      "pickIngredient": "Buscar ingrediente…",
+      "noneFound": "Sin resultados",
+      "notes": "Notas de preparación",
+      "notesHint": "Instrucciones internas (solo para el equipo, no las ve el cliente)."
     }
   },
   "Command": {

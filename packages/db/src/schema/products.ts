@@ -71,6 +71,8 @@ export const product = sqliteTable(
     stockMode: text("stock_mode").notNull().default("infinite"),
     stockQty: integer("stock_qty"),
     productType: text("product_type").notNull().default("physical"),
+    // Staff-only prep notes for the recipe (tiptap HTML). Never shown to customers.
+    recipeNotes: text("recipe_notes"),
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     ogImageUrl: text("og_image_url"),
