@@ -35,50 +35,10 @@ export const categories: Category[] = [
   },
 ];
 
-/** Flat list of "Category" + "Category / Subcategory" labels for the picker. */
-export type CategoryRef = { id: string; label: string };
-export function categoryRefs(): CategoryRef[] {
-  const out: CategoryRef[] = [];
-  for (const c of categories) {
-    out.push({ id: c.id, label: c.name });
-    for (const s of c.subcategories) {
-      out.push({ id: `${c.id}:${s.id}`, label: `${c.name} / ${s.name}` });
-    }
-  }
-  return out;
-}
-
-export function categoryLabel(id: string): string {
-  return categoryRefs().find((r) => r.id === id)?.label ?? id;
-}
-
 // ── Products ────────────────────────────────────────────────────────────────
-
-export type Status = "active" | "draft";
 
 /** Lifecycle status persisted on the real product (matches the API enum). */
 export type ProductStatus = "active" | "draft" | "archived";
-
-export type Product = {
-  id: string;
-  name: string;
-  emoji: string;
-  price: number;
-  categoryIds: string[];
-  variantCount: number;
-  status: Status;
-};
-
-export const products: Product[] = [
-  { id: "p_001", name: "Taro Milk Tea", emoji: "🧋", price: 6.5, categoryIds: ["c_milk:s_classic"], variantCount: 2, status: "active" },
-  { id: "p_002", name: "Brown Sugar Boba", emoji: "🧋", price: 5.8, categoryIds: ["c_milk:s_brown"], variantCount: 2, status: "active" },
-  { id: "p_003", name: "Matcha Latte", emoji: "🍵", price: 5.2, categoryIds: ["c_specialty"], variantCount: 2, status: "active" },
-  { id: "p_004", name: "Mango Green Tea", emoji: "🥭", price: 4.9, categoryIds: ["c_fruit:s_citrus"], variantCount: 2, status: "active" },
-  { id: "p_005", name: "Smoothie de maracuyá", emoji: "🍈", price: 5.0, categoryIds: ["c_fruit"], variantCount: 2, status: "active" },
-  { id: "p_006", name: "Thai Tea", emoji: "🧡", price: 5.4, categoryIds: ["c_specialty"], variantCount: 1, status: "active" },
-  { id: "p_007", name: "Tapioca", emoji: "⚫", price: 0.8, categoryIds: ["c_toppings:s_boba"], variantCount: 1, status: "active" },
-  { id: "p_008", name: "Pudding", emoji: "🍮", price: 1.0, categoryIds: ["c_toppings"], variantCount: 1, status: "draft" },
-];
 
 // Options → variants (Shopify-style). Options like {Tamaño:[Regular,Grande]};
 // the editor generates one variant per combination, each with price/sku/stock.
@@ -202,28 +162,3 @@ export function buildVariants(
   });
 }
 
-const SAMPLE_OPTIONS: ProductOption[] = [
-  { id: "o_size", name: "Tamaño", values: ["Regular", "Grande"] },
-];
-
-/** Resolve a product into an editable draft. Hardcoded — unknown ids fall back
- * to a representative sample so deep links never 404 in the design build. */
-export function getProductDraft(id: string): ProductDraft {
-  const base = products.find((x) => x.id === id) ?? products[0]!;
-  const options = base.variantCount > 1 ? SAMPLE_OPTIONS : [];
-  const variants = buildVariants(options).map((v, i) => ({
-    ...v,
-    price: base.price + i * 1.5,
-  }));
-  return {
-    ...emptyProductDraft,
-    name: base.name,
-    description: "<p>Bebida estrella de la casa, lista para personalizar.</p>",
-    media: [{ id: "m1", emoji: base.emoji }],
-    price: base.price,
-    showPrice: true,
-    categoryIds: base.categoryIds,
-    options,
-    variants,
-  };
-}
