@@ -59,14 +59,29 @@ function isRewardPending(err: unknown): boolean {
  * the purchase. The discount is re-computed on the server at record time, so the
  * client's number is only a preview.
  */
+/** A reward preselected upstream (scanned QR / entered code) — carries the exact
+ *  currency the customer chose on their phone, which the register must honor. */
+export type PreselectReward = {
+  rewardId: string;
+  currency: "stamps" | "points" | "both";
+  name: string;
+  /** Staff fulfillment note (experience rewards) — shown prominently so the
+   *  cashier knows what to hand over / do. */
+  note?: string | null;
+};
+
 export function ItemizedPurchase({
   customerId,
   onSuccess,
   onRewardPending,
+  preselect,
 }: {
   customerId: string;
   onSuccess: (wallet: WalletView) => void;
   onRewardPending: () => void;
+  /** When the sale was opened from a scanned/entered reward claim, that reward
+   *  is preselected here (its units drive the discount preview + redemption). */
+  preselect?: PreselectReward;
 }) {
   const t = useTranslations("Cashier");
   const trpc = useTRPC();
@@ -74,7 +89,9 @@ export function ItemizedPurchase({
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [chosenPromoId, setChosenPromoId] = useState<string | null>(null);
-  const [inlineRewardId, setInlineRewardId] = useState<string | null>(null);
+  const [inlineRewardId, setInlineRewardId] = useState<string | null>(
+    preselect?.rewardId ?? null,
+  );
 
   const debouncedQuery = useDebounce(query.trim(), { wait: 250 });
   const menu = useQuery(
@@ -86,36 +103,6 @@ export function ItemizedPurchase({
     [cart],
   );
 
-  const cartInput = useMemo(
-    () => ({
-      currency: CURRENCY,
-      lines: cart.map((i) => ({
-        productId: i.productId,
-        qty: i.qty,
-        unitAmountCents: i.unitAmountCents,
-      })),
-    }),
-    [cart],
-  );
-
-  const applicable = useQuery(
-    trpc.promociones.applicable.queryOptions(
-      { customerId, cart: cartInput },
-      { enabled: cart.length > 0 },
-    ),
-  );
-  const promos = applicable.data?.applicable ?? [];
-  const hints = applicable.data?.hints ?? [];
-
-  // Auto-apply the best promo whenever the applicable set changes, so the
-  // total always shows the final charge. The server sorts best-first
-  // (discount desc, then multiplier), so the first entry is the best. The
-  // cashier can still pick a different one or deselect (until the cart changes).
-  useEffect(() => {
-    const list = applicable.data?.applicable ?? [];
-    setChosenPromoId(list[0]?.promo.id ?? null);
-  }, [applicable.data]);
-
   // Rewards this customer can redeem right now — offered as an optional inline
   // redemption folded into this same sale (deducted in the purchase tx).
   const availableRewards = useQuery(
@@ -124,9 +111,58 @@ export function ItemizedPurchase({
   const rewards = availableRewards.data ?? [];
   const chosenReward = rewards.find((r) => r.rewardId === inlineRewardId) ?? null;
 
+  // The currency to redeem with: the preselected one (customer's phone choice)
+  // wins; otherwise derive it from the reward's affordable currencies.
+  const activeRewardCurrency: "stamps" | "points" | "both" | null =
+    inlineRewardId == null
+      ? null
+      : inlineRewardId === preselect?.rewardId
+        ? preselect.currency
+        : chosenReward
+          ? inlineRewardCurrency(chosenReward)
+          : null;
+  const activeRewardName =
+    chosenReward?.name ??
+    (inlineRewardId === preselect?.rewardId ? preselect?.name : undefined);
+  const inlineReward =
+    inlineRewardId != null && activeRewardCurrency != null
+      ? { rewardId: inlineRewardId, currency: activeRewardCurrency }
+      : undefined;
+
+  // Preview mirrors recordPurchase: reward first (its units excluded), promos on
+  // the remainder — so the shown total equals the charge.
+  const preview = useQuery(
+    trpc.stamps.preview.queryOptions(
+      {
+        customerId,
+        currency: CURRENCY,
+        items: cart.map((i) => ({
+          productId: i.productId,
+          qty: i.qty,
+          unitAmountCents: i.unitAmountCents,
+        })),
+        inlineReward,
+      },
+      { enabled: cart.length > 0 },
+    ),
+  );
+  const promos = preview.data?.applicable ?? [];
+  const hints = preview.data?.hints ?? [];
+  const rewardPreview = preview.data?.reward ?? null;
+
+  // Auto-apply the best promo whenever the applicable set changes, so the
+  // total always shows the final charge. The server sorts best-first
+  // (discount desc, then multiplier), so the first entry is the best. The
+  // cashier can still pick a different one or deselect (until the cart changes).
+  useEffect(() => {
+    const list = preview.data?.applicable ?? [];
+    setChosenPromoId(list[0]?.promo.id ?? null);
+  }, [preview.data]);
+
   const chosen = promos.find((p) => p.promo.id === chosenPromoId) ?? null;
-  const discount = chosen?.discountCents ?? 0;
-  const net = Math.max(0, subtotal - discount);
+  const promoDiscount = chosen?.discountCents ?? 0;
+  const rewardDiscount = rewardPreview?.ok ? rewardPreview.discountCents : 0;
+  const net = Math.max(0, subtotal - promoDiscount - rewardDiscount);
 
   const recordPurchase = useMutation(trpc.stamps.recordPurchase.mutationOptions());
   const activeStoreId = useActiveStoreId();
@@ -166,13 +202,7 @@ export function ItemizedPurchase({
           unitAmountCents: i.unitAmountCents,
         })),
         appliedPromoId: chosenPromoId ?? undefined,
-        inlineReward:
-          chosenReward != null
-            ? {
-                rewardId: chosenReward.rewardId,
-                currency: inlineRewardCurrency(chosenReward),
-              }
-            : undefined,
+        inlineReward,
         currency: CURRENCY,
       });
       onSuccess(view);
@@ -188,12 +218,13 @@ export function ItemizedPurchase({
         toast.error(t("inlineRewardError"));
         setInlineRewardId(null);
         void availableRewards.refetch();
+        void preview.refetch();
         return;
       }
       if (err instanceof Error && err.message === "PROMO_NOT_APPLICABLE") {
         toast.error(t("promoNotApplicable"));
         setChosenPromoId(null);
-        void applicable.refetch();
+        void preview.refetch();
         return;
       }
       toast.error(err instanceof Error ? err.message : t("purchaseError"));
@@ -290,7 +321,7 @@ export function ItemizedPurchase({
             <Tag className="text-muted-foreground size-4" />
             <h3 className="text-sm font-bold">{t("applicablePromos")}</h3>
           </div>
-          {applicable.isPending ? (
+          {preview.isPending ? (
             <p className="text-muted-foreground mt-2 text-xs">{t("searching")}</p>
           ) : promos.length === 0 ? (
             <p className="text-muted-foreground mt-2 text-xs">{t("noPromos")}</p>
@@ -351,36 +382,70 @@ export function ItemizedPurchase({
             <Gift className="text-muted-foreground size-4" />
             <h3 className="text-sm font-bold">{t("inlineRewardHeading")}</h3>
           </div>
+          {/* Experience reward instructions — what the cashier must hand over. */}
+          {preselect?.note && inlineRewardId === preselect.rewardId ? (
+            <div className="border-primary/30 bg-primary/5 mt-2 rounded-xl border p-2.5">
+              <div className="text-primary text-[0.6875rem] font-extrabold tracking-wider">
+                {t("rewardFulfillmentLabel")}
+              </div>
+              <p className="text-foreground mt-0.5 text-sm font-semibold">
+                {preselect.note}
+              </p>
+            </div>
+          ) : null}
           {availableRewards.isPending ? (
             <p className="text-muted-foreground mt-2 text-xs">{t("searching")}</p>
-          ) : rewards.length === 0 ? (
+          ) : rewards.length === 0 && !preselect ? (
             <p className="text-muted-foreground mt-2 text-xs">{t("inlineRewardNone")}</p>
           ) : (
             <div className="mt-2 space-y-1.5">
+              {/* Claimed reward resolved from a scan/code but not in the
+                  available list (edge) — still selectable so it can be redeemed. */}
+              {preselect && !rewards.some((r) => r.rewardId === preselect.rewardId) ? (
+                <RewardRow
+                  name={preselect.name}
+                  active={inlineRewardId === preselect.rewardId}
+                  claimed
+                  discountCents={
+                    inlineRewardId === preselect.rewardId && rewardPreview?.ok
+                      ? rewardPreview.discountCents
+                      : null
+                  }
+                  claimedLabel={t("rewardClaimedBadge")}
+                  onToggle={() =>
+                    setInlineRewardId(
+                      inlineRewardId === preselect.rewardId ? null : preselect.rewardId,
+                    )
+                  }
+                />
+              ) : null}
               {rewards.map((rw) => {
                 const active = rw.rewardId === inlineRewardId;
                 return (
-                  <button
+                  <RewardRow
                     key={rw.rewardId}
-                    type="button"
-                    onClick={() =>
-                      setInlineRewardId(active ? null : rw.rewardId)
-                    }
-                    className={
-                      active
-                        ? "border-primary bg-primary/5 flex w-full items-center justify-between gap-3 rounded-xl border-2 p-2.5 text-left"
-                        : "border-border flex w-full items-center justify-between gap-3 rounded-xl border p-2.5 text-left"
-                    }
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-bold">{rw.name}</div>
-                    </div>
-                    {active ? <Check className="text-primary size-5 shrink-0" /> : null}
-                  </button>
+                    name={rw.name}
+                    active={active}
+                    claimed={preselect?.rewardId === rw.rewardId}
+                    claimedLabel={t("rewardClaimedBadge")}
+                    discountCents={active && rewardPreview?.ok ? rewardPreview.discountCents : null}
+                    onToggle={() => setInlineRewardId(active ? null : rw.rewardId)}
+                  />
                 );
               })}
             </div>
           )}
+          {/* The claimed/selected reward doesn't apply to the current cart
+              (e.g. a free-product reward whose item isn't in the ticket yet). */}
+          {inlineRewardId && rewardPreview && !rewardPreview.ok ? (
+            <div className="bg-muted mt-2 rounded-xl p-2.5">
+              <p className="text-muted-foreground text-xs font-semibold">
+                {rewardPreview.reason === "reward-item-not-in-cart"
+                  ? t("rewardAddItemHint")
+                  : t("inlineRewardError")}
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -391,10 +456,18 @@ export function ItemizedPurchase({
             <span className="text-muted-foreground font-semibold">{t("subtotal")}</span>
             <span className="font-bold">{formatCop(subtotal)}</span>
           </div>
-          {discount > 0 ? (
+          {promoDiscount > 0 ? (
             <div className="text-primary flex items-center justify-between">
-              <span className="font-semibold">{t("discount")}</span>
-              <span className="font-bold">− {formatCop(discount)}</span>
+              <span className="font-semibold">{t("promoDiscount")}</span>
+              <span className="font-bold">− {formatCop(promoDiscount)}</span>
+            </div>
+          ) : null}
+          {rewardDiscount > 0 ? (
+            <div className="text-primary flex items-center justify-between">
+              <span className="font-semibold">
+                {t("rewardDiscount", { name: activeRewardName ?? "" })}
+              </span>
+              <span className="font-bold">− {formatCop(rewardDiscount)}</span>
             </div>
           ) : null}
           <div className="border-border flex items-center justify-between border-t pt-1.5">
@@ -415,5 +488,51 @@ export function ItemizedPurchase({
         {t("recordPurchase")}
       </Button>
     </div>
+  );
+}
+
+/** One selectable reward in the inline-redeem list. A `claimed` reward (opened
+ *  from a scan/code) gets a badge; the applied discount shows once it matches
+ *  the current cart. */
+function RewardRow({
+  name,
+  active,
+  claimed,
+  claimedLabel,
+  discountCents,
+  onToggle,
+}: {
+  name: string;
+  active: boolean;
+  claimed?: boolean;
+  claimedLabel: string;
+  discountCents: number | null;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={
+        active
+          ? "border-primary bg-primary/5 flex w-full items-center justify-between gap-3 rounded-xl border-2 p-2.5 text-left"
+          : "border-border flex w-full items-center justify-between gap-3 rounded-xl border p-2.5 text-left"
+      }
+    >
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-sm font-bold">{name}</span>
+          {claimed ? (
+            <span className="bg-primary/10 text-primary shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold">
+              {claimedLabel}
+            </span>
+          ) : null}
+        </div>
+        {discountCents != null ? (
+          <div className="text-primary text-xs font-semibold">− {formatCop(discountCents)}</div>
+        ) : null}
+      </div>
+      {active ? <Check className="text-primary size-5 shrink-0" /> : null}
+    </button>
   );
 }

@@ -972,7 +972,6 @@
     "confirmRedeem": "Confirmar canje",
     "insufficientShort": "Sellos insuficientes. Faltan {count} para este premio.",
     "redeemValidated": "Canje validado",
-    "handReward": "Entregá {name} al socio.",
     "toCustomer": "a {name}.",
     "remainingBalance": "Saldo restante:",
     "approvedBy": "Aprobó {name}",
@@ -1072,7 +1071,6 @@
     "pasteCodeCta": "Reclamar",
     "availableRewardsLabel": "Listos para canjear",
     "insufficientBalance": "Al socio no le alcanza el saldo.",
-    "balancesAfter": "{stamps} sellos · {points} pts",
     "claimWithoutScanner": "Reclamar sin escáner",
     "streakReward": "Premio de racha",
     "codeEntryTitle": "Reclamar {reward}",
@@ -1092,7 +1090,6 @@
     "applicablePromos": "Promociones aplicables",
     "noPromos": "Ninguna promoción aplica a este carrito.",
     "subtotal": "Subtotal",
-    "discount": "Descuento",
     "net": "Total",
     "decrease": "Quitar",
     "increase": "Agregar",
@@ -1103,7 +1100,13 @@
     "promoHint": "Agrega lo que falta y se activa {name}",
     "inlineRewardHeading": "Canjear recompensa en esta venta",
     "inlineRewardNone": "No hay recompensas disponibles",
-    "inlineRewardError": "No se pudo canjear la recompensa. Revisá el saldo."
+    "inlineRewardError": "No se pudo canjear la recompensa. Revisá el saldo.",
+    "promoDiscount": "Descuento promo",
+    "rewardDiscount": "Recompensa: {name}",
+    "rewardAddItemHint": "Agrega el producto al carrito para aplicar esta recompensa.",
+    "rewardClaimedBadge": "Reclamada",
+    "rewardFulfillmentLabel": "Entregar al cliente",
+    "rewardResolvedToast": "Recompensa lista — complétala en la venta"
   },
   "Admin": {
     "menu": "Menú",

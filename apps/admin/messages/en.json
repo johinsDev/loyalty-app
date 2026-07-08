@@ -972,7 +972,6 @@
     "confirmRedeem": "Confirm redemption",
     "insufficientShort": "Not enough stamps. {count} short for this reward.",
     "redeemValidated": "Redemption validated",
-    "handReward": "Hand {name} to the member.",
     "toCustomer": "to {name}.",
     "remainingBalance": "Remaining balance:",
     "approvedBy": "Approved by {name}",
@@ -1072,7 +1071,6 @@
     "pasteCodeCta": "Claim",
     "availableRewardsLabel": "Ready to claim",
     "insufficientBalance": "The member doesn't have enough balance.",
-    "balancesAfter": "{stamps} stamps · {points} pts",
     "claimWithoutScanner": "Claim without scanner",
     "streakReward": "Streak reward",
     "codeEntryTitle": "Claim {reward}",
@@ -1092,7 +1090,6 @@
     "applicablePromos": "Applicable promotions",
     "noPromos": "No promotions apply to this cart.",
     "subtotal": "Subtotal",
-    "discount": "Discount",
     "net": "Total",
     "decrease": "Decrease",
     "increase": "Increase",
@@ -1103,7 +1100,13 @@
     "promoHint": "Add the missing item to unlock {name}",
     "inlineRewardHeading": "Redeem a reward in this sale",
     "inlineRewardNone": "No rewards available",
-    "inlineRewardError": "Couldn't redeem the reward. Check the balance."
+    "inlineRewardError": "Couldn't redeem the reward. Check the balance.",
+    "promoDiscount": "Promo discount",
+    "rewardDiscount": "Reward: {name}",
+    "rewardAddItemHint": "Add the item to the cart to apply this reward.",
+    "rewardClaimedBadge": "Claimed",
+    "rewardFulfillmentLabel": "Hand to customer",
+    "rewardResolvedToast": "Reward ready — complete it in the sale"
   },
   "Admin": {
     "menu": "Menu",

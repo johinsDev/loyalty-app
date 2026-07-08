@@ -25,7 +25,7 @@ import { useTRPC } from "@/lib/trpc/client";
 
 import { useActiveStoreId } from "../use-active-store";
 
-import { ItemizedPurchase } from "./itemized-purchase";
+import { ItemizedPurchase, type PreselectReward } from "./itemized-purchase";
 import { QrScanner } from "./qr-scanner";
 
 type CustomerHit = {
@@ -36,7 +36,9 @@ type CustomerHit = {
 };
 
 type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
-type ClaimResult = inferRouterOutputs<AppRouter>["rewards"]["claim"];
+/** A resolved reward claim (scan/code): identifies the customer + reward so the
+ *  register can open with it preselected. Redemption happens in recordPurchase. */
+type ResolveClaim = inferRouterOutputs<AppRouter>["rewards"]["resolveClaim"];
 type AvailableReward =
   inferRouterOutputs<AppRouter>["rewards"]["availableForCustomer"][number];
 
@@ -78,7 +80,10 @@ export function ScanView() {
   const [priceCop, setPriceCop] = useState<number | undefined>(undefined);
   const [purchaseMode, setPurchaseMode] = useState<"total" | "items">("total");
   const [pastedCode, setPastedCode] = useState("");
-  const [claimResult, setClaimResult] = useState<ClaimResult | null>(null);
+  // A reward resolved from a scan/code, preselected into the itemized register.
+  const [preselectReward, setPreselectReward] = useState<PreselectReward | null>(
+    null,
+  );
   // No-scanner code path: the pending claim + the 6-digit code the cashier types.
   const [pendingClaim, setPendingClaim] = useState<PendingClaim | null>(null);
   const [codeInput, setCodeInput] = useState("");
@@ -112,13 +117,15 @@ export function ScanView() {
   const recordPurchase = useMutation(
     trpc.stamps.recordPurchase.mutationOptions(),
   );
-  const claim = useMutation(trpc.rewards.claim.mutationOptions());
+  // Rewards resolve (identify), never redeem — the sale's recordPurchase does the
+  // redemption. Streak claims stay standalone (T4S → claim-success).
+  const resolveClaim = useMutation(trpc.rewards.resolveClaim.mutationOptions());
+  const resolveClaimWithCode = useMutation(
+    trpc.rewards.resolveClaimWithCode.mutationOptions(),
+  );
   const claimStreak = useMutation(trpc.streaks.claimReward.mutationOptions());
   const requestRewardClaim = useMutation(
     trpc.rewards.requestClaim.mutationOptions(),
-  );
-  const confirmRewardClaim = useMutation(
-    trpc.rewards.confirmClaimWithCode.mutationOptions(),
   );
   const requestStreakClaim = useMutation(
     trpc.streaks.requestClaim.mutationOptions(),
@@ -126,11 +133,11 @@ export function ScanView() {
   const confirmStreakClaim = useMutation(
     trpc.streaks.confirmClaimWithCode.mutationOptions(),
   );
-  const isClaiming = claim.isPending || claimStreak.isPending;
+  const isClaiming = resolveClaim.isPending || claimStreak.isPending;
   const isRequesting =
     requestRewardClaim.isPending || requestStreakClaim.isPending;
   const isConfirming =
-    confirmRewardClaim.isPending || confirmStreakClaim.isPending;
+    resolveClaimWithCode.isPending || confirmStreakClaim.isPending;
 
   const reset = () => {
     setStep("identify");
@@ -138,9 +145,26 @@ export function ScanView() {
     setSelected(null);
     setWallet(null);
     setPriceCop(undefined);
-    setClaimResult(null);
+    setPreselectReward(null);
+    setPurchaseMode("total");
     setPendingClaim(null);
     setCodeInput("");
+  };
+
+  // A resolved reward (scan or code) routes into the itemized register with the
+  // reward preselected — redemption is folded into the sale, not standalone.
+  const openRegisterWithReward = (resolved: ResolveClaim) => {
+    setPreselectReward({
+      rewardId: resolved.reward.id,
+      currency: resolved.currency,
+      name: resolved.reward.name,
+      note: resolved.reward.fulfillmentNote,
+    });
+    setPendingClaim(null);
+    setCodeInput("");
+    setPurchaseMode("items");
+    setStep("found");
+    toast.success(t("rewardResolvedToast"));
   };
 
   // No-scanner path: request a 6-digit code (delivered to the customer's phone),
@@ -188,19 +212,18 @@ export function ScanView() {
     const code = codeInput.trim();
     try {
       if (pendingClaim.kind === "reward") {
-        const result = await confirmRewardClaim.mutateAsync({
-          pendingId: pendingClaim.pendingId,
-          code,
-          storeId: activeStoreId ?? undefined,
-        });
-        setClaimResult(result);
-      } else {
-        await confirmStreakClaim.mutateAsync({
+        // Resolve (no redemption) → open the register with the reward preselected.
+        const resolved = await resolveClaimWithCode.mutateAsync({
           pendingId: pendingClaim.pendingId,
           code,
         });
-        setClaimResult(null);
+        openRegisterWithReward(resolved);
+        return;
       }
+      await confirmStreakClaim.mutateAsync({
+        pendingId: pendingClaim.pendingId,
+        code,
+      });
       setStep("claim-success");
       toast.success(t("claimValidated"));
     } catch (err) {
@@ -261,13 +284,14 @@ export function ScanView() {
       try {
         if (isStreak) {
           await claimStreak.mutateAsync({ token });
-          setClaimResult(null);
+          setStep("claim-success");
+          toast.success(t("claimValidated"));
         } else {
-          const result = await claim.mutateAsync({ token, storeId: activeStoreId ?? undefined });
-          setClaimResult(result);
+          // Resolve only (no redemption) → open the register with the reward
+          // preselected; the sale's recordPurchase does the deduction.
+          const resolved = await resolveClaim.mutateAsync({ token });
+          openRegisterWithReward(resolved);
         }
-        setStep("claim-success");
-        toast.success(t("claimValidated"));
       } catch (err) {
         if (err instanceof Error && err.message === "ALREADY_CLAIMED") {
           toast.error(t("alreadyClaimed"));
@@ -281,7 +305,7 @@ export function ScanView() {
         }
       }
     },
-    [claim, claimStreak, t],
+    [claimStreak, resolveClaim, openRegisterWithReward, t],
   );
 
   const customerName = (hit: CustomerHit | null) =>
@@ -503,8 +527,10 @@ export function ScanView() {
             ) : (
               <ItemizedPurchase
                 customerId={selected.id}
+                preselect={preselectReward ?? undefined}
                 onSuccess={(view) => {
                   setWallet(view);
+                  setPreselectReward(null);
                   setStep("purchase-success");
                 }}
                 onRewardPending={() => setStep("scan")}
@@ -658,28 +684,9 @@ export function ScanView() {
           <div className="font-display text-3xl font-semibold tracking-tight">
             {t("claimValidated")}
           </div>
-          {claimResult ? (
-            <>
-              <div className="text-muted-foreground text-base">
-                {t("handReward", { name: claimResult.rewardName })}
-              </div>
-              <div className="bg-card border-border mt-1 rounded-2xl border p-4">
-                <div className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
-                  {t("newBalance")}
-                </div>
-                <div className="text-lg font-extrabold">
-                  {t("balancesAfter", {
-                    stamps: claimResult.stampsBalance,
-                    points: claimResult.pointsBalance,
-                  })}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="text-muted-foreground text-base">
-              {t("handRewardToCustomer")}
-            </div>
-          )}
+          <div className="text-muted-foreground text-base">
+            {t("handRewardToCustomer")}
+          </div>
           <Button
             variant="gradient"
             size="lg"
