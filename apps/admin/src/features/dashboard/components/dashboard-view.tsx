@@ -16,6 +16,9 @@ import { DashboardPromoCard } from "@/features/promotions/components/dashboard-p
 import { PromoKpiStrip } from "@/features/promotions/components/promo-kpi-strip";
 import { useFadeUp } from "@/lib/animate";
 
+import { useTRPC } from "@/lib/trpc/client";
+import { useQuery } from "@tanstack/react-query";
+
 import {
   atRisk,
   cohorts,
@@ -25,16 +28,32 @@ import {
   fraudAlerts,
   impact,
   type Kpi,
-  kpis,
-  purchasesSeries,
-  recentClaims,
-  recentPurchases,
-  redemptionSeries,
-  topCustomers,
 } from "../data";
 import { AreaChart, Bars, Donut, Sparkline } from "./charts";
 
-const PERIODS = ["24h", "7d", "30d", "90d", "ytd"] as const;
+const PERIODS = ["7d", "30d", "90d"] as const;
+type Period = (typeof PERIODS)[number];
+
+const COP = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "COP",
+  maximumFractionDigits: 0,
+});
+const fmtCop = (cents: number) => COP.format(Math.round(cents) / 100);
+const fmtNum = (n: number) => new Intl.NumberFormat("es-CO").format(n);
+const initialsOf = (name: string) =>
+  name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "·";
+const agoOf = (d: Date, now: number): string => {
+  const min = Math.max(0, Math.round((now - new Date(d).getTime()) / 60000));
+  if (min < 60) return `${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h} h`;
+  return `${Math.round(h / 24)} d`;
+};
+const deltaStr = (pct: number | null): { delta: string; trend: "up" | "down" } =>
+  pct == null
+    ? { delta: "—", trend: "up" }
+    : { delta: `${pct >= 0 ? "+" : ""}${pct}%`, trend: pct >= 0 ? "up" : "down" };
 
 /**
  * Admin dashboard — a faithful build of the t4-admin design: a ROI "Impacto del
@@ -47,8 +66,53 @@ const PERIODS = ["24h", "7d", "30d", "90d", "ytd"] as const;
 export function DashboardView() {
   const t = useTranslations("Dashboard");
   const fade = useFadeUp({ step: 40 });
-  const [period, setPeriod] = useState<(typeof PERIODS)[number]>("30d");
+  const trpc = useTRPC();
+  const [period, setPeriod] = useState<Period>("30d");
   let i = 0;
+
+  const overview = useQuery(trpc.dashboard.overview.queryOptions({ period }));
+  const seriesQ = useQuery(trpc.dashboard.series.queryOptions({ period }));
+  const recentPurchasesQ = useQuery(trpc.dashboard.recentPurchases.queryOptions({ limit: 6 }));
+  const recentRedemptionsQ = useQuery(trpc.dashboard.recentRedemptions.queryOptions({ limit: 6 }));
+  const topCustomersQ = useQuery(trpc.dashboard.topCustomers.queryOptions({ period, limit: 6 }));
+  const now = Date.now();
+
+  // Real KPI cards reuse the existing kpi/kpiSub i18n keys. Sparklines use the
+  // purchases series as a lightweight trend visual.
+  const spark = (seriesQ.data ?? []).map((p) => p.purchases);
+  const ov = overview.data;
+  const realKpis: Kpi[] = ov
+    ? [
+        { key: "activeCustomers", value: fmtNum(ov.totalMembers), ...deltaStr(ov.members.deltaPct), sub: "last30d", spark },
+        { key: "purchasesTracked", value: fmtNum(ov.purchases.value), ...deltaStr(ov.purchases.deltaPct), sub: "perVisit", spark },
+        { key: "revenueInfluenced", value: fmtCop(ov.revenueCents.value), ...deltaStr(ov.revenueCents.deltaPct), sub: "loyaltyTied", spark },
+        { key: "rewardsRedeemed", value: fmtNum(ov.redemptions.value), ...deltaStr(ov.redemptions.deltaPct), sub: "claimRate", spark },
+      ]
+    : [];
+
+  const recentPurchases = (recentPurchasesQ.data ?? []).map((r) => ({
+    key: r.id,
+    initials: initialsOf(r.customerName),
+    name: r.customerName,
+    store: r.storeName,
+    amount: fmtCop(r.amountCents),
+    time: agoOf(r.createdAt, now),
+  }));
+  const topCustomers = (topCustomersQ.data ?? []).map((c) => ({
+    key: c.id,
+    initials: initialsOf(c.name),
+    name: c.name,
+    visits: c.visits,
+    ltv: fmtCop(c.ltvCents),
+  }));
+  const recentClaims = (recentRedemptionsQ.data ?? []).map((r) => ({
+    key: r.id,
+    emoji: r.rewardIcon ?? "🎁",
+    name: r.rewardName,
+    by: r.customerName,
+    pts: r.currency === "points" ? `${r.pointsSpent}` : `${r.stampsSpent}`,
+    ago: agoOf(r.createdAt, now),
+  }));
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
@@ -66,7 +130,7 @@ export function DashboardView() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {p === "ytd" ? t("ytd") : p}
+              {p}
             </button>
           ))}
         </div>
@@ -112,7 +176,7 @@ export function DashboardView() {
 
       {/* KPI row */}
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((k) => (
+        {realKpis.map((k) => (
           <KpiCard key={k.key} kpi={k} style={fade(i++)} />
         ))}
       </div>
@@ -134,7 +198,7 @@ export function DashboardView() {
           className="lg:col-span-2"
         >
           <div className="h-52">
-            <AreaChart series={purchasesSeries} />
+            <AreaChart series={(seriesQ.data ?? []).map((s) => s.purchases)} />
           </div>
         </ChartCard>
         <ChartCard title={t("engagementTitle")} beta style={fade(i++)}>
@@ -166,6 +230,7 @@ export function DashboardView() {
           title={t("dauTitle")}
           subtitle={t("dauSubtitle")}
           badge={t("dauAvg", { n: dauAvg })}
+          beta
           style={fade(i++)}
         >
           <div className="h-40">
@@ -179,7 +244,7 @@ export function DashboardView() {
           style={fade(i++)}
         >
           <div className="h-40">
-            <AreaChart series={redemptionSeries} color="#f0a868" />
+            <AreaChart series={(seriesQ.data ?? []).map((s) => s.redemptions)} color="#f0a868" />
           </div>
         </ChartCard>
       </div>
@@ -240,22 +305,18 @@ export function DashboardView() {
         <ChartCard title={t("recentPurchasesTitle")} live style={fade(i++)}>
           <ul className="divide-border divide-y">
             {recentPurchases.map((p) => (
-              <li
-                key={p.name + p.time}
-                className="flex items-center gap-3 py-2.5"
-              >
+              <li key={p.key} className="flex items-center gap-3 py-2.5">
                 <AvatarChip initials={p.initials} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-bold">{p.name}</div>
-                  <div className="text-muted-foreground/70 truncate text-xs font-semibold">
-                    {p.item} · {p.store}
-                  </div>
+                  {p.store ? (
+                    <div className="text-muted-foreground/70 truncate text-xs font-semibold">
+                      {p.store}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-bold">{p.amount}</div>
-                  <div className="text-primary text-xs font-extrabold">
-                    {p.points} pts
-                  </div>
                 </div>
                 <span className="text-muted-foreground/70 w-12 text-right text-xs font-semibold">
                   {p.time}
@@ -272,7 +333,7 @@ export function DashboardView() {
         >
           <ul className="divide-border divide-y">
             {topCustomers.map((c, idx) => (
-              <li key={c.name} className="flex items-center gap-3 py-2.5">
+              <li key={c.key} className="flex items-center gap-3 py-2.5">
                 <span className="text-muted-foreground/60 w-4 text-sm font-bold">
                   {idx + 1}
                 </span>
@@ -297,6 +358,7 @@ export function DashboardView() {
         <ChartCard
           title={t("atRiskTitle")}
           subtitle={t("atRiskSubtitle")}
+          beta
           style={fade(i++)}
         >
           <ul className="divide-border divide-y">
@@ -361,10 +423,7 @@ export function DashboardView() {
         <ChartCard title={t("recentClaimsTitle")} style={fade(i++)}>
           <ul className="divide-border divide-y">
             {recentClaims.map((c) => (
-              <li
-                key={c.name + c.ago}
-                className="flex items-center gap-3 py-2.5"
-              >
+              <li key={c.key} className="flex items-center gap-3 py-2.5">
                 <span className="bg-primary/10 grid size-9 flex-none place-items-center rounded-xl text-lg">
                   {c.emoji}
                 </span>
