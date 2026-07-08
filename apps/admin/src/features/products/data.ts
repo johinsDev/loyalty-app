@@ -146,6 +146,7 @@ export const emptyProductDraft: ProductDraft = {
 export function buildVariants(
   options: ProductOption[],
   existing: Variant[] = [],
+  defaultPrice = 0,
 ): Variant[] {
   const usable = options.filter((o) => o.name.trim() && o.values.length > 0);
   if (usable.length === 0) return [];
@@ -156,8 +157,9 @@ export function buildVariants(
   return combos.map((combo) => {
     const key = combo.join(" / ");
     const prev = existing.find((e) => e.combo.join(" / ") === key);
+    // New rows inherit the product's base price (owner can override per row).
     return (
-      prev ?? { id: `v_${key}`, combo, price: 0, sku: "", stock: null, image: null }
+      prev ?? { id: `v_${key}`, combo, price: defaultPrice, sku: "", stock: null, image: null }
     );
   });
 }

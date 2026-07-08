@@ -132,16 +132,26 @@ export function ProductEditor({ id }: { id?: string }) {
   }, [id]);
 
   // Edit → load the real product tree into the draft (+ preserve modifiers/images).
+  // Load ONCE: a background refetch (e.g. window focus) must never clobber the
+  // cashier's in-progress edits (added variants, price changes, …).
   const detailQuery = useQuery(
-    trpc.menu.getAdmin.queryOptions({ id: id ?? "" }, { enabled: Boolean(id) }),
+    trpc.menu.getAdmin.queryOptions(
+      { id: id ?? "" },
+      { enabled: Boolean(id), refetchOnWindowFocus: false },
+    ),
   );
+  // Hydrate the draft once per product id — a refetch must not overwrite edits,
+  // but navigating to a different product (id change) should reload.
+  const loadedIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!detailQuery.data) return;
+    if (!detailQuery.data || loadedIdRef.current === id) return;
+    loadedIdRef.current = id ?? null;
     const mapped = detailToDraft(detailQuery.data);
     setDraft(mapped.draft);
     setStatus(mapped.status);
     setPassthrough(mapped.passthrough);
-  }, [detailQuery.data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailQuery.data, id]);
 
   // Real categories for the picker (replaces the design-time mock list).
   const categoriesQuery = useQuery(trpc.menu.categories.queryOptions());
@@ -160,7 +170,7 @@ export function ProductEditor({ id }: { id?: string }) {
     setDraft((d) => ({
       ...d,
       options,
-      variants: buildVariants(options, d.variants),
+      variants: buildVariants(options, d.variants, d.price ?? 0),
     }));
 
   const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -219,20 +229,25 @@ export function ProductEditor({ id }: { id?: string }) {
       ),
   );
 
-  const onSave = async () => {
-    if (!id) return;
+  // Persist the whole draft. Each "Siguiente" saves, so progress is never lost
+  // between steps (and a background refetch can't clobber it).
+  const saveDraft = async (): Promise<boolean> => {
+    if (!id) return false;
     try {
       await upsert.mutateAsync(draftToUpsert(id, draft, status, passthrough));
-      toast.success(t("updated", { name: draft.name }));
-      router.push("/products");
+      return true;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("saveError"));
+      return false;
     }
   };
 
-  const onNext = () => {
+  const onNext = async () => {
+    const ok = await saveDraft();
+    if (!ok) return; // stay on the step so the user can fix (e.g. missing name)
     if (stepIndex === STEPS.length - 1) {
-      void onSave();
+      toast.success(t("updated", { name: draft.name }));
+      router.push("/products");
       return;
     }
     setStepIndex((n) => n + 1);
@@ -1064,11 +1079,24 @@ function ProductPreview({
         {draft.name || t("previewNamePlaceholder")}
       </div>
       <div className="text-primary mt-0.5 font-extrabold">
-        {min != null
-          ? t("priceFrom", { price: fmt(min) })
-          : draft.price != null
-            ? fmt(draft.price)
-            : t("noPrice")}
+        {(() => {
+          const regular = min ?? draft.price;
+          if (regular == null) return t("noPrice");
+          const promo = draft.promoPrice;
+          const hasPromo = promo != null && promo > 0 && promo < regular;
+          const shown = hasPromo ? promo : regular;
+          const label = min != null ? t("priceFrom", { price: fmt(shown) }) : fmt(shown);
+          return hasPromo ? (
+            <span>
+              <span className="text-muted-foreground/60 mr-1.5 font-semibold line-through">
+                {fmt(regular)}
+              </span>
+              {label}
+            </span>
+          ) : (
+            label
+          );
+        })()}
       </div>
       {draft.categoryIds.length > 0 ? (
         <div className="text-muted-foreground/70 mt-2 text-xs font-semibold">
