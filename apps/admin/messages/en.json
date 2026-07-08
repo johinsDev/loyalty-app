@@ -212,9 +212,6 @@
     "tiersTitle": "Member tiers",
     "tiersSubtitle": "{n} active streaks",
     "membersShort": "members",
-    "tier.hoja": "Hoja",
-    "tier.flor": "Flor",
-    "tier.oro": "Oro",
     "atRiskEmpty": "No one at risk 🎉",
     "retentionTitle": "Retention",
     "retentionSubtitle": "In the window",
@@ -232,7 +229,12 @@
     "marginShort": "{pct}% margin",
     "noData": "No data yet",
     "salesByStoreTitle": "Sales by store",
-    "salesN": "{n} sales"
+    "salesN": "{n} sales",
+    "tier": {
+      "hoja": "Hoja",
+      "flor": "Flor",
+      "oro": "Oro"
+    }
   },
   "Customers": {
     "title": "Customers",

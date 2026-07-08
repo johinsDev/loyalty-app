@@ -212,9 +212,6 @@
     "tiersTitle": "Niveles de socios",
     "tiersSubtitle": "{n} rachas activas",
     "membersShort": "socios",
-    "tier.hoja": "Hoja",
-    "tier.flor": "Flor",
-    "tier.oro": "Oro",
     "atRiskEmpty": "Nadie en riesgo 🎉",
     "retentionTitle": "Retención",
     "retentionSubtitle": "En el periodo",
@@ -232,7 +229,12 @@
     "marginShort": "{pct}% margen",
     "noData": "Sin datos aún",
     "salesByStoreTitle": "Ventas por tienda",
-    "salesN": "{n} ventas"
+    "salesN": "{n} ventas",
+    "tier": {
+      "hoja": "Hoja",
+      "flor": "Flor",
+      "oro": "Oro"
+    }
   },
   "Customers": {
     "title": "Clientes",
