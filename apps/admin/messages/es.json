@@ -1345,7 +1345,24 @@
     "noImage": "Sin imagen",
     "saveError": "No se pudo guardar",
     "mediaUploading": "Subiendo…",
-    "mediaUploadError": "No se pudo subir la imagen"
+    "mediaUploadError": "No se pudo subir la imagen",
+    "secRecipe": "Receta",
+    "recipeHint": "Ingredientes y cantidades por variante; marca los que ve el cliente.",
+    "recipe": {
+      "created": "“{name}” creado",
+      "noVariants": "Agrega variantes primero.",
+      "baseVariant": "Base",
+      "cost": "Costo",
+      "margin": "Margen",
+      "visible": "Visible",
+      "addIngredient": "Agregar ingrediente",
+      "name": "Nombre",
+      "unit": "Unidad",
+      "unitCost": "Costo por unidad",
+      "saveIngredient": "Guardar",
+      "cancel": "Cancelar",
+      "newIngredient": "Crear ingrediente"
+    }
   },
   "Command": {
     "title": "Buscar",

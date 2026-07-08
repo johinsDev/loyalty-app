@@ -54,6 +54,14 @@ export const optionLibrary: OptionPreset[] = [
   { id: "lib_temp", name: "Temperatura", values: ["Frío", "Caliente"] },
   { id: "lib_sweet", name: "Dulzor", values: ["0%", "50%", "100%"] },
 ];
+/** One recipe line on a variant: how much of a catalog ingredient it uses. */
+export type RecipeLine = {
+  ingredientId: string;
+  quantity: number;
+  visibleToCustomer: boolean;
+  sortOrder: number;
+};
+
 export type Variant = {
   id: string;
   combo: string[]; // one value per option, in option order
@@ -61,6 +69,7 @@ export type Variant = {
   sku: string;
   stock: number | null; // null = infinite
   image: string | null; // media id, or null = use the main image
+  ingredients: RecipeLine[];
 };
 
 /** A product photo (`url` set = uploaded image) or an icon fallback (`emoji`). */
@@ -160,7 +169,15 @@ export function buildVariants(
     const prev = existing.find((e) => e.combo.join(" / ") === key);
     // New rows inherit the product's base price (owner can override per row).
     return (
-      prev ?? { id: `v_${key}`, combo, price: defaultPrice, sku: "", stock: null, image: null }
+      prev ?? {
+        id: `v_${key}`,
+        combo,
+        price: defaultPrice,
+        sku: "",
+        stock: null,
+        image: null,
+        ingredients: [],
+      }
     );
   });
 }

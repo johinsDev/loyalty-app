@@ -47,6 +47,12 @@ export function detailToDraft(d: AdminDetail): {
       sku: v.sku ?? "",
       stock: null as number | null,
       image: null as string | null,
+      ingredients: v.ingredients.map((i) => ({
+        ingredientId: i.ingredientId,
+        quantity: i.quantity,
+        visibleToCustomer: i.visibleToCustomer,
+        sortOrder: i.sortOrder,
+      })),
     };
   });
 
@@ -153,6 +159,12 @@ export function draftToUpsert(
       isDefault: i === 0,
       sortOrder: i,
       optionValueIds,
+      ingredients: v.ingredients.map((ing, j) => ({
+        ingredientId: ing.ingredientId,
+        quantity: ing.quantity,
+        visibleToCustomer: ing.visibleToCustomer,
+        sortOrder: j,
+      })),
     };
   });
 

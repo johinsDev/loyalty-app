@@ -67,6 +67,7 @@ import {
 } from "../data";
 import { CategoriesManager } from "./categories-view";
 import { detailToDraft, draftToUpsert, type ProductPassthrough } from "./map";
+import { RecipeEditor } from "./recipe-editor";
 
 const slugify = (s: string) =>
   s
@@ -509,6 +510,7 @@ export function ProductEditor({ id }: { id?: string }) {
           </p>
         </Block>
       ) : step === "variants" ? (
+        <div className="space-y-6">
         <Block title={t("secVariants")}>
           <p className="text-muted-foreground text-sm font-semibold">
             {t("libraryHint")}
@@ -662,6 +664,18 @@ export function ProductEditor({ id }: { id?: string }) {
             <p className="text-muted-foreground/70 text-sm">{t("noVariants")}</p>
           )}
         </Block>
+        {draft.variants.length > 0 ? (
+          <Block title={t("secRecipe")} divided>
+            <p className="text-muted-foreground text-sm font-semibold">
+              {t("recipeHint")}
+            </p>
+            <RecipeEditor
+              variants={draft.variants}
+              onChange={(next) => set("variants", next)}
+            />
+          </Block>
+        ) : null}
+        </div>
       ) : step === "inventory" ? (
         <div className="space-y-6">
           <Block title={t("secType")}>

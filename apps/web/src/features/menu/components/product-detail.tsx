@@ -133,6 +133,13 @@ export function ProductDetail({ product }: { product: ProductDetailData }) {
           />
         ) : null}
 
+        {product.ingredients.length > 0 ? (
+          <p className="text-muted-foreground mt-2 text-sm">
+            <span className="text-foreground font-semibold">{t("contains")}:</span>{" "}
+            {product.ingredients.join(", ")}
+          </p>
+        ) : null}
+
         <span className="text-primary mt-2 block text-sm font-bold">
           {earn.points > 0 ? t("earnPoints", { points: num(format, earn.points) }) : null}
           {earn.points > 0 && earn.stamp ? " · " : ""}

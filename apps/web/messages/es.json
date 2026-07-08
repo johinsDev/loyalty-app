@@ -279,7 +279,8 @@
     "sizeM": "Mediano",
     "sizeL": "Grande +$0.80",
     "toppings": "Toppings",
-    "addToOrder": "Agregar al pedido · {price}"
+    "addToOrder": "Agregar al pedido · {price}",
+    "contains": "Contiene"
   },
   "Qr": {
     "title": "Mi código",
