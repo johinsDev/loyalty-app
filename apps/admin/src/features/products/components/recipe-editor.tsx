@@ -198,15 +198,15 @@ export function RecipeEditor({
       {/* Create a catalog ingredient inline */}
       {creating ? (
         <div className="border-border bg-muted/40 space-y-2 rounded-2xl border p-3.5">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="space-y-2">
               <Label className="text-xs">{t("recipe.name")}</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} className="h-10" autoFocus />
+              <Input value={name} onChange={(e) => setName(e.target.value)} className="h-11" autoFocus />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label className="text-xs">{t("recipe.unit")}</Label>
               <Select value={unit} onValueChange={(v) => setUnit(v ?? "u")}>
-                <SelectTrigger className="h-10 w-full text-sm">
+                <SelectTrigger size="lg" className="h-11 w-full text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -218,9 +218,9 @@ export function RecipeEditor({
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label className="text-xs">{t("recipe.unitCost")}</Label>
-              <NumberInput value={cost} onValueChange={setCost} className="h-10" />
+              <NumberInput value={cost} onValueChange={setCost} className="h-11" />
             </div>
           </div>
           <div className="flex gap-2">
