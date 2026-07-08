@@ -24,6 +24,8 @@ export interface RedeemWithinTxInput {
   storeId: string;
   /** Set when redeeming inline as part of a register sale; null for QR/OTP. */
   purchaseId?: string;
+  /** The reward's share of the ticket discount (v2). null/omitted = unknown. */
+  discountCents?: number;
 }
 
 /**
@@ -149,6 +151,7 @@ export async function redeemWithinTx(
       currency: recordedCurrency,
       stampsSpent: stampsCost,
       pointsSpent: pointsCost,
+      discountCents: input.discountCents ?? null,
       purchaseId: purchaseId ?? null,
     })
     .returning({ id: redemption.id });

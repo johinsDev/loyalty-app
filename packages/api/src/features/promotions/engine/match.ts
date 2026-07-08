@@ -46,6 +46,11 @@ function unitMatches(refs: PromoItemRef[], unit: CartUnit, cart: Cart): boolean 
   return refs.some((ref) => refMatchesUnit(ref, unit, cart));
 }
 
+/** All cart units matching any of `refs` (empty refs = any product unit). */
+export function unitsMatching(cart: Cart, refs: PromoItemRef[]): CartUnit[] {
+  return expandUnits(cart).filter((u) => unitMatches(refs, u, cart));
+}
+
 /** Pick `qty` most-expensive available units matching the requirement, or null
  *  when the cart can't satisfy it. Most-expensive-first keeps consumption
  *  deterministic and customer-favorable (effects then discount the cheapest

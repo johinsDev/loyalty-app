@@ -8,7 +8,7 @@ export {
   toExclusions,
   type UnitExclusion,
 } from "./exclusions";
-export { expandUnits, matchRule } from "./match";
+export { expandUnits, matchRule, unitsMatching } from "./match";
 export { isScheduleActiveAt, ORG_UTC_OFFSET_MINUTES, toOrgLocalParts } from "./schedule";
 export { evaluatePromo, pickBest } from "./evaluate";
 export type {
