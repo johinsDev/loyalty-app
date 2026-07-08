@@ -19,7 +19,10 @@ import {
 } from "../_shared/claim-code";
 import { TIERS } from "../points/config";
 import { tierFor } from "../points/tier-calc";
+import type { WizardState } from "../_shared/wizard";
 import type { CacheBinding, RealtimeBinding } from "../../trpc";
+import { rewardTemplate } from "./templates";
+import { rewardWizard } from "./wizard";
 import {
   signRewardClaimToken,
   verifyRewardClaimToken,
@@ -40,11 +43,18 @@ import type {
   RedemptionHistoryView,
   RequestClaimResult,
   ResolveClaimView,
+  RewardAdminListInput,
   RewardDetail,
   RewardListItem,
   RewardListView,
+  RewardPatchContentInput,
   RewardSection,
 } from "./schemas";
+
+export interface RewardWizardResult {
+  reward: RewardRow;
+  state: WizardState;
+}
 
 type NotificationKey =
   | "reward-claimed"
@@ -206,6 +216,133 @@ export class RewardsService {
       cursor: input.cursor,
       limit: input.limit,
     });
+  }
+
+  // ── Admin wizard (server-driven) ────────────────────────────────────────────
+  async createDraft(
+    orgId: string,
+    userId: string,
+    templateKey: string | undefined,
+    locale: "es" | "en",
+  ): Promise<RewardWizardResult> {
+    let preseed = {};
+    if (templateKey) {
+      const tpl = rewardTemplate(templateKey);
+      if (!tpl) throw new TRPCError({ code: "NOT_FOUND", message: `template "${templateKey}"` });
+      preseed = {
+        name: locale === "en" ? tpl.name.en : tpl.name.es,
+        type: tpl.type,
+        benefit: tpl.benefit,
+        description: locale === "en" ? tpl.description.en : tpl.description.es,
+        icon: tpl.icon,
+        backgroundCss: tpl.backgroundCss,
+        fulfillmentNote: tpl.fulfillmentNote ?? null,
+        stampsRequired: tpl.costPreset?.stampsRequired ?? null,
+        pointsCost: tpl.costPreset?.pointsCost ?? null,
+      };
+    }
+    const row = await this.repo.createDraft(orgId, userId, preseed);
+    return { reward: row, state: rewardWizard.state(row) };
+  }
+
+  async getState(orgId: string, id: string): Promise<RewardWizardResult> {
+    const row = await this.loadReward(orgId, id);
+    return { reward: row, state: rewardWizard.state(row) };
+  }
+
+  async advance(
+    orgId: string,
+    userId: string,
+    id: string,
+    step: string,
+    input: unknown,
+  ): Promise<RewardWizardResult> {
+    const current = await this.loadReward(orgId, id);
+    if (current.status !== "draft")
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Published rewards are immutable — archive and create a new one",
+      });
+    const { draft, state } = await rewardWizard.advance(
+      { db: this.repo.db, organizationId: orgId, userId, services: { repo: this.repo } },
+      current,
+      step,
+      input,
+    );
+    return { reward: draft, state };
+  }
+
+  async publishReward(orgId: string, id: string): Promise<RewardRow> {
+    const current = await this.loadReward(orgId, id);
+    if (current.status === "published") return current;
+    if (current.status === "archived")
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Archived rewards can't be republished" });
+    const state = rewardWizard.state(current);
+    if (!state.canPublish)
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: `Complete step "${state.current}" before publishing`,
+      });
+    if (current.type === "experience" && !current.fulfillmentNote?.trim())
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Experience rewards need a fulfillment note",
+      });
+    const published = await this.repo.markPublished(orgId, id);
+    await this.invalidateCatalog(orgId);
+    return published;
+  }
+
+  async archive(orgId: string, id: string): Promise<RewardRow> {
+    const current = await this.loadReward(orgId, id);
+    if (current.status === "archived") return current;
+    const archived = await this.repo.markArchived(orgId, id);
+    await this.invalidateCatalog(orgId);
+    return archived;
+  }
+
+  async patchContent(orgId: string, input: RewardPatchContentInput): Promise<RewardRow> {
+    await this.loadReward(orgId, input.id);
+    const { id, imageUrl, ...rest } = input;
+    const updated = await this.repo.patch(orgId, id, {
+      ...rest,
+      ...(imageUrl !== undefined ? { imageUrl: imageUrl || null } : {}),
+    });
+    await this.invalidateCatalog(orgId);
+    return updated;
+  }
+
+  async remove(orgId: string, id: string): Promise<{ ok: true }> {
+    await this.loadReward(orgId, id);
+    const uses = await this.repo.redemptionCount(id);
+    if (uses > 0)
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Reward has redemptions — archive it instead of deleting",
+      });
+    await this.repo.remove(orgId, id);
+    await this.invalidateCatalog(orgId);
+    return { ok: true };
+  }
+
+  adminList(orgId: string, input: RewardAdminListInput) {
+    return this.repo.adminList(orgId, input);
+  }
+
+  getAdmin(orgId: string, id: string): Promise<RewardRow> {
+    return this.loadReward(orgId, id);
+  }
+
+  private async loadReward(orgId: string, id: string): Promise<RewardRow> {
+    const row = await this.repo.getReward(orgId, id);
+    if (!row) throw new TRPCError({ code: "NOT_FOUND", message: `reward "${id}" not found` });
+    return row;
+  }
+
+  private async invalidateCatalog(orgId: string): Promise<void> {
+    // The catalog cache is keyed per search term; clear the base key + drop the
+    // whole namespace best-effort (mirrors how the reads warm it).
+    await this.opts.cache?.delete(`rewards:catalog:${orgId}:`).catch(() => {});
   }
 
   /** Validate eligibility (active + tier + balance + once) then sign a token. */

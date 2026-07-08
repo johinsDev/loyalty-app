@@ -10,8 +10,10 @@ import {
   router,
   staffProcedure,
 } from "../../trpc";
+import { loadLocaleContext } from "../_shared/localize";
 import { RewardsRepository } from "./repository";
 import { RewardsService } from "./service";
+import { REWARD_TEMPLATES } from "./templates";
 import {
   cancelClaimInputSchema,
   claimInputSchema,
@@ -21,7 +23,10 @@ import {
   issueClaimTokenInputSchema,
   listInputSchema,
   requestClaimInputSchema,
+  rewardAdminListInputSchema,
   rewardIdInputSchema,
+  rewardIdSchema,
+  rewardPatchContentSchema,
   setClaimCurrencyInputSchema,
 } from "./schemas";
 
@@ -54,6 +59,66 @@ export const rewardsRouter = router({
       );
       return rows.map((r) => ({ id: r.id, name: r.name }));
     }),
+
+  // ---- Admin wizard / data-table -------------------------------------
+  templates: managerProcedure.query(async ({ ctx }) => {
+    const lc = await loadLocaleContext(ctx.db, await orgId(), ctx.headers);
+    const en = lc.locale === "en";
+    return REWARD_TEMPLATES.map((t) => ({
+      key: t.key,
+      type: t.type,
+      name: en ? t.name.en : t.name.es,
+      icon: t.icon,
+      backgroundCss: t.backgroundCss,
+      description: en ? t.description.en : t.description.es,
+    }));
+  }),
+  create: managerProcedure
+    .input(z.object({ templateKey: z.string().optional() }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const org = await orgId();
+      const lc = await loadLocaleContext(ctx.db, org, ctx.headers);
+      return buildRewardsService(ctx).createDraft(
+        org,
+        ctx.session.user.id,
+        input?.templateKey,
+        lc.locale === "en" ? "en" : "es",
+      );
+    }),
+  getState: managerProcedure
+    .input(rewardIdSchema)
+    .query(async ({ ctx, input }) => buildRewardsService(ctx).getState(await orgId(), input.id)),
+  advance: managerProcedure
+    .input(z.object({ id: z.string().uuid(), step: z.string(), input: z.unknown() }))
+    .mutation(async ({ ctx, input }) =>
+      buildRewardsService(ctx).advance(
+        await orgId(),
+        ctx.session.user.id,
+        input.id,
+        input.step,
+        input.input,
+      ),
+    ),
+  publish: managerProcedure
+    .input(rewardIdSchema)
+    .mutation(async ({ ctx, input }) =>
+      buildRewardsService(ctx).publishReward(await orgId(), input.id),
+    ),
+  archive: managerProcedure
+    .input(rewardIdSchema)
+    .mutation(async ({ ctx, input }) => buildRewardsService(ctx).archive(await orgId(), input.id)),
+  patchContent: managerProcedure
+    .input(rewardPatchContentSchema)
+    .mutation(async ({ ctx, input }) => buildRewardsService(ctx).patchContent(await orgId(), input)),
+  adminList: managerProcedure
+    .input(rewardAdminListInputSchema)
+    .query(async ({ ctx, input }) => buildRewardsService(ctx).adminList(await orgId(), input)),
+  getAdmin: managerProcedure
+    .input(rewardIdSchema)
+    .query(async ({ ctx, input }) => buildRewardsService(ctx).getAdmin(await orgId(), input.id)),
+  remove: managerProcedure
+    .input(rewardIdSchema)
+    .mutation(async ({ ctx, input }) => buildRewardsService(ctx).remove(await orgId(), input.id)),
 
   // ---- Customer (self) ------------------------------------------------
   list: protectedProcedure

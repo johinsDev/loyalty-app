@@ -4,14 +4,35 @@ import {
   pointsTransaction,
   redemption,
   reward,
+  type RewardInsert,
   type RewardRow,
   rewardAvailability,
 } from "@loyalty/db/schema";
-import { and, asc, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import { and, asc, desc, eq, getTableColumns, gte, inArray, like, lt, lte, sql, type SQL } from "drizzle-orm";
 
+import {
+  buildOrderBy,
+  pageCountOf,
+  pageOffset,
+  type ListResult,
+} from "../_shared/list";
 import { WINDOW_DAYS } from "../points/config";
 import { currentTierKey } from "../points/tier-calc";
-import type { RedemptionHistoryItem } from "./schemas";
+import { DRAFT_NAME } from "./steps";
+import type { RedemptionHistoryItem, RewardAdminListInput } from "./schemas";
+
+/** Columns a wizard step / content patch may write. */
+export type RewardPatch = Partial<
+  Pick<
+    RewardInsert,
+    | "name" | "type" | "benefit" | "description" | "imageUrl" | "backgroundCss"
+    | "icon" | "fulfillmentNote" | "stampsRequired" | "pointsCost" | "costMode"
+    | "allowedTiers" | "limitPerCustomer" | "sections" | "sortOrder"
+  >
+>;
+
+export type AdminRewardRow = RewardRow & { redemptions: number };
 
 const DAY_MS = 86_400_000;
 
@@ -41,7 +62,103 @@ export type ClaimTxResult =
  * deduction + redemption row + availability cleanup are atomic.
  */
 export class RewardsRepository {
-  constructor(private readonly db: typeof Db) {}
+  constructor(readonly db: typeof Db) {}
+
+  // ── Admin CRUD (wizard) ─────────────────────────────────────────────────────
+  async createDraft(orgId: string, userId: string, preseed: RewardPatch = {}): Promise<RewardRow> {
+    const rows = await this.db
+      .insert(reward)
+      .values({
+        organizationId: orgId,
+        createdByUserId: userId,
+        status: "draft",
+        name: DRAFT_NAME,
+        ...preseed,
+      })
+      .returning();
+    return this.#firstOr(rows, "insert");
+  }
+
+  async patch(orgId: string, id: string, patch: RewardPatch): Promise<RewardRow> {
+    const rows = await this.db
+      .update(reward)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(and(eq(reward.id, id), eq(reward.organizationId, orgId)))
+      .returning();
+    return this.#firstOr(rows, "patch");
+  }
+
+  async markPublished(orgId: string, id: string): Promise<RewardRow> {
+    const now = new Date();
+    const rows = await this.db
+      .update(reward)
+      .set({ status: "published", publishedAt: now, updatedAt: now })
+      .where(and(eq(reward.id, id), eq(reward.organizationId, orgId)))
+      .returning();
+    return this.#firstOr(rows, "publish");
+  }
+
+  async markArchived(orgId: string, id: string): Promise<RewardRow> {
+    const rows = await this.db
+      .update(reward)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(and(eq(reward.id, id), eq(reward.organizationId, orgId)))
+      .returning();
+    return this.#firstOr(rows, "archive");
+  }
+
+  async remove(orgId: string, id: string): Promise<void> {
+    await this.db.delete(reward).where(and(eq(reward.id, id), eq(reward.organizationId, orgId)));
+  }
+
+  async redemptionCount(rewardId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ value: sql<number>`count(*)` })
+      .from(redemption)
+      .where(eq(redemption.rewardId, rewardId));
+    return Number(row?.value ?? 0);
+  }
+
+  /** Data-table admin list with a `redemptions` count subquery (sortable). */
+  async adminList(orgId: string, input: RewardAdminListInput): Promise<ListResult<AdminRewardRow>> {
+    const usesExpr = sql<number>`(select count(*) from ${redemption} where ${redemption.rewardId} = ${reward.id})`;
+    const conds: (SQL | undefined)[] = [eq(reward.organizationId, orgId)];
+    if (input.q) conds.push(like(reward.name, `%${input.q}%`));
+    if (input.status?.length) conds.push(inArray(reward.status, input.status));
+    if (input.type?.length) conds.push(inArray(reward.type, input.type));
+    const where = and(...conds.filter((c): c is SQL => Boolean(c)));
+
+    const orderBy = buildOrderBy(
+      input.sort,
+      { name: reward.name, createdAt: reward.createdAt, redemptions: usesExpr },
+      [asc(reward.sortOrder), desc(reward.updatedAt)],
+    );
+
+    const rows = await this.db
+      .select({ ...getTableColumns(reward), redemptions: usesExpr })
+      .from(reward)
+      .where(where)
+      .orderBy(...orderBy)
+      .limit(input.perPage)
+      .offset(pageOffset(input.page, input.perPage));
+    const totalRows = await this.db
+      .select({ value: sql<number>`count(*)` })
+      .from(reward)
+      .where(where);
+    const total = Number(totalRows[0]?.value ?? 0);
+    return {
+      rows: rows.map((r) => ({ ...r, redemptions: Number(r.redemptions) })),
+      total,
+      pageCount: pageCountOf(total, input.perPage),
+    };
+  }
+
+  #firstOr(rows: RewardRow[], op: string): RewardRow {
+    const row = rows[0];
+    if (!row)
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `reward ${op} returned no row` });
+    return row;
+  }
 
   /** Active rewards, ordered by sortOrder then createdAt, cursor-paginated. The
    *  cursor is the last item's `id` (stable within the deterministic order). */
