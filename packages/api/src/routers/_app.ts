@@ -1,5 +1,6 @@
 import { bannersRouter } from "../features/banners";
 import { campaignsRouter } from "../features/campaigns";
+import { dashboardRouter } from "../features/dashboard";
 import { emailOutboxRouter } from "../features/email-outbox";
 import { employeesRouter } from "../features/employees";
 import { flagsRouter } from "../features/flags";
@@ -38,6 +39,7 @@ export const appRouter = router({
   menu: menuRouter,
   banners: bannersRouter,
   campaigns: campaignsRouter,
+  dashboard: dashboardRouter,
   settings: settingsRouter,
   employees: employeesRouter,
   notifications: notificationsRouter,
