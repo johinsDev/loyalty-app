@@ -22,6 +22,7 @@ import { StampsRepository } from "./repository";
 import {
   customerIdInputSchema,
   historyInputSchema,
+  previewPurchaseInputSchema,
   recordPurchaseInputSchema,
 } from "./schemas";
 import { StampsService } from "./service";
@@ -41,6 +42,67 @@ function buildService(ctx: {
 
 export const stampsRouter = router({
   // ---- Cashier (staff) ------------------------------------------------
+  // Read-only preview of an itemized sale: mirrors `recordPurchase`'s
+  // reward-first-then-promo evaluation (same enriched cart + exclusions) so the
+  // register shows the exact reward + promo discounts before recording. No
+  // writes; a not-applicable reward returns a soft block instead of throwing.
+  preview: staffProcedure
+    .use(
+      rateLimit({ name: "stamps.preview", limit: 120, window: "1m", by: "user" }),
+    )
+    .input(previewPurchaseInputSchema)
+    .query(async ({ ctx, input }) => {
+      const org = await orgId();
+      const subtotalCents = input.items.reduce(
+        (s, it) => s + it.unitAmountCents * it.qty,
+        0,
+      );
+      const promoRepo = new PromoRepository(ctx.db);
+      const enriched = await enrichCart(promoRepo, {
+        currency: input.currency ?? "COP",
+        lines: input.items,
+      });
+
+      // Reward first (its units are excluded from the promo remainder).
+      let reward: {
+        ok: boolean;
+        discountCents: number;
+        reason: string | null;
+      } | null = null;
+      let exclusions: UnitExclusion[] = [];
+      if (input.inlineReward) {
+        const rw = await new RewardsRepository(ctx.db).getReward(
+          org,
+          input.inlineReward.rewardId,
+        );
+        if (!rw || rw.status !== "published") {
+          reward = { ok: false, discountCents: 0, reason: "reward-not-redeemable" };
+        } else {
+          const res = evaluateRewardForCart(rw, enriched);
+          if (res.ok) {
+            reward = { ok: true, discountCents: res.discountCents, reason: null };
+            exclusions = res.exclusions;
+          } else {
+            reward = { ok: false, discountCents: 0, reason: res.reason };
+          }
+        }
+      }
+
+      const lc = await loadLocaleContext(ctx.db, org, ctx.headers);
+      const { applicable, hints } = await new PromoService(
+        ctx.db,
+        promoRepo,
+      ).applicable(
+        org,
+        input.customerId,
+        { currency: input.currency ?? "COP", lines: input.items },
+        lc,
+        { exclusions, enriched },
+      );
+
+      return { subtotalCents, applicable, hints, reward };
+    }),
+
   recordPurchase: staffProcedure
     .use(
       rateLimit({
