@@ -35,7 +35,10 @@
     "./features/promotions/schemas": "./src/features/promotions/schemas.ts",
     "./features/promotions/rule-compile": "./src/features/promotions/rule-compile.ts",
     "./features/promotions/format": "./src/features/promotions/format.ts",
-    "./features/promotions/templates": "./src/features/promotions/templates.ts"
+    "./features/promotions/templates": "./src/features/promotions/templates.ts",
+    "./features/rewards/schemas": "./src/features/rewards/schemas.ts",
+    "./features/rewards/format": "./src/features/rewards/format.ts",
+    "./features/rewards/templates": "./src/features/rewards/templates.ts"
   },
   "scripts": {
     "lint": "oxlint src",

@@ -1,6 +1,36 @@
 import { z } from "zod";
 
 import type { TierConfig } from "../points/config";
+import { itemRefSchema } from "../promotions/schemas";
+
+// ---- reward v2 typed benefit ------------------------------------------------
+
+export const rewardTypeSchema = z.enum([
+  "freeProduct",
+  "amountOff",
+  "percentOff",
+  "experience",
+]);
+export type RewardType = z.infer<typeof rewardTypeSchema>;
+
+/** The typed benefit config persisted on `reward.benefit` (source of truth;
+ *  compiles to a promo rule at POS time — `experience` has none). */
+export const rewardBenefitConfigSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("freeProduct"), refs: z.array(itemRefSchema).min(1) }),
+  z.object({
+    type: z.literal("amountOff"),
+    amountCents: z.number().int().min(1),
+    refs: z.array(itemRefSchema), // [] = order-wide voucher
+  }),
+  z.object({
+    type: z.literal("percentOff"),
+    percent: z.number().min(0.01).max(100),
+    refs: z.array(itemRefSchema), // [] = order-wide
+    maxDiscountCents: z.number().int().min(1).optional(),
+  }),
+  z.object({ type: z.literal("experience") }),
+]);
+export type RewardBenefitConfigInput = z.infer<typeof rewardBenefitConfigSchema>;
 
 // ---- zod inputs ------------------------------------------------------------
 
