@@ -77,4 +77,9 @@ export const dashboardRouter = router({
   cohorts: managerProcedure.query(async ({ ctx }) =>
     new DashboardRepository(ctx.db).cohorts(await orgId()),
   ),
+  funnel: managerProcedure
+    .input(seriesInputSchema)
+    .query(async ({ ctx, input }) =>
+      new DashboardRepository(ctx.db).funnel(await orgId(), input.period),
+    ),
 });

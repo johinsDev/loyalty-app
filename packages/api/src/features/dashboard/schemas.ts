@@ -162,3 +162,12 @@ export interface CohortsView {
   weeks: number;
   cohorts: CohortRow[];
 }
+
+/** Loyalty funnel stage (members → purchased → redeemed) over the window. */
+export interface FunnelStage {
+  key: "members" | "purchased" | "redeemed";
+  value: number;
+}
+export interface FunnelView {
+  stages: FunnelStage[];
+}

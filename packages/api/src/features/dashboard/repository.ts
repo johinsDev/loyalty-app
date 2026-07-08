@@ -21,6 +21,7 @@ import {
   PERIOD_DAYS,
   type AtRiskRow,
   type CohortsView,
+  type FunnelView,
   type DashboardOverview,
   type DashboardSeriesPoint,
   type KpiStat,
@@ -527,6 +528,33 @@ export class DashboardRepository {
       return { label: new Date(w * WEEK).toISOString().slice(0, 10), size, retention };
     });
     return { weeks, cohorts };
+  }
+
+  /** Loyalty funnel over the window: all members → those who purchased → those
+   *  who redeemed a reward. */
+  async funnel(orgId: string, period: Period, now = new Date()): Promise<FunnelView> {
+    const start = daysAgo(now, PERIOD_DAYS[period]);
+    const [[members], [purchased], [redeemed]] = await Promise.all([
+      this.db
+        .select({ v: sql<number>`count(*)` })
+        .from(customer)
+        .where(eq(customer.organizationId, orgId)),
+      this.db
+        .select({ v: sql<number>`count(distinct ${purchase.customerId})` })
+        .from(purchase)
+        .where(and(eq(purchase.organizationId, orgId), gte(purchase.createdAt, start))),
+      this.db
+        .select({ v: sql<number>`count(distinct ${redemption.customerId})` })
+        .from(redemption)
+        .where(and(eq(redemption.organizationId, orgId), gte(redemption.createdAt, start))),
+    ]);
+    return {
+      stages: [
+        { key: "members", value: Number(members?.v ?? 0) },
+        { key: "purchased", value: Number(purchased?.v ?? 0) },
+        { key: "redeemed", value: Number(redeemed?.v ?? 0) },
+      ],
+    };
   }
 
   /** Revenue + sale count per store over the window. */
