@@ -5,7 +5,8 @@ import { TRPCError } from "@trpc/server";
 
 import { SUPPORTED_LOCALES, type LocaleContext } from "../_shared/localize";
 import type { WizardState } from "../_shared/wizard";
-import { evaluatePromo, type Cart, type CustomerFacts } from "./engine";
+import { evaluatePromo, type Cart, type CustomerFacts, type UnitExclusion } from "./engine";
+import { enrichCart } from "./stitch";
 import type { AdminPromoRow, PromoPatch, PromoRepository } from "./repository";
 import { ruleSchema, scheduleSchema, conditionsSchema } from "./schemas";
 import type {
@@ -231,31 +232,20 @@ export class PromoService {
     customerId: string,
     cart: Cart,
     lc: LocaleContext,
+    opts: { exclusions?: UnitExclusion[]; enriched?: Cart } = {},
   ): Promise<ApplicableResult> {
     const promos = await this.repo.publishedPromos(orgId);
     if (promos.length === 0) return { applicable: [], hints: [] };
 
-    const modifierIds = [...new Set(cart.lines.flatMap((l) => l.modifierOptionIds ?? []))];
-    const [facts, counts, cats, deltas] = await Promise.all([
+    const [facts, counts, enriched] = await Promise.all([
       this.repo.customerFacts(orgId, customerId),
       this.repo.redemptionCounts(
         promos.map((p) => p.id),
         customerId,
       ),
-      this.repo.productCategories(cart.lines.map((l) => l.productId)),
-      this.repo.modifierOptionDeltas(modifierIds),
+      opts.enriched ?? enrichCart(this.repo, cart),
     ]);
-    const enriched: Cart = {
-      currency: cart.currency,
-      lines: cart.lines.map((l) => ({
-        ...l,
-        categoryIds: cats.get(l.productId) ?? [],
-        modifierOptions: (l.modifierOptionIds ?? []).map((id) => ({
-          id,
-          priceDeltaCents: deltas.get(id) ?? 0,
-        })),
-      })),
-    };
+    const exclusions = opts.exclusions ?? [];
 
     const now = new Date();
     const applicable: ApplicablePromo[] = [];
@@ -285,6 +275,7 @@ export class PromoService {
         },
         customerFacts,
         now,
+        exclusions,
       );
       if (result.eligible && (result.discountCents > 0 || result.pointsMultiplier > 1)) {
         applicable.push({

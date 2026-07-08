@@ -1,5 +1,6 @@
 import type { PromoRule } from "@loyalty/db/schema";
 
+import { excludedAmountCents, type UnitExclusion } from "./exclusions";
 import type { Cart, CartUnit, MatchResult, RuleApplication } from "./types";
 import { subtotalCents } from "./types";
 
@@ -20,9 +21,17 @@ const targetUnits = (app: RuleApplication, target: "buy" | "get" | "order"): Car
 
 /** Compute the monetary effect of a matched rule. Assumes `match` has at least
  *  one application (evaluate gates on that). */
-export function computeEffect(cart: Cart, rule: PromoRule, match: MatchResult): EffectResult {
+export function computeEffect(
+  cart: Cart,
+  rule: PromoRule,
+  match: MatchResult,
+  exclusions: UnitExclusion[] = [],
+): EffectResult {
   const e = rule.effect;
-  const orderSubtotal = subtotalCents(cart.lines);
+  const orderSubtotal = Math.max(
+    0,
+    subtotalCents(cart.lines) - excludedAmountCents(cart, exclusions),
+  );
 
   switch (e.kind) {
     case "percentOff": {

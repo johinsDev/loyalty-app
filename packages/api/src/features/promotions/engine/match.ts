@@ -1,5 +1,6 @@
 import type { PromoItemRef, PromoLineRequirement, PromoRule } from "@loyalty/db/schema";
 
+import { excludedIndices, type UnitExclusion } from "./exclusions";
 import type { Cart, CartUnit, MatchResult, RuleApplication } from "./types";
 
 /** Expand cart lines into matchable units: `qty` product units per line plus
@@ -73,9 +74,14 @@ function pickUnits(
  * across all applications and across buy/get. Loops while the cart still
  * satisfies the rule and `maxApplicationsPerOrder` allows.
  */
-export function matchRule(cart: Cart, rule: PromoRule): MatchResult {
+export function matchRule(
+  cart: Cart,
+  rule: PromoRule,
+  exclusions: UnitExclusion[] = [],
+): MatchResult {
   const units = expandUnits(cart);
-  const available = units.map(() => true);
+  const excluded = excludedIndices(units, exclusions);
+  const available = units.map((_, i) => !excluded.has(i));
   const applications: RuleApplication[] = [];
   const maxApps = rule.maxApplicationsPerOrder ?? Number.POSITIVE_INFINITY;
   let missingGetSide: PromoItemRef[] = [];
