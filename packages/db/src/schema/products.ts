@@ -58,6 +58,15 @@ export const product = sqliteTable(
     currency: text("currency").notNull().default("COP"),
     status: text("status").notNull().default("active"), // active | draft | archived
     brand: text("brand"),
+    // Retail attributes (SaaS-generic; the tea pilot leaves most null). `stock_mode`
+    // "infinite" | "limited" (qty tracked in `stock_qty`); `product_type`
+    // "physical" | "digital".
+    gender: text("gender"), // unisex | female | male (retail apparel)
+    ageRange: text("age_range"), // all | kids | teens | adults
+    mpn: text("mpn"), // manufacturer part number
+    stockMode: text("stock_mode").notNull().default("infinite"),
+    stockQty: integer("stock_qty"),
+    productType: text("product_type").notNull().default("physical"),
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     ogImageUrl: text("og_image_url"),
