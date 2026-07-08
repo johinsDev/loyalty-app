@@ -1341,7 +1341,8 @@
     "noPrice": "No price",
     "categoriesN": "{n} categories",
     "mainImage": "Main",
-    "noImage": "No image"
+    "noImage": "No image",
+    "saveError": "Couldn't save"
   },
   "Command": {
     "title": "Search",

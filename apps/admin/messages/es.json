@@ -1341,7 +1341,8 @@
     "noPrice": "Sin precio",
     "categoriesN": "{n} categorías",
     "mainImage": "Principal",
-    "noImage": "Sin imagen"
+    "noImage": "Sin imagen",
+    "saveError": "No se pudo guardar"
   },
   "Command": {
     "title": "Buscar",

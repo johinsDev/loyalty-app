@@ -56,6 +56,9 @@ export function categoryLabel(id: string): string {
 
 export type Status = "active" | "draft";
 
+/** Lifecycle status persisted on the real product (matches the API enum). */
+export type ProductStatus = "active" | "draft" | "archived";
+
 export type Product = {
   id: string;
   name: string;

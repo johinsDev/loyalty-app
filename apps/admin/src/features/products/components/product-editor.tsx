@@ -40,30 +40,32 @@ import {
   X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { type ReactNode, useRef, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { WizardShell } from "@/components/wizard-shell";
 import { useRouter } from "@/i18n/navigation";
+import { useTRPC } from "@/lib/trpc/client";
 
 import {
   AGE_RANGES,
   buildVariants,
-  categoryRefs,
   CURRENCIES,
   emptyProductDraft,
   FEATURED_SECTIONS,
   GENDERS,
-  getProductDraft,
   optionLibrary,
   type OptionPreset,
   PRODUCT_EMOJIS,
   type ProductDraft,
   type ProductOption,
+  type ProductStatus,
   type ProductType,
   type StockMode,
 } from "../data";
 import { CategoriesManager } from "./categories-view";
+import { detailToDraft, draftToUpsert, type ProductPassthrough } from "./map";
 
 const slugify = (s: string) =>
   s
@@ -94,9 +96,13 @@ export function ProductEditor({ id }: { id?: string }) {
   const t = useTranslations("Products");
   const locale = useLocale();
   const router = useRouter();
-  const [draft, setDraft] = useState<ProductDraft>(
-    id ? getProductDraft(id) : emptyProductDraft,
-  );
+  const trpc = useTRPC();
+  const [draft, setDraft] = useState<ProductDraft>(emptyProductDraft);
+  const [status, setStatus] = useState<ProductStatus>("active");
+  const [passthrough, setPassthrough] = useState<ProductPassthrough>({
+    modifierGroups: [],
+    images: [],
+  });
   const [stepIndex, setStepIndex] = useState(0);
   const [library, setLibrary] = useState<OptionPreset[]>(optionLibrary);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -109,6 +115,42 @@ export function ProductEditor({ id }: { id?: string }) {
   const [sections, setSections] = useState(() =>
     FEATURED_SECTIONS.map((s) => ({ id: s as string, label: t(`section.${s}`) })),
   );
+
+  // New product → create a draft row, then continue in edit mode at its URL so
+  // image uploads + saves have a real product id to attach to.
+  const createDraft = useMutation(trpc.menu.createDraft.mutationOptions());
+  useEffect(() => {
+    if (id) return;
+    let cancelled = false;
+    void createDraft.mutateAsync().then((newId) => {
+      if (!cancelled) router.replace({ pathname: "/products/[id]", params: { id: newId } });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // Edit → load the real product tree into the draft (+ preserve modifiers/images).
+  const detailQuery = useQuery(
+    trpc.menu.getAdmin.queryOptions({ id: id ?? "" }, { enabled: Boolean(id) }),
+  );
+  useEffect(() => {
+    if (!detailQuery.data) return;
+    const mapped = detailToDraft(detailQuery.data);
+    setDraft(mapped.draft);
+    setStatus(mapped.status);
+    setPassthrough(mapped.passthrough);
+  }, [detailQuery.data]);
+
+  // Real categories for the picker (replaces the design-time mock list).
+  const categoriesQuery = useQuery(trpc.menu.categories.queryOptions());
+  const realCategories = (categoriesQuery.data ?? []).map((c) => ({
+    id: c.id,
+    label: c.name,
+  }));
+
+  const upsert = useMutation(trpc.menu.upsert.mutationOptions());
 
   const step = STEPS[stepIndex]!;
   const set = <K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) =>
@@ -177,16 +219,20 @@ export function ProductEditor({ id }: { id?: string }) {
       ),
   );
 
-  const onSave = () => {
-    toast.success(
-      id ? t("updated", { name: draft.name }) : t("created", { name: draft.name }),
-    );
-    router.push("/products");
+  const onSave = async () => {
+    if (!id) return;
+    try {
+      await upsert.mutateAsync(draftToUpsert(id, draft, status, passthrough));
+      toast.success(t("updated", { name: draft.name }));
+      router.push("/products");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("saveError"));
+    }
   };
 
   const onNext = () => {
     if (stepIndex === STEPS.length - 1) {
-      onSave();
+      void onSave();
       return;
     }
     setStepIndex((n) => n + 1);
@@ -669,7 +715,7 @@ export function ProductEditor({ id }: { id?: string }) {
               {t("categoriesHint")}
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {categoryRefs().map((c) => {
+              {realCategories.map((c) => {
                 const on = draft.categoryIds.includes(c.id);
                 return (
                   <button
