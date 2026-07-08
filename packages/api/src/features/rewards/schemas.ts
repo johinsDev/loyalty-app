@@ -176,6 +176,10 @@ export interface RewardListItem {
   name: string;
   description: string | null;
   imageUrl: string | null;
+  /** v2 visual: the card uses imageUrl if set, else this gradient/pattern. */
+  backgroundCss: string | null;
+  icon: string | null;
+  type: string | null;
   stampsRequired: number | null;
   pointsCost: number | null;
   costMode: CostMode;
