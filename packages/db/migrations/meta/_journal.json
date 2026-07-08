@@ -253,6 +253,13 @@
       "when": 1783469164032,
       "tag": "0035_rewards_v2_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1783471134474,
+      "tag": "0036_outstanding_bromley",
+      "breakpoints": true
     }
   ]
 }

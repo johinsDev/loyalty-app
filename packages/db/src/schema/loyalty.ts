@@ -248,6 +248,9 @@ export const reward = sqliteTable(
     }),
     // Lifecycle: "draft" → "published" → "archived".
     status: text("status").notNull().default("draft"),
+    // NOT NULL; a fresh draft is seeded with a placeholder name (the wizard
+    // gallery/essence step overwrites it). Kept non-null to avoid a costly
+    // sqlite table-recreate migration.
     name: text("name").notNull(),
     description: text("description"),
     imageUrl: text("image_url"),
@@ -276,7 +279,6 @@ export const reward = sqliteTable(
     sortOrder: integer("sort_order").notNull().default(0),
     // "unlimited" | "once"
     limitPerCustomer: text("limit_per_customer").notNull().default("unlimited"),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),

@@ -25,7 +25,6 @@ function reward(over: Partial<RewardRow> = {}): RewardRow {
     sections: ["destacados"],
     sortOrder: 1,
     limitPerCustomer: "unlimited",
-    active: true,
     status: "published",
     type: null,
     benefit: null,

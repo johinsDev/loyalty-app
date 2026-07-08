@@ -162,7 +162,7 @@ export class RewardsService {
     rewardId: string,
   ): Promise<RewardDetail> {
     const rw = await this.repo.getReward(organizationId, rewardId);
-    if (!rw || !rw.active) {
+    if (!rw || rw.status !== "published") {
       throw new TRPCError({ code: "NOT_FOUND", message: "REWARD_NOT_FOUND" });
     }
     const [balances, tierKey, claimedCount, lastRedeemed] = await Promise.all([
@@ -254,7 +254,7 @@ export class RewardsService {
     const cache = requireCache(this.opts.cache);
 
     const rw = await this.repo.getReward(organizationId, rewardId);
-    if (!rw || !rw.active) {
+    if (!rw || rw.status !== "published") {
       throw new TRPCError({ code: "NOT_FOUND", message: "REWARD_NOT_FOUND" });
     }
 
@@ -621,7 +621,7 @@ export class RewardsService {
     currency: "stamps" | "points" | "both",
   ): Promise<RewardRow> {
     const rw = await this.repo.getReward(organizationId, rewardId);
-    if (!rw || !rw.active) {
+    if (!rw || rw.status !== "published") {
       throw new TRPCError({ code: "NOT_FOUND", message: "REWARD_NOT_FOUND" });
     }
 

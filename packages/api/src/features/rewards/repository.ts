@@ -52,7 +52,7 @@ export class RewardsRepository {
     const all = await this.db
       .select()
       .from(reward)
-      .where(and(eq(reward.organizationId, orgId), eq(reward.active, true)))
+      .where(and(eq(reward.organizationId, orgId), eq(reward.status, "published")))
       .orderBy(asc(reward.sortOrder), asc(reward.createdAt), asc(reward.id));
 
     const search = opts.search?.toLowerCase();
@@ -352,7 +352,12 @@ export class RewardsRepository {
       })
       .from(rewardAvailability)
       .innerJoin(reward, eq(rewardAvailability.rewardId, reward.id))
-      .where(eq(rewardAvailability.organizationId, orgId));
+      .where(
+        and(
+          eq(rewardAvailability.organizationId, orgId),
+          eq(reward.status, "published"),
+        ),
+      );
 
     // Stages ascending by age; the due stage is the latest whose threshold has
     // elapsed AND that's beyond the row's lastStage.
@@ -409,7 +414,7 @@ export function newlyReady(
   opts: { tierKey: string; claimedRewardIds: Set<string> },
 ): RewardRow[] {
   return rewards.filter((rw) => {
-    if (!rw.active) return false;
+    if (rw.status !== "published") return false;
     // Tier gate: locked rewards never become "ready".
     if (rw.allowedTiers && !rw.allowedTiers.includes(opts.tierKey)) return false;
     // "once" already claimed never re-arms.
