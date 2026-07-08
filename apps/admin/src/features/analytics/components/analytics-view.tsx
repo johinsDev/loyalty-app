@@ -11,8 +11,10 @@ import {
   Trophy,
   type LucideIcon,
 } from "lucide-react";
+import type { AppRouter } from "@loyalty/api";
 import { Skeleton } from "@loyalty/ui";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import type { inferRouterOutputs } from "@trpc/server";
 import { useTranslations } from "next-intl";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useState } from "react";
@@ -63,7 +65,19 @@ const ICON: Record<Section, LucideIcon> = {
  * /analytics/cohorts and /analytics/funnel routes deep-link a section via
  * `section`. Design-first / hardcoded (../data).
  */
-export function AnalyticsView({ section = "overview" }: { section?: Section }) {
+type DashOut = inferRouterOutputs<AppRouter>["dashboard"];
+
+export function AnalyticsView({
+  section = "overview",
+  initialPeriod,
+  initialFunnel,
+  initialCohorts,
+}: {
+  section?: Section;
+  initialPeriod?: Period;
+  initialFunnel?: DashOut["funnel"];
+  initialCohorts?: DashOut["cohorts"];
+}) {
   const t = useTranslations("Analytics");
   const fade = useFadeUp({ step: 40 });
   const [active, setActive] = useState<Section>(section);
@@ -144,9 +158,14 @@ export function AnalyticsView({ section = "overview" }: { section?: Section }) {
           ) : active === "banners" ? (
             <BannersAnalyticsPanel />
           ) : active === "cohorts" ? (
-            <Cohorts fade={fade} />
+            <Cohorts fade={fade} initialCohorts={initialCohorts} />
           ) : (
-            <FunnelSection fade={fade} period={period} />
+            <FunnelSection
+              fade={fade}
+              period={period}
+              initialPeriod={initialPeriod}
+              initialFunnel={initialFunnel}
+            />
           )}
         </div>
       </div>
@@ -232,10 +251,12 @@ function Overview({ fade }: { fade: Fade }) {
   );
 }
 
-function Cohorts({ fade }: { fade: Fade }) {
+function Cohorts({ fade, initialCohorts }: { fade: Fade; initialCohorts?: DashOut["cohorts"] }) {
   const t = useTranslations("Analytics");
   const trpc = useTRPC();
-  const q = useQuery(trpc.dashboard.cohorts.queryOptions());
+  const q = useQuery(
+    trpc.dashboard.cohorts.queryOptions(undefined, { initialData: initialCohorts }),
+  );
   const weeks = q.data?.weeks ?? 5;
   const rows = (q.data?.cohorts ?? []).map((c) => ({
     label: new Date(c.label).toLocaleDateString("es-CO", { day: "numeric", month: "short" }),
@@ -295,10 +316,30 @@ function Cohorts({ fade }: { fade: Fade }) {
   );
 }
 
-function FunnelSection({ fade, period }: { fade: Fade; period: Period }) {
+function FunnelSection({
+  fade,
+  period,
+  initialPeriod,
+  initialFunnel,
+}: {
+  fade: Fade;
+  period: Period;
+  initialPeriod?: Period;
+  initialFunnel?: DashOut["funnel"];
+}) {
   const t = useTranslations("Analytics");
   const trpc = useTRPC();
-  const q = useQuery(trpc.dashboard.funnel.queryOptions({ period }));
+  const q = useQuery(
+    trpc.dashboard.funnel.queryOptions(
+      { period },
+      {
+        // Server-prefetched for the initial period (no first-paint flash), and
+        // keepPreviousData so switching period doesn't flash a skeleton.
+        initialData: period === initialPeriod ? initialFunnel : undefined,
+        placeholderData: keepPreviousData,
+      },
+    ),
+  );
   const stages = q.data?.stages ?? [];
   const max = stages[0]?.value ?? 1;
   return (
