@@ -74,4 +74,7 @@ export const dashboardRouter = router({
     .query(async ({ ctx, input }) =>
       new DashboardRepository(ctx.db).salesByStore(await orgId(), input.period),
     ),
+  cohorts: managerProcedure.query(async ({ ctx }) =>
+    new DashboardRepository(ctx.db).cohorts(await orgId()),
+  ),
 });

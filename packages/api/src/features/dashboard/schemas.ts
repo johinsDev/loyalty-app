@@ -148,3 +148,17 @@ export interface StoreSalesRow {
   count: number;
   revenueCents: number;
 }
+
+/** One weekly cohort (by first-purchase week) with week-by-week retention %. */
+export interface CohortRow {
+  /** Cohort week start (ISO date). */
+  label: string;
+  size: number;
+  /** Retention % per week offset (index 0 = the cohort week = 100). null when
+   *  that week is still in the future. */
+  retention: (number | null)[];
+}
+export interface CohortsView {
+  weeks: number;
+  cohorts: CohortRow[];
+}

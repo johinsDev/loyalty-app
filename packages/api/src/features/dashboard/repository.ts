@@ -20,6 +20,7 @@ import {
   computeDeltaPct,
   PERIOD_DAYS,
   type AtRiskRow,
+  type CohortsView,
   type DashboardOverview,
   type DashboardSeriesPoint,
   type KpiStat,
@@ -472,6 +473,60 @@ export class DashboardRepository {
           ? Math.round(((v.revenue - v.cogs) / v.revenue) * 100)
           : null,
     }));
+  }
+
+  /** Weekly retention cohorts: group customers by their first-purchase week,
+   *  then track the % who purchased again in each subsequent week. */
+  async cohorts(
+    orgId: string,
+    cohortsBack = 6,
+    weeks = 5,
+    now = new Date(),
+  ): Promise<CohortsView> {
+    const WEEK = 7 * 86_400_000;
+    const weekOf = (d: Date) => Math.floor(d.getTime() / WEEK);
+    const currentWeek = weekOf(now);
+
+    const rows = await this.db
+      .select({ customerId: purchase.customerId, createdAt: purchase.createdAt })
+      .from(purchase)
+      .where(eq(purchase.organizationId, orgId));
+
+    const active = new Map<string, Set<number>>();
+    for (const p of rows) {
+      let ws = active.get(p.customerId);
+      if (!ws) {
+        ws = new Set();
+        active.set(p.customerId, ws);
+      }
+      ws.add(weekOf(p.createdAt));
+    }
+
+    const byCohort = new Map<number, string[]>();
+    for (const [cid, ws] of active) {
+      const cohort = Math.min(...ws);
+      let members = byCohort.get(cohort);
+      if (!members) {
+        members = [];
+        byCohort.set(cohort, members);
+      }
+      members.push(cid);
+    }
+
+    const chosen = [...byCohort.keys()].sort((a, b) => a - b).slice(-cohortsBack);
+    const cohorts = chosen.map((w) => {
+      const members = byCohort.get(w)!;
+      const size = members.length;
+      const retention = Array.from({ length: weeks }, (_, k) =>
+        w + k > currentWeek
+          ? null
+          : Math.round(
+              (members.filter((cid) => active.get(cid)!.has(w + k)).length / size) * 100,
+            ),
+      );
+      return { label: new Date(w * WEEK).toISOString().slice(0, 10), size, retention };
+    });
+    return { weeks, cohorts };
   }
 
   /** Revenue + sale count per store over the window. */
