@@ -1365,7 +1365,10 @@
       "pickIngredient": "Search ingredient…",
       "noneFound": "No results",
       "notes": "Prep notes",
-      "notesHint": "Internal instructions (staff only — not shown to the customer)."
+      "notesHint": "Internal instructions (staff only — not shown to the customer).",
+      "applyToAll": "Apply to all variants",
+      "copyFrom": "Copy recipe from",
+      "copyActions": "Copy recipe"
     }
   },
   "Command": {

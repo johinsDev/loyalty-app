@@ -9,6 +9,12 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Input,
   Label,
   NumberInput,
@@ -19,7 +25,7 @@ import {
   SelectValue,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Copy, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -64,6 +70,18 @@ export function RecipeEditor({
     onChange(variants.map((v, i) => (i === idx ? next : v)));
   const setLines = (idx: number, lines: RecipeLine[]) =>
     setVariant(idx, { ...variants[idx]!, ingredients: lines });
+
+  // Recipes across variants often barely differ — copy one variant's recipe to
+  // the others (or all) and tweak the exceptions, instead of retyping each.
+  const cloneLines = (lines: RecipeLine[]): RecipeLine[] => lines.map((l) => ({ ...l }));
+  const applyToAll = (srcIdx: number) =>
+    onChange(
+      variants.map((v, i) =>
+        i === srcIdx ? v : { ...v, ingredients: cloneLines(variants[srcIdx]!.ingredients) },
+      ),
+    );
+  const copyFrom = (destIdx: number, srcIdx: number) =>
+    setLines(destIdx, cloneLines(variants[srcIdx]!.ingredients));
 
   const addLine = (idx: number) => {
     const first = ingredients[0];
@@ -110,12 +128,51 @@ export function RecipeEditor({
         const margin = price > 0 ? Math.round(((price - c) / price) * 100) : null;
         return (
           <div key={v.id} className="border-border rounded-2xl border p-3.5">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-bold">{v.combo.join(" / ") || t("recipe.baseVariant")}</span>
-              <span className="text-muted-foreground text-xs font-semibold">
-                {t("recipe.cost")}: {fmtCop(c)}
-                {margin != null ? ` · ${t("recipe.margin")}: ${margin}%` : ""}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-xs font-semibold whitespace-nowrap">
+                  {t("recipe.cost")}: {fmtCop(c)}
+                  {margin != null ? ` · ${t("recipe.margin")}: ${margin}%` : ""}
+                </span>
+                {variants.length > 1 ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t("recipe.copyActions")}
+                          className="size-7 rounded-lg"
+                        >
+                          <Copy className="size-3.5" />
+                        </Button>
+                      }
+                    />
+                    <DropdownMenuContent align="end" className="rounded-xl">
+                      <DropdownMenuItem
+                        onClick={() => applyToAll(idx)}
+                        disabled={v.ingredients.length === 0}
+                      >
+                        {t("recipe.applyToAll")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>{t("recipe.copyFrom")}</DropdownMenuLabel>
+                      {variants.map((other, oi) =>
+                        oi === idx ? null : (
+                          <DropdownMenuItem
+                            key={other.id}
+                            onClick={() => copyFrom(idx, oi)}
+                            disabled={other.ingredients.length === 0}
+                          >
+                            {other.combo.join(" / ") || t("recipe.baseVariant")}
+                          </DropdownMenuItem>
+                        ),
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
+              </div>
             </div>
 
             <div className="mt-2 space-y-1.5">

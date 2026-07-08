@@ -1365,7 +1365,10 @@
       "pickIngredient": "Buscar ingrediente…",
       "noneFound": "Sin resultados",
       "notes": "Notas de preparación",
-      "notesHint": "Instrucciones internas (solo para el equipo, no las ve el cliente)."
+      "notesHint": "Instrucciones internas (solo para el equipo, no las ve el cliente).",
+      "applyToAll": "Aplicar a todas las variantes",
+      "copyFrom": "Copiar receta de",
+      "copyActions": "Copiar receta"
     }
   },
   "Command": {
