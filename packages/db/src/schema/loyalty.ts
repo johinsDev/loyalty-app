@@ -8,7 +8,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 import { organization, user } from "./auth";
-import { promo } from "./promotions";
+import { promo, type PromoItemRef } from "./promotions";
 import { store } from "./store";
 
 // End customer of the loyalty program (distinct from `user`, which is the
@@ -225,40 +225,91 @@ export const stamp = sqliteTable("stamp", {
 // reward by level. `sections` (json array, e.g. ["destacados"]) + `sortOrder`
 // drive the curated rows on /recompensas. `limitPerCustomer`: "unlimited"
 // (repeatable, re-arms when the balance is re-accumulated) | "once".
-export const reward = sqliteTable("reward", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  organizationId: text("organization_id")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  description: text("description"),
-  imageUrl: text("image_url"),
-  // Cost per currency (nullable = that currency isn't accepted for this reward).
-  // At least one must be set. `stampsRequired` is the stamps cost.
-  stampsRequired: integer("stamps_required"),
-  pointsCost: integer("points_cost"),
-  // "or" | "and" — only meaningful when both costs are set.
-  costMode: text("cost_mode").notNull().default("or"),
-  // JSON array of tier keys allowed to claim (null = all tiers).
-  allowedTiers: text("allowed_tiers", { mode: "json" }).$type<string[] | null>(),
-  // JSON array of curated section keys (e.g. ["novedades","destacados"]).
-  sections: text("sections", { mode: "json" })
-    .$type<string[]>()
-    .notNull()
-    .default([]),
-  sortOrder: integer("sort_order").notNull().default(0),
-  // "unlimited" | "once"
-  limitPerCustomer: text("limit_per_customer").notNull().default("unlimited"),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+
+/** Typed reward benefit (v2). The CONFIG is the persisted source of truth —
+ *  it compiles to a promo rule at evaluation time (`experience` has none). */
+export type RewardBenefitConfig =
+  | { type: "freeProduct"; refs: PromoItemRef[] }
+  | { type: "amountOff"; amountCents: number; refs: PromoItemRef[] }
+  | { type: "percentOff"; percent: number; refs: PromoItemRef[]; maxDiscountCents?: number }
+  | { type: "experience" };
+
+export const reward = sqliteTable(
+  "reward",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    createdByUserId: text("created_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    // Lifecycle: "draft" → "published" → "archived".
+    status: text("status").notNull().default("draft"),
+    name: text("name").notNull(),
+    description: text("description"),
+    imageUrl: text("image_url"),
+    // freeProduct | amountOff | percentOff | experience — drives the wizard
+    // forms + copy formatter; POS evaluation reads `benefit`.
+    type: text("type"),
+    benefit: text("benefit", { mode: "json" }).$type<RewardBenefitConfig>(),
+    // Cashier-facing instruction for experience rewards ("sin fila", "empaque
+    // premium"). Copy, not mechanics — editable after publish.
+    fulfillmentNote: text("fulfillment_note"),
+    backgroundCss: text("background_css"),
+    icon: text("icon"),
+    // Cost per currency (nullable = that currency isn't accepted for this reward).
+    // At least one must be set. `stampsRequired` is the stamps cost.
+    stampsRequired: integer("stamps_required"),
+    pointsCost: integer("points_cost"),
+    // "or" | "and" — only meaningful when both costs are set.
+    costMode: text("cost_mode").notNull().default("or"),
+    // JSON array of tier keys allowed to claim (null = all tiers).
+    allowedTiers: text("allowed_tiers", { mode: "json" }).$type<string[] | null>(),
+    // JSON array of curated section keys (e.g. ["novedades","destacados"]).
+    sections: text("sections", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    sortOrder: integer("sort_order").notNull().default(0),
+    // "unlimited" | "once"
+    limitPerCustomer: text("limit_per_customer").notNull().default("unlimited"),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    publishedAt: integer("published_at", { mode: "timestamp" }),
+  },
+  (t) => ({
+    orgStatusIdx: index("reward_org_status_idx").on(t.organizationId, t.status),
+  }),
+);
+
+// Per-locale content overrides (base columns = default locale).
+export const rewardTranslation = sqliteTable(
+  "reward_translation",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    rewardId: text("reward_id")
+      .notNull()
+      .references(() => reward.id, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+  },
+  (t) => ({
+    uq: uniqueIndex("reward_translation_uq").on(t.rewardId, t.locale),
+  }),
+);
+
+export type RewardTranslationRow = typeof rewardTranslation.$inferSelect;
 
 // A single reward claim. Multi-currency: `currency` says which balance was
 // spent ("stamps" | "points"); the matching *Spent column holds the amount, the
@@ -299,8 +350,11 @@ export const redemption = sqliteTable(
     currency: text("currency").notNull().default("stamps"), // "stamps" | "points"
     stampsSpent: integer("stamps_spent").notNull().default(0),
     pointsSpent: integer("points_spent").notNull().default(0),
+    // The reward's share of the ticket discount (v2). null = legacy/unknown,
+    // 0 = experience / no monetary effect, >0 = discount applied at redemption.
+    discountCents: integer("discount_cents"),
     // Set when the reward is redeemed INLINE as part of a register sale (the
-    // purchase detail surfaces it); null for standalone QR/OTP claims.
+    // purchase detail surfaces it); always set in v2 (redemptions land on a sale).
     purchaseId: text("purchase_id").references(() => purchase.id, {
       onDelete: "set null",
     }),
@@ -575,6 +629,14 @@ export const rewardRelations = relations(reward, ({ one, many }) => ({
     references: [organization.id],
   }),
   redemptions: many(redemption),
+  translations: many(rewardTranslation),
+}));
+
+export const rewardTranslationRelations = relations(rewardTranslation, ({ one }) => ({
+  reward: one(reward, {
+    fields: [rewardTranslation.rewardId],
+    references: [reward.id],
+  }),
 }));
 
 export const redemptionRelations = relations(redemption, ({ one }) => ({
