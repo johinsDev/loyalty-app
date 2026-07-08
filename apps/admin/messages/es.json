@@ -1184,7 +1184,8 @@
     "restored": "“{name}” restaurado",
     "status": {
       "active": "Activo",
-      "draft": "Borrador"
+      "draft": "Borrador",
+      "archived": "Archivado"
     },
     "col": {
       "product": "Producto",
