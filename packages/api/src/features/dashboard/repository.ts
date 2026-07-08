@@ -1,23 +1,38 @@
 import type { db as Db } from "@loyalty/db";
 import {
   customer,
+  ingredient,
+  loyaltyCard,
+  pointsAccount,
+  pointsTransaction,
+  product,
   purchase,
+  purchaseItem,
   redemption,
   reward,
   store,
+  streak,
+  variantIngredient,
 } from "@loyalty/db/schema";
-import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 
 import {
   computeDeltaPct,
   PERIOD_DAYS,
+  type AtRiskRow,
   type DashboardOverview,
   type DashboardSeriesPoint,
   type KpiStat,
+  type LoyaltyLiability,
   type Period,
   type RecentPurchaseRow,
   type RecentRedemptionRow,
+  type RedemptionEngagement,
+  type RetentionStats,
+  type StoreSalesRow,
+  type TiersView,
   type TopCustomerRow,
+  type TopProductRow,
 } from "./schemas";
 
 function daysAgo(now: Date, days: number): Date {
@@ -235,6 +250,250 @@ export class DashboardRepository {
       name: r.name?.trim() || r.phone,
       visits: Number(r.visits),
       ltvCents: Number(r.ltvCents),
+    }));
+  }
+
+  /** Customers who purchased before but not within `days` — win-back candidates. */
+  async atRisk(orgId: string, days: number, limit: number, now = new Date()): Promise<AtRiskRow[]> {
+    const rows = await this.db
+      .select({ customerId: purchase.customerId, createdAt: purchase.createdAt })
+      .from(purchase)
+      .where(eq(purchase.organizationId, orgId));
+    // Last purchase per customer (drizzle returns Date; avoids sql max() ambiguity).
+    const last = new Map<string, Date>();
+    for (const p of rows) {
+      const cur = last.get(p.customerId);
+      if (!cur || p.createdAt > cur) last.set(p.customerId, p.createdAt);
+    }
+    const cutoff = daysAgo(now, days);
+    const risky = [...last.entries()]
+      .filter(([, d]) => d < cutoff)
+      .sort((a, b) => a[1].getTime() - b[1].getTime())
+      .slice(0, limit);
+    if (risky.length === 0) return [];
+    const ids = risky.map(([id]) => id);
+    const custs = await this.db
+      .select({ id: customer.id, name: customer.name, phone: customer.phone })
+      .from(customer)
+      .where(inArray(customer.id, ids));
+    const byId = new Map(custs.map((c) => [c.id, c]));
+    return risky.map(([id, d]) => ({
+      id,
+      name: byId.get(id)?.name?.trim() || byId.get(id)?.phone || "—",
+      lastPurchaseAt: d,
+      daysSince: Math.floor((now.getTime() - d.getTime()) / 86400000),
+    }));
+  }
+
+  /** Repeat rate + visit frequency over the window. */
+  async retention(orgId: string, period: Period, now = new Date()): Promise<RetentionStats> {
+    const start = daysAgo(now, PERIOD_DAYS[period]);
+    const rows = await this.db
+      .select({ customerId: purchase.customerId, c: sql<number>`count(*)` })
+      .from(purchase)
+      .where(and(eq(purchase.organizationId, orgId), gte(purchase.createdAt, start)))
+      .groupBy(purchase.customerId);
+    const activeCustomers = rows.length;
+    const totalVisits = rows.reduce((s, r) => s + Number(r.c), 0);
+    const repeat = rows.filter((r) => Number(r.c) > 1).length;
+    return {
+      activeCustomers,
+      repeatRatePct: activeCustomers === 0 ? 0 : Math.round((repeat / activeCustomers) * 100),
+      avgVisits: activeCustomers === 0 ? 0 : Math.round((totalVisits / activeCustomers) * 10) / 10,
+    };
+  }
+
+  /** Reward-redemption engagement over the window. */
+  async redemptionEngagement(
+    orgId: string,
+    period: Period,
+    now = new Date(),
+  ): Promise<RedemptionEngagement> {
+    const start = daysAgo(now, PERIOD_DAYS[period]);
+    const [agg] = await this.db
+      .select({
+        redemptions: sql<number>`count(*)`,
+        redeemers: sql<number>`count(distinct ${redemption.customerId})`,
+        discount: sql<number>`coalesce(sum(${redemption.discountCents}), 0)`,
+      })
+      .from(redemption)
+      .where(and(eq(redemption.organizationId, orgId), gte(redemption.createdAt, start)));
+    const active = (await this.retention(orgId, period, now)).activeCustomers;
+    const redeemers = Number(agg?.redeemers ?? 0);
+    return {
+      redemptions: Number(agg?.redemptions ?? 0),
+      redeemers,
+      redeemerRatePct: active === 0 ? 0 : Math.round((redeemers / active) * 100),
+      discountCents: Number(agg?.discount ?? 0),
+    };
+  }
+
+  /** Tier distribution + active streak count. */
+  async tiers(orgId: string): Promise<TiersView> {
+    const [[{ total = 0 } = {}], accounts, [{ streaks = 0 } = {}]] = await Promise.all([
+      this.db
+        .select({ total: sql<number>`count(*)` })
+        .from(customer)
+        .where(eq(customer.organizationId, orgId)),
+      this.db
+        .select({ key: pointsAccount.currentTierKey, c: sql<number>`count(*)` })
+        .from(pointsAccount)
+        .where(eq(pointsAccount.organizationId, orgId))
+        .groupBy(pointsAccount.currentTierKey),
+      this.db
+        .select({ streaks: sql<number>`count(*)` })
+        .from(streak)
+        .where(and(eq(streak.organizationId, orgId), eq(streak.status, "active"))),
+    ]);
+    const counts = new Map<string, number>();
+    for (const a of accounts) {
+      if (a.key) counts.set(a.key, Number(a.c));
+    }
+    const nonBase = [...counts.values()].reduce((s, n) => s + n, 0);
+    // Customers with no account (or the base tier) fall into "hoja".
+    const base = Math.max(0, Number(total) - nonBase);
+    return {
+      tiers: [
+        { key: "hoja", count: base + (counts.get("hoja") ?? 0) },
+        { key: "flor", count: counts.get("flor") ?? 0 },
+        { key: "oro", count: counts.get("oro") ?? 0 },
+      ],
+      activeStreaks: Number(streaks),
+    };
+  }
+
+  /** The program's outstanding liability + in-window grant/spend of stamps + points. */
+  async liability(orgId: string, period: Period, now = new Date()): Promise<LoyaltyLiability> {
+    const start = daysAgo(now, PERIOD_DAYS[period]);
+    const [[stampsOut], [pointsOut], [earned], [redeemed], [stampsSpent]] = await Promise.all([
+      this.db
+        .select({ v: sql<number>`coalesce(sum(${loyaltyCard.currentStamps}), 0)` })
+        .from(loyaltyCard)
+        .where(eq(loyaltyCard.organizationId, orgId)),
+      this.db
+        .select({ v: sql<number>`coalesce(sum(${pointsTransaction.points}), 0)` })
+        .from(pointsTransaction)
+        .where(eq(pointsTransaction.organizationId, orgId)),
+      this.db
+        .select({ v: sql<number>`coalesce(sum(${pointsTransaction.points}), 0)` })
+        .from(pointsTransaction)
+        .where(
+          and(
+            eq(pointsTransaction.organizationId, orgId),
+            eq(pointsTransaction.type, "earn"),
+            gte(pointsTransaction.createdAt, start),
+          ),
+        ),
+      this.db
+        .select({ v: sql<number>`coalesce(sum(${pointsTransaction.points}), 0)` })
+        .from(pointsTransaction)
+        .where(
+          and(
+            eq(pointsTransaction.organizationId, orgId),
+            eq(pointsTransaction.type, "redeem"),
+            gte(pointsTransaction.createdAt, start),
+          ),
+        ),
+      this.db
+        .select({ v: sql<number>`coalesce(sum(${redemption.stampsSpent}), 0)` })
+        .from(redemption)
+        .where(and(eq(redemption.organizationId, orgId), gte(redemption.createdAt, start))),
+    ]);
+    return {
+      stampsOutstanding: Number(stampsOut?.v ?? 0),
+      pointsOutstanding: Number(pointsOut?.v ?? 0),
+      pointsEarned: Number(earned?.v ?? 0),
+      pointsRedeemed: Math.abs(Number(redeemed?.v ?? 0)),
+      stampsSpent: Number(stampsSpent?.v ?? 0),
+    };
+  }
+
+  /** Best-selling products (units + revenue) with gross margin from recipe COGS. */
+  async topProducts(
+    orgId: string,
+    period: Period,
+    limit: number,
+    now = new Date(),
+  ): Promise<TopProductRow[]> {
+    const start = daysAgo(now, PERIOD_DAYS[period]);
+    const lines = await this.db
+      .select({
+        productId: purchaseItem.productId,
+        variantId: purchaseItem.variantId,
+        qty: purchaseItem.qty,
+        unitAmountCents: purchaseItem.unitAmountCents,
+      })
+      .from(purchaseItem)
+      .innerJoin(purchase, eq(purchase.id, purchaseItem.purchaseId))
+      .where(and(eq(purchase.organizationId, orgId), gte(purchase.createdAt, start)));
+    if (lines.length === 0) return [];
+
+    // COGS per variant (Σ qty × ingredient cost) for the sold variants.
+    const variantIds = [...new Set(lines.map((l) => l.variantId).filter((x): x is string => !!x))];
+    const variantCogs = new Map<string, number>();
+    if (variantIds.length > 0) {
+      const recipeRows = await this.db
+        .select({
+          variantId: variantIngredient.variantId,
+          cost: sql<number>`sum(${variantIngredient.quantity} * ${ingredient.costPerUnitCents})`,
+        })
+        .from(variantIngredient)
+        .innerJoin(ingredient, eq(ingredient.id, variantIngredient.ingredientId))
+        .where(inArray(variantIngredient.variantId, variantIds))
+        .groupBy(variantIngredient.variantId);
+      for (const r of recipeRows) variantCogs.set(r.variantId, Number(r.cost));
+    }
+
+    const agg = new Map<string, { units: number; revenue: number; cogs: number }>();
+    for (const l of lines) {
+      const cur = agg.get(l.productId) ?? { units: 0, revenue: 0, cogs: 0 };
+      cur.units += l.qty;
+      cur.revenue += l.qty * l.unitAmountCents;
+      cur.cogs += l.qty * (l.variantId ? (variantCogs.get(l.variantId) ?? 0) : 0);
+      agg.set(l.productId, cur);
+    }
+    const top = [...agg.entries()]
+      .sort((a, b) => b[1].revenue - a[1].revenue)
+      .slice(0, limit);
+    const ids = top.map(([id]) => id);
+    const names = await this.db
+      .select({ id: product.id, name: product.name })
+      .from(product)
+      .where(inArray(product.id, ids));
+    const nameById = new Map(names.map((n) => [n.id, n.name]));
+    return top.map(([id, v]) => ({
+      productId: id,
+      name: nameById.get(id) ?? "—",
+      units: v.units,
+      revenueCents: Math.round(v.revenue),
+      cogsCents: Math.round(v.cogs),
+      marginPct:
+        v.revenue > 0 && v.cogs > 0
+          ? Math.round(((v.revenue - v.cogs) / v.revenue) * 100)
+          : null,
+    }));
+  }
+
+  /** Revenue + sale count per store over the window. */
+  async salesByStore(orgId: string, period: Period, now = new Date()): Promise<StoreSalesRow[]> {
+    const start = daysAgo(now, PERIOD_DAYS[period]);
+    const rows = await this.db
+      .select({
+        storeId: purchase.storeId,
+        name: store.name,
+        count: sql<number>`count(*)`,
+        revenue: sql<number>`coalesce(sum(${purchase.priceCents}), 0)`,
+      })
+      .from(purchase)
+      .leftJoin(store, eq(store.id, purchase.storeId))
+      .where(and(eq(purchase.organizationId, orgId), gte(purchase.createdAt, start)))
+      .groupBy(purchase.storeId)
+      .orderBy(desc(sql`coalesce(sum(${purchase.priceCents}), 0)`));
+    return rows.map((r) => ({
+      storeId: r.storeId,
+      name: r.name,
+      count: Number(r.count),
+      revenueCents: Number(r.revenue),
     }));
   }
 }

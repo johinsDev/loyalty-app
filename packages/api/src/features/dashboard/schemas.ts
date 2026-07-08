@@ -72,3 +72,79 @@ export interface TopCustomerRow {
   visits: number;
   ltvCents: number;
 }
+
+// ---- extended stats --------------------------------------------------------
+export const atRiskInputSchema = z.object({
+  days: z.number().int().min(1).max(365).default(30),
+  limit: z.number().int().min(1).max(50).default(8),
+});
+export const topProductsInputSchema = z.object({
+  period: periodSchema.default("30d"),
+  limit: z.number().int().min(1).max(50).default(8),
+});
+
+/** A customer who hasn't purchased in `days` — a churn/win-back candidate. */
+export interface AtRiskRow {
+  id: string;
+  name: string;
+  lastPurchaseAt: Date | null;
+  daysSince: number;
+}
+
+export interface RetentionStats {
+  /** Customers with ≥1 purchase in the window. */
+  activeCustomers: number;
+  /** % of active customers with more than one purchase in the window. */
+  repeatRatePct: number;
+  /** Average purchases per active customer in the window. */
+  avgVisits: number;
+}
+
+export interface RedemptionEngagement {
+  redemptions: number;
+  redeemers: number;
+  /** % of active customers who redeemed at least one reward. */
+  redeemerRatePct: number;
+  /** Σ reward discount granted (v2 redemption.discountCents). */
+  discountCents: number;
+}
+
+export interface TierBucket {
+  key: string;
+  count: number;
+}
+export interface TiersView {
+  tiers: TierBucket[];
+  activeStreaks: number;
+}
+
+export interface LoyaltyLiability {
+  /** Outstanding (unspent) stamps across all cards. */
+  stampsOutstanding: number;
+  /** Outstanding points balance (Σ ledger). */
+  pointsOutstanding: number;
+  /** Points earned in the window. */
+  pointsEarned: number;
+  /** Points redeemed in the window (positive). */
+  pointsRedeemed: number;
+  /** Stamps spent on reward redemptions in the window. */
+  stampsSpent: number;
+}
+
+export interface TopProductRow {
+  productId: string;
+  name: string;
+  units: number;
+  revenueCents: number;
+  /** COGS from the sold variants' recipes (0 when no recipe). */
+  cogsCents: number;
+  /** (revenue − cogs) / revenue, 0..100; null when no COGS known. */
+  marginPct: number | null;
+}
+
+export interface StoreSalesRow {
+  storeId: string | null;
+  name: string | null;
+  count: number;
+  revenueCents: number;
+}
