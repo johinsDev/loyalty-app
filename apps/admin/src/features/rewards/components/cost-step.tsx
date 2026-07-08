@@ -42,7 +42,7 @@ export function CostStepFields({
   return (
     <div className="space-y-4">
       <div className="border-border grid grid-cols-1 gap-4 rounded-2xl border p-4 sm:grid-cols-2">
-        <Field label={t("stamps")} hint={t("currencyHint")}>
+        <Field label={t("stampsLabel")} hint={t("currencyHint")}>
           <div className="flex items-center gap-2">
             <Switch
               checked={value.stampsRequired != null}
@@ -58,7 +58,7 @@ export function CostStepFields({
             />
           </div>
         </Field>
-        <Field label={t("points")} hint={t("currencyHint")}>
+        <Field label={t("pointsLabel")} hint={t("currencyHint")}>
           <div className="flex items-center gap-2">
             <Switch
               checked={value.pointsCost != null}

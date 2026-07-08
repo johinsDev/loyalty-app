@@ -431,7 +431,9 @@
     },
     "cost": {
       "stamps": "{n} stamps",
+      "stampsLabel": "Stamps",
       "points": "{n} pts",
+      "pointsLabel": "Points",
       "or": " or ",
       "and": " and ",
       "free": "Free",

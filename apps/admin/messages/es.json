@@ -431,7 +431,9 @@
     },
     "cost": {
       "stamps": "{n} sellos",
+      "stampsLabel": "Sellos",
       "points": "{n} pts",
+      "pointsLabel": "Puntos",
       "or": " o ",
       "and": " y ",
       "free": "Gratis",
