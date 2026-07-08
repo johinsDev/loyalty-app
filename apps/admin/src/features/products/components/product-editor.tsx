@@ -772,7 +772,7 @@ export function ProductEditor({ id }: { id?: string }) {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label={t("gender")}>
+              <Field label={t("genderLabel")}>
                 <Select
                   value={draft.gender}
                   onValueChange={(v) => set("gender", v ?? "unisex")}
