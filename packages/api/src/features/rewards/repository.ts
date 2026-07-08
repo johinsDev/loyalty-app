@@ -11,7 +11,6 @@ import { and, asc, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
 
 import { WINDOW_DAYS } from "../points/config";
 import { currentTierKey } from "../points/tier-calc";
-import { redeemWithinTx } from "./redeem-tx";
 import type { RedemptionHistoryItem } from "./schemas";
 
 const DAY_MS = 86_400_000;
@@ -396,22 +395,6 @@ export class RewardsRepository {
 
   // ---- claim ----------------------------------------------------------------
 
-  /** Transactional claim. Re-checks balance (and once-count) inside the tx, then
-   *  deducts the chosen currency/currencies, inserts the redemption row(s), and
-   *  deletes the availability row. The balance + once guards double as the
-   *  double-claim guard within the token window. */
-  async claimTx(input: {
-    orgId: string;
-    customerId: string;
-    reward: RewardRow;
-    currency: "stamps" | "points" | "both";
-    claimedByUserId: string;
-    storeId: string;
-  }): Promise<ClaimTxResult> {
-    return this.db.transaction((tx) =>
-      redeemWithinTx(tx, { ...input, purchaseId: undefined }),
-    );
-  }
 }
 
 /**

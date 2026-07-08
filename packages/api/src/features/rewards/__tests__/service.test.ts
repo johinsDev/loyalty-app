@@ -3,13 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PendingClaim } from "../../_shared/claim-code";
 import { signRewardClaimToken } from "../claim-token";
-import type { Balances, ClaimTxResult, RewardsRepository } from "../repository";
+import type { Balances, RewardsRepository } from "../repository";
 import { RewardsService } from "../service";
 
 const SECRET = "test-secret-min-32-chars-pad-pad-pad-pad";
 const ORG = "org_1";
 const STAFF = "staff_1";
-const STORE = "store_1";
 const CUSTOMER = "cust_1";
 
 function reward(over: Partial<RewardRow> = {}): RewardRow {
@@ -27,6 +26,14 @@ function reward(over: Partial<RewardRow> = {}): RewardRow {
     sortOrder: 1,
     limitPerCustomer: "unlimited",
     active: true,
+    status: "published",
+    type: null,
+    benefit: null,
+    fulfillmentNote: null,
+    backgroundCss: null,
+    icon: null,
+    createdByUserId: null,
+    publishedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...over,
@@ -41,15 +48,6 @@ class FakeRepo {
   claimedIds = new Set<string>();
   lastRedeemed = new Map<string, Date>();
   tierTotal = 0;
-  claimTxResult: ClaimTxResult = {
-    kind: "claimed",
-    redemptionId: "red_1",
-    currency: "stamps",
-    stampsSpent: 9,
-    pointsSpent: 0,
-    stampsBalance: 0,
-    pointsBalance: 0,
-  };
 
   listCatalog = vi.fn(async () => ({ rows: this.catalog, nextCursor: null }));
   getReward = vi.fn(async (_org: string, id: string) =>
@@ -64,7 +62,6 @@ class FakeRepo {
   recentRedemptions = vi.fn(async () => []);
   redemptionHistory = vi.fn(async () => ({ items: [], nextCursor: null }));
   upsertAvailable = vi.fn(async () => undefined);
-  claimTx = vi.fn(async () => this.claimTxResult);
 }
 
 /** Minimal in-memory cache satisfying the router's CacheBinding (get/set/delete
@@ -291,7 +288,7 @@ describe("RewardsService.issueClaimToken", () => {
   });
 });
 
-describe("RewardsService.claim", () => {
+describe("RewardsService.resolveClaim", () => {
   let repo: FakeRepo;
   beforeEach(() => {
     repo = new FakeRepo();
@@ -310,100 +307,30 @@ describe("RewardsService.claim", () => {
     return token;
   }
 
-  it("deducts stamps and publishes + enqueues on success", async () => {
-    repo.claimTxResult = {
-      kind: "claimed",
-      redemptionId: "red_1",
-      currency: "stamps",
-      stampsSpent: 9,
-      pointsSpent: 0,
-      stampsBalance: 1,
-      pointsBalance: 0,
-    };
-    const { service, realtime, enqueue } = build(repo);
-    const res = await service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"), STORE);
-    expect(res.stampsSpent).toBe(9);
-    expect(res.stampsBalance).toBe(1);
-    expect(repo.claimTx).toHaveBeenCalledWith(
-      expect.objectContaining({ currency: "stamps", customerId: CUSTOMER }),
-    );
-    expect(realtime.publish).toHaveBeenCalledWith(
-      `customer:${CUSTOMER}`,
-      expect.objectContaining({ event: "reward.claimed" }),
-    );
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ notificationKey: "reward-claimed" }),
-    );
-  });
-
-  it("deducts points for a points claim", async () => {
-    repo.catalog = [reward({ id: "rw_1", stampsRequired: null, pointsCost: 120 })];
-    repo.claimTxResult = {
-      kind: "claimed",
-      redemptionId: "red_2",
-      currency: "points",
-      stampsSpent: 0,
-      pointsSpent: 120,
-      stampsBalance: 0,
-      pointsBalance: 30,
-    };
+  it("resolves a valid token to the customer + reward (no writes)", async () => {
+    repo.catalog = [reward({ id: "rw_1", benefit: { type: "experience" }, type: "experience", fulfillmentNote: "Sin fila" })];
     const { service } = build(repo);
-    const res = await service.claim(ORG, STAFF, await tokenFor("rw_1", "points"), STORE);
-    expect(res.currency).toBe("points");
-    expect(res.pointsSpent).toBe(120);
-  });
-
-  it("maps the double-claim / once guard to ALREADY_CLAIMED", async () => {
-    repo.claimTxResult = { kind: "already_claimed" };
-    const { service } = build(repo);
-    await expect(
-      service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"), STORE),
-    ).rejects.toMatchObject({ message: "ALREADY_CLAIMED" });
-  });
-
-  it("maps a drained balance to INSUFFICIENT_BALANCE", async () => {
-    repo.claimTxResult = { kind: "insufficient" };
-    const { service } = build(repo);
-    await expect(
-      service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"), STORE),
-    ).rejects.toMatchObject({ message: "INSUFFICIENT_BALANCE" });
+    const res = await service.resolveClaim(ORG, await tokenFor("rw_1", "stamps"));
+    expect(res.customerId).toBe(CUSTOMER);
+    expect(res.currency).toBe("stamps");
+    expect(res.reward).toMatchObject({ id: "rw_1", type: "experience", fulfillmentNote: "Sin fila" });
+    // Resolve never touches the balance.
+    expect(repo.balances).not.toHaveBeenCalled();
   });
 
   it("rejects a forged token", async () => {
     const { service } = build(repo);
-    await expect(service.claim(ORG, STAFF, "nope", STORE)).rejects.toMatchObject({
+    await expect(service.resolveClaim(ORG, "nope")).rejects.toMatchObject({
       message: "INVALID_TOKEN",
     });
   });
 
-  it("clears a lingering same-reward code after a token claim (myActiveClaim → null)", async () => {
-    const cache = new FakeCache();
-    repo.balancesValue = { stamps: 9, points: 0 };
-    const { service } = build(repo, { cache });
-    // Path B: cashier requests a code for rw_1.
-    await service.requestClaim(ORG, STAFF, CUSTOMER, "rw_1", "stamps");
-    expect(await service.myActiveClaim(CUSTOMER)).not.toBeNull();
-    // Path A: customer claims rw_1 via the signed-QR scanner.
-    await service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"), STORE);
-    // Server state is now consistent — the active code is gone.
-    expect(await service.myActiveClaim(CUSTOMER)).toBeNull();
-  });
-
-  it("leaves a code for a DIFFERENT reward intact after a token claim", async () => {
-    const cache = new FakeCache();
-    repo.catalog = [
-      reward({ id: "rw_1", stampsRequired: 9 }),
-      reward({ id: "rw_2", stampsRequired: 9 }),
-    ];
-    repo.balancesValue = { stamps: 9, points: 0 };
-    const { service } = build(repo, { cache });
-    // A code is active for rw_2.
-    await service.requestClaim(ORG, STAFF, CUSTOMER, "rw_2", "stamps");
-    // Claiming rw_1 via the scanner must not clear rw_2's code.
-    await service.claim(ORG, STAFF, await tokenFor("rw_1", "stamps"), STORE);
-    const active = await service.myActiveClaim(CUSTOMER);
-    expect(active?.rewardName).toBe("Bebida gratis");
-    expect(cache.store.has(`active-claim:${CUSTOMER}`)).toBe(true);
+  it("rejects an unpublished reward", async () => {
+    repo.catalog = [reward({ id: "rw_1", status: "archived" })];
+    const { service } = build(repo);
+    await expect(
+      service.resolveClaim(ORG, await tokenFor("rw_1", "stamps")),
+    ).rejects.toMatchObject({ message: "REWARD_NOT_FOUND" });
   });
 });
 
@@ -571,7 +498,7 @@ describe("RewardsService.setClaimCurrency (customer)", () => {
   });
 });
 
-describe("RewardsService.confirmClaimWithCode", () => {
+describe("RewardsService.resolveClaimWithCode", () => {
   let repo: FakeRepo;
   let cache: FakeCache;
   beforeEach(() => {
@@ -591,33 +518,19 @@ describe("RewardsService.confirmClaimWithCode", () => {
     return { pendingId: res.pendingId, code: pending.code };
   }
 
-  it("success: deducts via claimTx, returns the view, deletes the pending", async () => {
-    repo.claimTxResult = {
-      kind: "claimed",
-      redemptionId: "red_9",
-      currency: "stamps",
-      stampsSpent: 9,
-      pointsSpent: 0,
-      stampsBalance: 0,
-      pointsBalance: 0,
-    };
+  it("resolves (no deduction), clears the pending, publishes the cancel event", async () => {
     const { pendingId, code } = await seedPending();
-    const { service, realtime, enqueue } = build(repo, { cache });
+    const { service, realtime } = build(repo, { cache });
 
-    const res = await service.confirmClaimWithCode(ORG, STAFF, pendingId, code, STORE);
+    const res = await service.resolveClaimWithCode(ORG, STAFF, pendingId, code);
 
-    expect(res.redemptionId).toBe("red_9");
-    expect(repo.claimTx).toHaveBeenCalledWith(
-      expect.objectContaining({ currency: "stamps", customerId: CUSTOMER }),
-    );
+    expect(res.customerId).toBe(CUSTOMER);
+    expect(res.reward.id).toBe("rw_1");
+    // The phone's active-code sheet is closed.
     expect(realtime.publish).toHaveBeenCalledWith(
       `customer:${CUSTOMER}`,
-      expect.objectContaining({ event: "reward.claimed" }),
+      expect.objectContaining({ event: "reward.claim-code-cancelled" }),
     );
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ notificationKey: "reward-claimed" }),
-    );
-    // Pending is burned.
     expect(cache.store.size).toBe(0);
   });
 
@@ -625,28 +538,25 @@ describe("RewardsService.confirmClaimWithCode", () => {
     const { pendingId } = await seedPending();
     const { service } = build(repo, { cache });
     await expect(
-      service.confirmClaimWithCode(ORG, STAFF, pendingId, "000000", STORE),
+      service.resolveClaimWithCode(ORG, STAFF, pendingId, "000000"),
     ).rejects.toMatchObject({ message: "CODE_INVALID" });
     const stored = [...cache.store.values()][0] as { attempts: number };
     expect(stored.attempts).toBe(1);
-    expect(repo.claimTx).not.toHaveBeenCalled();
   });
 
   it("4th attempt → TOO_MANY_ATTEMPTS and burns the pending", async () => {
-    // Seed with attempts already at 3 so the next wrong code is the 4th.
     const { pendingId } = await seedPending({ attempts: 3 });
     const { service } = build(repo, { cache });
     await expect(
-      service.confirmClaimWithCode(ORG, STAFF, pendingId, "000000", STORE),
+      service.resolveClaimWithCode(ORG, STAFF, pendingId, "000000"),
     ).rejects.toMatchObject({ message: "TOO_MANY_ATTEMPTS" });
-    // The pending is burned; the index lingers (harmless — TTL-expires).
     expect(cache.store.has(`claim-otp:${pendingId}`)).toBe(false);
   });
 
   it("expired / missing pending → CODE_EXPIRED", async () => {
     const { service } = build(repo, { cache });
     await expect(
-      service.confirmClaimWithCode(ORG, STAFF, "no-such-id", "123456", STORE),
+      service.resolveClaimWithCode(ORG, STAFF, "no-such-id", "123456"),
     ).rejects.toMatchObject({ message: "CODE_EXPIRED" });
   });
 
@@ -654,61 +564,23 @@ describe("RewardsService.confirmClaimWithCode", () => {
     const { pendingId, code } = await seedPending();
     const { service } = build(repo, { cache });
     await expect(
-      service.confirmClaimWithCode(ORG, "other-staff", pendingId, code, STORE),
+      service.resolveClaimWithCode(ORG, "other-staff", pendingId, code),
     ).rejects.toMatchObject({ message: "NOT_YOUR_CLAIM" });
   });
 
-  it("reused pendingId after success → CODE_EXPIRED", async () => {
-    const { pendingId, code } = await seedPending();
-    const { service } = build(repo, { cache });
-    await service.confirmClaimWithCode(ORG, STAFF, pendingId, code, STORE);
-    await expect(
-      service.confirmClaimWithCode(ORG, STAFF, pendingId, code, STORE),
-    ).rejects.toMatchObject({ message: "CODE_EXPIRED" });
-  });
-
-  it("deducts the customer's chosen currency for an OR-both reward", async () => {
+  it("returns the customer's chosen currency for an OR-both reward", async () => {
     repo.catalog = [
       reward({ id: "rw_1", stampsRequired: 5, pointsCost: 50, costMode: "or" }),
     ];
     repo.balancesValue = { stamps: 9, points: 80 };
-    repo.claimTxResult = {
-      kind: "claimed",
-      redemptionId: "red_or",
-      currency: "points",
-      stampsSpent: 0,
-      pointsSpent: 50,
-      stampsBalance: 9,
-      pointsBalance: 30,
-    };
     const { service } = build(repo, { cache });
     const res = await service.requestClaim(ORG, STAFF, CUSTOMER, "rw_1");
     const code = (
       cache.store.get(`claim-otp:${res.pendingId}`) as { code: string }
     ).code;
-    // Customer picks points on their phone.
     await service.setClaimCurrency(CUSTOMER, res.pendingId, "points");
-    await service.confirmClaimWithCode(ORG, STAFF, res.pendingId, code, STORE);
-    expect(repo.claimTx).toHaveBeenCalledWith(
-      expect.objectContaining({ currency: "points" }),
-    );
-  });
-
-  it("defaults to affordableWith[0] when the customer never picked", async () => {
-    repo.catalog = [
-      reward({ id: "rw_1", stampsRequired: 5, pointsCost: 50, costMode: "or" }),
-    ];
-    repo.balancesValue = { stamps: 9, points: 80 };
-    const { service } = build(repo, { cache });
-    const res = await service.requestClaim(ORG, STAFF, CUSTOMER, "rw_1");
-    const code = (
-      cache.store.get(`claim-otp:${res.pendingId}`) as { code: string }
-    ).code;
-    await service.confirmClaimWithCode(ORG, STAFF, res.pendingId, code, STORE);
-    // affordableWith = ["stamps","points"] → defaults to "stamps".
-    expect(repo.claimTx).toHaveBeenCalledWith(
-      expect.objectContaining({ currency: "stamps" }),
-    );
+    const resolved = await service.resolveClaimWithCode(ORG, STAFF, res.pendingId, code);
+    expect(resolved.currency).toBe("points");
   });
 });
 
@@ -760,12 +632,12 @@ describe("RewardsService.cancelClaim (customer)", () => {
     expect(cache.store.has(`claim-otp:${pendingId}`)).toBe(true);
   });
 
-  it("after cancel, confirmClaimWithCode fails CODE_EXPIRED", async () => {
+  it("after cancel, resolveClaimWithCode fails CODE_EXPIRED", async () => {
     const { pendingId, code } = await seedPending();
     const { service } = build(repo, { cache });
     await service.cancelClaim(CUSTOMER, pendingId);
     await expect(
-      service.confirmClaimWithCode(ORG, STAFF, pendingId, code, STORE),
+      service.resolveClaimWithCode(ORG, STAFF, pendingId, code),
     ).rejects.toMatchObject({ message: "CODE_EXPIRED" });
   });
 
@@ -830,19 +702,10 @@ describe("RewardsService.myActiveClaim (rehydrate)", () => {
     await expect(service.myActiveClaim(CUSTOMER)).resolves.toBeNull();
   });
 
-  it("returns null after a successful confirmClaimWithCode", async () => {
-    repo.claimTxResult = {
-      kind: "claimed",
-      redemptionId: "red_1",
-      currency: "stamps",
-      stampsSpent: 9,
-      pointsSpent: 0,
-      stampsBalance: 0,
-      pointsBalance: 0,
-    };
+  it("returns null after a successful resolveClaimWithCode", async () => {
     const { pendingId, code } = await seedPending();
     const { service } = build(repo, { cache });
-    await service.confirmClaimWithCode(ORG, STAFF, pendingId, code, STORE);
+    await service.resolveClaimWithCode(ORG, STAFF, pendingId, code);
     await expect(service.myActiveClaim(CUSTOMER)).resolves.toBeNull();
   });
 

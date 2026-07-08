@@ -9,7 +9,6 @@ import {
   type ClaimCurrencyChoice,
   claimCodeExpiresAt,
   CLAIM_CODE_TTL_SECONDS,
-  clearActiveClaim,
   generateClaimCode,
   loadActiveClaim,
   type PendingClaim,
@@ -26,6 +25,7 @@ import {
   verifyRewardClaimToken,
 } from "./claim-token";
 import { affordableWith, deriveItem } from "./derive";
+import { rewardBenefitSummary } from "./format";
 import {
   type Balances,
   isAffordable,
@@ -34,12 +34,12 @@ import {
 } from "./repository";
 import type {
   AvailableRewardItem,
-  ClaimResultView,
   HistoryInput,
   LevelsView,
   ListInput,
   RedemptionHistoryView,
   RequestClaimResult,
+  ResolveClaimView,
   RewardDetail,
   RewardListItem,
   RewardListView,
@@ -395,45 +395,36 @@ export class RewardsService {
    * Confirm a code-based claim: validate the OTP (existence, staff binding,
    * lockout, code match) then run the SAME deduction the scanner path uses.
    */
-  async confirmClaimWithCode(
+  /**
+   * Staff: verify a no-scanner 6-digit code and RESOLVE it (v2 — no redemption
+   * here). Keeps the pending-claim lockout/attempts/staff-binding, clears the
+   * pending + active code (so the customer's phone sheet closes), and returns
+   * the reward for the register to preselect. Redemption happens in
+   * `recordPurchase`.
+   */
+  async resolveClaimWithCode(
     organizationId: string,
     staffId: string,
     pendingId: string,
     code: string,
-    storeId: string,
-  ): Promise<ClaimResultView> {
+  ): Promise<ResolveClaimView> {
     const cache = requireCache(this.opts.cache);
     const pending = await verifyPendingClaim(cache, pendingId, code, staffId);
 
     const rw = await this.repo.getReward(organizationId, pending.rewardId);
-    if (!rw || !rw.active) {
+    if (!rw || rw.status !== "published") {
       throw new TRPCError({ code: "NOT_FOUND", message: "REWARD_NOT_FOUND" });
     }
 
-    // Use the customer's chosen currency; if they never picked (OR-both reward),
-    // default to the first affordable option. Re-validate the chosen currency's
-    // affordability so a balance that drained since requestClaim is caught.
-    const currency =
-      pending.currency ?? pending.affordableWith?.[0] ?? "stamps";
-    const balances = await this.repo.balances(organizationId, pending.customerId);
-    if (!this.canPayWith(rw, balances, currency)) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "INSUFFICIENT_BALANCE",
-      });
-    }
-
-    const result = await this.runClaim(
-      organizationId,
-      pending.customerId,
-      rw,
-      currency,
-      staffId,
-      storeId,
-    );
+    const currency = pending.currency ?? pending.affordableWith?.[0] ?? "stamps";
     await cache.delete(pendingClaimKey(pendingId));
     await cache.delete(activeClaimKey(pending.customerId));
-    return result;
+    // Close the customer's active-code sheet (reuse the cancel event).
+    await this.publish(pending.customerId, {
+      event: "reward.claim-code-cancelled",
+      data: { rewardId: rw.id },
+    });
+    return this.resolveView(pending.customerId, rw, currency);
   }
 
   /**
@@ -447,13 +438,14 @@ export class RewardsService {
     return loadActiveClaim(this.opts.cache, customerId);
   }
 
-  /** Staff: confirm a scanned token → deduct + record the redemption. */
-  async claim(
-    organizationId: string,
-    claimedByUserId: string,
-    token: string,
-    storeId: string,
-  ): Promise<ClaimResultView> {
+  /**
+   * Staff: verify a scanned reward token and RESOLVE it (v2 — no redemption
+   * here). Returns the customer + reward so the register opens with the reward
+   * preselected; redemption happens in `recordPurchase`. The token stays valid
+   * (stateless HMAC) until consumed by the sale — the once/balance guards run
+   * inside that tx, so resolving without redeeming introduces no replay hole.
+   */
+  async resolveClaim(organizationId: string, token: string): Promise<ResolveClaimView> {
     let parsed: {
       customerId: string;
       rewardId: string;
@@ -466,18 +458,32 @@ export class RewardsService {
     }
 
     const rw = await this.repo.getReward(organizationId, parsed.rewardId);
-    if (!rw || !rw.active) {
+    if (!rw || rw.status !== "published") {
       throw new TRPCError({ code: "NOT_FOUND", message: "REWARD_NOT_FOUND" });
     }
+    return this.resolveView(parsed.customerId, rw, parsed.currency);
+  }
 
-    return this.runClaim(
-      organizationId,
-      parsed.customerId,
-      rw,
-      parsed.currency,
-      claimedByUserId,
-      storeId,
-    );
+  /** Shared reward → resolve payload (staff-facing; includes fulfillmentNote). */
+  private resolveView(
+    customerId: string,
+    rw: RewardRow,
+    currency: "stamps" | "points" | "both",
+  ): ResolveClaimView {
+    return {
+      customerId,
+      currency,
+      reward: {
+        id: rw.id,
+        name: rw.name,
+        type: rw.type,
+        benefitSummary: rewardBenefitSummary(rw.benefit, "es"),
+        fulfillmentNote: rw.fulfillmentNote,
+        costMode: rw.costMode as ResolveClaimView["reward"]["costMode"],
+        stampsRequired: rw.stampsRequired,
+        pointsCost: rw.pointsCost,
+      },
+    };
   }
 
   /** Staff: rewards the customer can claim right now (cashier nudge). */
@@ -646,76 +652,6 @@ export class RewardsService {
     }
 
     return rw;
-  }
-
-  /**
-   * The deduction shared by the token path (`claim`) and the code path
-   * (`confirmClaimWithCode`): run `claimTx`, map its outcome to typed errors,
-   * fire the inline realtime confirmation + the durable notification, and shape
-   * the `ClaimResultView`. Keeping it here means the two cashier paths can't
-   * drift in how they deduct/record/notify.
-   */
-  private async runClaim(
-    organizationId: string,
-    customerId: string,
-    rw: RewardRow,
-    currency: "stamps" | "points" | "both",
-    claimedByUserId: string,
-    storeId: string,
-  ): Promise<ClaimResultView> {
-    const result = await this.repo.claimTx({
-      orgId: organizationId,
-      customerId,
-      reward: rw,
-      currency,
-      claimedByUserId,
-      storeId,
-    });
-    if (result.kind === "already_claimed") {
-      throw new TRPCError({ code: "CONFLICT", message: "ALREADY_CLAIMED" });
-    }
-    if (result.kind === "insufficient") {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "INSUFFICIENT_BALANCE",
-      });
-    }
-
-    // Clear any lingering cashier-initiated code (path B) for this same
-    // customer+reward, so the persistent "active code" banner disappears and the
-    // code can't be reused after a scanner (path A) claim already deducted.
-    // confirmClaimWithCode deletes its own pending too — this is idempotent.
-    await clearActiveClaim(this.opts.cache, customerId, rw.id);
-
-    // Realtime fires inline for an instant confirmation; durable channels go
-    // through the job. Both best-effort.
-    await this.publish(customerId, {
-      event: "reward.claimed",
-      data: {
-        rewardId: rw.id,
-        rewardName: rw.name,
-        currency: result.currency,
-        stampsBalance: result.stampsBalance,
-        pointsBalance: result.pointsBalance,
-      },
-    });
-    await this.enqueue({
-      customerIds: [customerId],
-      organizationId,
-      notificationKey: "reward-claimed",
-      payload: { rewardName: rw.name },
-    });
-
-    return {
-      redemptionId: result.redemptionId,
-      rewardId: rw.id,
-      rewardName: rw.name,
-      currency: result.currency,
-      stampsSpent: result.stampsSpent,
-      pointsSpent: result.pointsSpent,
-      stampsBalance: result.stampsBalance,
-      pointsBalance: result.pointsBalance,
-    };
   }
 
   /** The whole (search-filtered) active catalog, ordered. Cached per search

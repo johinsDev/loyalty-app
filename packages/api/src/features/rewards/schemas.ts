@@ -234,6 +234,25 @@ export interface ClaimResultView {
   pointsBalance: number;
 }
 
+/** Result of resolving a scanned reward token / entered code (v2): the reward
+ *  is NOT redeemed here — it's identified so the cashier can open the register
+ *  with the customer + reward preselected. Redemption happens in recordPurchase. */
+export interface ResolveClaimView {
+  customerId: string;
+  currency: "stamps" | "points" | "both";
+  reward: {
+    id: string;
+    name: string;
+    type: string | null;
+    benefitSummary: string | null;
+    /** Cashier-facing note for experience rewards (staff-only). */
+    fulfillmentNote: string | null;
+    costMode: CostMode;
+    stampsRequired: number | null;
+    pointsCost: number | null;
+  };
+}
+
 export type ListInput = z.infer<typeof listInputSchema>;
 export type RewardFilter = z.infer<typeof rewardFilterSchema>;
 export type IssueClaimTokenInput = z.infer<typeof issueClaimTokenInputSchema>;

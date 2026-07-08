@@ -10,7 +10,6 @@ import {
   router,
   staffProcedure,
 } from "../../trpc";
-import { resolveActiveStoreId } from "../_shared/store-context";
 import { RewardsRepository } from "./repository";
 import { RewardsService } from "./service";
 import {
@@ -130,25 +129,16 @@ export const rewardsRouter = router({
     ),
 
   // ---- Cashier (staff) ------------------------------------------------
-  claim: staffProcedure
+  // Scan a reward QR (T4P) → resolve the customer + reward so the register opens
+  // with the reward preselected. Redemption happens in `stamps.recordPurchase`.
+  resolveClaim: staffProcedure
     .use(
-      rateLimit({ name: "rewards.claim", limit: 30, window: "1m", by: "user" }),
+      rateLimit({ name: "rewards.resolveClaim", limit: 60, window: "1m", by: "user" }),
     )
     .input(claimInputSchema)
     .mutation(async ({ ctx, input }) => {
       const org = await orgId();
-      const storeId = await resolveActiveStoreId(
-        ctx.db,
-        org,
-        ctx.session.user.id,
-        input.storeId,
-      );
-      return buildRewardsService(ctx).claim(
-        org,
-        ctx.session.user.id,
-        input.token,
-        storeId,
-      );
+      return buildRewardsService(ctx).resolveClaim(org, input.token);
     }),
 
   // Code-based claim (the "no scanner" path): request a 6-digit code bound to
@@ -180,32 +170,24 @@ export const rewardsRouter = router({
       ),
     ),
 
-  confirmClaimWithCode: staffProcedure
+  resolveClaimWithCode: staffProcedure
     .use(
       rateLimit({
-        name: "rewards.confirmClaimWithCode",
+        name: "rewards.resolveClaimWithCode",
         limit: 30,
         window: "1m",
         by: "user",
       }),
     )
     .input(confirmClaimWithCodeInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      const org = await orgId();
-      const storeId = await resolveActiveStoreId(
-        ctx.db,
-        org,
-        ctx.session.user.id,
-        input.storeId,
-      );
-      return buildRewardsService(ctx).confirmClaimWithCode(
-        org,
+    .mutation(async ({ ctx, input }) =>
+      buildRewardsService(ctx).resolveClaimWithCode(
+        await orgId(),
         ctx.session.user.id,
         input.pendingId,
         input.code,
-        storeId,
-      );
-    }),
+      ),
+    ),
 
   availableForCustomer: staffProcedure
     .input(customerIdInputSchema)
