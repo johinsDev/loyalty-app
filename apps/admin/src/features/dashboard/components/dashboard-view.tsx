@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button } from "@loyalty/ui";
+import { Badge, Button, Skeleton } from "@loyalty/ui";
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -197,9 +197,15 @@ export function DashboardView() {
 
       {/* KPI row */}
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {realKpis.map((k) => (
-          <KpiCard key={k.key} kpi={k} style={fade(i++)} />
-        ))}
+        {overview.isPending
+          ? Array.from({ length: 4 }, (_, idx) => (
+              <div key={idx} className="bg-card border-border rounded-2xl border p-4">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="mt-3 h-7 w-20" />
+                <Skeleton className="mt-2 h-3 w-16" />
+              </div>
+            ))
+          : realKpis.map((k) => <KpiCard key={k.key} kpi={k} style={fade(i++)} />)}
       </div>
 
       {/* Campaigns + promos — real stats (last 30d) */}
@@ -219,7 +225,11 @@ export function DashboardView() {
           className="lg:col-span-2"
         >
           <div className="h-52">
-            <AreaChart series={(seriesQ.data ?? []).map((s) => s.purchases)} />
+            {seriesQ.isPending ? (
+              <Skeleton className="size-full rounded-xl" />
+            ) : (
+              <AreaChart series={(seriesQ.data ?? []).map((s) => s.purchases)} />
+            )}
           </div>
         </ChartCard>
         <ChartCard
@@ -228,11 +238,15 @@ export function DashboardView() {
           style={fade(i++)}
         >
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Donut
-              slices={tierMix}
-              center={fmtNum(tierTotal)}
-              centerSub={t("membersShort")}
-            />
+            {tiersQ.isPending ? (
+              <Skeleton className="size-40 flex-none rounded-full" />
+            ) : (
+              <Donut
+                slices={tierMix}
+                center={fmtNum(tierTotal)}
+                centerSub={t("membersShort")}
+              />
+            )}
             <ul className="min-w-40 flex-1 space-y-2 text-sm">
               {tierMix.map((s) => (
                 <li key={s.key} className="flex items-center gap-2">
@@ -269,7 +283,11 @@ export function DashboardView() {
           style={fade(i++)}
         >
           <div className="h-40">
-            <AreaChart series={(seriesQ.data ?? []).map((s) => s.redemptions)} color="#f0a868" />
+            {seriesQ.isPending ? (
+              <Skeleton className="size-full rounded-xl" />
+            ) : (
+              <AreaChart series={(seriesQ.data ?? []).map((s) => s.redemptions)} color="#f0a868" />
+            )}
           </div>
         </ChartCard>
       </div>
@@ -329,6 +347,7 @@ export function DashboardView() {
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <ChartCard title={t("recentPurchasesTitle")} live style={fade(i++)}>
           <ul className="divide-border divide-y">
+            {recentPurchasesQ.isPending ? <SkeletonRows rows={6} /> : null}
             {recentPurchases.map((p) => (
               <li key={p.key} className="flex items-center gap-3 py-2.5">
                 <AvatarChip initials={p.initials} />
@@ -357,6 +376,7 @@ export function DashboardView() {
           style={fade(i++)}
         >
           <ul className="divide-border divide-y">
+            {topCustomersQ.isPending ? <SkeletonRows rows={6} /> : null}
             {topCustomers.map((c, idx) => (
               <li key={c.key} className="flex items-center gap-3 py-2.5">
                 <span className="text-muted-foreground/60 w-4 text-sm font-bold">
@@ -386,11 +406,12 @@ export function DashboardView() {
           style={fade(i++)}
         >
           <ul className="divide-border divide-y">
-            {atRisk.length === 0 ? (
+            {!atRiskQ.isPending && atRisk.length === 0 ? (
               <li className="text-muted-foreground py-4 text-sm font-semibold">
                 {t("atRiskEmpty")}
               </li>
             ) : null}
+            {atRiskQ.isPending ? <SkeletonRows rows={5} /> : null}
             {atRisk.map((c) => (
               <li key={c.key} className="flex items-center gap-3 py-2.5">
                 <AvatarChip initials={c.initials} />
@@ -451,6 +472,7 @@ export function DashboardView() {
 
         <ChartCard title={t("recentClaimsTitle")} style={fade(i++)}>
           <ul className="divide-border divide-y">
+            {recentRedemptionsQ.isPending ? <SkeletonRows rows={6} /> : null}
             {recentClaims.map((c) => (
               <li key={c.key} className="flex items-center gap-3 py-2.5">
                 <span className="bg-primary/10 grid size-9 flex-none place-items-center rounded-xl text-lg">
@@ -500,7 +522,9 @@ export function DashboardView() {
       {/* Top products (with margin) + sales by store */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <ChartCard title={t("topProductsTitle")} subtitle={t("topProductsSubtitle")} style={fade(i++)}>
-          {topProducts.length === 0 ? (
+          {topProductsQ.isPending ? (
+            <ul className="divide-border divide-y"><SkeletonRows rows={6} /></ul>
+          ) : topProducts.length === 0 ? (
             <p className="text-muted-foreground py-4 text-sm font-semibold">{t("noData")}</p>
           ) : (
             <ul className="divide-border divide-y">
@@ -525,7 +549,9 @@ export function DashboardView() {
           )}
         </ChartCard>
         <ChartCard title={t("salesByStoreTitle")} style={fade(i++)}>
-          {salesByStore.length === 0 ? (
+          {salesByStoreQ.isPending ? (
+            <ul className="divide-border divide-y"><SkeletonRows rows={3} /></ul>
+          ) : salesByStore.length === 0 ? (
             <p className="text-muted-foreground py-4 text-sm font-semibold">{t("noData")}</p>
           ) : (
             <ul className="divide-border divide-y">
@@ -554,6 +580,25 @@ function MiniStat({ label, value }: { label: string; value: string }) {
       <div className="font-display text-xl font-semibold">{value}</div>
       <div className="text-muted-foreground/70 text-xs font-semibold">{label}</div>
     </div>
+  );
+}
+
+/** Placeholder rows for a list widget while its query is loading. Renders <li>
+ *  so it drops straight into the widgets' <ul>. */
+function SkeletonRows({ rows = 4 }: { rows?: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }, (_, i) => (
+        <li key={`sk-${i}`} className="flex items-center gap-3 py-2.5">
+          <Skeleton className="size-9 flex-none rounded-full" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className="h-3.5 w-2/3" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+          <Skeleton className="h-3.5 w-12" />
+        </li>
+      ))}
+    </>
   );
 }
 
