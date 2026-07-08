@@ -19,16 +19,7 @@ import { useFadeUp } from "@/lib/animate";
 import { useTRPC } from "@/lib/trpc/client";
 import { useQuery } from "@tanstack/react-query";
 
-import {
-  atRisk,
-  cohorts,
-  dauAvg,
-  dauBars,
-  engagementMix,
-  fraudAlerts,
-  impact,
-  type Kpi,
-} from "../data";
+import { cohorts, dauAvg, dauBars, fraudAlerts, impact, type Kpi } from "../data";
 import { AreaChart, Bars, Donut, Sparkline } from "./charts";
 
 const PERIODS = ["7d", "30d", "90d"] as const;
@@ -75,6 +66,13 @@ export function DashboardView() {
   const recentPurchasesQ = useQuery(trpc.dashboard.recentPurchases.queryOptions({ limit: 6 }));
   const recentRedemptionsQ = useQuery(trpc.dashboard.recentRedemptions.queryOptions({ limit: 6 }));
   const topCustomersQ = useQuery(trpc.dashboard.topCustomers.queryOptions({ period, limit: 6 }));
+  const atRiskQ = useQuery(trpc.dashboard.atRisk.queryOptions({ days: 30, limit: 5 }));
+  const retentionQ = useQuery(trpc.dashboard.retention.queryOptions({ period }));
+  const engagementQ = useQuery(trpc.dashboard.redemptionEngagement.queryOptions({ period }));
+  const tiersQ = useQuery(trpc.dashboard.tiers.queryOptions());
+  const liabilityQ = useQuery(trpc.dashboard.liability.queryOptions({ period }));
+  const topProductsQ = useQuery(trpc.dashboard.topProducts.queryOptions({ period, limit: 6 }));
+  const salesByStoreQ = useQuery(trpc.dashboard.salesByStore.queryOptions({ period }));
   const now = Date.now();
 
   // Real KPI cards reuse the existing kpi/kpiSub i18n keys. Sparklines use the
@@ -113,6 +111,29 @@ export function DashboardView() {
     pts: r.currency === "points" ? `${r.pointsSpent}` : `${r.stampsSpent}`,
     ago: agoOf(r.createdAt, now),
   }));
+  const atRisk = (atRiskQ.data ?? []).map((r) => ({
+    key: r.id,
+    initials: initialsOf(r.name),
+    name: r.name,
+    ago: `${r.daysSince} d`,
+  }));
+  // Tier distribution as donut slices (real, replaces the mock engagement mix).
+  const tierColors: Record<string, string> = {
+    hoja: "var(--primary)",
+    flor: "color-mix(in srgb, var(--primary) 45%, #fff)",
+    oro: "#f0a868",
+  };
+  const tierTotal = (tiersQ.data?.tiers ?? []).reduce((s, t) => s + t.count, 0) || 1;
+  const tierMix = (tiersQ.data?.tiers ?? []).map((t) => ({
+    key: t.key,
+    pct: Math.round((t.count / tierTotal) * 100),
+    color: tierColors[t.key] ?? "#c7cdd4",
+  }));
+  const topProducts = topProductsQ.data ?? [];
+  const salesByStore = salesByStoreQ.data ?? [];
+  const retention = retentionQ.data;
+  const engagement = engagementQ.data;
+  const liability = liabilityQ.data;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
@@ -201,21 +222,25 @@ export function DashboardView() {
             <AreaChart series={(seriesQ.data ?? []).map((s) => s.purchases)} />
           </div>
         </ChartCard>
-        <ChartCard title={t("engagementTitle")} beta style={fade(i++)}>
+        <ChartCard
+          title={t("tiersTitle")}
+          subtitle={t("tiersSubtitle", { n: tiersQ.data?.activeStreaks ?? 0 })}
+          style={fade(i++)}
+        >
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Donut
-              slices={engagementMix}
-              center="82"
-              centerSub={t("scoreOf100Short")}
+              slices={tierMix}
+              center={fmtNum(tierTotal)}
+              centerSub={t("membersShort")}
             />
             <ul className="min-w-40 flex-1 space-y-2 text-sm">
-              {engagementMix.map((s) => (
+              {tierMix.map((s) => (
                 <li key={s.key} className="flex items-center gap-2">
                   <span
                     className="size-2.5 flex-none rounded-full"
                     style={{ background: s.color }}
                   />
-                  <span className="flex-1">{t(`mix.${s.key}`)}</span>
+                  <span className="flex-1">{t(`tier.${s.key}`)}</span>
                   <span className="font-bold">{s.pct}%</span>
                 </li>
               ))}
@@ -358,12 +383,16 @@ export function DashboardView() {
         <ChartCard
           title={t("atRiskTitle")}
           subtitle={t("atRiskSubtitle")}
-          beta
           style={fade(i++)}
         >
           <ul className="divide-border divide-y">
+            {atRisk.length === 0 ? (
+              <li className="text-muted-foreground py-4 text-sm font-semibold">
+                {t("atRiskEmpty")}
+              </li>
+            ) : null}
             {atRisk.map((c) => (
-              <li key={c.name} className="flex items-center gap-3 py-2.5">
+              <li key={c.key} className="flex items-center gap-3 py-2.5">
                 <AvatarChip initials={c.initials} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-bold">{c.name}</div>
@@ -444,6 +473,86 @@ export function DashboardView() {
           </ul>
         </ChartCard>
       </div>
+
+      {/* Retention + program liability */}
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <ChartCard title={t("retentionTitle")} subtitle={t("retentionSubtitle")} style={fade(i++)}>
+          <div className="grid grid-cols-3 gap-3">
+            <MiniStat label={t("repeatRate")} value={`${retention?.repeatRatePct ?? 0}%`} />
+            <MiniStat label={t("avgVisits")} value={`${retention?.avgVisits ?? 0}`} />
+            <MiniStat label={t("redeemerRate")} value={`${engagement?.redeemerRatePct ?? 0}%`} />
+          </div>
+        </ChartCard>
+        <ChartCard title={t("liabilityTitle")} subtitle={t("liabilitySubtitle")} style={fade(i++)}>
+          <div className="grid grid-cols-2 gap-3">
+            <MiniStat label={t("stampsOutstanding")} value={fmtNum(liability?.stampsOutstanding ?? 0)} />
+            <MiniStat label={t("pointsOutstanding")} value={fmtNum(liability?.pointsOutstanding ?? 0)} />
+          </div>
+          <p className="text-muted-foreground mt-3 text-xs font-semibold">
+            {t("pointsFlow", {
+              earned: fmtNum(liability?.pointsEarned ?? 0),
+              redeemed: fmtNum(liability?.pointsRedeemed ?? 0),
+            })}
+          </p>
+        </ChartCard>
+      </div>
+
+      {/* Top products (with margin) + sales by store */}
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <ChartCard title={t("topProductsTitle")} subtitle={t("topProductsSubtitle")} style={fade(i++)}>
+          {topProducts.length === 0 ? (
+            <p className="text-muted-foreground py-4 text-sm font-semibold">{t("noData")}</p>
+          ) : (
+            <ul className="divide-border divide-y">
+              {topProducts.map((p, idx) => (
+                <li key={p.productId} className="flex items-center gap-3 py-2.5">
+                  <span className="text-muted-foreground/60 w-4 text-sm font-bold">{idx + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold">{p.name}</div>
+                    <div className="text-muted-foreground/70 text-xs font-semibold">
+                      {t("unitsSold", { n: p.units })}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-bold">{fmtCop(p.revenueCents)}</div>
+                    <div className="text-primary text-xs font-extrabold">
+                      {p.marginPct != null ? t("marginShort", { pct: p.marginPct }) : "—"}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </ChartCard>
+        <ChartCard title={t("salesByStoreTitle")} style={fade(i++)}>
+          {salesByStore.length === 0 ? (
+            <p className="text-muted-foreground py-4 text-sm font-semibold">{t("noData")}</p>
+          ) : (
+            <ul className="divide-border divide-y">
+              {salesByStore.map((s) => (
+                <li key={s.storeId ?? "none"} className="flex items-center gap-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold">{s.name ?? "—"}</div>
+                    <div className="text-muted-foreground/70 text-xs font-semibold">
+                      {t("salesN", { n: s.count })}
+                    </div>
+                  </div>
+                  <span className="text-sm font-bold">{fmtCop(s.revenueCents)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="font-display text-xl font-semibold">{value}</div>
+      <div className="text-muted-foreground/70 text-xs font-semibold">{label}</div>
     </div>
   );
 }

@@ -25,13 +25,6 @@ export const dauBars = [
 ];
 export const dauAvg = "2,840";
 
-export type EngagementSlice = { key: string; pct: number; color: string };
-export const engagementMix: EngagementSlice[] = [
-  { key: "champions", pct: 64, color: "var(--primary)" },
-  { key: "returning", pct: 22, color: "color-mix(in srgb, var(--primary) 45%, #fff)" },
-  { key: "atRisk", pct: 9, color: "#f0a868" },
-  { key: "hibernating", pct: 5, color: "#c7cdd4" },
-];
 
 export type CohortRow = { label: string; size: number; weeks: (number | null)[] };
 export const cohorts: CohortRow[] = [
@@ -43,12 +36,6 @@ export const cohorts: CohortRow[] = [
 
 
 
-export type AtRisk = { initials: string; name: string; ago: string };
-export const atRisk: AtRisk[] = [
-  { initials: "DR", name: "Diego Ruiz", ago: "21 d" },
-  { initials: "TV", name: "Tomás Vega", ago: "28 d" },
-  { initials: "SQ", name: "Sofía Quiroga", ago: "34 d" },
-];
 
 export type FraudAlert = { key: string; severity: "high" | "med"; detail: string; meta: string };
 export const fraudAlerts: FraudAlert[] = [
