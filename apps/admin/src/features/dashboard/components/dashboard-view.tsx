@@ -1,6 +1,8 @@
 "use client";
 
+import type { AppRouter } from "@loyalty/api";
 import { Badge, Button, Skeleton } from "@loyalty/ui";
+import type { inferRouterOutputs } from "@trpc/server";
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -54,15 +56,35 @@ const deltaStr = (pct: number | null): { delta: string; trend: "up" | "down" } =
  * hardcoded (../data); RFM mix, cohorts and fraud are flagged Beta. Reveals with
  * the shared staggered fade-up.
  */
-export function DashboardView() {
+type DashOut = inferRouterOutputs<AppRouter>["dashboard"];
+
+export function DashboardView({
+  initialOverview,
+  initialSeries,
+}: {
+  initialOverview?: DashOut["overview"];
+  initialSeries?: DashOut["series"];
+} = {}) {
   const t = useTranslations("Dashboard");
   const fade = useFadeUp({ step: 40 });
   const trpc = useTRPC();
   const [period, setPeriod] = useState<Period>("30d");
   let i = 0;
 
-  const overview = useQuery(trpc.dashboard.overview.queryOptions({ period }));
-  const seriesQ = useQuery(trpc.dashboard.series.queryOptions({ period }));
+  // Above-the-fold stats hydrate from the server prefetch for the default 30d
+  // window (no initial flash); other periods fetch client-side.
+  const overview = useQuery(
+    trpc.dashboard.overview.queryOptions(
+      { period },
+      { initialData: period === "30d" ? initialOverview : undefined },
+    ),
+  );
+  const seriesQ = useQuery(
+    trpc.dashboard.series.queryOptions(
+      { period },
+      { initialData: period === "30d" ? initialSeries : undefined },
+    ),
+  );
   const recentPurchasesQ = useQuery(trpc.dashboard.recentPurchases.queryOptions({ limit: 6 }));
   const recentRedemptionsQ = useQuery(trpc.dashboard.recentRedemptions.queryOptions({ limit: 6 }));
   const topCustomersQ = useQuery(trpc.dashboard.topCustomers.queryOptions({ period, limit: 6 }));
