@@ -6,7 +6,7 @@ import { Button, Label, NumberInput } from "@loyalty/ui";
 import { Plus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { RefsField, type ItemRef } from "./refs-field";
+import { RefsField, type ItemRef } from "@/components/refs-field";
 
 type Requirement = { refs: ItemRef[]; qty: number };
 type MoneyBenefit =

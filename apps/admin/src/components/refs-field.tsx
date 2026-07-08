@@ -23,7 +23,7 @@ import { useMemo, useRef, useState } from "react";
 
 import { useTRPC } from "@/lib/trpc/client";
 
-import { ProductCombobox } from "./product-combobox";
+import { ProductCombobox } from "@/features/promotions/components/product-combobox";
 
 export type RefKind = "product" | "variant" | "category" | "modifierOption";
 export type ItemRef = { kind: RefKind; id: string };
