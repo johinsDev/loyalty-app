@@ -19,8 +19,8 @@ import { useFadeUp } from "@/lib/animate";
 import { useTRPC } from "@/lib/trpc/client";
 import { useQuery } from "@tanstack/react-query";
 
-import { cohorts, dauAvg, dauBars, fraudAlerts, impact, type Kpi } from "../data";
-import { AreaChart, Bars, Donut, Sparkline } from "./charts";
+import { type Kpi } from "../data";
+import { AreaChart, Donut, Sparkline } from "./charts";
 
 const PERIODS = ["7d", "30d", "90d"] as const;
 type Period = (typeof PERIODS)[number];
@@ -73,6 +73,7 @@ export function DashboardView() {
   const liabilityQ = useQuery(trpc.dashboard.liability.queryOptions({ period }));
   const topProductsQ = useQuery(trpc.dashboard.topProducts.queryOptions({ period, limit: 6 }));
   const salesByStoreQ = useQuery(trpc.dashboard.salesByStore.queryOptions({ period }));
+  const cohortsQ = useQuery(trpc.dashboard.cohorts.queryOptions());
   const now = Date.now();
 
   // Real KPI cards reuse the existing kpi/kpiSub i18n keys. Sparklines use the
@@ -134,6 +135,12 @@ export function DashboardView() {
   const retention = retentionQ.data;
   const engagement = engagementQ.data;
   const liability = liabilityQ.data;
+  const cohortsData = (cohortsQ.data?.cohorts ?? []).map((c) => ({
+    label: new Date(c.label).toLocaleDateString("es-CO", { day: "numeric", month: "short" }),
+    size: c.size,
+    weeks: c.retention,
+  }));
+  const cohortWeeks = cohortsQ.data?.weeks ?? 5;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
@@ -175,22 +182,22 @@ export function DashboardView() {
           <div className="mt-4 flex flex-wrap items-end gap-x-10 gap-y-4">
             <div>
               <div className="font-display text-5xl font-semibold tracking-tight">
-                {impact.revenue}
+                {overview.isPending ? "—" : fmtCop(ov?.revenueCents.value ?? 0)}
               </div>
               <div className="mt-1 text-sm font-semibold text-white/85">
-                {t("impactRevenue", { delta: impact.delta })}
+                {t("impactRevenue", { delta: deltaStr(ov?.revenueCents.deltaPct ?? null).delta })}
               </div>
             </div>
-            <Stat
-              label={t("impactSpend")}
-              value={impact.multiple}
-              sub={t("vsNonMembers")}
-            />
-            <Stat
-              label={t("impactPlan", { plan: impact.plan })}
-              value={impact.planReturn}
-              sub={t("impactReturn")}
-            />
+            {/* Comparative ROI (spend vs non-members, plan return) needs a
+                non-member baseline + plan cost — not derivable yet. */}
+            <div className="flex flex-col gap-1">
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs font-extrabold">
+                {t("comingSoon")}
+              </span>
+              <span className="text-xs font-semibold text-white/70">
+                {t("impactComingSoon")}
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -265,15 +272,14 @@ export function DashboardView() {
 
       {/* DAU + redemptions */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <ChartCard
-          title={t("dauTitle")}
-          subtitle={t("dauSubtitle")}
-          badge={t("dauAvg", { n: dauAvg })}
-          beta
-          style={fade(i++)}
-        >
-          <div className="h-40">
-            <Bars series={dauBars} />
+        <ChartCard title={t("dauTitle")} subtitle={t("dauSubtitle")} style={fade(i++)}>
+          <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
+            <Badge variant="secondary" className="text-xs">
+              {t("comingSoon")}
+            </Badge>
+            <p className="text-muted-foreground max-w-56 text-xs font-semibold">
+              {t("dauComingSoon")}
+            </p>
           </div>
         </ChartCard>
         <ChartCard
@@ -297,28 +303,32 @@ export function DashboardView() {
         <ChartCard
           title={t("cohortsTitle")}
           subtitle={t("cohortsSubtitle")}
-          beta
           style={fade(i++)}
         >
+          {cohortsQ.isPending ? (
+            <Skeleton className="h-40 w-full rounded-xl" />
+          ) : cohortsData.length === 0 ? (
+            <p className="text-muted-foreground py-4 text-sm font-semibold">{t("noData")}</p>
+          ) : (
           <table className="w-full text-center text-xs">
             <thead>
               <tr className="text-muted-foreground/70 font-bold">
                 <th className="py-1 text-left font-bold">{t("cohort")}</th>
-                {["S0", "S1", "S2", "S3", "S4"].map((w) => (
-                  <th key={w} className="py-1 font-bold">
-                    {w}
+                {Array.from({ length: cohortWeeks }, (_, k) => (
+                  <th key={`S${k}`} className="py-1 font-bold">
+                    S{k}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {cohorts.map((row) => (
+              {cohortsData.map((row) => (
                 <tr key={row.label}>
                   <td className="text-muted-foreground py-1 text-left font-bold">
                     {row.label}
                   </td>
                   {row.weeks.map((v, idx) => (
-                    <td key={idx} className="p-0.5">
+                    <td key={`${row.label}-${idx}`} className="p-0.5">
                       {v === null ? (
                         <span className="text-muted-foreground/40">·</span>
                       ) : (
@@ -338,6 +348,7 @@ export function DashboardView() {
               ))}
             </tbody>
           </table>
+          )}
         </ChartCard>
 
         <DashboardPromoCard style={fade(i++)} />
@@ -433,41 +444,18 @@ export function DashboardView() {
           </ul>
         </ChartCard>
 
-        <ChartCard
-          title={t("fraudTitle")}
-          subtitle={t("fraudSubtitle")}
-          beta
-          style={fade(i++)}
-        >
-          <ul className="divide-border divide-y">
-            {fraudAlerts.map((f) => (
-              <li key={f.key} className="flex items-start gap-3 py-2.5">
-                <span
-                  className={`grid size-9 flex-none place-items-center rounded-xl ${
-                    f.severity === "high"
-                      ? "bg-rose-500/15 text-rose-500"
-                      : "bg-amber-500/15 text-amber-600"
-                  }`}
-                >
-                  <AlertTriangle className="size-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold">{t(`fraud.${f.key}`)}</span>
-                    <Badge
-                      variant="secondary"
-                      className={`text-[0.625rem] ${f.severity === "high" ? "text-rose-500" : "text-amber-600"}`}
-                    >
-                      {t(f.severity === "high" ? "sevHigh" : "sevMed")}
-                    </Badge>
-                  </div>
-                  <div className="text-muted-foreground/70 text-xs font-semibold">
-                    {f.detail} · {f.meta}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+        <ChartCard title={t("fraudTitle")} subtitle={t("fraudSubtitle")} style={fade(i++)}>
+          <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+            <span className="bg-muted text-muted-foreground grid size-11 place-items-center rounded-2xl">
+              <AlertTriangle className="size-5" />
+            </span>
+            <Badge variant="secondary" className="text-xs">
+              {t("comingSoon")}
+            </Badge>
+            <p className="text-muted-foreground max-w-56 text-xs font-semibold">
+              {t("fraudComingSoon")}
+            </p>
+          </div>
         </ChartCard>
 
         <ChartCard title={t("recentClaimsTitle")} style={fade(i++)}>
@@ -602,27 +590,6 @@ function SkeletonRows({ rows = 4 }: { rows?: number }) {
   );
 }
 
-function Stat({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-}) {
-  return (
-    <div>
-      <div className="text-xs font-semibold tracking-wider text-white/70 uppercase">
-        {label}
-      </div>
-      <div className="mt-0.5 flex items-baseline gap-1.5">
-        <span className="font-display text-2xl font-semibold">{value}</span>
-        <span className="text-sm font-semibold text-white/80">{sub}</span>
-      </div>
-    </div>
-  );
-}
 
 function KpiCard({ kpi, style }: { kpi: Kpi; style?: React.CSSProperties }) {
   const t = useTranslations("Dashboard");

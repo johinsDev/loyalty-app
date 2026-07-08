@@ -234,7 +234,11 @@
       "hoja": "Hoja",
       "flor": "Flor",
       "oro": "Oro"
-    }
+    },
+    "comingSoon": "Próximamente",
+    "fraudComingSoon": "Detección de anomalías (escaneos rápidos, reuso de códigos). En desarrollo.",
+    "dauComingSoon": "Usuarios activos por día. Requiere eventos de sesión.",
+    "impactComingSoon": "Gasto vs no-socios y retorno del plan — próximamente."
   },
   "Customers": {
     "title": "Clientes",

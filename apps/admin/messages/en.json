@@ -234,7 +234,11 @@
       "hoja": "Hoja",
       "flor": "Flor",
       "oro": "Oro"
-    }
+    },
+    "comingSoon": "Coming soon",
+    "fraudComingSoon": "Anomaly detection (rapid scans, code reuse). In progress.",
+    "dauComingSoon": "Daily active users. Needs session events.",
+    "impactComingSoon": "Member vs non-member spend and plan ROI — coming soon."
   },
   "Customers": {
     "title": "Customers",
