@@ -70,6 +70,7 @@ export const productUpsertInputSchema = z.object({
   description: z.string().nullish(), // tiptap HTML
   status: productStatusSchema,
   basePriceCents: z.number().int().min(0),
+  promoPriceCents: z.number().int().min(0).nullish(),
   currency: z.string().min(1).max(3).default("COP"),
   brand: z.string().max(80).nullish(),
   gender: productGenderSchema.nullish(),
@@ -129,6 +130,7 @@ export interface ProductAdminDetail {
   description: string | null;
   status: string;
   basePriceCents: number;
+  promoPriceCents: number | null;
   currency: string;
   brand: string | null;
   gender: string | null;

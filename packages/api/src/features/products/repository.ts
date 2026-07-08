@@ -219,6 +219,9 @@ export class ProductsRepository {
         name,
         description: snippet(description),
         priceCents: price.priceCents,
+        // Promo only applies in the product's own currency (no FX for it in v1).
+        promoPriceCents:
+          price.currency === p.currency ? p.promoPriceCents : null,
         currency: price.currency,
         imageUrl: firstImage.get(p.id) ?? null,
         categorySlugs: catSlugs.get(p.id) ?? [],
@@ -323,6 +326,8 @@ export class ProductsRepository {
       description: tr?.description ?? p.description,
       currency: detailCurrency,
       basePriceCents: basePrice.priceCents,
+      promoPriceCents:
+        detailCurrency === p.currency ? p.promoPriceCents : null,
       earn: earnFor(p.basePriceCents),
       images: p.images.map((img) => ({
         url: img.url,

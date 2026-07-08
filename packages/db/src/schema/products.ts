@@ -55,6 +55,9 @@ export const product = sqliteTable(
     description: text("description"),
     // The default/shown price; variants may override.
     basePriceCents: integer("base_price_cents").notNull().default(0),
+    // Optional promotional price (< base). When set, the store shows the base
+    // struck through with this as the effective price.
+    promoPriceCents: integer("promo_price_cents"),
     currency: text("currency").notNull().default("COP"),
     status: text("status").notNull().default("active"), // active | draft | archived
     brand: text("brand"),

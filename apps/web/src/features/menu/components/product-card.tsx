@@ -78,7 +78,17 @@ export function ProductCard({
           {product.name}
         </p>
         <span className="font-display text-primary font-semibold tracking-tight">
-          {money(format, product.priceCents, product.currency)}
+          {product.promoPriceCents != null &&
+          product.promoPriceCents < product.priceCents ? (
+            <>
+              <span className="text-muted-foreground/60 mr-1.5 text-sm font-semibold line-through">
+                {money(format, product.priceCents, product.currency)}
+              </span>
+              {money(format, product.promoPriceCents, product.currency)}
+            </>
+          ) : (
+            money(format, product.priceCents, product.currency)
+          )}
         </span>
         {product.earn.points > 0 ? (
           <span className="text-muted-foreground text-xs font-semibold">

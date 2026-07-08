@@ -57,7 +57,7 @@ export function detailToDraft(d: AdminDetail): {
     videoUrl: "",
     currency: d.currency,
     price: d.basePriceCents / 100,
-    promoPrice: null,
+    promoPrice: d.promoPriceCents == null ? null : d.promoPriceCents / 100,
     showPrice: true,
     cost: null,
     type: (d.productType as ProductDraft["type"]) ?? "physical",
@@ -154,6 +154,10 @@ export function draftToUpsert(
     description: draft.description || null,
     status,
     basePriceCents: Math.round((draft.price ?? 0) * 100),
+    promoPriceCents:
+      draft.promoPrice != null && draft.promoPrice > 0
+        ? Math.round(draft.promoPrice * 100)
+        : null,
     currency: draft.currency,
     brand: draft.brand.trim() || null,
     gender: (draft.gender as ProductUpsertInput["gender"]) ?? null,
