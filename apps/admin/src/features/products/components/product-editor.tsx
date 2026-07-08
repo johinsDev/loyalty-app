@@ -45,6 +45,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { WizardShell } from "@/components/wizard-shell";
+import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 import { useRouter } from "@/i18n/navigation";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -108,6 +109,9 @@ export function ProductEditor({ id }: { id?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [mediaDrag, setMediaDrag] = useState<number | null>(null);
   const [mediaOver, setMediaOver] = useState<number | null>(null);
+  const uploadImage = useUploadImage();
+  const [uploading, setUploading] = useState(false);
+  const [dropActive, setDropActive] = useState(false);
   const [sectionsOpen, setSectionsOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [sectionQuery, setSectionQuery] = useState("");
@@ -173,13 +177,33 @@ export function ProductEditor({ id }: { id?: string }) {
       variants: buildVariants(options, d.variants, d.price ?? 0),
     }));
 
+  // Upload real image files to R2 (presign → PUT → URL) and append them as
+  // product photos. Non-image files are ignored.
+  const uploadFiles = async (files: File[]) => {
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    if (images.length === 0) return;
+    setUploading(true);
+    try {
+      const urls = (await Promise.all(images.map((f) => uploadImage(f)))).filter(
+        (u): u is string => Boolean(u),
+      );
+      if (urls.length < images.length) toast.error(t("mediaUploadError"));
+      if (urls.length > 0) {
+        setDraft((d) => ({
+          ...d,
+          media: [
+            ...d.media,
+            ...urls.map((url) => ({ id: crypto.randomUUID(), emoji: "", url })),
+          ],
+        }));
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (files.length === 0) return;
-    set("media", [
-      ...draft.media,
-      ...files.map((_, n) => ({ id: `m_up_${Date.now()}_${n}`, emoji: "🖼️" })),
-    ]);
+    void uploadFiles(Array.from(e.target.files ?? []));
     e.target.value = "";
   };
 
@@ -322,7 +346,7 @@ export function ProductEditor({ id }: { id?: string }) {
                     setMediaDrag(null);
                     setMediaOver(null);
                   }}
-                  className={`group relative grid aspect-square cursor-grab place-items-center rounded-2xl text-3xl ring-inset transition-all active:cursor-grabbing ${
+                  className={`group relative grid aspect-square cursor-grab place-items-center overflow-hidden rounded-2xl text-3xl ring-inset transition-all active:cursor-grabbing ${
                     mediaDrag === idx
                       ? "opacity-40"
                       : mediaOver === idx && mediaDrag !== null
@@ -332,7 +356,12 @@ export function ProductEditor({ id }: { id?: string }) {
                           : "bg-muted/50 ring-border ring-1"
                   }`}
                 >
-                  {m.emoji}
+                  {m.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.url} alt="" className="size-full object-cover" />
+                  ) : (
+                    m.emoji
+                  )}
                   {idx === 0 ? (
                     <span className="bg-primary text-primary-foreground absolute top-1 left-1 rounded-full px-1.5 py-0.5 text-[0.625rem] font-bold shadow-sm">
                       {t("mainImage")}
@@ -354,11 +383,25 @@ export function ProductEditor({ id }: { id?: string }) {
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="border-border bg-primary/5 hover:bg-primary/10 grid w-full place-items-center rounded-2xl border border-dashed py-6 text-center transition-colors"
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDropActive(true);
+              }}
+              onDragLeave={() => setDropActive(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDropActive(false);
+                void uploadFiles(Array.from(e.dataTransfer.files));
+              }}
+              className={`grid w-full place-items-center rounded-2xl border border-dashed py-6 text-center transition-colors ${
+                dropActive
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-primary/5 hover:bg-primary/10"
+              }`}
             >
               <ImagePlus className="text-primary size-6" />
               <span className="text-primary mt-1 text-sm font-bold">
-                {t("mediaHint")}
+                {uploading ? t("mediaUploading") : t("mediaHint")}
               </span>
               <span className="text-muted-foreground/70 mt-0.5 text-xs">
                 {t("mediaFormats")}
@@ -1072,8 +1115,13 @@ function ProductPreview({
     }).format(n);
   return (
     <div className="preview-customer bg-card border-border rounded-3xl border p-4 shadow-sm">
-      <div className="bg-muted/50 grid aspect-square place-items-center rounded-2xl text-6xl">
-        {draft.media[0]?.emoji ?? "🛍️"}
+      <div className="bg-muted/50 grid aspect-square place-items-center overflow-hidden rounded-2xl text-6xl">
+        {draft.media[0]?.url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={draft.media[0].url} alt="" className="size-full object-cover" />
+        ) : (
+          (draft.media[0]?.emoji ?? "🛍️")
+        )}
       </div>
       <div className="mt-3 font-bold">
         {draft.name || t("previewNamePlaceholder")}

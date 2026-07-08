@@ -53,7 +53,11 @@ export function detailToDraft(d: AdminDetail): {
   const draft: ProductDraft = {
     name: d.name,
     description: d.description ?? "",
-    media: [],
+    // Product-level photos become the editable media; variant-scoped images are
+    // preserved via passthrough (the UI doesn't manage those yet).
+    media: d.images
+      .filter((img) => img.variantId == null)
+      .map((img) => ({ id: img.id, emoji: "", url: img.url })),
     videoUrl: "",
     currency: d.currency,
     price: d.basePriceCents / 100,
@@ -103,13 +107,17 @@ export function detailToDraft(d: AdminDetail): {
           sortOrder: mo.sortOrder,
         })),
       })),
-      images: d.images.map((img) => ({
-        id: img.id,
-        url: img.url,
-        alt: img.alt,
-        variantId: img.variantId,
-        sortOrder: img.sortOrder,
-      })),
+      // Only variant-scoped images round-trip here; product-level photos live in
+      // draft.media and are rebuilt on save.
+      images: d.images
+        .filter((img) => img.variantId != null)
+        .map((img) => ({
+          id: img.id,
+          url: img.url,
+          alt: img.alt,
+          variantId: img.variantId,
+          sortOrder: img.sortOrder,
+        })),
     },
   };
 }
@@ -174,6 +182,19 @@ export function draftToUpsert(
     options,
     variants,
     modifierGroups: passthrough.modifierGroups,
-    images: passthrough.images,
+    // Product photos from the media UI (only uploaded ones have a url) + the
+    // preserved variant-scoped images.
+    images: [
+      ...draft.media
+        .filter((m) => m.url)
+        .map((m, i) => ({
+          id: m.id,
+          url: m.url as string,
+          alt: null,
+          variantId: null,
+          sortOrder: i,
+        })),
+      ...passthrough.images,
+    ],
   };
 }

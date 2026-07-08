@@ -63,7 +63,8 @@ export type Variant = {
   image: string | null; // media id, or null = use the main image
 };
 
-export type ProductMedia = { id: string; emoji: string };
+/** A product photo (`url` set = uploaded image) or an icon fallback (`emoji`). */
+export type ProductMedia = { id: string; emoji: string; url?: string | null };
 
 export type ProductType = "physical" | "digital";
 export type StockMode = "infinite" | "limited";

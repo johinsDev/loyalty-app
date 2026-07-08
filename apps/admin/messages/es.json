@@ -1343,7 +1343,9 @@
     "categoriesN": "{n} categorías",
     "mainImage": "Principal",
     "noImage": "Sin imagen",
-    "saveError": "No se pudo guardar"
+    "saveError": "No se pudo guardar",
+    "mediaUploading": "Subiendo…",
+    "mediaUploadError": "No se pudo subir la imagen"
   },
   "Command": {
     "title": "Buscar",

@@ -1343,7 +1343,9 @@
     "categoriesN": "{n} categories",
     "mainImage": "Main",
     "noImage": "No image",
-    "saveError": "Couldn't save"
+    "saveError": "Couldn't save",
+    "mediaUploading": "Uploading…",
+    "mediaUploadError": "Couldn't upload the image"
   },
   "Command": {
     "title": "Search",
