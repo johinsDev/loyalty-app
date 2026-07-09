@@ -919,7 +919,9 @@ export class PurchasesRepository {
       .from(stamp)
       .where(inArray(stamp.purchaseId, purchaseIds))
       .groupBy(stamp.purchaseId);
-    for (const r of rows) out.set(r.purchaseId, r.total);
+    for (const r of rows) {
+      if (r.purchaseId) out.set(r.purchaseId, r.total);
+    }
     return out;
   }
 

@@ -26,6 +26,13 @@ export const AUDIT_TYPES = [
   "impersonation_start",
   "impersonation_stop",
   "session_revoke",
+  // Customer (CRM) admin actions.
+  "customer_create",
+  "customer_update",
+  "customer_ban",
+  "customer_unban",
+  "customer_points_adjust",
+  "customer_stamps_adjust",
 ] as const;
 
 export type AuditType = (typeof AUDIT_TYPES)[number];

@@ -316,6 +316,13 @@
       "when": 1783618583173,
       "tag": "0044_slow_human_cannonball",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "6",
+      "when": 1783636614566,
+      "tag": "0045_clever_wind_dancer",
+      "breakpoints": true
     }
   ]
 }

@@ -34,6 +34,9 @@ export const customer = sqliteTable(
     avatarPreset: text("avatar_preset"),
     avatarUrl: text("avatar_url"),
     avatarThumbhash: text("avatar_thumbhash"),
+    // Date of birth (nullable). Powers birthday promos (the Oro tier already
+    // promises a birthday drink). Admin-editable; not collected at signup.
+    birthday: integer("birthday", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -203,8 +206,9 @@ export type PurchaseItemRow = typeof purchaseItem.$inferSelect;
 export type PurchaseItemInsert = typeof purchaseItem.$inferInsert;
 export type PromoRedemptionRow = typeof promoRedemption.$inferSelect;
 
-// Append-only log of every stamp granted. Source of truth for currentStamps.
-// Each stamp is granted by exactly one purchase.
+// Append-only log of every stamp movement. Source of truth for currentStamps.
+// A purchase-granted stamp carries its `purchaseId`; a manual admin adjustment
+// has `purchaseId: null`, a signed `amount`, and a `note` (the reason).
 export const stamp = sqliteTable("stamp", {
   id: text("id")
     .primaryKey()
@@ -212,9 +216,9 @@ export const stamp = sqliteTable("stamp", {
   cardId: text("card_id")
     .notNull()
     .references(() => loyaltyCard.id, { onDelete: "cascade" }),
-  purchaseId: text("purchase_id")
-    .notNull()
-    .references(() => purchase.id, { onDelete: "cascade" }),
+  purchaseId: text("purchase_id").references(() => purchase.id, {
+    onDelete: "cascade",
+  }),
   addedByUserId: text("added_by_user_id")
     .notNull()
     .references(() => user.id),
