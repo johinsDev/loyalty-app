@@ -268,18 +268,24 @@
       "total": "Total clientes",
       "active30": "Activos (30 d)",
       "newMonth": "Nuevos este mes",
-      "avgLtv": "LTV promedio"
+      "avgLtv": "LTV promedio",
+      "new30d": "Nuevos (30 d)",
+      "active30d": "Activos (30 d)"
     },
     "status": {
       "all": "Todos",
       "active": "Activo",
-      "inactive": "Inactivo"
+      "inactive": "Inactivo",
+      "banned": "Baneado"
     },
     "tier": {
       "bronze": "Bronce",
       "silver": "Plata",
       "gold": "Oro",
-      "diamond": "Diamante"
+      "diamond": "Diamante",
+      "hoja": "Hoja",
+      "flor": "Flor",
+      "oro": "Oro"
     },
     "col": {
       "customer": "Cliente",
@@ -288,7 +294,9 @@
       "visits": "Visitas",
       "spent": "Gastado",
       "lastVisit": "Última visita",
-      "status": "Estado"
+      "status": "Estado",
+      "joined": "Alta",
+      "phone": "Teléfono"
     },
     "create": "Crear cliente",
     "saveChanges": "Guardar cambios",
@@ -341,7 +349,15 @@
       "whatsapp": "WhatsApp"
     },
     "birthdayHint": "Desliza para elegir la fecha.",
-    "done": "Listo"
+    "done": "Listo",
+    "selectAll": "Seleccionar todo",
+    "selectRow": "Seleccionar fila",
+    "bulkExport": "Exportar CSV",
+    "exported": "{n} clientes exportados",
+    "spendRange": "Rango de gasto",
+    "min": "Mín",
+    "max": "Máx",
+    "viewToggle": "Cambiar vista"
   },
   "Shortlinks": {
     "title": "Enlaces cortos",

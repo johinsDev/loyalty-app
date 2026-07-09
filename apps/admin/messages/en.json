@@ -268,18 +268,24 @@
       "total": "Total customers",
       "active30": "Active (30 d)",
       "newMonth": "New this month",
-      "avgLtv": "Avg LTV"
+      "avgLtv": "Avg LTV",
+      "new30d": "New (30 d)",
+      "active30d": "Active (30 d)"
     },
     "status": {
       "all": "All",
       "active": "Active",
-      "inactive": "Inactive"
+      "inactive": "Inactive",
+      "banned": "Banned"
     },
     "tier": {
       "bronze": "Bronze",
       "silver": "Silver",
       "gold": "Gold",
-      "diamond": "Diamond"
+      "diamond": "Diamond",
+      "hoja": "Leaf",
+      "flor": "Flower",
+      "oro": "Gold"
     },
     "col": {
       "customer": "Customer",
@@ -288,7 +294,9 @@
       "visits": "Visits",
       "spent": "Spent",
       "lastVisit": "Last visit",
-      "status": "Status"
+      "status": "Status",
+      "joined": "Joined",
+      "phone": "Phone"
     },
     "create": "Create customer",
     "saveChanges": "Save changes",
@@ -341,7 +349,15 @@
       "whatsapp": "WhatsApp"
     },
     "birthdayHint": "Scroll to pick the date.",
-    "done": "Done"
+    "done": "Done",
+    "selectAll": "Select all",
+    "selectRow": "Select row",
+    "bulkExport": "Export CSV",
+    "exported": "{n} customers exported",
+    "spendRange": "Spend range",
+    "min": "Min",
+    "max": "Max",
+    "viewToggle": "Toggle view"
   },
   "Shortlinks": {
     "title": "Short links",
