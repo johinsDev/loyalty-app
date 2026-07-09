@@ -487,6 +487,45 @@ export class CustomersRepository {
     }));
   }
 
+  // ── writes ───────────────────────────────────────────────────────────────────
+  /** Confirm a customer belongs to the org; returns id or null. */
+  async exists(orgId: string, id: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: customer.id })
+      .from(customer)
+      .where(and(eq(customer.organizationId, orgId), eq(customer.id, id)))
+      .limit(1);
+    return rows.length > 0;
+  }
+
+  async updateFields(
+    orgId: string,
+    id: string,
+    patch: {
+      name?: string | null;
+      email?: string | null;
+      nickname?: string | null;
+      birthday?: Date | null;
+    },
+  ): Promise<void> {
+    await this.db
+      .update(customer)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(and(eq(customer.organizationId, orgId), eq(customer.id, id)));
+  }
+
+  /** Phone is the login identifier — update the customer row AND the Better
+   *  Auth user row (customer.id === user.id) in one tx. */
+  async changePhone(orgId: string, id: string, newPhone: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(customer)
+        .set({ phone: newPhone, updatedAt: new Date() })
+        .where(and(eq(customer.organizationId, orgId), eq(customer.id, id)));
+      await tx.update(user).set({ phoneNumber: newPhone }).where(eq(user.id, id));
+    });
+  }
+
   // ── availability ─────────────────────────────────────────────────────────────
   async checkAvailability(orgId: string, input: CheckAvailabilityInput): Promise<boolean> {
     const col =

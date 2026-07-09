@@ -4,14 +4,16 @@ import { z } from "zod";
 
 import { CustomersRepository } from "../features/customers/repository";
 import {
+  banCustomerInputSchema,
   bulkIdsSchema,
   checkAvailabilityInputSchema,
   customerIdInputSchema,
   customersListInputSchema,
   ledgerInputSchema,
+  updateCustomerInputSchema,
 } from "../features/customers/schemas";
-import { CustomersReadService } from "../features/customers/service";
-import { managerProcedure, router, staffProcedure } from "../trpc";
+import { type Actor, CustomersService } from "../features/customers/service";
+import { managerProcedure, ownerProcedure, router, staffProcedure } from "../trpc";
 
 const orgId = async (): Promise<string> => (await getPrimaryOrganizationId()) ?? "";
 async function requireOrg(): Promise<string> {
@@ -21,7 +23,11 @@ async function requireOrg(): Promise<string> {
 }
 
 const repo = (db: typeof Db) => new CustomersRepository(db);
-const readSvc = (db: typeof Db) => new CustomersReadService(repo(db));
+const readSvc = (db: typeof Db) => new CustomersService(repo(db));
+const actorOf = (ctx: { session: { user: { id: string } }; headers: Headers }): Actor => ({
+  userId: ctx.session.user.id,
+  headers: ctx.headers,
+});
 
 export const customersRouter = router({
   /** Cashier customer picker — search by name / phone / email, org-scoped. */
@@ -63,4 +69,26 @@ export const customersRouter = router({
   checkAvailability: managerProcedure
     .input(checkAvailabilityInputSchema)
     .query(async ({ ctx, input }) => readSvc(ctx.db).checkAvailability(await requireOrg(), input)),
+
+  // ── Write ────────────────────────────────────────────────────────────────
+  update: managerProcedure
+    .input(updateCustomerInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      await readSvc(ctx.db).update(await requireOrg(), actorOf(ctx), input);
+      return { ok: true };
+    }),
+
+  ban: ownerProcedure
+    .input(banCustomerInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      await readSvc(ctx.db).ban(await requireOrg(), actorOf(ctx), input.customerId, input.reason);
+      return { ok: true };
+    }),
+
+  unban: ownerProcedure
+    .input(customerIdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      await readSvc(ctx.db).unban(await requireOrg(), actorOf(ctx), input.customerId);
+      return { ok: true };
+    }),
 });
