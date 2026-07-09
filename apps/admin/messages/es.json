@@ -2036,7 +2036,9 @@
     "adjustOk": "Puntos ajustados. Nuevo saldo: {balance}",
     "adjustError": "No se pudo ajustar. Solo el owner puede.",
     "timelineAdjust": "{points} puntos (ajuste)",
-    "timelineAdjustBy": "{points} puntos ajustados por {name}"
+    "timelineAdjustBy": "{points} puntos ajustados por {name}",
+    "resendOk": "Comprobante enviado por WhatsApp",
+    "resendError": "No se pudo enviar el comprobante"
   },
   "Stores": {
     "title": "Tiendas",

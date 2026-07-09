@@ -20,6 +20,7 @@ export const notificationKeySchema = z.enum([
   "streak-reward-claimed",
   "streak-at-risk",
   "purchase-recap",
+  "purchase-receipt",
   "purchase-rewards-recap",
   "reward-available",
   "reward-reminder",

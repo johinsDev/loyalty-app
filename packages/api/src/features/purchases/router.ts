@@ -1,7 +1,7 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
-import { managerProcedure, protectedProcedure, router } from "../../trpc";
+import { managerProcedure, protectedProcedure, rateLimit, router } from "../../trpc";
 import { PurchasesRepository } from "./repository";
 import {
   bulkIdsSchema,
@@ -82,4 +82,11 @@ export const purchasesRouter = router({
   adminGet: managerProcedure
     .input(purchaseAdminIdSchema)
     .query(async ({ ctx, input }) => buildService(ctx).adminGet(await requireOrg(), input.id)),
+
+  resendReceipt: managerProcedure
+    .use(rateLimit({ name: "purchases.resendReceipt", limit: 20, window: "1m", by: "user" }))
+    .input(purchaseAdminIdSchema)
+    .mutation(async ({ ctx, input }) =>
+      buildService(ctx).resendReceipt(await requireOrg(), input.id),
+    ),
 });

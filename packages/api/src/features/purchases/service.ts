@@ -1,3 +1,4 @@
+import { tasks } from "@trigger.dev/sdk/v3";
 import { TRPCError } from "@trpc/server";
 
 import type { ListResult } from "../_shared/list";
@@ -91,5 +92,33 @@ export class PurchasesService {
       throw new TRPCError({ code: "NOT_FOUND", message: "PURCHASE_NOT_FOUND" });
     }
     return detail;
+  }
+
+  /** Re-send the customer a full WhatsApp + in-app receipt of the purchase.
+   *  Reuses the detail assembly for the payload; the notification renders it. */
+  async resendReceipt(
+    organizationId: string,
+    purchaseId: string,
+  ): Promise<{ enqueued: number }> {
+    const detail = await this.adminGet(organizationId, purchaseId);
+    await tasks.trigger("send-notification", {
+      customerIds: [detail.customer.id],
+      organizationId,
+      notificationKey: "purchase-receipt",
+      payload: {
+        items: detail.items.map((i) => ({
+          name: i.name ?? "—",
+          qty: i.qty,
+          unitAmountCents: i.unitAmountCents,
+        })),
+        subtotalCents: detail.subtotalCents,
+        discountCents: detail.discountCents,
+        totalCents: detail.totalCents,
+        currency: detail.currency,
+        stamps: detail.stampsEarned,
+        points: detail.pointsEarned,
+      },
+    });
+    return { enqueued: 1 };
   }
 }

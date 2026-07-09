@@ -3,6 +3,7 @@
 import type { AppRouter } from "@loyalty/api";
 import { formatDate } from "@loyalty/date";
 import { Badge, Button } from "@loyalty/ui";
+import { useMutation } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import {
   ChevronRight,
@@ -11,16 +12,19 @@ import {
   Hash,
   Pencil,
   Receipt,
+  Send,
   Store as StoreIcon,
   Tag,
   User as UserIcon,
 } from "lucide-react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
+import { toast } from "sonner";
 
 import { Link } from "@/i18n/navigation";
 import { money } from "@/lib/money";
 import { useHasRole } from "@/lib/role-context";
+import { useTRPC } from "@/lib/trpc/client";
 
 import { AdjustPointsDialog } from "./adjust-points-dialog";
 
@@ -46,6 +50,13 @@ export function PurchaseDetailView({
   const t = useTranslations("Purchases");
   const locale = useLocale();
   const format = useFormatter();
+  const trpc = useTRPC();
+  const resend = useMutation(
+    trpc.purchases.resendReceipt.mutationOptions({
+      onSuccess: () => toast.success(t("resendOk")),
+      onError: () => toast.error(t("resendError")),
+    }),
+  );
 
   const promoShare = detail.promo?.discountCents ?? 0;
   const rewardShare = Math.max(0, detail.discountCents - promoShare);
@@ -75,6 +86,17 @@ export function PurchaseDetailView({
         {detail.promo ? <Badge variant="secondary">{t("badgePromo")}</Badge> : null}
         {detail.reward ? <Badge variant="secondary">{t("badgeReward")}</Badge> : null}
         {detail.stampsEarned > 0 ? <Badge variant="outline">{t("badgeStamp")}</Badge> : null}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 gap-1.5 rounded-xl"
+          onClick={() => resend.mutate({ id: detail.id })}
+          disabled={resend.isPending}
+        >
+          <Send className="size-3.5" />
+          {t("resendReceipt")}
+        </Button>
       </div>
     </div>
   );

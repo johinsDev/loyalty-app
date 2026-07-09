@@ -2036,7 +2036,9 @@
     "adjustOk": "Points adjusted. New balance: {balance}",
     "adjustError": "Couldn't adjust. Owner only.",
     "timelineAdjust": "{points} points (adjustment)",
-    "timelineAdjustBy": "{points} points adjusted by {name}"
+    "timelineAdjustBy": "{points} points adjusted by {name}",
+    "resendOk": "Receipt sent via WhatsApp",
+    "resendError": "Couldn't send the receipt"
   },
   "Stores": {
     "title": "Stores",
