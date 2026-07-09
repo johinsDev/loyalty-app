@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { listQueryBase } from "../_shared/list";
+
 // ---- zod inputs ------------------------------------------------------------
 
 /** Cursor-paginated + date-ranged list (mirrors points `transactionsInput`).
@@ -22,6 +24,30 @@ export const recentPurchasesInputSchema = z.object({
 export const usualsInputSchema = z.object({
   limit: z.number().int().min(1).max(20).default(4),
 });
+
+// ---- admin inputs ----------------------------------------------------------
+
+/** "Effectiveness" facet: promo-driven / reward-driven / paid full price. */
+export const purchaseEffectivenessSchema = z.enum(["promo", "reward", "full"]);
+export const redemptionCurrencySchema = z.enum(["stamps", "points"]);
+
+/** Offset-paginated, filtered, sorted list for the admin data-table. */
+export const purchasesAdminListInputSchema = listQueryBase.extend({
+  storeIds: z.array(z.string()).optional(),
+  cashierIds: z.array(z.string()).optional(),
+  /** Deep-link from a customer profile ("their purchases"). */
+  customerId: z.string().optional(),
+  effectiveness: z.array(purchaseEffectivenessSchema).optional(),
+  redemptionCurrency: z.array(redemptionCurrencySchema).optional(),
+  amountMin: z.number().int().min(0).optional(),
+  amountMax: z.number().int().min(0).optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
+});
+export type PurchasesAdminListInput = z.infer<typeof purchasesAdminListInputSchema>;
+
+export const bulkIdsSchema = z.object({ ids: z.array(z.string()).min(1).max(500) });
+export const purchaseAdminIdSchema = z.object({ id: z.string().min(1) });
 
 // ---- output types ----------------------------------------------------------
 
@@ -114,6 +140,71 @@ export interface UsualItem {
   imageUrl: string | null;
   /** How many times this product appears across the customer's purchases. */
   orders: number;
+}
+
+// ---- admin output types ----------------------------------------------------
+
+/** One purchase as the admin sees it in the "command center" list. */
+export interface PurchaseAdminListItem {
+  id: string;
+  createdAt: Date;
+  customerId: string;
+  customerName: string | null;
+  customerPhone: string;
+  /** Resolved from `purchase.storeId` (null for legacy/pilot rows). */
+  storeName: string | null;
+  cashierName: string | null;
+  itemSummary: string | null;
+  itemCount: number;
+  /** NET charged (after promo/reward) — `purchase.priceCents`. */
+  totalCents: number;
+  discountCents: number;
+  currency: string;
+  stampsEarned: number;
+  pointsEarned: number;
+  hasPromo: boolean;
+  hasReward: boolean;
+}
+
+/** Aggregate tiles above the list, honoring the active filters. */
+export interface PurchasesKpis {
+  count: number;
+  netRevenueCents: number;
+  avgTicketCents: number;
+  /** Share of purchases with a promo applied, 0..1. */
+  promoRate: number;
+}
+
+/** One derived event in a purchase's timeline (no dedicated persistence). */
+export type PurchaseTimelineKind = "sale" | "stamp" | "points" | "redeem";
+export interface PurchaseTimelineEvent {
+  kind: PurchaseTimelineKind;
+  at: Date;
+  actorName: string | null;
+  /** Stamps/points count for stamp/points events. */
+  amount: number | null;
+  /** Reward name for redeem events. */
+  rewardName: string | null;
+}
+
+/** Customer preview block on the admin detail. */
+export interface PurchaseAdminCustomer {
+  id: string;
+  name: string | null;
+  phone: string;
+  /** `pointsAccount.currentTierKey` (null = base tier). */
+  tierKey: string | null;
+  memberSince: Date;
+}
+
+/** The admin "radiografía": the customer detail plus who/where/attribution. */
+export interface PurchaseAdminDetail extends PurchaseDetail {
+  customer: PurchaseAdminCustomer;
+  storeId: string | null;
+  /** Marketing attribution — reserved, null until captured by a later feature. */
+  entrySource: string | null;
+  idempotencyKey: string;
+  timeline: PurchaseTimelineEvent[];
 }
 
 export type MyPurchasesInput = z.infer<typeof myPurchasesInputSchema>;

@@ -121,6 +121,11 @@ export const purchase = sqliteTable(
     appliedPromoId: text("applied_promo_id").references(() => promo.id, {
       onDelete: "set null",
     }),
+    // Reserved for marketing attribution (campaign/banner/organic). Not yet
+    // captured at record time — populated by a later feature.
+    entrySource: text("entry_source"),
+    // Free-form attributes bag so business-model changes don't force a migration.
+    metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
     idempotencyKey: text("idempotency_key").notNull(),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()

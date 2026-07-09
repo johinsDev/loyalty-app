@@ -1,28 +1,62 @@
 import type { db as Db } from "@loyalty/db";
 import {
+  customer,
   modifierOption,
+  pointsAccount,
   pointsTransaction,
   product,
   productImage,
   productOptionValue,
   productVariantValue,
   promo,
+  promoRedemption,
   purchase,
   purchaseItem,
   redemption,
   reward,
   stamp,
+  store,
   user,
 } from "@loyalty/db/schema";
-import { and, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  exists,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  like,
+  lt,
+  lte,
+  not,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 
+import { buildOrderBy, type ListResult, pageCountOf, pageOffset } from "../_shared/list";
 import type {
+  PurchaseAdminCustomer,
+  PurchaseAdminDetail,
+  PurchaseAdminListItem,
   PurchaseDetail,
   PurchaseDetailItem,
   PurchaseListItem,
   PurchaseListView,
+  PurchasesAdminListInput,
+  PurchasesKpis,
+  PurchaseTimelineEvent,
   UsualItem,
 } from "./schemas";
+
+/** Columns the admin table may sort by (id → Drizzle column). */
+const ADMIN_SORTABLE = {
+  createdAt: purchase.createdAt,
+  total: purchase.priceCents,
+  discount: purchase.discountCents,
+};
 
 interface ListOpts {
   from?: Date;
@@ -227,6 +261,357 @@ export class PurchasesRepository {
         };
       })
       .filter((x): x is UsualItem => x !== null);
+  }
+
+  // ---- admin (org-scoped) ---------------------------------------------------
+
+  /** Paginated/filtered/sorted list for the admin data-table (org-scoped). */
+  async adminList(
+    orgId: string,
+    input: PurchasesAdminListInput,
+  ): Promise<ListResult<PurchaseAdminListItem>> {
+    const where = this.adminWhere(orgId, input);
+    const orderBy = buildOrderBy(input.sort, ADMIN_SORTABLE, [desc(purchase.createdAt)]);
+    const rows = await this.rawListRows(where)
+      .orderBy(...orderBy)
+      .limit(input.perPage)
+      .offset(pageOffset(input.page, input.perPage));
+    const totalRows = await this.db
+      .select({ value: sql<number>`count(*)` })
+      .from(purchase)
+      .innerJoin(customer, eq(purchase.customerId, customer.id))
+      .where(where);
+    const total = totalRows[0]?.value ?? 0;
+    const items = await this.hydrateListRows(orgId, rows);
+    return { rows: items, total, pageCount: pageCountOf(total, input.perPage) };
+  }
+
+  /** Lean rows for the given ids (CSV export of a selection). */
+  async listByIds(orgId: string, ids: string[]): Promise<PurchaseAdminListItem[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.rawListRows(
+      and(eq(purchase.organizationId, orgId), inArray(purchase.id, ids)),
+    );
+    return this.hydrateListRows(orgId, rows);
+  }
+
+  /** Aggregate KPIs honoring the same filters as the list. */
+  async adminKpis(orgId: string, input: PurchasesAdminListInput): Promise<PurchasesKpis> {
+    const where = this.adminWhere(orgId, input);
+    const rows = await this.db
+      .select({
+        count: sql<number>`count(*)`,
+        net: sql<number>`coalesce(sum(${purchase.priceCents}), 0)`,
+        promo: sql<number>`coalesce(sum(case when ${purchase.appliedPromoId} is not null then 1 else 0 end), 0)`,
+      })
+      .from(purchase)
+      .innerJoin(customer, eq(purchase.customerId, customer.id))
+      .where(where);
+    const r = rows[0];
+    const count = r?.count ?? 0;
+    const net = r?.net ?? 0;
+    const promo = r?.promo ?? 0;
+    return {
+      count,
+      netRevenueCents: net,
+      avgTicketCents: count > 0 ? Math.round(net / count) : 0,
+      promoRate: count > 0 ? promo / count : 0,
+    };
+  }
+
+  /** Full "radiografía" for the admin detail (org-scoped, any customer). */
+  async adminGet(orgId: string, id: string): Promise<PurchaseAdminDetail | null> {
+    const rows = await this.db
+      .select({
+        id: purchase.id,
+        createdAt: purchase.createdAt,
+        priceCents: purchase.priceCents,
+        subtotalCents: purchase.subtotalCents,
+        discountCents: purchase.discountCents,
+        currency: purchase.currency,
+        appliedPromoId: purchase.appliedPromoId,
+        addedByUserId: purchase.addedByUserId,
+        storeId: purchase.storeId,
+        entrySource: purchase.entrySource,
+        idempotencyKey: purchase.idempotencyKey,
+        customerId: purchase.customerId,
+      })
+      .from(purchase)
+      .where(and(eq(purchase.organizationId, orgId), eq(purchase.id, id)))
+      .limit(1);
+    const p = rows[0];
+    if (!p) return null;
+
+    const [cashierName, items, promoBlock, rewardBlock, stamps, points, storeName, customerBlock] =
+      await Promise.all([
+        this.cashierName(p.addedByUserId),
+        this.detailItems(id),
+        this.adminPromoBlock(p.appliedPromoId, id, p.discountCents),
+        this.detailReward(id),
+        this.stampsByPurchase([id]).then((m) => m.get(id) ?? 0),
+        this.pointsByPurchaseOrg(orgId, [id]).then((m) => m.get(id) ?? 0),
+        p.storeId ? this.storeName(p.storeId) : Promise.resolve(null),
+        this.customerBlock(orgId, p.customerId),
+      ]);
+
+    return {
+      id: p.id,
+      createdAt: p.createdAt,
+      cashierName,
+      storeName,
+      items,
+      promo: promoBlock,
+      reward: rewardBlock,
+      subtotalCents: p.subtotalCents ?? null,
+      discountCents: p.discountCents,
+      totalCents: p.priceCents,
+      currency: p.currency,
+      stampsEarned: stamps,
+      pointsEarned: points,
+      customer: customerBlock,
+      storeId: p.storeId ?? null,
+      entrySource: p.entrySource ?? null,
+      idempotencyKey: p.idempotencyKey,
+      timeline: this.buildTimeline({
+        createdAt: p.createdAt,
+        cashierName,
+        stamps,
+        points,
+        reward: rewardBlock,
+      }),
+    };
+  }
+
+  /** The list WHERE shared by `adminList`, `listByIds` (via caller) and `adminKpis`. */
+  private adminWhere(orgId: string, input: PurchasesAdminListInput): SQL | undefined {
+    const conds: SQL[] = [eq(purchase.organizationId, orgId)];
+    if (input.q) {
+      const term = `%${input.q}%`;
+      conds.push(or(like(customer.name, term), like(customer.phone, term))!);
+    }
+    if (input.storeIds?.length) conds.push(inArray(purchase.storeId, input.storeIds));
+    if (input.cashierIds?.length) conds.push(inArray(purchase.addedByUserId, input.cashierIds));
+    if (input.customerId) conds.push(eq(purchase.customerId, input.customerId));
+    if (input.dateFrom) conds.push(gte(purchase.createdAt, input.dateFrom));
+    if (input.dateTo) conds.push(lte(purchase.createdAt, input.dateTo));
+    if (input.amountMin != null) conds.push(gte(purchase.priceCents, input.amountMin));
+    if (input.amountMax != null) conds.push(lte(purchase.priceCents, input.amountMax));
+
+    const rewardExists = exists(
+      this.db
+        .select({ n: sql`1` })
+        .from(redemption)
+        .where(eq(redemption.purchaseId, purchase.id)),
+    );
+    if (input.effectiveness?.length) {
+      const eff: SQL[] = [];
+      for (const e of input.effectiveness) {
+        if (e === "promo") eff.push(isNotNull(purchase.appliedPromoId));
+        else if (e === "reward") eff.push(rewardExists);
+        else eff.push(and(isNull(purchase.appliedPromoId), not(rewardExists))!);
+      }
+      if (eff.length) conds.push(or(...eff)!);
+    }
+    if (input.redemptionCurrency?.length) {
+      conds.push(
+        exists(
+          this.db
+            .select({ n: sql`1` })
+            .from(redemption)
+            .where(
+              and(
+                eq(redemption.purchaseId, purchase.id),
+                inArray(redemption.currency, input.redemptionCurrency),
+              ),
+            ),
+        ),
+      );
+    }
+    return and(...conds);
+  }
+
+  /** The list row select with customer/store/cashier joins (no order/paging). */
+  private rawListRows(where: SQL | undefined) {
+    return this.db
+      .select({
+        id: purchase.id,
+        createdAt: purchase.createdAt,
+        priceCents: purchase.priceCents,
+        discountCents: purchase.discountCents,
+        currency: purchase.currency,
+        appliedPromoId: purchase.appliedPromoId,
+        customerId: purchase.customerId,
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        storeName: store.name,
+        cashierName: user.name,
+      })
+      .from(purchase)
+      .innerJoin(customer, eq(purchase.customerId, customer.id))
+      .leftJoin(store, eq(purchase.storeId, store.id))
+      .leftJoin(user, eq(purchase.addedByUserId, user.id))
+      .where(where);
+  }
+
+  /** Attach per-purchase aggregates (items/stamps/points/reward) to raw rows. */
+  private async hydrateListRows(
+    orgId: string,
+    rows: Awaited<ReturnType<PurchasesRepository["rawListRows"]>>,
+  ): Promise<PurchaseAdminListItem[]> {
+    const ids = rows.map((r) => r.id);
+    const [summaries, stampsByP, pointsByP, rewardIds] = await Promise.all([
+      this.itemSummaries(ids),
+      this.stampsByPurchase(ids),
+      this.pointsByPurchaseOrg(orgId, ids),
+      this.purchasesWithReward(ids),
+    ]);
+    return rows.map((r) => {
+      const summary = summaries.get(r.id);
+      return {
+        id: r.id,
+        createdAt: r.createdAt,
+        customerId: r.customerId,
+        customerName: r.customerName ?? null,
+        customerPhone: r.customerPhone,
+        storeName: r.storeName ?? null,
+        cashierName: r.cashierName ?? null,
+        itemSummary: summary?.label ?? null,
+        itemCount: summary?.count ?? 0,
+        totalCents: r.priceCents,
+        discountCents: r.discountCents,
+        currency: r.currency,
+        stampsEarned: stampsByP.get(r.id) ?? 0,
+        pointsEarned: pointsByP.get(r.id) ?? 0,
+        hasPromo: r.appliedPromoId != null,
+        hasReward: rewardIds.has(r.id),
+      };
+    });
+  }
+
+  /** Earned points per purchase across the org (not customer-scoped). */
+  private async pointsByPurchaseOrg(
+    orgId: string,
+    purchaseIds: string[],
+  ): Promise<Map<string, number>> {
+    const out = new Map<string, number>();
+    if (purchaseIds.length === 0) return out;
+    const rows = await this.db
+      .select({
+        purchaseId: pointsTransaction.purchaseId,
+        points: pointsTransaction.points,
+      })
+      .from(pointsTransaction)
+      .where(
+        and(
+          eq(pointsTransaction.organizationId, orgId),
+          eq(pointsTransaction.type, "earn"),
+          inArray(pointsTransaction.purchaseId, purchaseIds),
+        ),
+      );
+    for (const r of rows) {
+      if (r.purchaseId) out.set(r.purchaseId, r.points);
+    }
+    return out;
+  }
+
+  /** Promo block for the admin detail. Unlike the customer path, `purchase.
+   *  discountCents` may bundle a reward's share too — so the promo's real
+   *  discount comes from `promo_redemption`, falling back to the total. */
+  private async adminPromoBlock(
+    appliedPromoId: string | null,
+    purchaseId: string,
+    totalDiscountCents: number,
+  ): Promise<PurchaseDetail["promo"]> {
+    if (!appliedPromoId) return null;
+    const rows = await this.db
+      .select({ d: promoRedemption.discountCents })
+      .from(promoRedemption)
+      .where(eq(promoRedemption.purchaseId, purchaseId))
+      .limit(1);
+    return this.detailPromo(appliedPromoId, rows[0]?.d ?? totalDiscountCents);
+  }
+
+  private async storeName(storeId: string): Promise<string | null> {
+    const rows = await this.db
+      .select({ name: store.name })
+      .from(store)
+      .where(eq(store.id, storeId))
+      .limit(1);
+    return rows[0]?.name ?? null;
+  }
+
+  private async customerBlock(
+    orgId: string,
+    customerId: string,
+  ): Promise<PurchaseAdminCustomer> {
+    const rows = await this.db
+      .select({
+        name: customer.name,
+        phone: customer.phone,
+        createdAt: customer.createdAt,
+        tierKey: pointsAccount.currentTierKey,
+      })
+      .from(customer)
+      .leftJoin(
+        pointsAccount,
+        and(
+          eq(pointsAccount.customerId, customer.id),
+          eq(pointsAccount.organizationId, orgId),
+        ),
+      )
+      .where(eq(customer.id, customerId))
+      .limit(1);
+    const c = rows[0];
+    return {
+      id: customerId,
+      name: c?.name ?? null,
+      phone: c?.phone ?? "",
+      tierKey: c?.tierKey ?? null,
+      memberSince: c?.createdAt ?? new Date(0),
+    };
+  }
+
+  /** A purchase's "audit" timeline, derived from existing rows (no new table).
+   *  Everything happens in one register transaction, so events share `createdAt`;
+   *  future manual point adjustments (with a `purchaseId`) will slot in here. */
+  private buildTimeline(args: {
+    createdAt: Date;
+    cashierName: string | null;
+    stamps: number;
+    points: number;
+    reward: PurchaseDetail["reward"];
+  }): PurchaseTimelineEvent[] {
+    const events: PurchaseTimelineEvent[] = [
+      { kind: "sale", at: args.createdAt, actorName: args.cashierName, amount: null, rewardName: null },
+    ];
+    if (args.stamps > 0) {
+      events.push({
+        kind: "stamp",
+        at: args.createdAt,
+        actorName: args.cashierName,
+        amount: args.stamps,
+        rewardName: null,
+      });
+    }
+    if (args.reward) {
+      events.push({
+        kind: "redeem",
+        at: args.createdAt,
+        actorName: args.cashierName,
+        amount: null,
+        rewardName: args.reward.name,
+      });
+    }
+    if (args.points > 0) {
+      events.push({
+        kind: "points",
+        at: args.createdAt,
+        actorName: null,
+        amount: args.points,
+        rewardName: null,
+      });
+    }
+    return events;
   }
 
   // ---- batched resolvers ----------------------------------------------------

@@ -1,11 +1,16 @@
 import { TRPCError } from "@trpc/server";
 
+import type { ListResult } from "../_shared/list";
 import type { PurchasesRepository } from "./repository";
 import type {
   MyPurchasesInput,
+  PurchaseAdminDetail,
+  PurchaseAdminListItem,
   PurchaseDetail,
   PurchaseListItem,
   PurchaseListView,
+  PurchasesAdminListInput,
+  PurchasesKpis,
   RecentPurchasesInput,
   UsualItem,
   UsualsInput,
@@ -58,5 +63,33 @@ export class PurchasesService {
     input: UsualsInput,
   ): Promise<UsualItem[]> {
     return this.repo.usuals(organizationId, customerId, input.limit);
+  }
+
+  // ---- admin ----------------------------------------------------------------
+
+  adminList(
+    organizationId: string,
+    input: PurchasesAdminListInput,
+  ): Promise<ListResult<PurchaseAdminListItem>> {
+    return this.repo.adminList(organizationId, input);
+  }
+
+  listByIds(organizationId: string, ids: string[]): Promise<PurchaseAdminListItem[]> {
+    return this.repo.listByIds(organizationId, ids);
+  }
+
+  adminKpis(
+    organizationId: string,
+    input: PurchasesAdminListInput,
+  ): Promise<PurchasesKpis> {
+    return this.repo.adminKpis(organizationId, input);
+  }
+
+  async adminGet(organizationId: string, id: string): Promise<PurchaseAdminDetail> {
+    const detail = await this.repo.adminGet(organizationId, id);
+    if (!detail) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "PURCHASE_NOT_FOUND" });
+    }
+    return detail;
   }
 }
