@@ -500,6 +500,7 @@ export class PurchasesRepository {
         })
         .from(redemption)
         .where(eq(redemption.purchaseId, purchaseId));
+      // oxlint-disable no-await-in-loop -- sequential writes on one tx handle
       for (const r of redRows) {
         if (r.stampsSpent > 0 && r.cardId) {
           await tx
@@ -534,6 +535,7 @@ export class PurchasesRepository {
           .onConflictDoNothing();
         await tx.delete(redemption).where(eq(redemption.id, r.id));
       }
+      // oxlint-enable no-await-in-loop
 
       // 4. Free the promo usage (the sale no longer counts against its limits).
       await tx.delete(promoRedemption).where(eq(promoRedemption.purchaseId, purchaseId));
