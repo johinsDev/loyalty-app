@@ -27,7 +27,7 @@ import {
   type SmartDeliveryRules,
 } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, countDistinct, count, desc, eq, gte, inArray, isNotNull, like, lte, max, min, sql } from "drizzle-orm";
+import { and, countDistinct, count, desc, eq, gte, inArray, isNotNull, isNull, like, lte, max, min, sql } from "drizzle-orm";
 
 import { pageCountOf, pageOffset, type ListResult } from "../_shared/list";
 import {
@@ -399,7 +399,7 @@ export class CampaignsRepository {
           last: max(purchase.createdAt),
         })
         .from(purchase)
-        .where(eq(purchase.organizationId, orgId))
+        .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt)))
         .groupBy(purchase.customerId);
       const byCustomer = new Map(
         agg.map((a) => [a.customerId, { n: Number(a.n), last: a.last }]),
@@ -709,7 +709,11 @@ export class CampaignsRepository {
       .select({ customerId: purchase.customerId, last: max(purchase.createdAt) })
       .from(purchase)
       .where(
-        and(eq(purchase.organizationId, orgId), inArray(purchase.customerId, ids)),
+        and(
+          eq(purchase.organizationId, orgId),
+          inArray(purchase.customerId, ids),
+          isNull(purchase.voidedAt),
+        ),
       )
       .groupBy(purchase.customerId);
     const lastPurchase = new Map(purchases.map((p) => [p.customerId, p.last]));
@@ -1127,7 +1131,11 @@ export class CampaignsRepository {
               .select({ customerId: purchase.customerId, last: max(purchase.createdAt) })
               .from(purchase)
               .where(
-                and(eq(purchase.organizationId, orgId), inArray(purchase.customerId, ids)),
+                and(
+                  eq(purchase.organizationId, orgId),
+                  inArray(purchase.customerId, ids),
+                  isNull(purchase.voidedAt),
+                ),
               )
               .groupBy(purchase.customerId)
           : [];

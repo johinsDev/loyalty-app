@@ -6,7 +6,7 @@ import {
   purchase,
   user,
 } from "@loyalty/db/schema";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 
 /** Avatar columns, kept mutually exclusive by the service. */
 export interface AvatarPatch {
@@ -132,6 +132,7 @@ export class ProfileRepository {
         and(
           eq(purchase.organizationId, orgId),
           eq(purchase.customerId, customerId),
+          isNull(purchase.voidedAt),
         ),
       );
     return rows[0]?.count ?? 0;

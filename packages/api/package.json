@@ -31,6 +31,7 @@
     "./features/storage": "./src/features/storage/index.ts",
     "./features/stores": "./src/features/stores/index.ts",
     "./features/stores/schemas": "./src/features/stores/schemas.ts",
+    "./features/purchases/schemas": "./src/features/purchases/schemas.ts",
     "./features/promotions": "./src/features/promotions/index.ts",
     "./features/promotions/schemas": "./src/features/promotions/schemas.ts",
     "./features/promotions/rule-compile": "./src/features/promotions/rule-compile.ts",

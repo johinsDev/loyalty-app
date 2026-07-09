@@ -6,7 +6,7 @@ import {
   purchase,
   reward,
 } from "@loyalty/db/schema";
-import { and, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, lte, sql } from "drizzle-orm";
 
 import type { PointsHistoryItem, PointsTransactionItem } from "./schemas";
 import { classifyTransaction } from "./transactions";
@@ -45,6 +45,42 @@ export class PointsRepository {
     return inserted.length > 0;
   }
 
+  /** Insert a signed `adjust` row (manual correction / void reversal). Unlike
+   *  `earn` it is never idempotent — each adjustment is a distinct event. */
+  async adjust(input: {
+    orgId: string;
+    customerId: string;
+    points: number;
+    reason: string;
+    purchaseId?: string | null;
+    storeId?: string | null;
+    addedByUserId?: string | null;
+  }): Promise<void> {
+    await this.db.insert(pointsTransaction).values({
+      customerId: input.customerId,
+      organizationId: input.orgId,
+      type: "adjust",
+      points: input.points,
+      reason: input.reason,
+      purchaseId: input.purchaseId ?? null,
+      storeId: input.storeId ?? null,
+      addedByUserId: input.addedByUserId ?? null,
+    });
+  }
+
+  /** The customer + store a purchase belongs to (org-scoped). */
+  async purchaseRef(
+    orgId: string,
+    purchaseId: string,
+  ): Promise<{ customerId: string; storeId: string | null } | null> {
+    const rows = await this.db
+      .select({ customerId: purchase.customerId, storeId: purchase.storeId })
+      .from(purchase)
+      .where(and(eq(purchase.organizationId, orgId), eq(purchase.id, purchaseId)))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
   async balance(orgId: string, customerId: string): Promise<number> {
     const rows = await this.db
       .select({ total: sql<number>`coalesce(sum(${pointsTransaction.points}), 0)` })
@@ -58,7 +94,9 @@ export class PointsRepository {
     return rows[0]?.total ?? 0;
   }
 
-  /** Sum of `earn` points since `windowStart` — the tier-qualifying total. */
+  /** Sum of `earn` points since `windowStart` — the tier-qualifying total.
+   *  Earns from a voided purchase are excluded (a void reverses tier progress);
+   *  standalone earns (no purchaseId) are always included. */
   async tierPoints(
     orgId: string,
     customerId: string,
@@ -67,12 +105,14 @@ export class PointsRepository {
     const rows = await this.db
       .select({ total: sql<number>`coalesce(sum(${pointsTransaction.points}), 0)` })
       .from(pointsTransaction)
+      .leftJoin(purchase, eq(pointsTransaction.purchaseId, purchase.id))
       .where(
         and(
           eq(pointsTransaction.organizationId, orgId),
           eq(pointsTransaction.customerId, customerId),
           eq(pointsTransaction.type, "earn"),
           gte(pointsTransaction.createdAt, windowStart),
+          isNull(purchase.voidedAt),
         ),
       );
     return rows[0]?.total ?? 0;

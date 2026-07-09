@@ -9,6 +9,17 @@ export const customerIdInputSchema = z.object({
   customerId: z.string().min(1),
 });
 
+/** Owner correction of a purchase's points (signed, non-zero) with a reason. */
+export const adjustForPurchaseInputSchema = z.object({
+  purchaseId: z.string().min(1),
+  points: z
+    .number()
+    .int()
+    .refine((v) => v !== 0, "Adjustment must be non-zero")
+    .refine((v) => Math.abs(v) <= 100_000, "Adjustment out of range"),
+  reason: z.string().trim().min(1).max(200),
+});
+
 export const historyInputSchema = z.object({
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(50).default(20),

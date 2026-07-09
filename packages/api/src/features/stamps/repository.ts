@@ -88,6 +88,9 @@ export class StampsRepository {
     discountCents?: number;
     currency?: string;
     appliedPromoId?: string | null;
+    /** Marketing attribution resolved at record time (best-effort context). */
+    entrySource?: string | null;
+    metadata?: Record<string, unknown> | null;
     items?: {
       productId: string;
       variantId?: string | null;
@@ -172,6 +175,8 @@ export class StampsRepository {
           discountCents: input.discountCents ?? 0,
           currency,
           appliedPromoId: input.appliedPromoId ?? null,
+          entrySource: input.entrySource ?? null,
+          metadata: input.metadata ?? null,
           idempotencyKey: input.idempotencyKey,
         })
         .returning();
