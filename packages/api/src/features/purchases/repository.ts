@@ -186,9 +186,7 @@ export class PurchasesRepository {
       await Promise.all([
         this.cashierName(p.addedByUserId),
         this.detailItems(id),
-        p.appliedPromoId
-          ? this.detailPromo(p.appliedPromoId, p.discountCents)
-          : Promise.resolve(null),
+        this.promoBlock(p.appliedPromoId, id, p.discountCents),
         this.detailReward(id),
         this.stampsByPurchase([id]).then((m) => m.get(id) ?? 0),
         this.pointsByPurchase(orgId, customerId, [id]).then(
@@ -346,7 +344,7 @@ export class PurchasesRepository {
       await Promise.all([
         this.cashierName(p.addedByUserId),
         this.detailItems(id),
-        this.adminPromoBlock(p.appliedPromoId, id, p.discountCents),
+        this.promoBlock(p.appliedPromoId, id, p.discountCents),
         this.detailReward(id),
         this.stampsByPurchase([id]).then((m) => m.get(id) ?? 0),
         this.pointsByPurchaseOrg(orgId, [id]).then((m) => m.get(id) ?? 0),
@@ -514,10 +512,10 @@ export class PurchasesRepository {
     return out;
   }
 
-  /** Promo block for the admin detail. Unlike the customer path, `purchase.
-   *  discountCents` may bundle a reward's share too — so the promo's real
-   *  discount comes from `promo_redemption`, falling back to the total. */
-  private async adminPromoBlock(
+  /** Promo block for a purchase detail. `purchase.discountCents` may bundle a
+   *  reward's share too (promo + inline reward on one ticket) — so the promo's
+   *  real discount comes from `promo_redemption`, falling back to the total. */
+  private async promoBlock(
     appliedPromoId: string | null,
     purchaseId: string,
     totalDiscountCents: number,
