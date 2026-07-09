@@ -64,7 +64,7 @@ export function VoidPurchaseDialog({
         onOpenChange(o);
       }}
     >
-      <ResponsiveModalContent>
+      <ResponsiveModalContent overlayClassName="bg-black/50 supports-backdrop-filter:backdrop-blur-sm">
         <form onSubmit={onSubmit}>
           <ResponsiveModalHeader>
             <ResponsiveModalTitle>{t("voidTitle")}</ResponsiveModalTitle>

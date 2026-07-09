@@ -70,7 +70,7 @@ export function AdjustPointsDialog({
         onOpenChange(o);
       }}
     >
-      <ResponsiveModalContent>
+      <ResponsiveModalContent overlayClassName="bg-black/50 supports-backdrop-filter:backdrop-blur-sm">
         <form onSubmit={onSubmit}>
           <ResponsiveModalHeader>
             <ResponsiveModalTitle>{t("adjustTitle")}</ResponsiveModalTitle>
