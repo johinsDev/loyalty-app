@@ -253,6 +253,13 @@
       "when": 1783609745380,
       "tag": "0035_absurd_killraven",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1783610628771,
+      "tag": "0036_rainy_tattoo",
+      "breakpoints": true
     }
   ]
 }

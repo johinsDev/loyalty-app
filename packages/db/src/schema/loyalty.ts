@@ -126,6 +126,12 @@ export const purchase = sqliteTable(
     entrySource: text("entry_source"),
     // Free-form attributes bag so business-model changes don't force a migration.
     metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+    // Void (anulación): set when the sale is reversed. A voided purchase keeps
+    // its rows for audit but its loyalty (stamp/points/reward) is reversed and
+    // it's excluded from revenue KPIs. Null = active.
+    voidedAt: integer("voided_at", { mode: "timestamp" }),
+    voidReason: text("void_reason"),
+    voidedByUserId: text("voided_by_user_id").references(() => user.id),
     idempotencyKey: text("idempotency_key").notNull(),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()

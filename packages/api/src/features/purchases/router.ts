@@ -1,7 +1,14 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
-import { managerProcedure, protectedProcedure, rateLimit, router } from "../../trpc";
+import {
+  managerProcedure,
+  ownerProcedure,
+  protectedProcedure,
+  rateLimit,
+  router,
+} from "../../trpc";
+import { buildPointsService } from "../points/router";
 import { PurchasesRepository } from "./repository";
 import {
   bulkIdsSchema,
@@ -11,6 +18,7 @@ import {
   purchasesAdminListInputSchema,
   recentPurchasesInputSchema,
   usualsInputSchema,
+  voidPurchaseInputSchema,
 } from "./schemas";
 import { PurchasesService } from "./service";
 
@@ -89,4 +97,14 @@ export const purchasesRouter = router({
     .mutation(async ({ ctx, input }) =>
       buildService(ctx).resendReceipt(await requireOrg(), input.id),
     ),
+
+  voidPurchase: ownerProcedure
+    .use(rateLimit({ name: "purchases.voidPurchase", limit: 20, window: "1m", by: "user" }))
+    .input(voidPurchaseInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const org = await requireOrg();
+      return buildService(ctx).voidPurchase(org, input.id, input.reason, ctx.session.user.id, (cid) =>
+        buildPointsService(ctx).recompute(org, cid, { silent: true }).then(() => undefined),
+      );
+    }),
 });

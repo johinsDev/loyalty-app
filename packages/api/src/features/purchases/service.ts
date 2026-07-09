@@ -121,4 +121,24 @@ export class PurchasesService {
     });
     return { enqueued: 1 };
   }
+
+  /** Void a purchase (owner): reverse its loyalty in one tx, then recompute the
+   *  customer's tier silently (no customer notification for an admin action). */
+  async voidPurchase(
+    organizationId: string,
+    purchaseId: string,
+    reason: string,
+    userId: string,
+    recomputeTier: (customerId: string) => Promise<void>,
+  ): Promise<{ voided: true }> {
+    const res = await this.repo.voidPurchase(organizationId, purchaseId, reason, userId);
+    if (res === "not_found") {
+      throw new TRPCError({ code: "NOT_FOUND", message: "PURCHASE_NOT_FOUND" });
+    }
+    if (res === "already_voided") {
+      throw new TRPCError({ code: "CONFLICT", message: "PURCHASE_ALREADY_VOIDED" });
+    }
+    await recomputeTier(res.customerId);
+    return { voided: true };
+  }
 }

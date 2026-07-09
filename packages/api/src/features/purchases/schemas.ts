@@ -49,6 +49,12 @@ export type PurchasesAdminListInput = z.infer<typeof purchasesAdminListInputSche
 export const bulkIdsSchema = z.object({ ids: z.array(z.string()).min(1).max(500) });
 export const purchaseAdminIdSchema = z.object({ id: z.string().min(1) });
 
+/** Void (anulación) a purchase with a mandatory reason. */
+export const voidPurchaseInputSchema = z.object({
+  id: z.string().min(1),
+  reason: z.string().trim().min(1).max(200),
+});
+
 // ---- output types ----------------------------------------------------------
 
 /** One purchase as the customer sees it in a list (history / recent / home). */
@@ -164,6 +170,8 @@ export interface PurchaseAdminListItem {
   pointsEarned: number;
   hasPromo: boolean;
   hasReward: boolean;
+  /** Set when the sale was voided (shown struck; excluded from KPIs). */
+  voidedAt: Date | null;
 }
 
 /** Aggregate tiles above the list, honoring the active filters. */
@@ -207,6 +215,10 @@ export interface PurchaseAdminDetail extends PurchaseDetail {
   entrySource: string | null;
   idempotencyKey: string;
   timeline: PurchaseTimelineEvent[];
+  /** Void (anulación) audit — null when the sale is active. */
+  voidedAt: Date | null;
+  voidReason: string | null;
+  voidedByName: string | null;
 }
 
 export type MyPurchasesInput = z.infer<typeof myPurchasesInputSchema>;

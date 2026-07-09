@@ -1,6 +1,7 @@
 import type { db as Db } from "@loyalty/db";
 import {
   customer,
+  loyaltyCard,
   modifierOption,
   pointsAccount,
   pointsTransaction,
@@ -14,6 +15,7 @@ import {
   purchaseItem,
   redemption,
   reward,
+  rewardAvailability,
   stamp,
   store,
   user,
@@ -304,7 +306,8 @@ export class PurchasesRepository {
       })
       .from(purchase)
       .innerJoin(customer, eq(purchase.customerId, customer.id))
-      .where(where);
+      // KPIs count active sales only — voided purchases are excluded from revenue.
+      .where(and(where, isNull(purchase.voidedAt)));
     const r = rows[0];
     const count = r?.count ?? 0;
     const net = r?.net ?? 0;
@@ -333,6 +336,9 @@ export class PurchasesRepository {
         entrySource: purchase.entrySource,
         idempotencyKey: purchase.idempotencyKey,
         customerId: purchase.customerId,
+        voidedAt: purchase.voidedAt,
+        voidReason: purchase.voidReason,
+        voidedByUserId: purchase.voidedByUserId,
       })
       .from(purchase)
       .where(and(eq(purchase.organizationId, orgId), eq(purchase.id, id)))
@@ -362,6 +368,8 @@ export class PurchasesRepository {
       this.adjustEvents(id),
     ]);
 
+    const voidedByName = p.voidedByUserId ? await this.cashierName(p.voidedByUserId) : null;
+
     return {
       id: p.id,
       createdAt: p.createdAt,
@@ -380,6 +388,9 @@ export class PurchasesRepository {
       storeId: p.storeId ?? null,
       entrySource: p.entrySource ?? null,
       idempotencyKey: p.idempotencyKey,
+      voidedAt: p.voidedAt ?? null,
+      voidReason: p.voidReason ?? null,
+      voidedByName,
       timeline: this.buildTimeline({
         createdAt: p.createdAt,
         cashierName,
@@ -389,6 +400,132 @@ export class PurchasesRepository {
         adjustments,
       }),
     };
+  }
+
+  /** Void a purchase and reverse ALL of its loyalty effects in one transaction:
+   *  remove granted stamps, reverse earned points, refund a redeemed reward
+   *  (stamps/points back + re-arm availability), free the promo usage, and stamp
+   *  `voidedAt`/reason/actor. Returns the customer (for a tier recompute after).
+   *  Idempotent-guarded: re-voiding returns "already_voided". */
+  async voidPurchase(
+    orgId: string,
+    purchaseId: string,
+    reason: string,
+    userId: string,
+  ): Promise<{ customerId: string } | "not_found" | "already_voided"> {
+    return this.db.transaction(async (tx) => {
+      const rows = await tx
+        .select({
+          customerId: purchase.customerId,
+          walletId: purchase.walletId,
+          storeId: purchase.storeId,
+          voidedAt: purchase.voidedAt,
+        })
+        .from(purchase)
+        .where(and(eq(purchase.organizationId, orgId), eq(purchase.id, purchaseId)))
+        .limit(1);
+      const p = rows[0];
+      if (!p) return "not_found";
+      if (p.voidedAt) return "already_voided";
+
+      // 1. Reverse granted stamps (delete the rows + decrement the card).
+      const stampRows = await tx
+        .select({ amount: stamp.amount })
+        .from(stamp)
+        .where(eq(stamp.purchaseId, purchaseId));
+      const granted = stampRows.reduce((s, r) => s + r.amount, 0);
+      if (granted > 0) {
+        await tx
+          .update(loyaltyCard)
+          .set({
+            currentStamps: sql`max(0, ${loyaltyCard.currentStamps} - ${granted})`,
+            updatedAt: new Date(),
+          })
+          .where(eq(loyaltyCard.id, p.walletId));
+        await tx.delete(stamp).where(eq(stamp.purchaseId, purchaseId));
+      }
+
+      // 2. Reverse earned points with a signed `adjust` (balance nets to 0; the
+      //    earn row stays but the voided purchase no longer counts toward tier).
+      const earnRows = await tx
+        .select({ points: pointsTransaction.points })
+        .from(pointsTransaction)
+        .where(
+          and(eq(pointsTransaction.purchaseId, purchaseId), eq(pointsTransaction.type, "earn")),
+        )
+        .limit(1);
+      const earned = earnRows[0]?.points ?? 0;
+      if (earned > 0) {
+        await tx.insert(pointsTransaction).values({
+          customerId: p.customerId,
+          organizationId: orgId,
+          type: "adjust",
+          points: -earned,
+          reason: `void: ${reason}`,
+          purchaseId,
+          addedByUserId: userId,
+          storeId: p.storeId,
+        });
+      }
+
+      // 3. Reverse an inline reward redemption (refund the spent currency +
+      //    re-arm availability), then drop the redemption row.
+      const redRows = await tx
+        .select({
+          id: redemption.id,
+          rewardId: redemption.rewardId,
+          cardId: redemption.cardId,
+          stampsSpent: redemption.stampsSpent,
+          pointsSpent: redemption.pointsSpent,
+        })
+        .from(redemption)
+        .where(eq(redemption.purchaseId, purchaseId));
+      for (const r of redRows) {
+        if (r.stampsSpent > 0 && r.cardId) {
+          await tx
+            .update(loyaltyCard)
+            .set({
+              currentStamps: sql`${loyaltyCard.currentStamps} + ${r.stampsSpent}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(loyaltyCard.id, r.cardId));
+        }
+        if (r.pointsSpent > 0) {
+          await tx.insert(pointsTransaction).values({
+            customerId: p.customerId,
+            organizationId: orgId,
+            type: "adjust",
+            points: r.pointsSpent,
+            reason: `void-refund: ${reason}`,
+            purchaseId,
+            addedByUserId: userId,
+            storeId: p.storeId,
+          });
+        }
+        await tx
+          .insert(rewardAvailability)
+          .values({
+            customerId: p.customerId,
+            organizationId: orgId,
+            rewardId: r.rewardId,
+            readyAt: new Date(),
+            lastStage: "immediate",
+          })
+          .onConflictDoNothing();
+        await tx.delete(redemption).where(eq(redemption.id, r.id));
+      }
+
+      // 4. Free the promo usage (the sale no longer counts against its limits).
+      await tx.delete(promoRedemption).where(eq(promoRedemption.purchaseId, purchaseId));
+
+      // 5. Mark voided.
+      await tx
+        .update(purchase)
+        .set({ voidedAt: new Date(), voidReason: reason, voidedByUserId: userId })
+        .where(eq(purchase.id, purchaseId));
+
+      return { customerId: p.customerId };
+    });
   }
 
   /** The list WHERE shared by `adminList`, `listByIds` (via caller) and `adminKpis`. */
@@ -454,6 +591,7 @@ export class PurchasesRepository {
         customerPhone: customer.phone,
         storeName: store.name,
         cashierName: user.name,
+        voidedAt: purchase.voidedAt,
       })
       .from(purchase)
       .innerJoin(customer, eq(purchase.customerId, customer.id))
@@ -493,6 +631,7 @@ export class PurchasesRepository {
         pointsEarned: pointsByP.get(r.id) ?? 0,
         hasPromo: r.appliedPromoId != null,
         hasReward: rewardIds.has(r.id),
+        voidedAt: r.voidedAt ?? null,
       };
     });
   }

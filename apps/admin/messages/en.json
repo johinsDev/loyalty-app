@@ -2038,7 +2038,18 @@
     "timelineAdjust": "{points} points (adjustment)",
     "timelineAdjustBy": "{points} points adjusted by {name}",
     "resendOk": "Receipt sent via WhatsApp",
-    "resendError": "Couldn't send the receipt"
+    "resendError": "Couldn't send the receipt",
+    "voided": "Voided",
+    "voidAction": "Void purchase",
+    "voidTitle": "Void purchase",
+    "voidHint": "Reverses this sale's loyalty: removes the stamp, subtracts earned points, and restores a redeemed reward. This can't be undone.",
+    "voidReasonLabel": "Void reason",
+    "voidReasonPlaceholder": "e.g. The customer returned the order",
+    "voidConfirm": "Void and reverse",
+    "voidOk": "Purchase voided and loyalty reversed",
+    "voidError": "Couldn't void. Owner only.",
+    "voidedBannerTitle": "Purchase voided",
+    "voidedBannerBody": "{reason} · by {name} · {date}"
   },
   "Stores": {
     "title": "Stores",

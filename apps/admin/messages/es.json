@@ -2038,7 +2038,18 @@
     "timelineAdjust": "{points} puntos (ajuste)",
     "timelineAdjustBy": "{points} puntos ajustados por {name}",
     "resendOk": "Comprobante enviado por WhatsApp",
-    "resendError": "No se pudo enviar el comprobante"
+    "resendError": "No se pudo enviar el comprobante",
+    "voided": "Anulada",
+    "voidAction": "Anular compra",
+    "voidTitle": "Anular compra",
+    "voidHint": "Revierte la lealtad de esta venta: quita el sello, resta los puntos ganados y, si canjeó un reward, lo restaura. No se puede deshacer.",
+    "voidReasonLabel": "Motivo de la anulación",
+    "voidReasonPlaceholder": "Ej. El cliente devolvió el pedido",
+    "voidConfirm": "Anular y revertir",
+    "voidOk": "Compra anulada y lealtad revertida",
+    "voidError": "No se pudo anular. Solo el owner puede.",
+    "voidedBannerTitle": "Compra anulada",
+    "voidedBannerBody": "{reason} · por {name} · {date}"
   },
   "Stores": {
     "title": "Tiendas",

@@ -6,6 +6,7 @@ import { Badge, Button } from "@loyalty/ui";
 import { useMutation } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import {
+  Ban,
   ChevronRight,
   Clock,
   Gift,
@@ -27,6 +28,7 @@ import { useHasRole } from "@/lib/role-context";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { AdjustPointsDialog } from "./adjust-points-dialog";
+import { VoidPurchaseDialog } from "./void-purchase-dialog";
 
 type PurchaseAdminDetail = NonNullable<
   inferRouterOutputs<AppRouter>["purchases"]["adminGet"]
@@ -51,6 +53,9 @@ export function PurchaseDetailView({
   const locale = useLocale();
   const format = useFormatter();
   const trpc = useTRPC();
+  const isOwner = useHasRole("owner");
+  const [voidOpen, setVoidOpen] = useState(false);
+  const voided = detail.voidedAt != null;
   const resend = useMutation(
     trpc.purchases.resendReceipt.mutationOptions({
       onSuccess: () => toast.success(t("resendOk")),
@@ -75,7 +80,9 @@ export function PurchaseDetailView({
   const header = (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <div className="font-display text-3xl font-semibold tracking-tight">
+        <div
+          className={`font-display text-3xl font-semibold tracking-tight ${voided ? "text-muted-foreground line-through" : ""}`}
+        >
           {money(format, detail.totalCents, detail.currency)}
         </div>
         <p className="text-muted-foreground mt-0.5 text-sm">
@@ -83,28 +90,64 @@ export function PurchaseDetailView({
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
+        {voided ? <Badge variant="destructive">{t("voided")}</Badge> : null}
         {detail.promo ? <Badge variant="secondary">{t("badgePromo")}</Badge> : null}
         {detail.reward ? <Badge variant="secondary">{t("badgeReward")}</Badge> : null}
         {detail.stampsEarned > 0 ? <Badge variant="outline">{t("badgeStamp")}</Badge> : null}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 gap-1.5 rounded-xl"
-          onClick={() => resend.mutate({ id: detail.id })}
-          disabled={resend.isPending}
-        >
-          <Send className="size-3.5" />
-          {t("resendReceipt")}
-        </Button>
+        {!voided ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-xl"
+            onClick={() => resend.mutate({ id: detail.id })}
+            disabled={resend.isPending}
+          >
+            <Send className="size-3.5" />
+            {t("resendReceipt")}
+          </Button>
+        ) : null}
+        {isOwner && !voided ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="text-destructive hover:text-destructive h-9 gap-1.5 rounded-xl"
+            onClick={() => setVoidOpen(true)}
+          >
+            <Ban className="size-3.5" />
+            {t("voidAction")}
+          </Button>
+        ) : null}
       </div>
     </div>
+  );
+
+  const voidBanner = voided ? (
+    <div className="border-destructive/30 bg-destructive/10 text-destructive flex items-start gap-2.5 rounded-2xl border p-3.5">
+      <Ban className="mt-0.5 size-4 shrink-0" />
+      <div className="min-w-0 text-sm">
+        <p className="font-bold">{t("voidedBannerTitle")}</p>
+        <p className="text-destructive/90">
+          {t("voidedBannerBody", {
+            reason: detail.voidReason ?? "—",
+            name: detail.voidedByName ?? "—",
+            date: detail.voidedAt ? formatDate(detail.voidedAt, { locale, preset: "long" }) : "—",
+          })}
+        </p>
+      </div>
+    </div>
+  ) : null;
+
+  const voidDialog = (
+    <VoidPurchaseDialog purchaseId={detail.id} open={voidOpen} onOpenChange={setVoidOpen} />
   );
 
   if (variant === "modal") {
     return (
       <div className="max-h-[85dvh] space-y-5 overflow-y-auto p-5">
         {header}
+        {voidBanner}
         {customerBlock}
         {transactionBlock}
         {itemsBlock}
@@ -112,6 +155,7 @@ export function PurchaseDetailView({
         {breakdownBlock}
         {loyaltyBlock}
         {timelineBlock}
+        {voidDialog}
       </div>
     );
   }
@@ -119,6 +163,7 @@ export function PurchaseDetailView({
   return (
     <div className="space-y-6">
       {header}
+      {voidBanner}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
           {itemsBlock}
@@ -132,6 +177,7 @@ export function PurchaseDetailView({
           {loyaltyBlock}
         </div>
       </div>
+      {voidDialog}
     </div>
   );
 }
@@ -386,7 +432,7 @@ function BreakdownBlock({
 
 function LoyaltyBlock({ detail }: { detail: PurchaseAdminDetail }) {
   const t = useTranslations("Purchases");
-  const isOwner = useHasRole("owner");
+  const isOwner = useHasRole("owner") && detail.voidedAt == null;
   const [adjustOpen, setAdjustOpen] = useState(false);
 
   return (

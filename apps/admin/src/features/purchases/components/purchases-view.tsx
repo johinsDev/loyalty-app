@@ -202,7 +202,9 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
             <span className="bg-primary/10 text-primary grid size-8 flex-none place-items-center rounded-full text-xs font-bold">
               {(row.original.customerName ?? row.original.customerPhone).slice(0, 2).toUpperCase()}
             </span>
-            <span className="truncate font-semibold">
+            <span
+              className={`truncate font-semibold ${row.original.voidedAt ? "text-muted-foreground line-through" : ""}`}
+            >
               {row.original.customerName || row.original.customerPhone}
             </span>
           </button>
@@ -215,6 +217,9 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
         header: () => <span className="text-muted-foreground text-xs font-bold">{t("col.flags")}</span>,
         cell: ({ row }) => (
           <div className="flex items-center gap-1">
+            {row.original.voidedAt ? (
+              <Badge variant="destructive">{t("voided")}</Badge>
+            ) : null}
             {row.original.hasPromo ? (
               <Badge variant="secondary" className="gap-1">
                 <Tag className="size-3" />
@@ -286,7 +291,9 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
           <DataTableColumnHeader column={column} title={t("col.amount")} className="justify-end" />
         ),
         cell: ({ row }) => (
-          <div className="text-right font-bold whitespace-nowrap">
+          <div
+            className={`text-right font-bold whitespace-nowrap ${row.original.voidedAt ? "text-muted-foreground line-through" : ""}`}
+          >
             {money(format, row.original.totalCents, row.original.currency)}
           </div>
         ),
