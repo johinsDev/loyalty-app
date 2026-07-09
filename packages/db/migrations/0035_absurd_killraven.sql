@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS `points_tx_purchase_uq`;--> statement-breakpoint
+CREATE UNIQUE INDEX `points_tx_purchase_uq` ON `points_transaction` (`organization_id`,`purchase_id`) WHERE "points_transaction"."type" = 'earn';

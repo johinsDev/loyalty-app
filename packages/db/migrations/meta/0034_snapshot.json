@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "d0c364e0-c358-41f0-93f4-eedd71683a1d",
+  "id": "e7c59095-b491-4879-b3bd-4ba0b49c036c",
   "prevId": "8e3537f9-df0d-426f-9752-85aab30086f9",
   "tables": {
     "audit_log": {
@@ -2459,6 +2459,20 @@
           "notNull": false,
           "autoincrement": false
         },
+        "entry_source": {
+          "name": "entry_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "idempotency_key": {
           "name": "idempotency_key",
           "type": "text",
@@ -2734,13 +2748,6 @@
           "autoincrement": false,
           "default": 0
         },
-        "discount_cents": {
-          "name": "discount_cents",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "purchase_id": {
           "name": "purchase_id",
           "type": "text",
@@ -2896,21 +2903,6 @@
           "notNull": true,
           "autoincrement": false
         },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'draft'"
-        },
         "name": {
           "name": "name",
           "type": "text",
@@ -2927,41 +2919,6 @@
         },
         "image_url": {
           "name": "image_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "benefit": {
-          "name": "benefit",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "fulfillment_note": {
-          "name": "fulfillment_note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "background_css": {
-          "name": "background_css",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "icon": {
-          "name": "icon",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -3041,25 +2998,9 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
-        },
-        "published_at": {
-          "name": "published_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         }
       },
-      "indexes": {
-        "reward_org_status_idx": {
-          "name": "reward_org_status_idx",
-          "columns": [
-            "organization_id",
-            "status"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "reward_organization_id_organization_id_fk": {
           "name": "reward_organization_id_organization_id_fk",
@@ -3072,19 +3013,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "reward_created_by_user_id_user_id_fk": {
-          "name": "reward_created_by_user_id_user_id_fk",
-          "tableFrom": "reward",
-          "tableTo": "user",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -3193,74 +3121,6 @@
         "reward_availability_reward_id_reward_id_fk": {
           "name": "reward_availability_reward_id_reward_id_fk",
           "tableFrom": "reward_availability",
-          "tableTo": "reward",
-          "columnsFrom": [
-            "reward_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "reward_translation": {
-      "name": "reward_translation",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "reward_id": {
-          "name": "reward_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "locale": {
-          "name": "locale",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "reward_translation_uq": {
-          "name": "reward_translation_uq",
-          "columns": [
-            "reward_id",
-            "locale"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {
-        "reward_translation_reward_id_reward_id_fk": {
-          "name": "reward_translation_reward_id_reward_id_fk",
-          "tableFrom": "reward_translation",
           "tableTo": "reward",
           "columnsFrom": [
             "reward_id"

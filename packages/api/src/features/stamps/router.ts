@@ -11,6 +11,7 @@ import {
 import { tasks } from "@trigger.dev/sdk/v3";
 
 import { loadLocaleContext } from "../_shared/localize";
+import { resolveAttribution } from "../_shared/attribution";
 import { resolveActiveStoreId } from "../_shared/store-context";
 import { buildPointsService } from "../points";
 import { PromoRepository, PromoService, type UnitExclusion } from "../promotions";
@@ -213,13 +214,24 @@ export const stampsRouter = router({
         .balances(org, input.customerId)
         .catch(() => ({ stamps: 0, points: 0 }));
 
+      // Marketing attribution: infer the entry source from the customer's recent
+      // shortlink click / campaign send (best-effort; never fails the sale).
+      const attribution = await resolveAttribution(ctx.db, {
+        orgId: org,
+        customerId: input.customerId,
+      }).catch(() => null);
+
       // Stamps always records now (no completion / no block). Single purchase
       // advances every loyalty track.
       const { wallet, purchaseId } = await buildService(ctx).recordPurchase(
         org,
         ctx.session.user.id,
         storeId,
-        resolved,
+        {
+          ...resolved,
+          entrySource: attribution?.entrySource ?? null,
+          metadata: attribution?.metadata ?? null,
+        },
       );
       // Points + streak: best-effort, idempotent; never fail the purchase.
       const points = await buildPointsService(ctx)

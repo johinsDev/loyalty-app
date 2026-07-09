@@ -355,6 +355,7 @@ export class EmployeesRepository {
         and(
           eq(purchase.organizationId, orgId),
           eq(purchase.addedByUserId, userId),
+          isNull(purchase.voidedAt),
           gte(purchase.createdAt, from),
           lt(purchase.createdAt, to),
         ),
@@ -496,6 +497,7 @@ export class EmployeesRepository {
       .where(
         and(
           eq(purchase.organizationId, orgId),
+          isNull(purchase.voidedAt),
           gte(purchase.createdAt, from),
           lt(purchase.createdAt, to),
           storeIn ? inArray(purchase.storeId, storeIds!) : undefined,

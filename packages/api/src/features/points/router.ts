@@ -1,6 +1,7 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 
 import {
+  ownerProcedure,
   protectedProcedure,
   type RealtimeBinding,
   router,
@@ -8,6 +9,7 @@ import {
 } from "../../trpc";
 import { PointsRepository } from "./repository";
 import {
+  adjustForPurchaseInputSchema,
   customerIdInputSchema,
   historyInputSchema,
   transactionsInputSchema,
@@ -33,6 +35,22 @@ export const pointsRouter = router({
     .input(customerIdInputSchema)
     .query(async ({ ctx, input }) =>
       buildPointsService(ctx).summaryForCustomer(await orgId(), input.customerId),
+    ),
+
+  // ---- Admin (owner) --------------------------------------------------
+  // Manual correction tied to a purchase (e.g. the scanner failed). Writes a
+  // signed `adjust` ledger row + recomputes the tier; surfaces in the purchase
+  // timeline. Owner-only.
+  adjustForPurchase: ownerProcedure
+    .input(adjustForPurchaseInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      buildPointsService(ctx).adjustForPurchase(
+        await orgId(),
+        input.purchaseId,
+        input.points,
+        input.reason,
+        ctx.session.user.id,
+      ),
     ),
 
   // ---- Customer (self) ------------------------------------------------

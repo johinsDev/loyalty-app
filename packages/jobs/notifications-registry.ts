@@ -467,6 +467,123 @@ export class PurchaseRecapNotification
   }
 }
 
+/** Full itemized receipt, resent on demand from the admin (WhatsApp + in-app).
+ *  The enqueuer assembles the receipt; this class only renders it. */
+export interface ReceiptPayload {
+  items: { name: string; qty: number; unitAmountCents: number }[];
+  subtotalCents: number | null;
+  discountCents: number;
+  totalCents: number;
+  currency: string;
+  stamps: number;
+  points: number;
+}
+
+export class PurchaseReceiptNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(private readonly receipt: ReceiptPayload) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  #money(cents: number): string {
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: this.receipt.currency,
+      maximumFractionDigits: 0,
+    }).format(cents / 100);
+  }
+
+  #loyalty(): string {
+    const parts: string[] = [];
+    if (this.receipt.stamps > 0) {
+      parts.push(`🧋 +${this.receipt.stamps} sello${this.receipt.stamps > 1 ? "s" : ""}`);
+    }
+    if (this.receipt.points > 0) parts.push(`+${this.receipt.points} puntos`);
+    return parts.join(" · ");
+  }
+
+  toWhatsApp() {
+    const r = this.receipt;
+    const lines: string[] = ["🧾 Tu comprobante", ""];
+    for (const it of r.items) {
+      lines.push(`${it.qty}× ${it.name} — ${this.#money(it.unitAmountCents * it.qty)}`);
+    }
+    if (r.items.length > 0) lines.push("");
+    if (r.subtotalCents != null) lines.push(`Subtotal: ${this.#money(r.subtotalCents)}`);
+    if (r.discountCents > 0) lines.push(`Descuento: −${this.#money(r.discountCents)}`);
+    lines.push(`Total: ${this.#money(r.totalCents)}`);
+    const loyalty = this.#loyalty();
+    if (loyalty) {
+      lines.push("");
+      lines.push(loyalty);
+    }
+    lines.push("", "¡Gracias por tu compra! 🧋");
+    return { body: lines.join("\n") };
+  }
+
+  toDatabase() {
+    const count = this.receipt.items.reduce((s, i) => s + i.qty, 0);
+    const summary = count > 0 ? `${count} producto${count > 1 ? "s" : ""} · ` : "";
+    return {
+      type: "purchase-receipt",
+      title: "Tu comprobante 🧾",
+      body: `${summary}${this.#money(this.receipt.totalCents)}`,
+      data: { ...this.receipt },
+    };
+  }
+}
+
+/** The customer is told their purchase was voided and what loyalty was undone. */
+export class PurchaseVoidedNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(private readonly reverted: { stamps: number; points: number }) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  #parts(): string {
+    const parts: string[] = [];
+    if (this.reverted.stamps > 0) {
+      parts.push(`−${this.reverted.stamps} sello${this.reverted.stamps > 1 ? "s" : ""}`);
+    }
+    if (this.reverted.points > 0) parts.push(`−${this.reverted.points} puntos`);
+    return parts.join(" · ");
+  }
+
+  toWhatsApp() {
+    const parts = this.#parts();
+    return {
+      body: parts
+        ? `Tu compra fue anulada.\nSe revirtieron: ${parts}`
+        : "Tu compra fue anulada.",
+    };
+  }
+
+  toDatabase() {
+    const parts = this.#parts();
+    return {
+      type: "purchase-voided",
+      title: "Compra anulada",
+      body: parts ? `Se revirtieron ${parts}` : "Tu compra fue anulada",
+    };
+  }
+}
+
 /** New tier reached — the big moment (benefits + T&C). */
 export class TierUpNotification
   extends Notification
@@ -900,6 +1017,35 @@ export function createNotification(
         s ? { completed: s.completed === true } : null,
         p && typeof p.earned === "number" ? { earned: p.earned } : null,
       );
+    }
+    case "purchase-receipt": {
+      const r = (payload ?? {}) as Record<string, unknown>;
+      const items = Array.isArray(r.items)
+        ? (r.items as unknown[]).map((raw) => {
+            const o = raw as Record<string, unknown>;
+            return {
+              name: typeof o.name === "string" ? o.name : "—",
+              qty: typeof o.qty === "number" ? o.qty : 1,
+              unitAmountCents: typeof o.unitAmountCents === "number" ? o.unitAmountCents : 0,
+            };
+          })
+        : [];
+      return new PurchaseReceiptNotification({
+        items,
+        subtotalCents: typeof r.subtotalCents === "number" ? r.subtotalCents : null,
+        discountCents: typeof r.discountCents === "number" ? r.discountCents : 0,
+        totalCents: typeof r.totalCents === "number" ? r.totalCents : 0,
+        currency: typeof r.currency === "string" ? r.currency : "COP",
+        stamps: typeof r.stamps === "number" ? r.stamps : 0,
+        points: typeof r.points === "number" ? r.points : 0,
+      });
+    }
+    case "purchase-voided": {
+      const r = (payload ?? {}) as Record<string, unknown>;
+      return new PurchaseVoidedNotification({
+        stamps: typeof r.stamps === "number" ? r.stamps : 0,
+        points: typeof r.points === "number" ? r.points : 0,
+      });
     }
     case "tier-up": {
       const tierName =

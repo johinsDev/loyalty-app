@@ -1,11 +1,17 @@
+import { tasks } from "@trigger.dev/sdk/v3";
 import { TRPCError } from "@trpc/server";
 
+import type { ListResult } from "../_shared/list";
 import type { PurchasesRepository } from "./repository";
 import type {
   MyPurchasesInput,
+  PurchaseAdminDetail,
+  PurchaseAdminListItem,
   PurchaseDetail,
   PurchaseListItem,
   PurchaseListView,
+  PurchasesAdminListInput,
+  PurchasesKpis,
   RecentPurchasesInput,
   UsualItem,
   UsualsInput,
@@ -58,5 +64,90 @@ export class PurchasesService {
     input: UsualsInput,
   ): Promise<UsualItem[]> {
     return this.repo.usuals(organizationId, customerId, input.limit);
+  }
+
+  // ---- admin ----------------------------------------------------------------
+
+  adminList(
+    organizationId: string,
+    input: PurchasesAdminListInput,
+  ): Promise<ListResult<PurchaseAdminListItem>> {
+    return this.repo.adminList(organizationId, input);
+  }
+
+  listByIds(organizationId: string, ids: string[]): Promise<PurchaseAdminListItem[]> {
+    return this.repo.listByIds(organizationId, ids);
+  }
+
+  adminKpis(
+    organizationId: string,
+    input: PurchasesAdminListInput,
+  ): Promise<PurchasesKpis> {
+    return this.repo.adminKpis(organizationId, input);
+  }
+
+  async adminGet(organizationId: string, id: string): Promise<PurchaseAdminDetail> {
+    const detail = await this.repo.adminGet(organizationId, id);
+    if (!detail) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "PURCHASE_NOT_FOUND" });
+    }
+    return detail;
+  }
+
+  /** Re-send the customer a full WhatsApp + in-app receipt of the purchase.
+   *  Reuses the detail assembly for the payload; the notification renders it. */
+  async resendReceipt(
+    organizationId: string,
+    purchaseId: string,
+  ): Promise<{ enqueued: number }> {
+    const detail = await this.adminGet(organizationId, purchaseId);
+    await tasks.trigger("send-notification", {
+      customerIds: [detail.customer.id],
+      organizationId,
+      notificationKey: "purchase-receipt",
+      payload: {
+        items: detail.items.map((i) => ({
+          name: i.name ?? "—",
+          qty: i.qty,
+          unitAmountCents: i.unitAmountCents,
+        })),
+        subtotalCents: detail.subtotalCents,
+        discountCents: detail.discountCents,
+        totalCents: detail.totalCents,
+        currency: detail.currency,
+        stamps: detail.stampsEarned,
+        points: detail.pointsEarned,
+      },
+    });
+    return { enqueued: 1 };
+  }
+
+  /** Void a purchase (owner): reverse its loyalty in one tx, then recompute the
+   *  customer's tier silently (no customer notification for an admin action). */
+  async voidPurchase(
+    organizationId: string,
+    purchaseId: string,
+    reason: string,
+    userId: string,
+    recomputeTier: (customerId: string) => Promise<void>,
+  ): Promise<{ voided: true }> {
+    const res = await this.repo.voidPurchase(organizationId, purchaseId, reason, userId);
+    if (res === "not_found") {
+      throw new TRPCError({ code: "NOT_FOUND", message: "PURCHASE_NOT_FOUND" });
+    }
+    if (res === "already_voided") {
+      throw new TRPCError({ code: "CONFLICT", message: "PURCHASE_ALREADY_VOIDED" });
+    }
+    await recomputeTier(res.customerId);
+    // Tell the customer their purchase was voided + what loyalty was undone.
+    await tasks
+      .trigger("send-notification", {
+        customerIds: [res.customerId],
+        organizationId,
+        notificationKey: "purchase-voided",
+        payload: { stamps: res.reversal.stamps, points: res.reversal.points },
+      })
+      .catch(() => {});
+    return { voided: true };
   }
 }

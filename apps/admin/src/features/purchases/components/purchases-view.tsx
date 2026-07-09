@@ -1,329 +1,614 @@
 "use client";
 
-import {
-  Badge,
-  Button,
-  ResponsiveModal,
-  ResponsiveModalClose,
-  ResponsiveModalContent,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@loyalty/ui";
-import { Download, Receipt, Search } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
-
-import { EmptyState } from "@/components/empty-state";
-import { type FilterOption, FilterSelect } from "@/components/filters";
-import { type ViewMode, ViewToggle } from "@/components/view-toggle";
-import { useFadeUp } from "@/lib/animate";
+import type {
+  PurchaseAdminListItem,
+  PurchasesAdminListInput,
+} from "@loyalty/api/features/purchases/schemas";
+import { formatDate, localeFromCode } from "@loyalty/date";
+import { Badge, Button, Calendar, Checkbox, Input } from "@loyalty/ui";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Download, Gift, Tag, X } from "lucide-react";
+import { parseAsArrayOf, parseAsInteger, parseAsIsoDate, parseAsString, useQueryState } from "nuqs";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import {
-  getReceipt,
-  type Purchase,
-  purchaseKpis,
-  purchases,
-  stores,
-} from "../data";
+  DataTable,
+  DataTableBulkBar,
+  DataTableColumnHeader,
+  DataTableFilters,
+  DataTablePagination,
+  DataTableSortList,
+  DataTableViewOptions,
+  FilterSection,
+  tableParsers,
+} from "@/components/data-table";
+import { useDataTable } from "@/components/data-table/use-data-table";
+import { ViewToggle } from "@/components/view-toggle";
+import { downloadCsv, rowsToCsv } from "@/lib/csv";
+import { useRouter } from "@/i18n/navigation";
+import { money } from "@/lib/money";
+import { useTRPC } from "@/lib/trpc/client";
 
-const money = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
+import {
+  buildPurchasesInput,
+  EFFECTIVENESS_VALUES,
+  ENTRY_SOURCE_VALUES,
+  REDEMPTION_CURRENCY_VALUES,
+} from "../list-params";
+import { PurchaseRowActions } from "./purchase-row-actions";
 
-/**
- * Compras — KPI row + a transactions feed (search by customer, store filter,
- * list/grid toggle). Rows / cards open a Receipt modal with the line items and
- * totals. Design-first / hardcoded (../data); the seam is the tRPC
- * `compras.list` query (+ a receipt detail query) later.
- */
-export function PurchasesView() {
+type PurchaseListResult = { rows: PurchaseAdminListItem[]; total: number; pageCount: number };
+
+export function PurchasesView({ initialData }: { initialData?: PurchaseListResult }) {
   const t = useTranslations("Purchases");
-  const tCommon = useTranslations("Common");
-  const fade = useFadeUp({ step: 40 });
+  const locale = useLocale();
+  const format = useFormatter();
+  const router = useRouter();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const openDetail = useCallback(
+    (id: string) => router.push({ pathname: "/purchases/[id]", params: { id } }),
+    [router],
+  );
 
-  const [query, setQuery] = useState("");
-  const [store, setStore] = useState<string | null>(null);
-  const [view, setView] = useState<ViewMode>("list");
-  const [active, setActive] = useState<Purchase | null>(null);
+  // ── URL state (facets + q). page/perPage/sort/view/cols live in useDataTable.
+  const [q, setQ] = useQueryState("q", tableParsers.q);
+  const [store, setStore] = useQueryState("store", parseAsArrayOf(parseAsString).withDefault([]));
+  const [cashier, setCashier] = useQueryState("cashier", parseAsArrayOf(parseAsString).withDefault([]));
+  const [effectiveness, setEffectiveness] = useQueryState(
+    "effectiveness",
+    parseAsArrayOf(parseAsString).withDefault([]),
+  );
+  const [currency, setCurrency] = useQueryState("currency", parseAsArrayOf(parseAsString).withDefault([]));
+  const [entry, setEntry] = useQueryState("entry", parseAsArrayOf(parseAsString).withDefault([]));
+  const [customer, setCustomer] = useQueryState("customer", parseAsString);
+  const [amountMin, setAmountMin] = useQueryState("amountMin", parseAsInteger);
+  const [amountMax, setAmountMax] = useQueryState("amountMax", parseAsInteger);
+  const [from, setFrom] = useQueryState("from", parseAsIsoDate);
+  const [to, setTo] = useQueryState("to", parseAsIsoDate);
+  const [, setPage] = useQueryState("page", tableParsers.page);
+  const [sort] = useQueryState("sort", tableParsers.sort);
+  const [page] = useQueryState("page", tableParsers.page);
+  const [perPage] = useQueryState("perPage", tableParsers.perPage);
+  const [view, setView] = useQueryState("view", tableParsers.view);
 
-  const storeOptions: FilterOption<string>[] = stores.map((s) => ({
-    value: s,
-    label: s,
-  }));
+  const resetPage = () => void setPage(1);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return purchases.filter((p) => {
-      if (store && p.store !== store) return false;
-      if (q && !p.name.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [query, store]);
-
-  const clearFilters = () => {
-    setQuery("");
-    setStore(null);
+  // Debounced search box (customer name / phone) → URL `q`.
+  const [search, setSearch] = useState(q);
+  const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const onSearch = (value: string) => {
+    setSearch(value);
+    clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => {
+      void setQ(value || null);
+      resetPage();
+    }, 350);
   };
 
-  let i = 0;
+  // Facet option lists (small; the pilot has few stores/cashiers).
+  const storesQuery = useQuery(
+    trpc.stores.list.queryOptions({ page: 1, perPage: 100, sort: [] }),
+  );
+  const employeesQuery = useQuery(
+    trpc.employees.list.queryOptions({ page: 1, perPage: 100, sort: [] }),
+  );
+  const storeOptions = (storesQuery.data?.rows ?? []).map((s) => ({ id: s.id, name: s.name }));
+  const cashierOptions = (employeesQuery.data?.rows ?? [])
+    .filter((e): e is typeof e & { userId: string } => !!e.userId)
+    .map((e) => ({ id: e.userId, name: e.name ?? e.email ?? e.userId }));
+
+  const isEffFacet = effectiveness.length > 0 && effectiveness.length < EFFECTIVENESS_VALUES.length;
+  const isCurFacet = currency.length > 0 && currency.length < REDEMPTION_CURRENCY_VALUES.length;
+  const isEntryFacet = entry.length > 0 && entry.length < ENTRY_SOURCE_VALUES.length;
+  const activeFacets =
+    (store.length > 0 ? 1 : 0) +
+    (cashier.length > 0 ? 1 : 0) +
+    (isEffFacet ? 1 : 0) +
+    (isCurFacet ? 1 : 0) +
+    (isEntryFacet ? 1 : 0) +
+    (amountMin != null || amountMax != null ? 1 : 0) +
+    (from || to ? 1 : 0);
+
+  const clearFilters = () => {
+    void setStore([]);
+    void setCashier([]);
+    void setEffectiveness([]);
+    void setCurrency([]);
+    void setEntry([]);
+    void setAmountMin(null);
+    void setAmountMax(null);
+    void setFrom(null);
+    void setTo(null);
+    resetPage();
+  };
+  const toggle = (
+    values: string[],
+    setter: (v: string[]) => void,
+    v: string,
+  ) => {
+    setter(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+    resetPage();
+  };
+
+  const input: PurchasesAdminListInput = useMemo(
+    () =>
+      buildPurchasesInput({
+        q,
+        page,
+        perPage,
+        sort,
+        store,
+        cashier,
+        effectiveness,
+        currency,
+        entry,
+        customer,
+        amountMin,
+        amountMax,
+        from,
+        to,
+      }),
+    [q, page, perPage, sort, store, cashier, effectiveness, currency, entry, customer, amountMin, amountMax, from, to],
+  );
+
+  const initialKey = useRef(JSON.stringify(input));
+  const useInitial = initialData && JSON.stringify(input) === initialKey.current;
+  const query = useQuery(
+    trpc.purchases.adminList.queryOptions(input, {
+      placeholderData: keepPreviousData,
+      ...(useInitial ? { initialData } : {}),
+    }),
+  );
+  const kpisQuery = useQuery(
+    trpc.purchases.adminKpis.queryOptions(input, { placeholderData: keepPreviousData }),
+  );
+  const rows = query.data?.rows ?? [];
+  const pageCount = query.data?.pageCount ?? 1;
+  const total = query.data?.total ?? 0;
+
+  const columns = useMemo<ColumnDef<PurchaseAdminListItem, unknown>[]>(
+    () => [
+      {
+        id: "select",
+        enableSorting: false,
+        enableHiding: false,
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            indeterminate={table.getIsSomePageRowsSelected()}
+            onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+            aria-label={t("selectAll")}
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(v) => row.toggleSelected(!!v)}
+            aria-label={t("selectRow")}
+          />
+        ),
+      },
+      {
+        accessorKey: "createdAt",
+        meta: { label: t("col.date") },
+        header: ({ column }) => <DataTableColumnHeader column={column} title={t("col.date")} />,
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm whitespace-nowrap">
+            {formatDate(row.original.createdAt, { locale })}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "customerName",
+        enableSorting: false,
+        meta: { label: t("col.customer") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("col.customer")}</span>,
+        cell: ({ row }) => (
+          <button
+            type="button"
+            className="hover:text-primary flex cursor-pointer items-center gap-2.5 text-left hover:underline"
+            onClick={() => openDetail(row.original.id)}
+          >
+            <span className="bg-primary/10 text-primary grid size-8 flex-none place-items-center rounded-full text-xs font-bold">
+              {(row.original.customerName ?? row.original.customerPhone).slice(0, 2).toUpperCase()}
+            </span>
+            <span
+              className={`truncate font-semibold ${row.original.voidedAt ? "text-muted-foreground line-through" : ""}`}
+            >
+              {row.original.customerName || row.original.customerPhone}
+            </span>
+          </button>
+        ),
+      },
+      {
+        id: "flags",
+        enableSorting: false,
+        meta: { label: t("col.flags") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("col.flags")}</span>,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-1">
+            {row.original.voidedAt ? (
+              <Badge variant="destructive">{t("voided")}</Badge>
+            ) : null}
+            {row.original.hasPromo ? (
+              <Badge variant="secondary" className="gap-1">
+                <Tag className="size-3" />
+                {t("badgePromo")}
+              </Badge>
+            ) : null}
+            {row.original.hasReward ? (
+              <Badge variant="secondary" className="gap-1">
+                <Gift className="size-3" />
+                {t("badgeReward")}
+              </Badge>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "itemSummary",
+        enableSorting: false,
+        meta: { label: t("col.detail") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("col.detail")}</span>,
+        cell: ({ row }) =>
+          row.original.itemSummary ? (
+            <span className="text-muted-foreground text-sm">{row.original.itemSummary}</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+      },
+      {
+        accessorKey: "storeName",
+        enableSorting: false,
+        meta: { label: t("col.store") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("col.store")}</span>,
+        cell: ({ row }) =>
+          row.original.storeName ? (
+            <Badge variant="outline">{row.original.storeName}</Badge>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+      },
+      {
+        accessorKey: "cashierName",
+        enableSorting: false,
+        meta: { label: t("col.cashier") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("col.cashier")}</span>,
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm">{row.original.cashierName ?? "—"}</span>
+        ),
+      },
+      {
+        accessorKey: "discountCents",
+        meta: { label: t("col.discount") },
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t("col.discount")} className="justify-end" />
+        ),
+        cell: ({ row }) => (
+          <div className="text-right text-sm font-semibold">
+            {row.original.discountCents > 0 ? (
+              <span className="text-primary">−{money(format, row.original.discountCents, row.original.currency)}</span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "totalCents",
+        meta: { label: t("col.amount") },
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t("col.amount")} className="justify-end" />
+        ),
+        cell: ({ row }) => (
+          <div
+            className={`text-right font-bold whitespace-nowrap ${row.original.voidedAt ? "text-muted-foreground line-through" : ""}`}
+          >
+            {money(format, row.original.totalCents, row.original.currency)}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "stampsEarned",
+        enableSorting: false,
+        meta: { label: t("col.stamps") },
+        header: () => (
+          <span className="text-muted-foreground block text-right text-xs font-bold">{t("col.stamps")}</span>
+        ),
+        cell: ({ row }) => (
+          <div className="text-right text-sm font-semibold">
+            {row.original.stampsEarned > 0 ? `+${row.original.stampsEarned}` : "—"}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "pointsEarned",
+        enableSorting: false,
+        meta: { label: t("col.points") },
+        header: () => (
+          <span className="text-muted-foreground block text-right text-xs font-bold">{t("col.points")}</span>
+        ),
+        cell: ({ row }) => (
+          <div className="text-right text-sm font-semibold text-emerald-600">
+            {row.original.pointsEarned > 0 ? `+${row.original.pointsEarned}` : "—"}
+          </div>
+        ),
+      },
+      {
+        id: "actions",
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => <PurchaseRowActions id={row.original.id} />,
+      },
+    ],
+    [t, locale, format, openDetail],
+  );
+
+  const { table, selectedIds, resetSelection } = useDataTable<PurchaseAdminListItem>({
+    data: rows,
+    columns,
+    pageCount,
+    getRowId: (r) => r.id,
+  });
+
+  const onExport = async () => {
+    const data = await queryClient.fetchQuery(
+      trpc.purchases.adminListByIds.queryOptions({ ids: selectedIds }),
+    );
+    downloadCsv(
+      rowsToCsv(data, [
+        { header: t("col.date"), value: (p) => formatDate(p.createdAt, { locale }) },
+        { header: t("col.customer"), value: (p) => p.customerName ?? p.customerPhone },
+        { header: t("col.store"), value: (p) => p.storeName ?? "" },
+        { header: t("col.cashier"), value: (p) => p.cashierName ?? "" },
+        { header: t("col.detail"), value: (p) => p.itemSummary ?? "" },
+        { header: t("col.discount"), value: (p) => String(p.discountCents / 100) },
+        { header: t("col.amount"), value: (p) => String(p.totalCents / 100) },
+        { header: t("col.stamps"), value: (p) => String(p.stampsEarned) },
+        { header: t("col.points"), value: (p) => String(p.pointsEarned) },
+      ]),
+      `compras-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+    toast.success(t("exported", { n: selectedIds.length }));
+  };
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground/80 mt-0.5 text-sm font-semibold">
-            {t("subtitle")}
-          </p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
         </div>
-        <Button variant="outline" className="h-10 gap-2 rounded-xl">
-          <Download className="size-4" />
-          {t("export")}
-        </Button>
       </div>
 
-      {/* KPI row */}
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {purchaseKpis.map((k) => (
-          <div
-            key={k.key}
-            style={fade(i++)}
-            className="bg-card border-border min-w-0 rounded-3xl border p-5 shadow-sm"
+      {/* KPI row (honors the active filters). */}
+      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label={t("kpi.count")} value={String(kpisQuery.data?.count ?? 0)} />
+        <Kpi
+          label={t("kpi.revenue")}
+          value={money(format, kpisQuery.data?.netRevenueCents ?? 0)}
+        />
+        <Kpi
+          label={t("kpi.avgTicket")}
+          value={money(format, kpisQuery.data?.avgTicketCents ?? 0)}
+        />
+        <Kpi
+          label={t("kpi.promoRate")}
+          value={`${Math.round((kpisQuery.data?.promoRate ?? 0) * 100)}%`}
+        />
+      </div>
+
+      {/* Toolbar. */}
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <Input
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          placeholder={t("searchPlaceholder")}
+          className="h-10 w-full sm:w-64"
+        />
+        {customer ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-10 gap-1.5 rounded-xl"
+            onClick={() => {
+              void setCustomer(null);
+              resetPage();
+            }}
           >
-            <span className="text-muted-foreground/70 text-xs font-extrabold tracking-wider uppercase">
-              {t(`kpi.${k.key}`)}
-            </span>
-            <div className="font-display mt-1 text-3xl font-semibold tracking-tight">
-              {k.value}
-            </div>
-          </div>
-        ))}
-      </div>
+            {t("customerFilter")}
+            <X className="size-3.5" />
+          </Button>
+        ) : null}
+        <DataTableFilters activeCount={activeFacets} onClear={clearFilters}>
+          <FilterSection label={t("col.store")}>
+            {storeOptions.length === 0 ? (
+              <span className="text-muted-foreground text-sm">{t("noStores")}</span>
+            ) : (
+              storeOptions.map((s) => (
+                <label key={s.id} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                  <Checkbox checked={store.includes(s.id)} onCheckedChange={() => toggle(store, setStore, s.id)} />
+                  {s.name}
+                </label>
+              ))
+            )}
+          </FilterSection>
 
-      {/* Feed card */}
-      <div
-        style={fade(i++)}
-        className="bg-card border-border mt-5 overflow-hidden rounded-3xl border shadow-sm"
-      >
-        {/* Toolbar */}
-        <div className="border-border flex flex-wrap items-center gap-3 border-b p-4">
-          <div className="relative min-w-52 flex-1">
-            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("searchPlaceholder")}
-              className="border-border bg-muted/40 placeholder:text-muted-foreground h-10 w-full rounded-xl border pr-3 pl-9 text-sm outline-none"
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterSelect
-              allLabel={t("statusFilter")}
-              value={store}
-              onValueChange={setStore}
-              options={storeOptions}
-            />
-            <ViewToggle
-              value={view}
-              onValueChange={setView}
-              ariaLabel={tCommon("viewToggle")}
-            />
-          </div>
-        </div>
+          <FilterSection label={t("col.cashier")}>
+            {cashierOptions.length === 0 ? (
+              <span className="text-muted-foreground text-sm">{t("noCashiers")}</span>
+            ) : (
+              cashierOptions.map((c) => (
+                <label key={c.id} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                  <Checkbox
+                    checked={cashier.includes(c.id)}
+                    onCheckedChange={() => toggle(cashier, setCashier, c.id)}
+                  />
+                  {c.name}
+                </label>
+              ))
+            )}
+          </FilterSection>
 
-        {filtered.length === 0 ? (
-          <EmptyState
-            icon={Receipt}
-            title={t("empty")}
-            hint={t("emptyHint")}
-            action={
-              <Button
-                variant="outline"
-                className="rounded-xl"
-                onClick={clearFilters}
-              >
-                {t("clearFilters")}
-              </Button>
-            }
-          />
-        ) : view === "list" ? (
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("col.customer")}</TableHead>
-                <TableHead>{t("col.detail")}</TableHead>
-                <TableHead>{t("col.store")}</TableHead>
-                <TableHead className="text-right">{t("col.amount")}</TableHead>
-                <TableHead className="text-right">{t("col.points")}</TableHead>
-                <TableHead>{t("col.date")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((p) => (
-                <TableRow
-                  key={p.id}
-                  className="cursor-pointer"
-                  onClick={() => setActive(p)}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <span className="bg-primary/10 text-primary grid size-9 flex-none place-items-center rounded-full text-xs font-bold">
-                        {p.initials}
-                      </span>
-                      <span className="truncate font-bold">{p.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground font-semibold">
-                    {p.item}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{p.store}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {money.format(p.amount)}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold text-emerald-600">
-                    +{p.points}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground font-semibold">
-                    {p.date}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((p) => (
-              <div
-                key={p.id}
-                style={fade(i++)}
-                className="bg-card border-border cursor-pointer rounded-3xl border p-5 shadow-sm"
-                onClick={() => setActive(p)}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="bg-primary/10 text-primary grid size-11 flex-none place-items-center rounded-full text-sm font-bold">
-                    {p.initials}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-bold">{p.name}</div>
-                    <div className="text-muted-foreground/70 truncate text-xs font-semibold">
-                      {p.item}
-                    </div>
-                  </div>
-                  <Badge variant="secondary">{p.store}</Badge>
-                </div>
-
-                <div className="border-border mt-4 flex items-end justify-between border-t pt-4">
-                  <div>
-                    <div className="font-display text-2xl font-semibold tracking-tight">
-                      {money.format(p.amount)}
-                    </div>
-                    <div className="text-muted-foreground/70 text-xs font-semibold">
-                      {p.date}
-                    </div>
-                  </div>
-                  <span className="text-sm font-semibold text-emerald-600">
-                    +{p.points} {t("col.points")}
-                  </span>
-                </div>
-              </div>
+          <FilterSection label={t("effectiveness")}>
+            {EFFECTIVENESS_VALUES.map((v) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox
+                  checked={effectiveness.includes(v)}
+                  onCheckedChange={() => toggle(effectiveness, setEffectiveness, v)}
+                />
+                {t(`eff.${v}`)}
+              </label>
             ))}
-          </div>
-        )}
+          </FilterSection>
+
+          <FilterSection label={t("redemptionCurrency")}>
+            {REDEMPTION_CURRENCY_VALUES.map((v) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox checked={currency.includes(v)} onCheckedChange={() => toggle(currency, setCurrency, v)} />
+                {t(`cur.${v}`)}
+              </label>
+            ))}
+          </FilterSection>
+
+          <FilterSection label={t("entryMode")}>
+            {ENTRY_SOURCE_VALUES.map((v) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox checked={entry.includes(v)} onCheckedChange={() => toggle(entry, setEntry, v)} />
+                {t(`entry.${v}`)}
+              </label>
+            ))}
+          </FilterSection>
+
+          <FilterSection label={t("amountRange")}>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                inputMode="numeric"
+                placeholder={t("min")}
+                className="h-9"
+                value={amountMin ?? ""}
+                onChange={(e) => {
+                  void setAmountMin(e.target.value ? Number(e.target.value) : null);
+                  resetPage();
+                }}
+              />
+              <span className="text-muted-foreground">–</span>
+              <Input
+                type="number"
+                inputMode="numeric"
+                placeholder={t("max")}
+                className="h-9"
+                value={amountMax ?? ""}
+                onChange={(e) => {
+                  void setAmountMax(e.target.value ? Number(e.target.value) : null);
+                  resetPage();
+                }}
+              />
+            </div>
+          </FilterSection>
+
+          <FilterSection label={t("col.date")}>
+            <div className="border-border flex justify-center rounded-2xl border p-1.5">
+              <Calendar
+                mode="range"
+                className="[--cell-size:--spacing(9)]"
+                locale={localeFromCode(locale)}
+                selected={{ from: from ?? undefined, to: to ?? undefined }}
+                onSelect={(r: { from?: Date; to?: Date } | undefined) => {
+                  void setFrom(r?.from ?? null);
+                  void setTo(r?.to ?? null);
+                  resetPage();
+                }}
+                disabled={{ after: new Date() }}
+              />
+            </div>
+          </FilterSection>
+        </DataTableFilters>
+        <div className="ml-auto flex items-center gap-2">
+          <DataTableSortList table={table} />
+          <DataTableViewOptions table={table} />
+          <ViewToggle value={view} onValueChange={(v) => setView(v)} ariaLabel={t("viewToggle")} />
+        </div>
       </div>
 
-      <ReceiptModal
-        purchase={active}
-        onOpenChange={(open) => {
-          if (!open) setActive(null);
-        }}
-        t={t}
-      />
+      <div className="mt-4">
+        <DataTable
+          table={table}
+          view={view}
+          isFetching={query.isFetching}
+          emptyState={
+            <div className="text-muted-foreground grid h-40 place-items-center px-6 text-center">
+              <div>
+                <p className="text-foreground font-semibold">{t("empty")}</p>
+                <p className="mt-1 text-sm">{t("emptyHint")}</p>
+              </div>
+            </div>
+          }
+          renderGrid={(items) => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="bg-card border-border hover:border-primary/40 cursor-pointer rounded-3xl border p-4 text-left shadow-sm transition-colors"
+                  onClick={() => openDetail(p.id)}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="bg-primary/10 text-primary grid size-10 flex-none place-items-center rounded-full text-sm font-bold">
+                      {(p.customerName ?? p.customerPhone).slice(0, 2).toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-bold">{p.customerName || p.customerPhone}</div>
+                      <div className="text-muted-foreground truncate text-xs">
+                        {p.itemSummary ?? "—"}
+                      </div>
+                    </div>
+                    {p.storeName ? <Badge variant="outline">{p.storeName}</Badge> : null}
+                  </div>
+                  <div className="border-border mt-4 flex items-end justify-between border-t pt-4">
+                    <div>
+                      <div className="font-display text-2xl font-semibold tracking-tight">
+                        {money(format, p.totalCents, p.currency)}
+                      </div>
+                      <div className="text-muted-foreground text-xs">
+                        {formatDate(p.createdAt, { locale })}
+                      </div>
+                    </div>
+                    <span className="text-sm font-semibold text-emerald-600">
+                      +{p.pointsEarned} {t("col.points")}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        />
+        <DataTablePagination table={table} total={total} selectedCount={selectedIds.length} />
+      </div>
+
+      <DataTableBulkBar count={selectedIds.length} onClear={resetSelection}>
+        <Button variant="ghost" size="sm" className="h-9 gap-1.5 rounded-full" onClick={onExport}>
+          <Download className="size-4" />
+          {t("bulkExport")}
+        </Button>
+      </DataTableBulkBar>
+
     </div>
   );
 }
 
-function ReceiptModal({
-  purchase,
-  onOpenChange,
-  t,
-}: {
-  purchase: Purchase | null;
-  onOpenChange: (open: boolean) => void;
-  t: ReturnType<typeof useTranslations>;
-}) {
-  const receipt = purchase ? getReceipt(purchase.id) : null;
-
+function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <ResponsiveModal open={purchase !== null} onOpenChange={onOpenChange}>
-      <ResponsiveModalContent>
-        <ResponsiveModalHeader>
-          <ResponsiveModalTitle>{t("receipt")}</ResponsiveModalTitle>
-        </ResponsiveModalHeader>
-
-        {purchase && receipt ? (
-          <div className="flex flex-col gap-4 px-4 pb-2">
-            <div className="flex items-center gap-3">
-              <span className="bg-primary/10 text-primary grid size-10 flex-none place-items-center rounded-full text-sm font-bold">
-                {purchase.initials}
-              </span>
-              <div className="min-w-0">
-                <div className="truncate font-bold">{purchase.name}</div>
-                <div className="text-muted-foreground/70 truncate text-xs font-semibold">
-                  {purchase.store} · {purchase.date}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <span className="text-muted-foreground/70 text-xs font-extrabold tracking-wider uppercase">
-                {t("items")}
-              </span>
-              <ul className="mt-2 flex flex-col gap-2">
-                {receipt.items.map((line) => (
-                  <li
-                    key={line.name}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span className="font-semibold">
-                      {line.qty}× {line.name}
-                    </span>
-                    <span className="font-bold">{money.format(line.price)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="border-border flex flex-col gap-1.5 border-t pt-3 text-sm">
-              <div className="text-muted-foreground flex items-center justify-between font-semibold">
-                <span>{t("subtotal")}</span>
-                <span>{money.format(receipt.subtotal)}</span>
-              </div>
-              <div className="flex items-center justify-between font-bold">
-                <span>{t("total")}</span>
-                <span className="font-display text-lg">
-                  {money.format(receipt.total)}
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        <ResponsiveModalFooter>
-          <ResponsiveModalClose>{t("close")}</ResponsiveModalClose>
-        </ResponsiveModalFooter>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+    <div className="bg-card border-border min-w-0 rounded-3xl border p-5 shadow-sm">
+      <span className="text-muted-foreground/70 text-xs font-extrabold tracking-wider uppercase">
+        {label}
+      </span>
+      <div className="font-display mt-1 text-2xl font-semibold tracking-tight">{value}</div>
+    </div>
   );
 }

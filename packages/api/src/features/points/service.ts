@@ -1,4 +1,5 @@
 import { tasks } from "@trigger.dev/sdk/v3";
+import { TRPCError } from "@trpc/server";
 
 import type { RealtimeBinding } from "../../trpc";
 import {
@@ -105,6 +106,7 @@ export class PointsService {
   async recompute(
     organizationId: string,
     customerId: string,
+    opts: { silent?: boolean } = {},
   ): Promise<{ tierName: string } | null> {
     const windowStart = new Date(Date.now() - WINDOW_DAYS * DAY_MS);
     const tierPoints = await this.repo.tierPoints(
@@ -129,31 +131,33 @@ export class PointsService {
       nearKey = null; // a new tier resets the "almost there" dedupe
       if (newRank > oldRank) {
         tierUp = { tierName: view.current.name };
-        await this.publish(customerId, {
-          event: "tier.changed",
-          data: {
-            direction: "up",
-            tier: {
-              key: newKey,
-              name: view.current.name,
-              color: view.current.color,
-              icon: view.current.icon,
+        if (!opts.silent) {
+          await this.publish(customerId, {
+            event: "tier.changed",
+            data: {
+              direction: "up",
+              tier: {
+                key: newKey,
+                name: view.current.name,
+                color: view.current.color,
+                icon: view.current.icon,
+                benefits: view.current.benefits.map((b) => b.label),
+                terms: view.current.terms ?? null,
+              },
+            },
+          });
+          await this.enqueue({
+            customerIds: [customerId],
+            organizationId,
+            notificationKey: "tier-up",
+            payload: {
+              tierName: view.current.name,
               benefits: view.current.benefits.map((b) => b.label),
               terms: view.current.terms ?? null,
             },
-          },
-        });
-        await this.enqueue({
-          customerIds: [customerId],
-          organizationId,
-          notificationKey: "tier-up",
-          payload: {
-            tierName: view.current.name,
-            benefits: view.current.benefits.map((b) => b.label),
-            terms: view.current.terms ?? null,
-          },
-        });
-      } else {
+          });
+        }
+      } else if (!opts.silent) {
         await this.publish(customerId, {
           event: "tier.changed",
           data: { direction: "down", tier: { key: newKey, name: view.current.name } },
@@ -168,12 +172,14 @@ export class PointsService {
     }
 
     if (view.nearNext && view.next && nearKey !== view.next.key) {
-      await this.enqueue({
-        customerIds: [customerId],
-        organizationId,
-        notificationKey: "tier-near",
-        payload: { nextName: view.next.name, remaining: view.remainingToNext },
-      });
+      if (!opts.silent) {
+        await this.enqueue({
+          customerIds: [customerId],
+          organizationId,
+          notificationKey: "tier-near",
+          payload: { nextName: view.next.name, remaining: view.remainingToNext },
+        });
+      }
       nearKey = view.next.key;
     }
 
@@ -187,6 +193,52 @@ export class PointsService {
     }
 
     return tierUp;
+  }
+
+  /** Apply a signed manual adjustment (correction / void reversal): write the
+   *  `adjust` ledger row, then recompute the tier. Returns the new balance.
+   *  Note: `adjust` rows don't count toward tier-points (only `earn` does), so
+   *  the recompute only reflects window aging — the balance changes, the tier
+   *  qualification doesn't. */
+  async adjust(
+    organizationId: string,
+    customerId: string,
+    points: number,
+    reason: string,
+    opts: { purchaseId?: string; storeId?: string | null; addedByUserId?: string } = {},
+  ): Promise<{ balance: number }> {
+    await this.repo.adjust({
+      orgId: organizationId,
+      customerId,
+      points,
+      reason,
+      purchaseId: opts.purchaseId ?? null,
+      storeId: opts.storeId ?? null,
+      addedByUserId: opts.addedByUserId ?? null,
+    });
+    const balance = await this.repo.balance(organizationId, customerId);
+    await this.publish(customerId, { event: "points.adjusted", data: { points, balance } });
+    await this.recompute(organizationId, customerId);
+    return { balance };
+  }
+
+  /** Owner correction tied to a purchase (surfaces in the purchase timeline). */
+  async adjustForPurchase(
+    organizationId: string,
+    purchaseId: string,
+    points: number,
+    reason: string,
+    addedByUserId: string,
+  ): Promise<{ balance: number }> {
+    const ref = await this.repo.purchaseRef(organizationId, purchaseId);
+    if (!ref) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "PURCHASE_NOT_FOUND" });
+    }
+    return this.adjust(organizationId, ref.customerId, points, reason, {
+      purchaseId,
+      storeId: ref.storeId,
+      addedByUserId,
+    });
   }
 
   async mySummary(

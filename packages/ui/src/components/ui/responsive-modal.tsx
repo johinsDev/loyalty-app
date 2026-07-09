@@ -89,12 +89,16 @@ export function ResponsiveModalContent({
   className,
   mobileClassName,
   desktopClassName,
+  overlayClassName,
   showCloseButton = true,
   children,
   ...props
 }: React.ComponentProps<"div"> & {
   mobileClassName?: string;
   desktopClassName?: string;
+  /** Desktop dialog only: override the backdrop (e.g. a darker scrim when this
+   *  modal opens stacked over another modal so it clearly reads as "on top"). */
+  overlayClassName?: string;
   /** Desktop dialog only: render the top-right X (default true). */
   showCloseButton?: boolean;
 }) {
@@ -111,6 +115,7 @@ export function ResponsiveModalContent({
   return (
     <DialogContent
       showCloseButton={showCloseButton}
+      overlayClassName={overlayClassName}
       className={cn(
         "flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg",
         className,

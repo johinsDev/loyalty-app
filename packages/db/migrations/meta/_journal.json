@@ -243,50 +243,22 @@
     {
       "idx": 34,
       "version": "6",
-      "when": 1783469104032,
-      "tag": "0034_polite_giant_man",
+      "when": 1783553638620,
+      "tag": "0034_eminent_galactus",
       "breakpoints": true
     },
     {
       "idx": 35,
       "version": "6",
-      "when": 1783469164032,
-      "tag": "0035_rewards_v2_backfill",
+      "when": 1783609745380,
+      "tag": "0035_absurd_killraven",
       "breakpoints": true
     },
     {
       "idx": 36,
       "version": "6",
-      "when": 1783471134474,
-      "tag": "0036_outstanding_bromley",
-      "breakpoints": true
-    },
-    {
-      "idx": 37,
-      "version": "6",
-      "when": 1783475016967,
-      "tag": "0037_third_human_cannonball",
-      "breakpoints": true
-    },
-    {
-      "idx": 38,
-      "version": "6",
-      "when": 1783528879122,
-      "tag": "0038_parallel_fantastic_four",
-      "breakpoints": true
-    },
-    {
-      "idx": 39,
-      "version": "6",
-      "when": 1783532635028,
-      "tag": "0039_clean_captain_flint",
-      "breakpoints": true
-    },
-    {
-      "idx": 40,
-      "version": "6",
-      "when": 1783535242311,
-      "tag": "0040_bouncy_maelstrom",
+      "when": 1783610628771,
+      "tag": "0036_rainy_tattoo",
       "breakpoints": true
     }
   ]

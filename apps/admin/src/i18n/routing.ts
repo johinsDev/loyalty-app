@@ -22,6 +22,7 @@ export const routing = defineRouting({
     "/customers/[id]": { es: "/clientes/[id]", en: "/customers/[id]" },
     "/customers/[id]/edit": { es: "/clientes/[id]/editar", en: "/customers/[id]/edit" },
     "/purchases": { es: "/compras", en: "/purchases" },
+    "/purchases/[id]": { es: "/compras/[id]", en: "/purchases/[id]" },
     "/rewards": { es: "/premios", en: "/rewards" },
     "/rewards/new": { es: "/premios/nuevo", en: "/rewards/new" },
     "/rewards/[id]": { es: "/premios/[id]", en: "/rewards/[id]" },
