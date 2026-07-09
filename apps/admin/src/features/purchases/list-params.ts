@@ -12,6 +12,7 @@ import { tableParsers } from "@/components/data-table";
 
 export const EFFECTIVENESS_VALUES = ["promo", "reward", "full"] as const;
 export const REDEMPTION_CURRENCY_VALUES = ["stamps", "points"] as const;
+export const ENTRY_SOURCE_VALUES = ["campaign", "shortlink", "organic"] as const;
 
 /** Full nuqs parser map for the purchases list URL (table state + facets).
  *  Shared by the client view and the RSC loader so both derive the same input. */
@@ -26,6 +27,7 @@ export const purchasesSearchParams = {
   cashier: parseAsArrayOf(parseAsString).withDefault([]),
   effectiveness: parseAsArrayOf(parseAsString).withDefault([]),
   currency: parseAsArrayOf(parseAsString).withDefault([]),
+  entry: parseAsArrayOf(parseAsString).withDefault([]),
   /** Deep-link from a customer profile ("their purchases"). */
   customer: parseAsString,
   amountMin: parseAsInteger,
@@ -43,6 +45,7 @@ export type PurchasesSearchValues = {
   cashier: string[];
   effectiveness: string[];
   currency: string[];
+  entry: string[];
   customer: string | null;
   amountMin: number | null;
   amountMax: number | null;
@@ -70,6 +73,7 @@ export function buildPurchasesInput(v: PurchasesSearchValues): PurchasesAdminLis
     customerId: v.customer ?? undefined,
     effectiveness: facet(v.effectiveness, EFFECTIVENESS_VALUES),
     redemptionCurrency: facet(v.currency, REDEMPTION_CURRENCY_VALUES),
+    entrySource: facet(v.entry, ENTRY_SOURCE_VALUES),
     amountMin: v.amountMin ?? undefined,
     amountMax: v.amountMax ?? undefined,
     dateFrom: v.from ?? undefined,

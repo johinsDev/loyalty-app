@@ -334,6 +334,7 @@ export class PurchasesRepository {
         addedByUserId: purchase.addedByUserId,
         storeId: purchase.storeId,
         entrySource: purchase.entrySource,
+        metadata: purchase.metadata,
         idempotencyKey: purchase.idempotencyKey,
         customerId: purchase.customerId,
         voidedAt: purchase.voidedAt,
@@ -387,6 +388,10 @@ export class PurchasesRepository {
       customer: customerBlock,
       storeId: p.storeId ?? null,
       entrySource: p.entrySource ?? null,
+      attributionCampaignId:
+        p.metadata && typeof (p.metadata as Record<string, unknown>).campaignId === "string"
+          ? ((p.metadata as Record<string, unknown>).campaignId as string)
+          : null,
       idempotencyKey: p.idempotencyKey,
       voidedAt: p.voidedAt ?? null,
       voidReason: p.voidReason ?? null,
@@ -572,6 +577,18 @@ export class PurchasesRepository {
             ),
         ),
       );
+    }
+    if (input.entrySource?.length) {
+      const src: SQL[] = [];
+      for (const e of input.entrySource) {
+        // Legacy rows have no attribution → treat null as "organic".
+        if (e === "organic") {
+          src.push(or(eq(purchase.entrySource, "organic"), isNull(purchase.entrySource))!);
+        } else {
+          src.push(eq(purchase.entrySource, e));
+        }
+      }
+      if (src.length) conds.push(or(...src)!);
     }
     return and(...conds);
   }

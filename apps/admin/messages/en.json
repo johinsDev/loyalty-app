@@ -2049,7 +2049,13 @@
     "voidOk": "Purchase voided and loyalty reversed",
     "voidError": "Couldn't void. Owner only.",
     "voidedBannerTitle": "Purchase voided",
-    "voidedBannerBody": "{reason} · by {name} · {date}"
+    "voidedBannerBody": "{reason} · by {name} · {date}",
+    "entryMode": "Entry mode",
+    "entry": {
+      "campaign": "Campaign",
+      "shortlink": "Link",
+      "organic": "Organic"
+    }
   },
   "Stores": {
     "title": "Stores",

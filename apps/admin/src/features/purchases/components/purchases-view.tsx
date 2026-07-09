@@ -31,7 +31,12 @@ import { downloadCsv, rowsToCsv } from "@/lib/csv";
 import { money } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
 
-import { buildPurchasesInput, EFFECTIVENESS_VALUES, REDEMPTION_CURRENCY_VALUES } from "../list-params";
+import {
+  buildPurchasesInput,
+  EFFECTIVENESS_VALUES,
+  ENTRY_SOURCE_VALUES,
+  REDEMPTION_CURRENCY_VALUES,
+} from "../list-params";
 import { PurchaseDetailModal } from "./purchase-detail-modal";
 import { PurchaseRowActions } from "./purchase-row-actions";
 
@@ -53,6 +58,7 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
     parseAsArrayOf(parseAsString).withDefault([]),
   );
   const [currency, setCurrency] = useQueryState("currency", parseAsArrayOf(parseAsString).withDefault([]));
+  const [entry, setEntry] = useQueryState("entry", parseAsArrayOf(parseAsString).withDefault([]));
   const [customer, setCustomer] = useQueryState("customer", parseAsString);
   const [amountMin, setAmountMin] = useQueryState("amountMin", parseAsInteger);
   const [amountMax, setAmountMax] = useQueryState("amountMax", parseAsInteger);
@@ -93,11 +99,13 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
 
   const isEffFacet = effectiveness.length > 0 && effectiveness.length < EFFECTIVENESS_VALUES.length;
   const isCurFacet = currency.length > 0 && currency.length < REDEMPTION_CURRENCY_VALUES.length;
+  const isEntryFacet = entry.length > 0 && entry.length < ENTRY_SOURCE_VALUES.length;
   const activeFacets =
     (store.length > 0 ? 1 : 0) +
     (cashier.length > 0 ? 1 : 0) +
     (isEffFacet ? 1 : 0) +
     (isCurFacet ? 1 : 0) +
+    (isEntryFacet ? 1 : 0) +
     (amountMin != null || amountMax != null ? 1 : 0) +
     (from || to ? 1 : 0);
 
@@ -106,6 +114,7 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
     void setCashier([]);
     void setEffectiveness([]);
     void setCurrency([]);
+    void setEntry([]);
     void setAmountMin(null);
     void setAmountMax(null);
     void setFrom(null);
@@ -132,13 +141,14 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
         cashier,
         effectiveness,
         currency,
+        entry,
         customer,
         amountMin,
         amountMax,
         from,
         to,
       }),
-    [q, page, perPage, sort, store, cashier, effectiveness, currency, customer, amountMin, amountMax, from, to],
+    [q, page, perPage, sort, store, cashier, effectiveness, currency, entry, customer, amountMin, amountMax, from, to],
   );
 
   const initialKey = useRef(JSON.stringify(input));
@@ -457,6 +467,15 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
               <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
                 <Checkbox checked={currency.includes(v)} onCheckedChange={() => toggle(currency, setCurrency, v)} />
                 {t(`cur.${v}`)}
+              </label>
+            ))}
+          </FilterSection>
+
+          <FilterSection label={t("entryMode")}>
+            {ENTRY_SOURCE_VALUES.map((v) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox checked={entry.includes(v)} onCheckedChange={() => toggle(entry, setEntry, v)} />
+                {t(`entry.${v}`)}
               </label>
             ))}
           </FilterSection>

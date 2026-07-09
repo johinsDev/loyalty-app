@@ -30,6 +30,8 @@ export const usualsInputSchema = z.object({
 /** "Effectiveness" facet: promo-driven / reward-driven / paid full price. */
 export const purchaseEffectivenessSchema = z.enum(["promo", "reward", "full"]);
 export const redemptionCurrencySchema = z.enum(["stamps", "points"]);
+/** "Entry mode" (marketing attribution) facet. */
+export const entrySourceSchema = z.enum(["campaign", "shortlink", "organic"]);
 
 /** Offset-paginated, filtered, sorted list for the admin data-table. */
 export const purchasesAdminListInputSchema = listQueryBase.extend({
@@ -39,6 +41,7 @@ export const purchasesAdminListInputSchema = listQueryBase.extend({
   customerId: z.string().optional(),
   effectiveness: z.array(purchaseEffectivenessSchema).optional(),
   redemptionCurrency: z.array(redemptionCurrencySchema).optional(),
+  entrySource: z.array(entrySourceSchema).optional(),
   amountMin: z.number().int().min(0).optional(),
   amountMax: z.number().int().min(0).optional(),
   dateFrom: z.coerce.date().optional(),
@@ -211,8 +214,10 @@ export interface PurchaseAdminCustomer {
 export interface PurchaseAdminDetail extends PurchaseDetail {
   customer: PurchaseAdminCustomer;
   storeId: string | null;
-  /** Marketing attribution — reserved, null until captured by a later feature. */
+  /** Marketing attribution: "campaign" | "shortlink" | "organic" (null legacy). */
   entrySource: string | null;
+  /** The attributed campaign id (from metadata), when entrySource is a campaign. */
+  attributionCampaignId: string | null;
   idempotencyKey: string;
   timeline: PurchaseTimelineEvent[];
   /** Void (anulación) audit — null when the sale is active. */

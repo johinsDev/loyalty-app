@@ -2049,7 +2049,13 @@
     "voidOk": "Compra anulada y lealtad revertida",
     "voidError": "No se pudo anular. Solo el owner puede.",
     "voidedBannerTitle": "Compra anulada",
-    "voidedBannerBody": "{reason} · por {name} · {date}"
+    "voidedBannerBody": "{reason} · por {name} · {date}",
+    "entryMode": "Modo de entrada",
+    "entry": {
+      "campaign": "Campaña",
+      "shortlink": "Enlace",
+      "organic": "Orgánica"
+    }
   },
   "Stores": {
     "title": "Tiendas",

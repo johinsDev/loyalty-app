@@ -11,6 +11,7 @@ import {
   Clock,
   Gift,
   Hash,
+  Megaphone,
   Pencil,
   Receipt,
   Send,
@@ -284,8 +285,21 @@ function TransactionBlock({ detail }: { detail: PurchaseAdminDetail }) {
               <Tag className="size-3.5" />
               {detail.promo.name ?? t("promoApplied")}
             </Link>
-          ) : detail.entrySource ? (
-            detail.entrySource
+          ) : detail.entrySource === "campaign" && detail.attributionCampaignId ? (
+            <Link
+              href={{ pathname: "/campaigns/[id]", params: { id: detail.attributionCampaignId } }}
+              className="text-primary inline-flex items-center gap-1 font-semibold hover:underline"
+            >
+              <Megaphone className="size-3.5" />
+              {t("entry.campaign")}
+            </Link>
+          ) : detail.entrySource === "campaign" ? (
+            <span className="inline-flex items-center gap-1">
+              <Megaphone className="size-3.5" />
+              {t("entry.campaign")}
+            </span>
+          ) : detail.entrySource === "shortlink" ? (
+            t("entry.shortlink")
           ) : (
             <span className="text-muted-foreground">{t("organic")}</span>
           )}
