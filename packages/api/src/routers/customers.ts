@@ -10,6 +10,7 @@ import {
   customerIdInputSchema,
   customersListInputSchema,
   ledgerInputSchema,
+  timelineInputSchema,
   updateCustomerInputSchema,
 } from "../features/customers/schemas";
 import { type Actor, CustomersService } from "../features/customers/service";
@@ -65,6 +66,10 @@ export const customersRouter = router({
   redemptionsHistory: managerProcedure
     .input(ledgerInputSchema)
     .query(async ({ ctx, input }) => readSvc(ctx.db).redemptionsHistory(await requireOrg(), input)),
+
+  timeline: managerProcedure
+    .input(timelineInputSchema)
+    .query(async ({ ctx, input }) => readSvc(ctx.db).timeline(await requireOrg(), input)),
 
   checkAvailability: managerProcedure
     .input(checkAvailabilityInputSchema)

@@ -16,6 +16,8 @@ import type {
   PointsLedgerRow,
   RedemptionHistoryRow,
   StampsHistoryRow,
+  TimelineInput,
+  TimelineView,
   UpdateCustomerInput,
 } from "./schemas";
 
@@ -72,6 +74,10 @@ export class CustomersReadService {
 
   redemptionsHistory(orgId: string, input: LedgerInput): Promise<LedgerView<RedemptionHistoryRow>> {
     return this.repo.redemptionsHistory(orgId, input);
+  }
+
+  timeline(orgId: string, input: TimelineInput): Promise<TimelineView> {
+    return this.repo.timeline(orgId, input);
   }
 
   checkAvailability(orgId: string, input: CheckAvailabilityInput): Promise<boolean> {

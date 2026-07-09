@@ -1,7 +1,10 @@
 import type { db as Db } from "@loyalty/db";
 import {
+  auditLog,
+  campaignSend,
   customer,
   loyaltyCard,
+  notification,
   pointsAccount,
   pointsTransaction,
   product,
@@ -21,6 +24,7 @@ import {
   eq,
   gte,
   inArray,
+  isNotNull,
   isNull,
   like,
   lt,
@@ -45,6 +49,9 @@ import type {
   PointsLedgerRow,
   RedemptionHistoryRow,
   StampsHistoryRow,
+  TimelineEvent,
+  TimelineInput,
+  TimelineView,
 } from "./schemas";
 
 const DAY = 86_400_000;
@@ -487,6 +494,112 @@ export class CustomersRepository {
     }));
   }
 
+  // ── timeline (activity tab) ──────────────────────────────────────────────────
+  /** Omnichannel merge: purchases, redemptions, points, stamps, messages
+   *  (notification + campaign send), and admin audit events — cursor-paginated
+   *  on `createdAt`. Each source over-fetches `limit`; we merge, sort, slice. */
+  async timeline(orgId: string, input: TimelineInput): Promise<TimelineView> {
+    const cursor = input.cursor ? new Date(input.cursor) : null;
+    const lim = input.limit;
+    const before = (col: Column): SQL[] =>
+      cursor && !Number.isNaN(cursor.getTime()) ? [lt(col, cursor)] : [];
+
+    const [purchases, redemptions, points, stamps, notifs, sends, audits] = await Promise.all([
+      this.db
+        .select({ id: purchase.id, at: purchase.createdAt, cents: purchase.priceCents, voidedAt: purchase.voidedAt })
+        .from(purchase)
+        .where(and(eq(purchase.organizationId, orgId), eq(purchase.customerId, input.customerId), ...before(purchase.createdAt)))
+        .orderBy(desc(purchase.createdAt))
+        .limit(lim + 1),
+      this.db
+        .select({ id: redemption.id, at: redemption.createdAt, rewardId: redemption.rewardId, name: reward.name })
+        .from(redemption)
+        .leftJoin(reward, eq(reward.id, redemption.rewardId))
+        .where(and(eq(redemption.organizationId, orgId), eq(redemption.customerId, input.customerId), ...before(redemption.createdAt)))
+        .orderBy(desc(redemption.createdAt))
+        .limit(lim + 1),
+      this.db
+        .select({ id: pointsTransaction.id, at: pointsTransaction.createdAt, type: pointsTransaction.type, points: pointsTransaction.points, reason: pointsTransaction.reason })
+        .from(pointsTransaction)
+        .where(and(eq(pointsTransaction.organizationId, orgId), eq(pointsTransaction.customerId, input.customerId), ...before(pointsTransaction.createdAt)))
+        .orderBy(desc(pointsTransaction.createdAt))
+        .limit(lim + 1),
+      this.stampTimeline(orgId, input.customerId, cursor, lim),
+      this.db
+        .select({ id: notification.id, at: notification.createdAt, type: notification.type, title: notification.title, body: notification.body })
+        .from(notification)
+        .where(and(eq(notification.organizationId, orgId), eq(notification.customerId, input.customerId), ...before(notification.createdAt)))
+        .orderBy(desc(notification.createdAt))
+        .limit(lim + 1),
+      this.db
+        .select({ id: campaignSend.id, at: campaignSend.sentAt, channel: campaignSend.channel, campaignId: campaignSend.campaignId })
+        .from(campaignSend)
+        .where(and(eq(campaignSend.organizationId, orgId), eq(campaignSend.customerId, input.customerId), isNotNull(campaignSend.sentAt), ...before(campaignSend.sentAt)))
+        .orderBy(desc(campaignSend.sentAt))
+        .limit(lim + 1),
+      this.db
+        .select({ id: auditLog.id, at: auditLog.createdAt, type: auditLog.type, metadata: auditLog.metadata })
+        .from(auditLog)
+        .where(and(eq(auditLog.organizationId, orgId), eq(auditLog.targetUserId, input.customerId), ...before(auditLog.createdAt)))
+        .orderBy(desc(auditLog.createdAt))
+        .limit(lim + 1),
+    ]);
+
+    const events: TimelineEvent[] = [];
+    for (const p of purchases) {
+      events.push({ id: `p_${p.id}`, kind: "purchase", at: p.at, title: "Compra", detail: null, amount: p.cents, refId: p.id, negative: p.voidedAt != null });
+    }
+    for (const r of redemptions) {
+      events.push({ id: `r_${r.id}`, kind: "redeem", at: r.at, title: r.name ?? "Reward canjeado", detail: null, amount: null, refId: r.rewardId, negative: false });
+    }
+    for (const t of points) {
+      const signed = t.points > 0 ? `+${t.points}` : `${t.points}`;
+      events.push({ id: `pt_${t.id}`, kind: "points", at: t.at, title: `${signed} puntos`, detail: cleanReason(t.reason), amount: t.points, refId: null, negative: t.type === "adjust" && t.points < 0 });
+    }
+    for (const s of stamps) {
+      const signed = s.amount > 0 ? `+${s.amount}` : `${s.amount}`;
+      events.push({ id: `st_${s.id}`, kind: "stamp", at: s.at, title: `${signed} sello${Math.abs(s.amount) === 1 ? "" : "s"}`, detail: s.note, amount: s.amount, refId: null, negative: s.amount < 0 });
+    }
+    for (const n of notifs) {
+      const isTier = n.type === "tier-up" || n.type === "tier-down";
+      events.push({ id: `n_${n.id}`, kind: isTier ? "tier" : "message", at: n.at, title: n.title, detail: n.body.slice(0, 120), amount: null, refId: null, negative: n.type === "tier-down" });
+    }
+    for (const cs of sends) {
+      if (!cs.at) continue;
+      events.push({ id: `cs_${cs.id}`, kind: "message", at: cs.at, title: "Campaña enviada", detail: cs.channel, amount: null, refId: cs.campaignId, negative: false });
+    }
+    for (const a of audits) {
+      events.push({ id: `a_${a.id}`, kind: "admin", at: a.at, title: auditTitle(a.type), detail: auditDetail(a.metadata), amount: null, refId: null, negative: a.type === "customer_ban" });
+    }
+
+    events.sort((x, y) => y.at.getTime() - x.at.getTime());
+    const hasMore = events.length > lim;
+    const page = events.slice(0, lim);
+    return { items: page, nextCursor: hasMore ? (page[page.length - 1]?.at.toISOString() ?? null) : null };
+  }
+
+  private async stampTimeline(
+    orgId: string,
+    customerId: string,
+    cursor: Date | null,
+    lim: number,
+  ): Promise<{ id: string; at: Date; amount: number; note: string | null }[]> {
+    const cards = await this.db
+      .select({ id: loyaltyCard.id })
+      .from(loyaltyCard)
+      .where(and(eq(loyaltyCard.organizationId, orgId), eq(loyaltyCard.customerId, customerId)));
+    const cardIds = cards.map((c) => c.id);
+    if (cardIds.length === 0) return [];
+    const conds = [inArray(stamp.cardId, cardIds)];
+    if (cursor && !Number.isNaN(cursor.getTime())) conds.push(lt(stamp.createdAt, cursor));
+    return this.db
+      .select({ id: stamp.id, at: stamp.createdAt, amount: stamp.amount, note: stamp.note })
+      .from(stamp)
+      .where(and(...conds))
+      .orderBy(desc(stamp.createdAt))
+      .limit(lim + 1);
+  }
+
   // ── writes ───────────────────────────────────────────────────────────────────
   /** Confirm a customer belongs to the org; returns id or null. */
   async exists(orgId: string, id: string): Promise<boolean> {
@@ -618,4 +731,31 @@ function scope(orgId: string, customerId: string): SQL {
     eq(purchase.customerId, customerId),
     isNull(purchase.voidedAt),
   )!;
+}
+
+/** Strip internal prefixes from a ledger reason for display. */
+function cleanReason(reason: string | null): string | null {
+  if (!reason) return null;
+  if (reason === "purchase") return null;
+  if (reason.startsWith("reward:")) return "Canje de reward";
+  return reason.replace(/^void(-refund)?:\s*/, "Anulación: ");
+}
+
+const AUDIT_TITLES: Record<string, string> = {
+  customer_ban: "Cliente baneado",
+  customer_unban: "Cliente reactivado",
+  customer_points_adjust: "Puntos ajustados",
+  customer_stamps_adjust: "Sellos ajustados",
+  customer_update: "Perfil actualizado",
+  customer_create: "Cliente creado",
+  impersonation_start: "Inicio de impersonación",
+  impersonation_stop: "Fin de impersonación",
+};
+function auditTitle(type: string): string {
+  return AUDIT_TITLES[type] ?? type;
+}
+function auditDetail(metadata: Record<string, unknown> | null): string | null {
+  if (!metadata) return null;
+  if (typeof metadata.reason === "string") return metadata.reason;
+  return null;
 }
