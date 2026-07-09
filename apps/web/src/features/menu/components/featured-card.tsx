@@ -56,7 +56,17 @@ export function FeaturedCard({ section }: { section: SectionView }) {
         ) : null}
         <div className="mt-1 flex items-end justify-between">
           <span className="font-display text-primary text-xl font-semibold tracking-tight">
-            {money(format, product.priceCents, product.currency)}
+            {product.promoPriceCents != null &&
+            product.promoPriceCents < product.priceCents ? (
+              <>
+                <span className="text-muted-foreground/60 mr-1.5 text-sm font-semibold line-through">
+                  {money(format, product.priceCents, product.currency)}
+                </span>
+                {money(format, product.promoPriceCents, product.currency)}
+              </>
+            ) : (
+              money(format, product.priceCents, product.currency)
+            )}
           </span>
           {product.earn.points > 0 ? (
             <span className="text-muted-foreground text-xs font-semibold">

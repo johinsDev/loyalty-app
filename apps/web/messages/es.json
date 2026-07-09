@@ -175,6 +175,8 @@
     "balanceStamps": "{have} / {cost} sellos",
     "balancePoints": "{have} / {cost} pts",
     "redeemCta": "Canjear",
+    "appliesAtRegister": "Al canjear te enviamos un código; el cajero lo aplica a tu compra en caja.",
+    "appliesAtRegisterFreeProduct": "Al canjear te enviamos un código; muéstralo en caja y agrega el producto para recibirlo gratis.",
     "notReadyCta": "Todavía no alcanza",
     "payStamps": "{count} sellos",
     "payPoints": "{count} pts",
@@ -277,7 +279,8 @@
     "sizeM": "Mediano",
     "sizeL": "Grande +$0.80",
     "toppings": "Toppings",
-    "addToOrder": "Agregar al pedido · {price}"
+    "addToOrder": "Agregar al pedido · {price}",
+    "contains": "Contiene"
   },
   "Qr": {
     "title": "Mi código",

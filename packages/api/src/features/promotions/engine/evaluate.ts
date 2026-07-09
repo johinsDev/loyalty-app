@@ -1,5 +1,6 @@
 import { computeEffect } from "./effects";
 import { ineligibleReason } from "./eligibility";
+import { excludedAmountCents, type UnitExclusion } from "./exclusions";
 import { matchRule } from "./match";
 import type { Cart, CustomerFacts, IneligibleReason, PromoEvaluation, PromoView } from "./types";
 import { subtotalCents } from "./types";
@@ -19,25 +20,27 @@ export function evaluatePromo(
   view: PromoView,
   facts: CustomerFacts,
   now: Date,
+  exclusions: UnitExclusion[] = [],
 ): PromoEvaluation {
   const pre = ineligibleReason(view, facts, now);
   if (pre) return failed(pre);
   if (!view.rule) return failed("no-matching-items");
 
-  const sub = subtotalCents(cart.lines);
+  // Evaluate against what's left after the reward consumed its units.
+  const sub = Math.max(0, subtotalCents(cart.lines) - excludedAmountCents(cart, exclusions));
   const c = view.conditions ?? {};
   if (c.minPurchaseCents != null && sub < c.minPurchaseCents) return failed("below-min-purchase");
   if (view.rule.buy.minSubtotalCents != null && sub < view.rule.buy.minSubtotalCents)
     return failed("below-threshold");
 
-  const match = matchRule(cart, view.rule);
+  const match = matchRule(cart, view.rule, exclusions);
   if (match.applications.length === 0) {
     if (match.missingGetSide.length > 0)
       return { ...failed("missing-get-side"), missingGetSide: match.missingGetSide };
     return failed("no-matching-items");
   }
 
-  const effect = computeEffect(cart, view.rule, match);
+  const effect = computeEffect(cart, view.rule, match, exclusions);
   return {
     eligible: true,
     reason: null,

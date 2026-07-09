@@ -1,0 +1,1 @@
+ALTER TABLE `reward` DROP COLUMN `active`;

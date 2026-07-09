@@ -88,6 +88,15 @@ export class StampsRepository {
     discountCents?: number;
     currency?: string;
     appliedPromoId?: string | null;
+    // The reward's share of the ticket discount (v2 split): `discountCents` is
+    // the TOTAL (promo + reward) on the purchase; `promoDiscountCents` is the
+    // promo-only share on the promoRedemption; `rewardDiscountCents` is recorded
+    // on the redemption. Fall back to `discountCents` when not split.
+    promoDiscountCents?: number;
+    rewardDiscountCents?: number;
+    // False for a redemption-only ticket (net $0 with a reward) — no stamp is
+    // granted (it's a claim, not a purchase). Defaults to granting a stamp.
+    grantStamp?: boolean;
     /** Marketing attribution resolved at record time (best-effort context). */
     entrySource?: string | null;
     metadata?: Record<string, unknown> | null;
@@ -196,33 +205,36 @@ export class StampsRepository {
           })),
         );
       }
-      if (input.appliedPromoId && (input.discountCents ?? 0) >= 0) {
+      if (input.appliedPromoId) {
         await tx.insert(promoRedemption).values({
           promoId: input.appliedPromoId,
           customerId: input.customerId,
           purchaseId,
-          discountCents: input.discountCents ?? 0,
+          discountCents: input.promoDiscountCents ?? input.discountCents ?? 0,
           currency,
         });
       }
 
-      await tx.insert(stamp).values({
-        cardId: active.id,
-        purchaseId,
-        addedByUserId: input.addedByUserId,
-        storeId: input.storeId,
-        amount: 1,
-      });
-
-      const updated = await tx
-        .update(loyaltyCard)
-        .set({
-          currentStamps: active.currentStamps + 1,
-          updatedAt: new Date(),
-        })
-        .where(eq(loyaltyCard.id, active.id))
-        .returning();
-      let wallet = toView(updated[0] ?? null);
+      // A redemption-only ticket (net $0 with a reward) grants no stamp.
+      let wallet = toView(active);
+      if (input.grantStamp !== false) {
+        await tx.insert(stamp).values({
+          cardId: active.id,
+          purchaseId,
+          addedByUserId: input.addedByUserId,
+          storeId: input.storeId,
+          amount: 1,
+        });
+        const updated = await tx
+          .update(loyaltyCard)
+          .set({
+            currentStamps: active.currentStamps + 1,
+            updatedAt: new Date(),
+          })
+          .where(eq(loyaltyCard.id, active.id))
+          .returning();
+        wallet = toView(updated[0] ?? null);
+      }
 
       // Inline reward redeem: AFTER the stamp + card bump (so the just-earned
       // stamp is spendable). A not-redeemable reward throws → the whole sale
@@ -253,6 +265,7 @@ export class StampsRepository {
           claimedByUserId: input.inlineReward.redeemedByUserId,
           storeId: input.storeId,
           purchaseId,
+          discountCents: input.rewardDiscountCents ?? 0,
         });
         if (redeemed.kind !== "claimed") {
           throw new TRPCError({

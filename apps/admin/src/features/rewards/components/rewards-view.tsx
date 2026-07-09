@@ -1,321 +1,316 @@
 "use client";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  Badge,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@loyalty/ui";
-import { Coins, Gift, Pencil, Plus, Search, Stamp, Trash2 } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import type { AdminRewardRow } from "@loyalty/api/features/rewards";
+import type { RewardAdminListInput } from "@loyalty/api/features/rewards/schemas";
+import { formatDate } from "@loyalty/date";
+import { Badge, Button, Checkbox, IconGlyph, Input } from "@loyalty/ui";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Plus } from "lucide-react";
+import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
+import { useLocale, useTranslations } from "next-intl";
+import { useMemo, useRef, useState } from "react";
 
-import { EmptyState } from "@/components/empty-state";
 import {
-  type FilterOption,
-  FilterMultiSelect,
-  FilterSelect,
-} from "@/components/filters";
-import { type ViewMode, ViewToggle } from "@/components/view-toggle";
-import { useFadeUp } from "@/lib/animate";
+  DataTable,
+  DataTableColumnHeader,
+  DataTableFilters,
+  DataTablePagination,
+  DataTableSortList,
+  DataTableViewOptions,
+  FilterSection,
+  tableParsers,
+} from "@/components/data-table";
+import { useDataTable } from "@/components/data-table/use-data-table";
+import { ViewToggle } from "@/components/view-toggle";
 import { useRouter } from "@/i18n/navigation";
+import { useTRPC } from "@/lib/trpc/client";
 
-import { type CostType, type Reward, rewards } from "../data";
+import {
+  buildRewardsInput,
+  REWARD_STATUS_VALUES,
+  REWARD_TYPE_VALUES,
+} from "../list-params";
+import { RewardRowActions } from "./reward-row-actions";
 
-type StatusKey = "active" | "inactive";
-const STATUSES: StatusKey[] = ["active", "inactive"];
+type RewardListResult = { rows: AdminRewardRow[]; total: number; pageCount: number };
 
-/**
- * Recompensas — searchable card grid filtered by cost type (single-select) and
- * status (multi-select). Add/edit open the reward wizard; delete confirms via an
- * AlertDialog then offers undo. Design-first / hardcoded (../data).
- */
-export function RewardsView() {
+export function RewardsView({ initialData }: { initialData?: RewardListResult }) {
   const t = useTranslations("Rewards");
-  const tCommon = useTranslations("Common");
+  const locale = useLocale();
+  const trpc = useTRPC();
   const router = useRouter();
-  const fade = useFadeUp({ step: 30 });
 
-  const [query, setQuery] = useState("");
-  const [costType, setCostType] = useState<CostType | null>(null);
-  const [statuses, setStatuses] = useState<StatusKey[]>([...STATUSES]);
-  const [view, setView] = useState<ViewMode>("grid");
-  const [toDelete, setToDelete] = useState<Reward | null>(null);
+  // Feature-specific URL state (facets + q). page/perPage/sort/view/cols live in
+  // useDataTable.
+  const [q, setQ] = useQueryState("q", tableParsers.q);
+  const [status, setStatus] = useQueryState("status", parseAsArrayOf(parseAsString).withDefault([]));
+  const [type, setType] = useQueryState("type", parseAsArrayOf(parseAsString).withDefault([]));
+  const [page, setPage] = useQueryState("page", tableParsers.page);
+  const [perPage] = useQueryState("perPage", tableParsers.perPage);
+  const [sort] = useQueryState("sort", tableParsers.sort);
+  const [view, setView] = useQueryState("view", tableParsers.view);
 
-  const costOptions: FilterOption<CostType>[] = [
-    { value: "stamps", label: t("cost.stampsLabel") },
-    { value: "points", label: t("cost.pointsLabel") },
-  ];
-  const statusOptions: FilterOption<StatusKey>[] = [
-    { value: "active", label: t("active"), dot: "#1f9d68" },
-    { value: "inactive", label: t("inactive"), dot: "#9aa1ab" },
-  ];
+  const resetPage = () => void setPage(1);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return rewards.filter((r) => {
-      if (costType && r.costType !== costType) return false;
-      if (!statuses.includes(r.active ? "active" : "inactive")) return false;
-      if (q && !r.name.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [query, costType, statuses]);
+  const [search, setSearch] = useState(q);
+  const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const onSearch = (value: string) => {
+    setSearch(value);
+    clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => {
+      void setQ(value || null);
+      resetPage();
+    }, 350);
+  };
 
+  const narrows = (values: string[], all: readonly string[]) =>
+    values.length > 0 && values.length < all.length ? 1 : 0;
+  const activeFacets = narrows(status, REWARD_STATUS_VALUES) + narrows(type, REWARD_TYPE_VALUES);
   const clearFilters = () => {
-    setQuery("");
-    setCostType(null);
-    setStatuses([...STATUSES]);
+    void setStatus([]);
+    void setType([]);
+    resetPage();
+  };
+  const toggle = (values: string[], set: (next: string[]) => void) => (v: string) => {
+    set(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+    resetPage();
+  };
+  const toggleStatus = toggle(status, (next) => void setStatus(next));
+  const toggleType = toggle(type, (next) => void setType(next));
+
+  const input: RewardAdminListInput = useMemo(
+    () => buildRewardsInput({ q, page, perPage, sort, status, type }),
+    [q, page, perPage, sort, status, type],
+  );
+
+  const initialKey = useRef(JSON.stringify(input));
+  const useInitial = initialData && JSON.stringify(input) === initialKey.current;
+  const query = useQuery(
+    trpc.rewards.adminList.queryOptions(input, {
+      placeholderData: keepPreviousData,
+      ...(useInitial ? { initialData } : {}),
+    }),
+  );
+  const rows = query.data?.rows ?? [];
+  const pageCount = query.data?.pageCount ?? 1;
+  const total = query.data?.total ?? 0;
+
+  const openDetail = (id: string) => router.push({ pathname: "/rewards/[id]", params: { id } });
+
+  const typeLabel = (v: string | null) =>
+    v && (REWARD_TYPE_VALUES as readonly string[]).includes(v) ? t(`types.${v}`) : "—";
+  const statusBadge = (s: string) =>
+    s === "published" ? (
+      <Badge>{t("list.published")}</Badge>
+    ) : s === "archived" ? (
+      <Badge variant="secondary">{t("list.archived")}</Badge>
+    ) : (
+      <Badge variant="outline">{t("list.draft")}</Badge>
+    );
+  const costLabel = (r: AdminRewardRow) => {
+    const parts: string[] = [];
+    if (r.stampsRequired != null) parts.push(t("cost.stamps", { n: r.stampsRequired }));
+    if (r.pointsCost != null) parts.push(t("cost.points", { n: r.pointsCost }));
+    if (parts.length === 0) return "—";
+    return parts.join(r.costMode === "and" ? t("cost.and") : t("cost.or"));
   };
 
-  const onDelete = () => {
-    if (!toDelete) return;
-    const name = toDelete.name;
-    setToDelete(null);
-    toast.success(t("deleted", { name }), {
-      action: {
-        label: t("undo"),
-        onClick: () => toast(t("restored", { name })),
+  const columns = useMemo<ColumnDef<AdminRewardRow, unknown>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        meta: { label: t("list.colName") },
+        header: ({ column }) => <DataTableColumnHeader column={column} title={t("list.colName")} />,
+        cell: ({ row }) => (
+          <span className="flex items-center gap-2.5">
+            <span
+              aria-hidden
+              className="border-border grid size-7 shrink-0 place-items-center rounded-lg border text-sm text-white"
+              style={{ background: row.original.backgroundCss ?? "var(--muted)" }}
+            >
+              {row.original.icon ? <IconGlyph value={row.original.icon} /> : null}
+            </span>
+            <span className="font-semibold">{row.original.name || t("list.namePlaceholder")}</span>
+          </span>
+        ),
       },
-    });
-  };
+      {
+        accessorKey: "type",
+        enableSorting: false,
+        meta: { label: t("list.colType") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("list.colType")}</span>,
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm">{typeLabel(row.original.type)}</span>
+        ),
+      },
+      {
+        accessorKey: "status",
+        enableSorting: false,
+        meta: { label: t("list.colStatus") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("list.colStatus")}</span>,
+        cell: ({ row }) => statusBadge(row.original.status),
+      },
+      {
+        id: "cost",
+        enableSorting: false,
+        meta: { label: t("list.colCost") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("list.colCost")}</span>,
+        cell: ({ row }) => (
+          <span className="text-primary text-sm font-semibold">{costLabel(row.original)}</span>
+        ),
+      },
+      {
+        accessorKey: "redemptions",
+        meta: { label: t("list.colRedemptions") },
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t("list.colRedemptions")} />
+        ),
+        cell: ({ row }) => (
+          <span className="text-sm tabular-nums">{row.original.redemptions}</span>
+        ),
+      },
+      {
+        accessorKey: "createdAt",
+        meta: { label: t("list.colCreated") },
+        header: ({ column }) => <DataTableColumnHeader column={column} title={t("list.colCreated")} />,
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm">
+            {formatDate(row.original.createdAt, { locale })}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => (
+          <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+            <RewardRowActions reward={row.original} />
+          </div>
+        ),
+      },
+    ],
+    [t, locale],
+  );
 
-  let i = 0;
+  const { table, selectedIds } = useDataTable<AdminRewardRow>({
+    data: rows,
+    columns,
+    pageCount,
+    getRowId: (r) => r.id,
+  });
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground/80 mt-0.5 text-sm font-semibold">
-            {t("subtitle")}
-          </p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
         </div>
-        <Button
-          className="h-10 gap-2 rounded-xl font-semibold"
-          onClick={() => router.push("/rewards/new")}
-        >
+        <Button className="h-10 gap-1.5 rounded-xl" onClick={() => router.push("/rewards/new")}>
           <Plus className="size-4" />
           {t("add")}
         </Button>
       </div>
 
-      {/* Toolbar */}
+      {/* Toolbar — search + a Filters drawer; only Sort/View/toggle stay inline. */}
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-52 flex-1">
-          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="border-border bg-card placeholder:text-muted-foreground h-10 w-full rounded-xl border pr-3 pl-9 text-sm outline-none"
-          />
+        <Input
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          placeholder={t("searchPlaceholder")}
+          className="h-10 w-full sm:w-64"
+        />
+        <DataTableFilters activeCount={activeFacets} onClear={clearFilters}>
+          <FilterSection label={t("list.colStatus")}>
+            {REWARD_STATUS_VALUES.map((v) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox checked={status.includes(v)} onCheckedChange={() => toggleStatus(v)} />
+                {t(`list.${v}`)}
+              </label>
+            ))}
+          </FilterSection>
+
+          <FilterSection label={t("list.colType")}>
+            {REWARD_TYPE_VALUES.map((v) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox checked={type.includes(v)} onCheckedChange={() => toggleType(v)} />
+                {t(`types.${v}`)}
+              </label>
+            ))}
+          </FilterSection>
+        </DataTableFilters>
+        <div className="ml-auto flex items-center gap-2">
+          <DataTableSortList table={table} />
+          <DataTableViewOptions table={table} />
+          <ViewToggle value={view} onValueChange={(v) => setView(v)} ariaLabel={t("list.viewToggle")} />
         </div>
-        <FilterSelect
-          allLabel={t("allCostTypes")}
-          value={costType}
-          onValueChange={setCostType}
-          options={costOptions}
-        />
-        <FilterMultiSelect
-          label={t("statusFilter")}
-          options={statusOptions}
-          selected={statuses}
-          onChange={setStatuses}
-        />
-        <ViewToggle
-          value={view}
-          onValueChange={setView}
-          ariaLabel={tCommon("viewToggle")}
-        />
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={Gift}
-          title={t("empty")}
-          hint={t("emptyHint")}
-          action={
-            <Button variant="outline" className="rounded-xl" onClick={clearFilters}>
-              {t("clearFilters")}
-            </Button>
-          }
-        />
-      ) : view === "grid" ? (
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((r) => (
-            <div
-              key={r.id}
-              style={fade(i++)}
-              className="bg-card border-border flex flex-col rounded-3xl border p-5 shadow-sm"
-            >
-              <div className="flex items-start gap-3">
-                <span className="bg-primary/10 grid size-12 flex-none place-items-center rounded-2xl text-2xl">
-                  {r.emoji}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-bold">{r.name}</div>
-                  <span className="text-primary mt-0.5 inline-flex items-center gap-1 text-sm font-extrabold">
-                    {r.costType === "stamps" ? (
-                      <Stamp className="size-3.5" />
-                    ) : (
-                      <Coins className="size-3.5" />
-                    )}
-                    {r.cost === 0
-                      ? t("free")
-                      : t(`cost.${r.costType}`, { n: r.cost })}
-                  </span>
-                </div>
-                {!r.active ? (
-                  <Badge variant="secondary" className="text-muted-foreground">
-                    {t("inactive")}
-                  </Badge>
-                ) : null}
-              </div>
-
-              <p className="text-muted-foreground/70 mt-3 text-xs font-semibold">
-                {t("redeemedCount", { n: r.redeemed })}
-              </p>
-
-              <div className="border-border mt-3 flex items-center gap-1 border-t pt-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 flex-1 gap-1.5 rounded-lg"
-                  onClick={() =>
-                    router.push({
-                      pathname: "/rewards/[id]",
-                      params: { id: r.id },
-                    })
-                  }
-                >
-                  <Pencil className="size-3.5" />
-                  {t("edit")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label={t("delete")}
-                  className="text-destructive hover:bg-destructive/10 size-9 rounded-lg"
-                  onClick={() => setToDelete(r)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
+      <div className="mt-4">
+        <DataTable
+          table={table}
+          view={view}
+          isFetching={query.isFetching}
+          onRowClick={(r) => openDetail(r.id)}
+          emptyState={
+            <div className="text-muted-foreground grid h-40 place-items-center px-6 text-center">
+              <div>
+                <p className="text-foreground font-semibold">{t("empty")}</p>
+                <p className="mt-1 text-sm">{t("emptyHint")}</p>
               </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-card border-border mt-5 overflow-hidden rounded-3xl border shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("col.reward")}</TableHead>
-                <TableHead>{t("col.cost")}</TableHead>
-                <TableHead className="text-right">{t("col.redeemed")}</TableHead>
-                <TableHead>{t("col.status")}</TableHead>
-                <TableHead className="w-24" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((r) => (
-                <TableRow
+          }
+          renderGrid={(items) => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((r) => (
+                <div
                   key={r.id}
-                  className="cursor-pointer"
-                  onClick={() =>
-                    router.push({ pathname: "/rewards/[id]", params: { id: r.id } })
-                  }
+                  role="button"
+                  tabIndex={0}
+                  className="bg-card border-border hover:border-primary/40 flex cursor-pointer flex-col overflow-hidden rounded-3xl border shadow-sm transition-colors"
+                  onClick={() => openDetail(r.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openDetail(r.id);
+                    }
+                  }}
                 >
-                  <TableCell>
-                    <div className="flex items-center gap-2.5">
-                      <span className="bg-primary/10 grid size-9 flex-none place-items-center rounded-xl text-lg">
-                        {r.emoji}
-                      </span>
-                      <span className="font-bold">{r.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-primary font-extrabold">
-                    {r.cost === 0 ? t("free") : t(`cost.${r.costType}`, { n: r.cost })}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-right font-semibold">
-                    {r.redeemed}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className={r.active ? "text-emerald-600" : "text-muted-foreground"}
+                  <div
+                    className="relative flex h-24 items-center justify-center text-4xl text-white"
+                    style={{ background: r.backgroundCss ?? "var(--muted)" }}
+                  >
+                    {r.icon ? <IconGlyph value={r.icon} /> : null}
+                    <div
+                      className="absolute top-3 right-3"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
                     >
-                      {t(r.active ? "active" : "inactive")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        aria-label={t("edit")}
-                        className="size-8 rounded-lg"
-                        onClick={() =>
-                          router.push({ pathname: "/rewards/[id]", params: { id: r.id } })
-                        }
-                      >
-                        <Pencil className="size-3.5" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        aria-label={t("delete")}
-                        className="text-destructive hover:bg-destructive/10 size-8 rounded-lg"
-                        onClick={() => setToDelete(r)}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
+                      <RewardRowActions reward={r} />
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </div>
+                  <div className="flex flex-1 flex-col p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-semibold">{r.name || t("list.namePlaceholder")}</p>
+                      {statusBadge(r.status)}
+                    </div>
+                    <div className="text-muted-foreground mt-3 flex items-center gap-2 text-xs">
+                      <span>{typeLabel(r.type)}</span>
+                      <span aria-hidden>·</span>
+                      <span className="text-primary font-semibold">{costLabel(r)}</span>
+                      <span aria-hidden>·</span>
+                      <span className="tabular-nums">{t("list.redemptionsCount", { n: r.redemptions })}</span>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      <AlertDialog
-        open={toDelete !== null}
-        onOpenChange={(o) => !o && setToDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("deleteDescription", { name: toDelete?.name ?? "" })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel size="sm">{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              size="sm"
-              onClick={onDelete}
-              className="bg-destructive text-white hover:bg-destructive/90"
-            >
-              {t("deleteConfirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </div>
+          )}
+        />
+        <DataTablePagination table={table} total={total} selectedCount={selectedIds.length} />
+      </div>
     </div>
   );
 }

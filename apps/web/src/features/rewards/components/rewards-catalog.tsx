@@ -278,7 +278,11 @@ function RewardCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        <span className="from-primary/15 to-primary/5 grid size-14 shrink-0 place-items-center overflow-hidden rounded-[1.125rem] bg-gradient-to-br text-2xl">
+        <span
+          className="from-primary/15 to-primary/5 grid size-14 shrink-0 place-items-center overflow-hidden rounded-[1.125rem] bg-gradient-to-br text-2xl"
+          // v2 visual: the reward's own gradient/pattern when there's no image.
+          style={!reward.imageUrl && reward.backgroundCss ? { background: reward.backgroundCss } : undefined}
+        >
           {locked ? (
             <Lock className="text-muted-foreground size-6" />
           ) : reward.imageUrl ? (
@@ -289,7 +293,7 @@ function RewardCard({
               className="size-full object-cover"
             />
           ) : (
-            "🎁"
+            (reward.icon ?? "🎁")
           )}
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -425,14 +429,17 @@ function RewardDetail({
 
   return (
     <div className="flex flex-col items-center px-6 pb-2 text-center">
-      <span className="from-primary/15 to-primary/5 shadow-primary/10 mt-2 grid size-24 place-items-center overflow-hidden rounded-[1.75rem] bg-gradient-to-br text-5xl shadow-lg">
+      <span
+        className="from-primary/15 to-primary/5 shadow-primary/10 mt-2 grid size-24 place-items-center overflow-hidden rounded-[1.75rem] bg-gradient-to-br text-5xl shadow-lg"
+        style={!view.imageUrl && view.backgroundCss ? { background: view.backgroundCss } : undefined}
+      >
         {locked ? (
           <Lock className="text-muted-foreground size-10" />
         ) : view.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={view.imageUrl} alt="" className="size-full object-cover" />
         ) : (
-          "🎁"
+          (view.icon ?? "🎁")
         )}
       </span>
       <ResponsiveModalHeader className="items-center gap-2">
@@ -525,6 +532,11 @@ function RewardDetail({
             >
               {t("redeemCta")}
             </Button>
+            <p className="text-muted-foreground w-full text-center text-xs leading-relaxed">
+              {view.type === "freeProduct"
+                ? t("appliesAtRegisterFreeProduct")
+                : t("appliesAtRegister")}
+            </p>
           </>
         ) : !redeemed ? (
           <Button

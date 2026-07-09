@@ -18,7 +18,7 @@ function reward(over: Partial<RewardRow> = {}): RewardRow {
     sections: [],
     sortOrder: 0,
     limitPerCustomer: "unlimited",
-    active: true,
+    status: "published",
     createdAt: new Date(),
     updatedAt: new Date(),
     ...over,

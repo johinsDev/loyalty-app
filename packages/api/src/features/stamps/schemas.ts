@@ -45,6 +45,21 @@ export const customerIdInputSchema = z.object({
   customerId: z.string().min(1),
 });
 
+/** Read-only register preview: same reward-first-then-promo evaluation as
+ *  `recordPurchase`, so the cashier sees the exact charge (reward + promo
+ *  discounts) before committing the sale. */
+export const previewPurchaseInputSchema = z.object({
+  customerId: z.string().min(1),
+  currency: z.string().optional(),
+  items: z.array(purchaseLineSchema).min(1),
+  inlineReward: z
+    .object({
+      rewardId: z.string().min(1),
+      currency: z.enum(["stamps", "points", "both"]),
+    })
+    .optional(),
+});
+
 export const historyInputSchema = z.object({
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(50).default(20),

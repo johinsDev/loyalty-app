@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   index,
   integer,
+  real,
   sqliteTable,
   text,
   uniqueIndex,
@@ -55,9 +56,23 @@ export const product = sqliteTable(
     description: text("description"),
     // The default/shown price; variants may override.
     basePriceCents: integer("base_price_cents").notNull().default(0),
+    // Optional promotional price (< base). When set, the store shows the base
+    // struck through with this as the effective price.
+    promoPriceCents: integer("promo_price_cents"),
     currency: text("currency").notNull().default("COP"),
     status: text("status").notNull().default("active"), // active | draft | archived
     brand: text("brand"),
+    // Retail attributes (SaaS-generic; the tea pilot leaves most null). `stock_mode`
+    // "infinite" | "limited" (qty tracked in `stock_qty`); `product_type`
+    // "physical" | "digital".
+    gender: text("gender"), // unisex | female | male (retail apparel)
+    ageRange: text("age_range"), // all | kids | teens | adults
+    mpn: text("mpn"), // manufacturer part number
+    stockMode: text("stock_mode").notNull().default("infinite"),
+    stockQty: integer("stock_qty"),
+    productType: text("product_type").notNull().default("physical"),
+    // Staff-only prep notes for the recipe (tiptap HTML). Never shown to customers.
+    recipeNotes: text("recipe_notes"),
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     ogImageUrl: text("og_image_url"),
@@ -192,6 +207,58 @@ export const modifierOption = sqliteTable("modifier_option", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
+// Org-level ingredient catalog (recipes reference these). `costPerUnitCents` +
+// the recipe quantities drive COGS. Inventory/stock is a deferred Phase-2 concern.
+export const ingredient = sqliteTable(
+  "ingredient",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    unit: text("unit").notNull().default("u"), // g | ml | u | …
+    costPerUnitCents: integer("cost_per_unit_cents").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    namePerOrg: uniqueIndex("ingredient_name_per_org_uq").on(t.organizationId, t.name),
+  }),
+);
+
+// One recipe line: how much of an ingredient a variant uses. `visibleToCustomer`
+// surfaces the ingredient name in the store ("Contiene …"); quantities/cost are
+// staff-only. Replaced wholesale per variant on save (no external refs).
+export const variantIngredient = sqliteTable(
+  "variant_ingredient",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    variantId: text("variant_id")
+      .notNull()
+      .references(() => productVariant.id, { onDelete: "cascade" }),
+    ingredientId: text("ingredient_id")
+      .notNull()
+      .references(() => ingredient.id, { onDelete: "restrict" }),
+    quantity: real("quantity").notNull().default(0),
+    visibleToCustomer: integer("visible_to_customer", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => ({
+    byVariant: index("variant_ingredient_variant_idx").on(t.variantId),
+  }),
+);
+
 // Curated menu section. `carousel` = a horizontal product row; `banner` = the
 // featured callout (Spring drop). Placement decides where it renders.
 export const section = sqliteTable("section", {
@@ -316,6 +383,22 @@ export const productVariantRelations = relations(productVariant, ({ one, many })
   }),
   values: many(productVariantValue),
   images: many(productImage),
+  ingredients: many(variantIngredient),
+}));
+
+export const ingredientRelations = relations(ingredient, ({ many }) => ({
+  variantLines: many(variantIngredient),
+}));
+
+export const variantIngredientRelations = relations(variantIngredient, ({ one }) => ({
+  variant: one(productVariant, {
+    fields: [variantIngredient.variantId],
+    references: [productVariant.id],
+  }),
+  ingredient: one(ingredient, {
+    fields: [variantIngredient.ingredientId],
+    references: [ingredient.id],
+  }),
 }));
 
 export const productVariantValueRelations = relations(

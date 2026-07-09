@@ -16,7 +16,8 @@ import {
   PieChart,
 } from "recharts";
 
-import type { EngagementSlice } from "../data";
+/** One slice of the Donut chart. */
+export type DonutSlice = { key: string; pct: number; color: string };
 
 // Charts on recharts via the @loyalty/ui ChartContainer (shadcn) — brand-themed,
 // responsive, with tooltips. Wrappers keep simple series/slice props so the
@@ -116,7 +117,7 @@ export function Donut({
   center,
   centerSub,
 }: {
-  slices: EngagementSlice[];
+  slices: DonutSlice[];
   center: string;
   centerSub: string;
 }) {

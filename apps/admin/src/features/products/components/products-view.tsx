@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@loyalty/ui";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FolderTree, Package, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -32,16 +33,21 @@ import {
 import { type ViewMode, ViewToggle } from "@/components/view-toggle";
 import { useFadeUp } from "@/lib/animate";
 import { useRouter } from "@/i18n/navigation";
+import { useTRPC } from "@/lib/trpc/client";
 
-import {
-  categoryLabel,
-  categoryRefs,
-  type Product,
-  products,
-  type Status,
-} from "../data";
+const STATUSES = ["active", "draft", "archived"] as const;
+type Status = (typeof STATUSES)[number];
 
-const STATUSES: Status[] = ["active", "draft"];
+/** One product row shaped from `menu.adminList`. */
+interface Row {
+  id: string;
+  name: string;
+  status: Status;
+  price: number;
+  imageUrl: string | null;
+  variantCount: number;
+  categoryName: string;
+}
 
 /**
  * Productos — searchable catalog filtered by category (single-select) and status
@@ -55,47 +61,69 @@ export function ProductsView() {
   const router = useRouter();
   const fade = useFadeUp({ step: 30 });
 
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
-  const [statuses, setStatuses] = useState<Status[]>([...STATUSES]);
+  const [statuses, setStatuses] = useState<Status[]>(["active", "draft"]);
   const [view, setView] = useState<ViewMode>("grid");
-  const [toDelete, setToDelete] = useState<Product | null>(null);
+  const [toDelete, setToDelete] = useState<Row | null>(null);
 
-  const categoryOptions: FilterOption<string>[] = categoryRefs().map((r) => ({
-    value: r.id,
-    label: r.label,
+  const listQuery = useQuery(
+    trpc.menu.adminList.queryOptions({ perPage: 100, sort: "updated", dir: "desc" }),
+  );
+  const categoriesQuery = useQuery(trpc.menu.categories.queryOptions());
+  const remove = useMutation(trpc.menu.remove.mutationOptions());
+
+  const rows: Row[] = (listQuery.data?.rows ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    status: p.status as Status,
+    price: p.basePriceCents / 100,
+    imageUrl: p.imageUrl,
+    variantCount: p.variantCount,
+    categoryName: p.categoryNames[0] ?? "",
+  }));
+
+  const categoryOptions: FilterOption<string>[] = (categoriesQuery.data ?? []).map((c) => ({
+    value: c.name,
+    label: c.name,
   }));
   const statusOptions: FilterOption<Status>[] = [
     { value: "active", label: t("status.active"), dot: "#1f9d68" },
     { value: "draft", label: t("status.draft"), dot: "#9aa1ab" },
+    { value: "archived", label: t("status.archived"), dot: "#c7cdd4" },
   ];
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return products.filter((p) => {
-      if (category !== null && !p.categoryIds.includes(category)) return false;
+    return rows.filter((p) => {
+      if (category !== null && p.categoryName !== category) return false;
       if (!statuses.includes(p.status)) return false;
       if (q && !p.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [query, category, statuses]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, category, statuses, listQuery.data]);
 
   const clearFilters = () => {
     setQuery("");
     setCategory(null);
-    setStatuses([...STATUSES]);
+    setStatuses(["active", "draft"]);
   };
 
-  const onDelete = () => {
+  const onDelete = async () => {
     if (!toDelete) return;
-    const name = toDelete.name;
+    const { id, name } = toDelete;
     setToDelete(null);
-    toast.success(t("deleted", { name }), {
-      action: {
-        label: t("undo"),
-        onClick: () => toast(t("restored", { name })),
-      },
-    });
+    try {
+      await remove.mutateAsync({ id });
+      await queryClient.invalidateQueries({ queryKey: trpc.menu.adminList.queryKey() });
+      toast.success(t("deleted", { name }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("saveError"));
+    }
   };
 
   let i = 0;
@@ -183,8 +211,13 @@ export function ProductsView() {
               }
               className="bg-card border-border flex cursor-pointer flex-col rounded-3xl border p-4 shadow-sm"
             >
-              <div className="bg-muted/50 relative grid aspect-square place-items-center rounded-2xl text-6xl">
-                {p.emoji}
+              <div className="bg-muted/50 relative grid aspect-square place-items-center overflow-hidden rounded-2xl text-6xl">
+                {p.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.imageUrl} alt="" className="size-full object-cover" />
+                ) : (
+                  "🛍️"
+                )}
                 {p.status === "draft" ? (
                   <Badge
                     variant="secondary"
@@ -198,7 +231,7 @@ export function ProductsView() {
                 <div className="min-w-0">
                   <div className="truncate font-bold">{p.name}</div>
                   <div className="text-muted-foreground/70 text-xs font-semibold">
-                    {categoryLabel(p.categoryIds[0] ?? "")}
+                    {p.categoryName}
                   </div>
                 </div>
                 <span className="font-bold">${p.price.toFixed(2)}</span>
@@ -262,14 +295,19 @@ export function ProductsView() {
                 >
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      <span className="bg-muted/50 grid size-9 flex-none place-items-center rounded-xl text-lg">
-                        {p.emoji}
+                      <span className="bg-muted/50 grid size-9 flex-none place-items-center overflow-hidden rounded-xl text-lg">
+                        {p.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.imageUrl} alt="" className="size-full object-cover" />
+                        ) : (
+                          "🛍️"
+                        )}
                       </span>
                       <span className="font-bold">{p.name}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground font-semibold">
-                    {categoryLabel(p.categoryIds[0] ?? "")}
+                    {p.categoryName}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-right font-semibold">
                     {p.variantCount}

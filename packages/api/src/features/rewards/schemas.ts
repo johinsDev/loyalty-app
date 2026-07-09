@@ -1,6 +1,83 @@
 import { z } from "zod";
 
+import { listQueryBase } from "../_shared/list";
 import type { TierConfig } from "../points/config";
+import { itemRefSchema } from "../promotions/schemas";
+
+// ---- reward v2 typed benefit ------------------------------------------------
+
+export const rewardTypeSchema = z.enum([
+  "freeProduct",
+  "amountOff",
+  "percentOff",
+  "experience",
+]);
+export type RewardType = z.infer<typeof rewardTypeSchema>;
+
+/** The typed benefit config persisted on `reward.benefit` (source of truth;
+ *  compiles to a promo rule at POS time — `experience` has none). */
+export const rewardBenefitConfigSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("freeProduct"), refs: z.array(itemRefSchema).min(1) }),
+  z.object({
+    type: z.literal("amountOff"),
+    amountCents: z.number().int().min(1),
+    refs: z.array(itemRefSchema), // [] = order-wide voucher
+  }),
+  z.object({
+    type: z.literal("percentOff"),
+    percent: z.number().min(0.01).max(100),
+    refs: z.array(itemRefSchema), // [] = order-wide
+    maxDiscountCents: z.number().int().min(1).optional(),
+  }),
+  z.object({ type: z.literal("experience") }),
+]);
+export type RewardBenefitConfigInput = z.infer<typeof rewardBenefitConfigSchema>;
+
+// ---- reward v2 admin CRUD ---------------------------------------------------
+export const rewardStatusSchema = z.enum(["draft", "published", "archived"]);
+export const tierKeySchema = z.enum(["hoja", "flor", "oro"]);
+
+export const rewardIdSchema = z.object({ id: z.string().uuid() });
+
+/** Cost & eligibility step (dual currency + tiers + limit + sections). */
+export const rewardCostInputSchema = z
+  .object({
+    stampsRequired: z.number().int().min(1).nullish(),
+    pointsCost: z.number().int().min(1).nullish(),
+    costMode: z.enum(["or", "and"]),
+    allowedTiers: z.array(tierKeySchema).nullish(),
+    limitPerCustomer: z.enum(["unlimited", "once"]),
+    sections: z.array(z.string().max(60)),
+    sortOrder: z.number().int(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.stampsRequired == null && v.pointsCost == null)
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Set a stamps or points cost",
+        path: ["stampsRequired"],
+      });
+  });
+export type RewardCostInput = z.infer<typeof rewardCostInputSchema>;
+
+/** Post-publish edits: design/copy only — mechanics/cost are immutable. */
+export const rewardPatchContentSchema = z.object({
+  id: z.string().uuid(),
+  description: z.string().nullish(),
+  imageUrl: z.string().url().optional().or(z.literal("")),
+  backgroundCss: z.string().max(4096).optional(),
+  icon: z.string().max(60).nullish(),
+  fulfillmentNote: z.string().max(280).nullish(),
+  sections: z.array(z.string().max(60)).optional(),
+  sortOrder: z.number().int().optional(),
+});
+export type RewardPatchContentInput = z.infer<typeof rewardPatchContentSchema>;
+
+export const rewardAdminListInputSchema = listQueryBase.extend({
+  status: z.array(rewardStatusSchema).optional(),
+  type: z.array(rewardTypeSchema).optional(),
+});
+export type RewardAdminListInput = z.infer<typeof rewardAdminListInputSchema>;
 
 // ---- zod inputs ------------------------------------------------------------
 
@@ -99,6 +176,10 @@ export interface RewardListItem {
   name: string;
   description: string | null;
   imageUrl: string | null;
+  /** v2 visual: the card uses imageUrl if set, else this gradient/pattern. */
+  backgroundCss: string | null;
+  icon: string | null;
+  type: string | null;
   stampsRequired: number | null;
   pointsCost: number | null;
   costMode: CostMode;
@@ -202,6 +283,25 @@ export interface ClaimResultView {
   /** New balances after the deduction. */
   stampsBalance: number;
   pointsBalance: number;
+}
+
+/** Result of resolving a scanned reward token / entered code (v2): the reward
+ *  is NOT redeemed here — it's identified so the cashier can open the register
+ *  with the customer + reward preselected. Redemption happens in recordPurchase. */
+export interface ResolveClaimView {
+  customerId: string;
+  currency: "stamps" | "points" | "both";
+  reward: {
+    id: string;
+    name: string;
+    type: string | null;
+    benefitSummary: string | null;
+    /** Cashier-facing note for experience rewards (staff-only). */
+    fulfillmentNote: string | null;
+    costMode: CostMode;
+    stampsRequired: number | null;
+    pointsCost: number | null;
+  };
 }
 
 export type ListInput = z.infer<typeof listInputSchema>;

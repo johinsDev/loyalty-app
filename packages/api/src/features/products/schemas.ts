@@ -30,6 +30,9 @@ export interface MenuCard {
   /** Plain-text snippet (stripped from the rich description) for the featured card. */
   description: string | null;
   priceCents: number;
+  /** Promotional price (< priceCents) when set; the card strikes through the
+   *  regular price and charges this. */
+  promoPriceCents: number | null;
   currency: string;
   imageUrl: string | null;
   categorySlugs: string[];
@@ -96,11 +99,14 @@ export interface ProductDetail {
   description: string | null;
   currency: string;
   basePriceCents: number;
+  promoPriceCents: number | null;
   earn: EarnPreview;
   images: DetailImage[];
   options: DetailOption[];
   variants: DetailVariant[];
   modifierGroups: DetailModifierGroup[];
+  /** Customer-visible ingredients ("Contiene …") — union across variants. */
+  ingredients: string[];
   categorySlugs: string[];
   seo: { title: string | null; description: string | null; ogImageUrl: string | null };
 }

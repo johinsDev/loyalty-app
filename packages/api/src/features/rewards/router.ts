@@ -10,9 +10,10 @@ import {
   router,
   staffProcedure,
 } from "../../trpc";
-import { resolveActiveStoreId } from "../_shared/store-context";
+import { loadLocaleContext } from "../_shared/localize";
 import { RewardsRepository } from "./repository";
 import { RewardsService } from "./service";
+import { REWARD_TEMPLATES } from "./templates";
 import {
   cancelClaimInputSchema,
   claimInputSchema,
@@ -22,7 +23,10 @@ import {
   issueClaimTokenInputSchema,
   listInputSchema,
   requestClaimInputSchema,
+  rewardAdminListInputSchema,
   rewardIdInputSchema,
+  rewardIdSchema,
+  rewardPatchContentSchema,
   setClaimCurrencyInputSchema,
 } from "./schemas";
 
@@ -55,6 +59,66 @@ export const rewardsRouter = router({
       );
       return rows.map((r) => ({ id: r.id, name: r.name }));
     }),
+
+  // ---- Admin wizard / data-table -------------------------------------
+  templates: managerProcedure.query(async ({ ctx }) => {
+    const lc = await loadLocaleContext(ctx.db, await orgId(), ctx.headers);
+    const en = lc.locale === "en";
+    return REWARD_TEMPLATES.map((t) => ({
+      key: t.key,
+      type: t.type,
+      name: en ? t.name.en : t.name.es,
+      icon: t.icon,
+      backgroundCss: t.backgroundCss,
+      description: en ? t.description.en : t.description.es,
+    }));
+  }),
+  create: managerProcedure
+    .input(z.object({ templateKey: z.string().optional() }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const org = await orgId();
+      const lc = await loadLocaleContext(ctx.db, org, ctx.headers);
+      return buildRewardsService(ctx).createDraft(
+        org,
+        ctx.session.user.id,
+        input?.templateKey,
+        lc.locale === "en" ? "en" : "es",
+      );
+    }),
+  getState: managerProcedure
+    .input(rewardIdSchema)
+    .query(async ({ ctx, input }) => buildRewardsService(ctx).getState(await orgId(), input.id)),
+  advance: managerProcedure
+    .input(z.object({ id: z.string().uuid(), step: z.string(), input: z.unknown() }))
+    .mutation(async ({ ctx, input }) =>
+      buildRewardsService(ctx).advance(
+        await orgId(),
+        ctx.session.user.id,
+        input.id,
+        input.step,
+        input.input,
+      ),
+    ),
+  publish: managerProcedure
+    .input(rewardIdSchema)
+    .mutation(async ({ ctx, input }) =>
+      buildRewardsService(ctx).publishReward(await orgId(), input.id),
+    ),
+  archive: managerProcedure
+    .input(rewardIdSchema)
+    .mutation(async ({ ctx, input }) => buildRewardsService(ctx).archive(await orgId(), input.id)),
+  patchContent: managerProcedure
+    .input(rewardPatchContentSchema)
+    .mutation(async ({ ctx, input }) => buildRewardsService(ctx).patchContent(await orgId(), input)),
+  adminList: managerProcedure
+    .input(rewardAdminListInputSchema)
+    .query(async ({ ctx, input }) => buildRewardsService(ctx).adminList(await orgId(), input)),
+  getAdmin: managerProcedure
+    .input(rewardIdSchema)
+    .query(async ({ ctx, input }) => buildRewardsService(ctx).getAdmin(await orgId(), input.id)),
+  remove: managerProcedure
+    .input(rewardIdSchema)
+    .mutation(async ({ ctx, input }) => buildRewardsService(ctx).remove(await orgId(), input.id)),
 
   // ---- Customer (self) ------------------------------------------------
   list: protectedProcedure
@@ -130,25 +194,16 @@ export const rewardsRouter = router({
     ),
 
   // ---- Cashier (staff) ------------------------------------------------
-  claim: staffProcedure
+  // Scan a reward QR (T4P) → resolve the customer + reward so the register opens
+  // with the reward preselected. Redemption happens in `stamps.recordPurchase`.
+  resolveClaim: staffProcedure
     .use(
-      rateLimit({ name: "rewards.claim", limit: 30, window: "1m", by: "user" }),
+      rateLimit({ name: "rewards.resolveClaim", limit: 60, window: "1m", by: "user" }),
     )
     .input(claimInputSchema)
     .mutation(async ({ ctx, input }) => {
       const org = await orgId();
-      const storeId = await resolveActiveStoreId(
-        ctx.db,
-        org,
-        ctx.session.user.id,
-        input.storeId,
-      );
-      return buildRewardsService(ctx).claim(
-        org,
-        ctx.session.user.id,
-        input.token,
-        storeId,
-      );
+      return buildRewardsService(ctx).resolveClaim(org, input.token);
     }),
 
   // Code-based claim (the "no scanner" path): request a 6-digit code bound to
@@ -180,32 +235,24 @@ export const rewardsRouter = router({
       ),
     ),
 
-  confirmClaimWithCode: staffProcedure
+  resolveClaimWithCode: staffProcedure
     .use(
       rateLimit({
-        name: "rewards.confirmClaimWithCode",
+        name: "rewards.resolveClaimWithCode",
         limit: 30,
         window: "1m",
         by: "user",
       }),
     )
     .input(confirmClaimWithCodeInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      const org = await orgId();
-      const storeId = await resolveActiveStoreId(
-        ctx.db,
-        org,
-        ctx.session.user.id,
-        input.storeId,
-      );
-      return buildRewardsService(ctx).confirmClaimWithCode(
-        org,
+    .mutation(async ({ ctx, input }) =>
+      buildRewardsService(ctx).resolveClaimWithCode(
+        await orgId(),
         ctx.session.user.id,
         input.pendingId,
         input.code,
-        storeId,
-      );
-    }),
+      ),
+    ),
 
   availableForCustomer: staffProcedure
     .input(customerIdInputSchema)

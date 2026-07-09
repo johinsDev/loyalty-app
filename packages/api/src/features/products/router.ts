@@ -1,12 +1,17 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 
+import { z } from "zod";
+
 import { loadLocaleContext } from "../_shared/localize";
 import {
+  managerProcedure,
   protectedProcedure,
   publicProcedure,
   rateLimit,
   router,
 } from "../../trpc";
+import { ProductsAdminRepository } from "./admin-repository";
+import { IngredientsRepository } from "./ingredients-repository";
 import { ProductsRepository } from "./repository";
 import {
   listInputSchema,
@@ -15,6 +20,14 @@ import {
   slugInputSchema,
 } from "./schemas";
 import { MenuService } from "./service";
+import {
+  ingredientCreateSchema,
+  ingredientListInputSchema,
+  ingredientUpdateSchema,
+  productAdminListInputSchema,
+  productStatusSchema,
+  productUpsertInputSchema,
+} from "./write-schemas";
 
 const orgId = async (): Promise<string> =>
   (await getPrimaryOrganizationId()) ?? "";
@@ -23,7 +36,61 @@ export function buildMenuService(ctx: { db: typeof Db }): MenuService {
   return new MenuService(new ProductsRepository(ctx.db));
 }
 
+const idInput = z.object({ id: z.string().min(1) });
+
 export const menuRouter = router({
+  // ---- Admin CRUD (manager) -------------------------------------------------
+  createDraft: managerProcedure.mutation(async ({ ctx }) =>
+    new ProductsAdminRepository(ctx.db).createDraft(await orgId()),
+  ),
+  getAdmin: managerProcedure
+    .input(idInput)
+    .query(async ({ ctx, input }) =>
+      new ProductsAdminRepository(ctx.db).getAdmin(await orgId(), input.id),
+    ),
+  upsert: managerProcedure
+    .input(productUpsertInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      new ProductsAdminRepository(ctx.db).upsert(await orgId(), input),
+    ),
+  setStatus: managerProcedure
+    .input(z.object({ id: z.string().min(1), status: productStatusSchema }))
+    .mutation(async ({ ctx, input }) =>
+      new ProductsAdminRepository(ctx.db).setStatus(await orgId(), input.id, input.status),
+    ),
+  remove: managerProcedure
+    .input(idInput)
+    .mutation(async ({ ctx, input }) =>
+      new ProductsAdminRepository(ctx.db).remove(await orgId(), input.id),
+    ),
+  adminList: managerProcedure
+    .input(productAdminListInputSchema)
+    .query(async ({ ctx, input }) =>
+      new ProductsAdminRepository(ctx.db).adminList(await orgId(), input),
+    ),
+
+  // ---- Ingredient catalog (manager) ----------------------------------------
+  ingredients: managerProcedure
+    .input(ingredientListInputSchema)
+    .query(async ({ ctx, input }) =>
+      new IngredientsRepository(ctx.db).list(await orgId(), input.search),
+    ),
+  ingredientCreate: managerProcedure
+    .input(ingredientCreateSchema)
+    .mutation(async ({ ctx, input }) =>
+      new IngredientsRepository(ctx.db).create(await orgId(), input),
+    ),
+  ingredientUpdate: managerProcedure
+    .input(ingredientUpdateSchema)
+    .mutation(async ({ ctx, input }) =>
+      new IngredientsRepository(ctx.db).update(await orgId(), input),
+    ),
+  ingredientRemove: managerProcedure
+    .input(idInput)
+    .mutation(async ({ ctx, input }) =>
+      new IngredientsRepository(ctx.db).remove(await orgId(), input.id),
+    ),
+
   // ---- Public (cacheable) — gated by the page guard in v1, ready for public --
   list: publicProcedure
     .input(listInputSchema)

@@ -58,6 +58,9 @@ export class StampsService {
     input: RecordPurchaseInput & {
       subtotalCents?: number;
       discountCents?: number;
+      promoDiscountCents?: number;
+      rewardDiscountCents?: number;
+      grantStamp?: boolean;
       entrySource?: string | null;
       metadata?: Record<string, unknown> | null;
     },
@@ -71,6 +74,9 @@ export class StampsService {
       idempotencyKey: input.idempotencyKey,
       subtotalCents: input.subtotalCents,
       discountCents: input.discountCents,
+      promoDiscountCents: input.promoDiscountCents,
+      rewardDiscountCents: input.rewardDiscountCents,
+      grantStamp: input.grantStamp,
       currency: input.currency,
       appliedPromoId: input.appliedPromoId ?? null,
       entrySource: input.entrySource ?? null,

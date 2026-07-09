@@ -110,7 +110,18 @@ export function ProductDetail({ product }: { product: ProductDetailData }) {
             {product.name}
           </h1>
           <span className="font-display text-primary text-2xl font-semibold whitespace-nowrap">
-            {money(format, priceCents, product.currency)}
+            {!variant &&
+            product.promoPriceCents != null &&
+            product.promoPriceCents < product.basePriceCents ? (
+              <>
+                <span className="text-muted-foreground/60 mr-2 text-lg font-semibold line-through">
+                  {money(format, product.basePriceCents, product.currency)}
+                </span>
+                {money(format, product.promoPriceCents, product.currency)}
+              </>
+            ) : (
+              money(format, priceCents, product.currency)
+            )}
           </span>
         </div>
 
@@ -120,6 +131,13 @@ export function ProductDetail({ product }: { product: ProductDetailData }) {
             // Admin-authored tiptap HTML — same `prose` styling as the editor.
             dangerouslySetInnerHTML={{ __html: product.description }}
           />
+        ) : null}
+
+        {product.ingredients.length > 0 ? (
+          <p className="text-muted-foreground mt-2 text-sm">
+            <span className="text-foreground font-semibold">{t("contains")}:</span>{" "}
+            {product.ingredients.join(", ")}
+          </p>
         ) : null}
 
         <span className="text-primary mt-2 block text-sm font-bold">

@@ -175,6 +175,8 @@
     "balanceStamps": "{have} / {cost} stamps",
     "balancePoints": "{have} / {cost} pts",
     "redeemCta": "Redeem",
+    "appliesAtRegister": "When you redeem we send you a code; the cashier applies it to your purchase at the register.",
+    "appliesAtRegisterFreeProduct": "When you redeem we send you a code; show it at the register and add the item to get it free.",
     "notReadyCta": "Not enough yet",
     "payStamps": "{count} stamps",
     "payPoints": "{count} pts",
@@ -277,7 +279,8 @@
     "sizeM": "Medium",
     "sizeL": "Large +$0.80",
     "toppings": "Toppings",
-    "addToOrder": "Add to order · {price}"
+    "addToOrder": "Add to order · {price}",
+    "contains": "Contains"
   },
   "Qr": {
     "title": "My code",
