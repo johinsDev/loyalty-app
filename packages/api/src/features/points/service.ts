@@ -1,3 +1,4 @@
+import { recordAudit } from "@loyalty/db";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { TRPCError } from "@trpc/server";
 
@@ -239,6 +240,25 @@ export class PointsService {
       storeId: ref.storeId,
       addedByUserId,
     });
+  }
+
+  /** Owner correction of a customer's points not tied to a purchase (CRM). */
+  async adjustForCustomer(
+    organizationId: string,
+    customerId: string,
+    points: number,
+    reason: string,
+    addedByUserId: string,
+  ): Promise<{ balance: number }> {
+    const res = await this.adjust(organizationId, customerId, points, reason, { addedByUserId });
+    await recordAudit({
+      organizationId,
+      actorUserId: addedByUserId,
+      targetUserId: customerId,
+      type: "customer_points_adjust",
+      metadata: { points, reason },
+    });
+    return res;
   }
 
   async mySummary(

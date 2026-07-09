@@ -5,6 +5,17 @@ export { STAMPS_PER_REWARD, WALLET_SIZE };
 
 // Customer ids mirror Better Auth `user.id` (not necessarily a UUID), so all
 // customer-id inputs are validated as a non-empty string.
+/** Owner CRM correction of a customer's stamps (signed, non-zero). */
+export const adjustStampsForCustomerInputSchema = z.object({
+  customerId: z.string().min(1),
+  stamps: z
+    .number()
+    .int()
+    .refine((v) => v !== 0, "Adjustment must be non-zero")
+    .refine((v) => Math.abs(v) <= 100, "Adjustment out of range"),
+  reason: z.string().trim().min(1).max(200),
+});
+
 /** A checkout line item (snapshot of the menu price at sale time). */
 export const purchaseLineSchema = z.object({
   productId: z.string().min(1),
