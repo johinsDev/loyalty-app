@@ -406,7 +406,9 @@ export class PurchasesRepository {
       timeline: this.buildTimeline({
         createdAt: p.createdAt,
         cashierName,
-        stamps,
+        // For a voided sale the stamp rows are gone, so show the original grant
+        // (from the reversal record) — mirroring how points stays visible.
+        stamps: reversal ? reversal.stamps : stamps,
         points,
         reward: rewardBlock,
         adjustments,

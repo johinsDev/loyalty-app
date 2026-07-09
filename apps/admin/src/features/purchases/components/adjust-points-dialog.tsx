@@ -80,8 +80,8 @@ export function AdjustPointsDialog({
           </ResponsiveModalHeader>
           <div className="space-y-3 px-4 pb-2">
             <p className="text-muted-foreground text-sm">{t("adjustHint")}</p>
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold" htmlFor="adjust-points">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold" htmlFor="adjust-points">
                 {t("adjustPointsLabel")}
               </label>
               <Input
@@ -95,8 +95,8 @@ export function AdjustPointsDialog({
                 autoFocus
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold" htmlFor="adjust-reason">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold" htmlFor="adjust-reason">
                 {t("adjustReasonLabel")}
               </label>
               <Textarea

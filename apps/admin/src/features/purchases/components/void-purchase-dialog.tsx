@@ -73,8 +73,8 @@ export function VoidPurchaseDialog({
           </ResponsiveModalHeader>
           <div className="space-y-3 px-4 pb-2">
             <p className="text-muted-foreground text-sm">{t("voidHint")}</p>
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold" htmlFor="void-reason">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold" htmlFor="void-reason">
                 {t("voidReasonLabel")}
               </label>
               <Textarea
