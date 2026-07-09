@@ -2055,7 +2055,10 @@
       "campaign": "Campaign",
       "shortlink": "Link",
       "organic": "Organic"
-    }
+    },
+    "loyaltyReverted": "Reverted by the void",
+    "timelineVoid": "Purchase voided · loyalty reversed",
+    "timelineVoidBy": "Voided by {name} · loyalty reversed"
   },
   "Stores": {
     "title": "Stores",

@@ -446,25 +446,39 @@ function BreakdownBlock({
 
 function LoyaltyBlock({ detail }: { detail: PurchaseAdminDetail }) {
   const t = useTranslations("Purchases");
-  const isOwner = useHasRole("owner") && detail.voidedAt == null;
+  const voided = detail.voidedAt != null;
+  const isOwner = useHasRole("owner") && !voided;
   const [adjustOpen, setAdjustOpen] = useState(false);
+
+  // For a voided sale show what it HAD granted (now reverted), struck through.
+  const stampsShown = voided ? (detail.reversal?.stamps ?? 0) : detail.stampsEarned;
+  const pointsShown = voided ? (detail.reversal?.points ?? 0) : detail.pointsEarned;
+  const tileValue = voided
+    ? "text-muted-foreground line-through decoration-2"
+    : "text-primary";
+  const tileBg = voided ? "bg-muted" : "bg-primary/10";
+  const tileLabel = voided ? "text-muted-foreground" : "text-primary/80";
 
   return (
     <Section icon={<Gift className="size-3.5" />} label={t("loyaltyImpact")}>
       <div className="flex gap-3">
-        <div className="bg-primary/10 flex-1 rounded-2xl p-3.5 text-center">
-          <div className="font-display text-primary text-2xl font-semibold">
-            🧋 +{detail.stampsEarned}
+        <div className={`${tileBg} flex-1 rounded-2xl p-3.5 text-center`}>
+          <div className={`font-display text-2xl font-semibold ${tileValue}`}>
+            🧋 +{stampsShown}
           </div>
-          <div className="text-primary/80 mt-1 text-xs font-bold">{t("stampsEarned")}</div>
+          <div className={`mt-1 text-xs font-bold ${tileLabel}`}>{t("stampsEarned")}</div>
         </div>
-        <div className="bg-primary/10 flex-1 rounded-2xl p-3.5 text-center">
-          <div className="font-display text-primary text-2xl font-semibold">
-            +{detail.pointsEarned}
-          </div>
-          <div className="text-primary/80 mt-1 text-xs font-bold">{t("pointsEarned")}</div>
+        <div className={`${tileBg} flex-1 rounded-2xl p-3.5 text-center`}>
+          <div className={`font-display text-2xl font-semibold ${tileValue}`}>+{pointsShown}</div>
+          <div className={`mt-1 text-xs font-bold ${tileLabel}`}>{t("pointsEarned")}</div>
         </div>
       </div>
+      {voided ? (
+        <p className="text-destructive flex items-center gap-1.5 text-xs font-semibold">
+          <Ban className="size-3.5" />
+          {t("loyaltyReverted")}
+        </p>
+      ) : null}
       {isOwner ? (
         <>
           <Button
@@ -508,6 +522,10 @@ function TimelineBlock({ detail }: { detail: PurchaseAdminDetail }) {
           ? t("timelineAdjustBy", { points: signed, name: e.actorName })
           : t("timelineAdjust", { points: signed });
       }
+      case "void":
+        return e.actorName
+          ? t("timelineVoidBy", { name: e.actorName })
+          : t("timelineVoid");
       default:
         return "";
     }
@@ -518,8 +536,12 @@ function TimelineBlock({ detail }: { detail: PurchaseAdminDetail }) {
       <ol className="border-border relative ml-2 space-y-3 border-l pl-5">
         {detail.timeline.map((e, i) => (
           <li key={`${e.kind}-${i}`} className="relative">
-            <span className="bg-primary absolute top-1 -left-[1.4rem] size-2.5 rounded-full ring-4 ring-[var(--color-card)]" />
-            <p className="text-sm font-medium">{labelFor(e)}</p>
+            <span
+              className={`absolute top-1 -left-[1.4rem] size-2.5 rounded-full ring-4 ring-[var(--color-card)] ${e.kind === "void" ? "bg-destructive" : "bg-primary"}`}
+            />
+            <p className={`text-sm font-medium ${e.kind === "void" ? "text-destructive" : ""}`}>
+              {labelFor(e)}
+            </p>
             {e.reason ? (
               <p className="text-muted-foreground text-xs italic">“{e.reason}”</p>
             ) : null}

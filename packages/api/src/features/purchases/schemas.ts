@@ -187,7 +187,7 @@ export interface PurchasesKpis {
 }
 
 /** One derived event in a purchase's timeline (no dedicated persistence). */
-export type PurchaseTimelineKind = "sale" | "stamp" | "points" | "redeem" | "adjust";
+export type PurchaseTimelineKind = "sale" | "stamp" | "points" | "redeem" | "adjust" | "void";
 export interface PurchaseTimelineEvent {
   kind: PurchaseTimelineKind;
   at: Date;
@@ -224,6 +224,8 @@ export interface PurchaseAdminDetail extends PurchaseDetail {
   voidedAt: Date | null;
   voidReason: string | null;
   voidedByName: string | null;
+  /** What the void reversed (the loyalty this sale had granted). null unless voided. */
+  reversal: { stamps: number; points: number } | null;
 }
 
 export type MyPurchasesInput = z.infer<typeof myPurchasesInputSchema>;

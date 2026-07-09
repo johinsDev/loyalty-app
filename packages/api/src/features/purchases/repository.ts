@@ -370,6 +370,12 @@ export class PurchasesRepository {
     ]);
 
     const voidedByName = p.voidedByUserId ? await this.cashierName(p.voidedByUserId) : null;
+    const voidMeta = (p.metadata as Record<string, unknown> | null)?.void as
+      | { stamps?: number; points?: number }
+      | undefined;
+    const reversal = p.voidedAt
+      ? { stamps: voidMeta?.stamps ?? 0, points: voidMeta?.points ?? 0 }
+      : null;
 
     return {
       id: p.id,
@@ -396,6 +402,7 @@ export class PurchasesRepository {
       voidedAt: p.voidedAt ?? null,
       voidReason: p.voidReason ?? null,
       voidedByName,
+      reversal,
       timeline: this.buildTimeline({
         createdAt: p.createdAt,
         cashierName,
@@ -403,6 +410,9 @@ export class PurchasesRepository {
         points,
         reward: rewardBlock,
         adjustments,
+        voided: p.voidedAt
+          ? { at: p.voidedAt, reason: p.voidReason, actorName: voidedByName }
+          : null,
       }),
     };
   }
@@ -425,6 +435,7 @@ export class PurchasesRepository {
           walletId: purchase.walletId,
           storeId: purchase.storeId,
           voidedAt: purchase.voidedAt,
+          metadata: purchase.metadata,
         })
         .from(purchase)
         .where(and(eq(purchase.organizationId, orgId), eq(purchase.id, purchaseId)))
@@ -523,10 +534,17 @@ export class PurchasesRepository {
       // 4. Free the promo usage (the sale no longer counts against its limits).
       await tx.delete(promoRedemption).where(eq(promoRedemption.purchaseId, purchaseId));
 
-      // 5. Mark voided.
+      // 5. Mark voided, recording what was reversed (so the detail can show the
+      //    original loyalty struck as "reverted" even though the rows are gone).
+      const meta = (p.metadata as Record<string, unknown> | null) ?? {};
       await tx
         .update(purchase)
-        .set({ voidedAt: new Date(), voidReason: reason, voidedByUserId: userId })
+        .set({
+          voidedAt: new Date(),
+          voidReason: reason,
+          voidedByUserId: userId,
+          metadata: { ...meta, void: { stamps: granted, points: earned } },
+        })
         .where(eq(purchase.id, purchaseId));
 
       return { customerId: p.customerId };
@@ -753,12 +771,18 @@ export class PurchasesRepository {
         and(eq(pointsTransaction.purchaseId, purchaseId), eq(pointsTransaction.type, "adjust")),
       )
       .orderBy(pointsTransaction.createdAt);
-    return rows.map((r) => ({
-      points: r.points,
-      reason: r.reason,
-      createdAt: r.createdAt,
-      actorName: r.actor ?? null,
-    }));
+    return (
+      rows
+        // Void-reversal adjusts are surfaced as a single "void" event, not as
+        // manual corrections — keep only genuine manual adjustments here.
+        .filter((r) => !r.reason?.startsWith("void:") && !r.reason?.startsWith("void-refund:"))
+        .map((r) => ({
+          points: r.points,
+          reason: r.reason,
+          createdAt: r.createdAt,
+          actorName: r.actor ?? null,
+        }))
+    );
   }
 
   /** A purchase's "audit" timeline, derived from existing rows (no new table).
@@ -771,6 +795,7 @@ export class PurchasesRepository {
     points: number;
     reward: PurchaseDetail["reward"];
     adjustments: { points: number; reason: string | null; createdAt: Date; actorName: string | null }[];
+    voided: { at: Date; reason: string | null; actorName: string | null } | null;
   }): PurchaseTimelineEvent[] {
     const events: PurchaseTimelineEvent[] = [
       { kind: "sale", at: args.createdAt, actorName: args.cashierName, amount: null, rewardName: null, reason: null },
@@ -813,6 +838,16 @@ export class PurchasesRepository {
         amount: a.points,
         rewardName: null,
         reason: a.reason,
+      });
+    }
+    if (args.voided) {
+      events.push({
+        kind: "void",
+        at: args.voided.at,
+        actorName: args.voided.actorName,
+        amount: null,
+        rewardName: null,
+        reason: args.voided.reason,
       });
     }
     return events;

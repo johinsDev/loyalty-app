@@ -2055,7 +2055,10 @@
       "campaign": "Campaña",
       "shortlink": "Enlace",
       "organic": "Orgánica"
-    }
+    },
+    "loyaltyReverted": "Revertido por la anulación",
+    "timelineVoid": "Compra anulada · lealtad revertida",
+    "timelineVoidBy": "Compra anulada por {name} · lealtad revertida"
   },
   "Stores": {
     "title": "Tiendas",
