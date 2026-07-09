@@ -2024,7 +2024,19 @@
     "timelineStamp": "+{count, plural, one {# stamp} other {# stamps}}",
     "timelinePoints": "+{count, plural, one {# point} other {# points}}",
     "timelineRedeem": "Redeemed {name}",
-    "receipt": "Receipt"
+    "receipt": "Receipt",
+    "cancel": "Cancel",
+    "adjustTitle": "Adjust points",
+    "adjustHint": "Add or subtract points from this purchase (e.g. the scanner failed). It's recorded in the timeline.",
+    "adjustPointsLabel": "Points (+ add, − subtract)",
+    "adjustPointsPlaceholder": "e.g. 500 or -200",
+    "adjustReasonLabel": "Reason",
+    "adjustReasonPlaceholder": "e.g. The scanner didn't record the purchase",
+    "adjustConfirm": "Apply adjustment",
+    "adjustOk": "Points adjusted. New balance: {balance}",
+    "adjustError": "Couldn't adjust. Owner only.",
+    "timelineAdjust": "{points} points (adjustment)",
+    "timelineAdjustBy": "{points} points adjusted by {name}"
   },
   "Stores": {
     "title": "Stores",

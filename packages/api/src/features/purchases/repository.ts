@@ -340,17 +340,27 @@ export class PurchasesRepository {
     const p = rows[0];
     if (!p) return null;
 
-    const [cashierName, items, promoBlock, rewardBlock, stamps, points, storeName, customerBlock] =
-      await Promise.all([
-        this.cashierName(p.addedByUserId),
-        this.detailItems(id),
-        this.promoBlock(p.appliedPromoId, id, p.discountCents),
-        this.detailReward(id),
-        this.stampsByPurchase([id]).then((m) => m.get(id) ?? 0),
-        this.pointsByPurchaseOrg(orgId, [id]).then((m) => m.get(id) ?? 0),
-        p.storeId ? this.storeName(p.storeId) : Promise.resolve(null),
-        this.customerBlock(orgId, p.customerId),
-      ]);
+    const [
+      cashierName,
+      items,
+      promoBlock,
+      rewardBlock,
+      stamps,
+      points,
+      storeName,
+      customerBlock,
+      adjustments,
+    ] = await Promise.all([
+      this.cashierName(p.addedByUserId),
+      this.detailItems(id),
+      this.promoBlock(p.appliedPromoId, id, p.discountCents),
+      this.detailReward(id),
+      this.stampsByPurchase([id]).then((m) => m.get(id) ?? 0),
+      this.pointsByPurchaseOrg(orgId, [id]).then((m) => m.get(id) ?? 0),
+      p.storeId ? this.storeName(p.storeId) : Promise.resolve(null),
+      this.customerBlock(orgId, p.customerId),
+      this.adjustEvents(id),
+    ]);
 
     return {
       id: p.id,
@@ -376,6 +386,7 @@ export class PurchasesRepository {
         stamps,
         points,
         reward: rewardBlock,
+        adjustments,
       }),
     };
   }
@@ -569,18 +580,44 @@ export class PurchasesRepository {
     };
   }
 
+  /** Signed manual point adjustments tied to a purchase (with the actor). */
+  private async adjustEvents(
+    purchaseId: string,
+  ): Promise<{ points: number; reason: string | null; createdAt: Date; actorName: string | null }[]> {
+    const rows = await this.db
+      .select({
+        points: pointsTransaction.points,
+        reason: pointsTransaction.reason,
+        createdAt: pointsTransaction.createdAt,
+        actor: user.name,
+      })
+      .from(pointsTransaction)
+      .leftJoin(user, eq(pointsTransaction.addedByUserId, user.id))
+      .where(
+        and(eq(pointsTransaction.purchaseId, purchaseId), eq(pointsTransaction.type, "adjust")),
+      )
+      .orderBy(pointsTransaction.createdAt);
+    return rows.map((r) => ({
+      points: r.points,
+      reason: r.reason,
+      createdAt: r.createdAt,
+      actorName: r.actor ?? null,
+    }));
+  }
+
   /** A purchase's "audit" timeline, derived from existing rows (no new table).
-   *  Everything happens in one register transaction, so events share `createdAt`;
-   *  future manual point adjustments (with a `purchaseId`) will slot in here. */
+   *  The sale/stamp/redeem/points events share the register `createdAt`; manual
+   *  point adjustments carry their own (later) timestamp + reason + actor. */
   private buildTimeline(args: {
     createdAt: Date;
     cashierName: string | null;
     stamps: number;
     points: number;
     reward: PurchaseDetail["reward"];
+    adjustments: { points: number; reason: string | null; createdAt: Date; actorName: string | null }[];
   }): PurchaseTimelineEvent[] {
     const events: PurchaseTimelineEvent[] = [
-      { kind: "sale", at: args.createdAt, actorName: args.cashierName, amount: null, rewardName: null },
+      { kind: "sale", at: args.createdAt, actorName: args.cashierName, amount: null, rewardName: null, reason: null },
     ];
     if (args.stamps > 0) {
       events.push({
@@ -589,6 +626,7 @@ export class PurchasesRepository {
         actorName: args.cashierName,
         amount: args.stamps,
         rewardName: null,
+        reason: null,
       });
     }
     if (args.reward) {
@@ -598,6 +636,7 @@ export class PurchasesRepository {
         actorName: args.cashierName,
         amount: null,
         rewardName: args.reward.name,
+        reason: null,
       });
     }
     if (args.points > 0) {
@@ -607,6 +646,17 @@ export class PurchasesRepository {
         actorName: null,
         amount: args.points,
         rewardName: null,
+        reason: null,
+      });
+    }
+    for (const a of args.adjustments) {
+      events.push({
+        kind: "adjust",
+        at: a.createdAt,
+        actorName: a.actorName,
+        amount: a.points,
+        rewardName: null,
+        reason: a.reason,
       });
     }
     return events;

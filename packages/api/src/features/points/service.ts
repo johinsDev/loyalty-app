@@ -1,4 +1,5 @@
 import { tasks } from "@trigger.dev/sdk/v3";
+import { TRPCError } from "@trpc/server";
 
 import type { RealtimeBinding } from "../../trpc";
 import {
@@ -187,6 +188,52 @@ export class PointsService {
     }
 
     return tierUp;
+  }
+
+  /** Apply a signed manual adjustment (correction / void reversal): write the
+   *  `adjust` ledger row, then recompute the tier. Returns the new balance.
+   *  Note: `adjust` rows don't count toward tier-points (only `earn` does), so
+   *  the recompute only reflects window aging — the balance changes, the tier
+   *  qualification doesn't. */
+  async adjust(
+    organizationId: string,
+    customerId: string,
+    points: number,
+    reason: string,
+    opts: { purchaseId?: string; storeId?: string | null; addedByUserId?: string } = {},
+  ): Promise<{ balance: number }> {
+    await this.repo.adjust({
+      orgId: organizationId,
+      customerId,
+      points,
+      reason,
+      purchaseId: opts.purchaseId ?? null,
+      storeId: opts.storeId ?? null,
+      addedByUserId: opts.addedByUserId ?? null,
+    });
+    const balance = await this.repo.balance(organizationId, customerId);
+    await this.publish(customerId, { event: "points.adjusted", data: { points, balance } });
+    await this.recompute(organizationId, customerId);
+    return { balance };
+  }
+
+  /** Owner correction tied to a purchase (surfaces in the purchase timeline). */
+  async adjustForPurchase(
+    organizationId: string,
+    purchaseId: string,
+    points: number,
+    reason: string,
+    addedByUserId: string,
+  ): Promise<{ balance: number }> {
+    const ref = await this.repo.purchaseRef(organizationId, purchaseId);
+    if (!ref) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "PURCHASE_NOT_FOUND" });
+    }
+    return this.adjust(organizationId, ref.customerId, points, reason, {
+      purchaseId,
+      storeId: ref.storeId,
+      addedByUserId,
+    });
   }
 
   async mySummary(

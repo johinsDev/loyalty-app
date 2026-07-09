@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   index,
   integer,
@@ -448,8 +448,10 @@ export const pointsTransaction = sqliteTable(
     type: text("type").notNull(), // "earn" | "redeem" | "adjust"
     points: integer("points").notNull(),
     reason: text("reason"),
-    // The purchase that earned these points (null for redeem/adjust). Unique per
-    // org so a retried purchase can't double-earn.
+    // The purchase these points relate to (null for standalone redeem/adjust).
+    // A retried purchase can't double-EARN (partial unique index below), but a
+    // purchase may also carry manual `adjust` rows — hence the index is scoped
+    // to `type = 'earn'`.
     purchaseId: text("purchase_id").references(() => purchase.id, {
       onDelete: "set null",
     }),
@@ -468,10 +470,11 @@ export const pointsTransaction = sqliteTable(
       t.customerId,
       t.createdAt,
     ),
-    earnPerPurchase: uniqueIndex("points_tx_purchase_uq").on(
-      t.organizationId,
-      t.purchaseId,
-    ),
+    // Partial: only `earn` rows are one-per-purchase (idempotent retries).
+    // Manual `adjust` rows share the same purchaseId and must not collide.
+    earnPerPurchase: uniqueIndex("points_tx_purchase_uq")
+      .on(t.organizationId, t.purchaseId)
+      .where(sql`${t.type} = 'earn'`),
   }),
 );
 

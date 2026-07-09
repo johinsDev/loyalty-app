@@ -2,23 +2,27 @@
 
 import type { AppRouter } from "@loyalty/api";
 import { formatDate } from "@loyalty/date";
-import { Badge } from "@loyalty/ui";
+import { Badge, Button } from "@loyalty/ui";
 import type { inferRouterOutputs } from "@trpc/server";
 import {
   ChevronRight,
   Clock,
   Gift,
   Hash,
+  Pencil,
   Receipt,
   Store as StoreIcon,
   Tag,
   User as UserIcon,
 } from "lucide-react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 import { Link } from "@/i18n/navigation";
 import { money } from "@/lib/money";
+import { useHasRole } from "@/lib/role-context";
+
+import { AdjustPointsDialog } from "./adjust-points-dialog";
 
 type PurchaseAdminDetail = NonNullable<
   inferRouterOutputs<AppRouter>["purchases"]["adminGet"]
@@ -360,6 +364,8 @@ function BreakdownBlock({
 
 function LoyaltyBlock({ detail }: { detail: PurchaseAdminDetail }) {
   const t = useTranslations("Purchases");
+  const isOwner = useHasRole("owner");
+  const [adjustOpen, setAdjustOpen] = useState(false);
 
   return (
     <Section icon={<Gift className="size-3.5" />} label={t("loyaltyImpact")}>
@@ -377,6 +383,25 @@ function LoyaltyBlock({ detail }: { detail: PurchaseAdminDetail }) {
           <div className="text-primary/80 mt-1 text-xs font-bold">{t("pointsEarned")}</div>
         </div>
       </div>
+      {isOwner ? (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-1 h-9 w-full rounded-xl"
+            onClick={() => setAdjustOpen(true)}
+          >
+            <Pencil className="size-3.5" />
+            {t("adjustPoints")}
+          </Button>
+          <AdjustPointsDialog
+            purchaseId={detail.id}
+            open={adjustOpen}
+            onOpenChange={setAdjustOpen}
+          />
+        </>
+      ) : null}
     </Section>
   );
 }
@@ -395,6 +420,12 @@ function TimelineBlock({ detail }: { detail: PurchaseAdminDetail }) {
         return t("timelinePoints", { count: e.amount ?? 0 });
       case "redeem":
         return t("timelineRedeem", { name: e.rewardName ?? "" });
+      case "adjust": {
+        const signed = (e.amount ?? 0) > 0 ? `+${e.amount}` : `${e.amount}`;
+        return e.actorName
+          ? t("timelineAdjustBy", { points: signed, name: e.actorName })
+          : t("timelineAdjust", { points: signed });
+      }
       default:
         return "";
     }
@@ -407,6 +438,9 @@ function TimelineBlock({ detail }: { detail: PurchaseAdminDetail }) {
           <li key={`${e.kind}-${i}`} className="relative">
             <span className="bg-primary absolute top-1 -left-[1.4rem] size-2.5 rounded-full ring-4 ring-[var(--color-card)]" />
             <p className="text-sm font-medium">{labelFor(e)}</p>
+            {e.reason ? (
+              <p className="text-muted-foreground text-xs italic">“{e.reason}”</p>
+            ) : null}
             <p className="text-muted-foreground text-xs">
               {formatDate(e.at, { locale, preset: "long" })}
             </p>

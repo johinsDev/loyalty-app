@@ -2024,7 +2024,19 @@
     "timelineStamp": "+{count, plural, one {# sello} other {# sellos}}",
     "timelinePoints": "+{count, plural, one {# punto} other {# puntos}}",
     "timelineRedeem": "Canjeó {name}",
-    "receipt": "Comprobante"
+    "receipt": "Comprobante",
+    "cancel": "Cancelar",
+    "adjustTitle": "Corregir puntos",
+    "adjustHint": "Suma o resta puntos de esta compra (ej. el escáner falló). Queda registrado en la línea de tiempo.",
+    "adjustPointsLabel": "Puntos (+ suma, − resta)",
+    "adjustPointsPlaceholder": "Ej. 500 o -200",
+    "adjustReasonLabel": "Motivo",
+    "adjustReasonPlaceholder": "Ej. El escáner no registró la compra",
+    "adjustConfirm": "Aplicar ajuste",
+    "adjustOk": "Puntos ajustados. Nuevo saldo: {balance}",
+    "adjustError": "No se pudo ajustar. Solo el owner puede.",
+    "timelineAdjust": "{points} puntos (ajuste)",
+    "timelineAdjustBy": "{points} puntos ajustados por {name}"
   },
   "Stores": {
     "title": "Tiendas",

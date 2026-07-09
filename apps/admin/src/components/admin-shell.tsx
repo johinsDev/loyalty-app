@@ -10,6 +10,7 @@ import { AdminNav } from "@/components/admin-nav";
 import { CommandPalette } from "@/components/command-palette";
 import { StoreSwitcher } from "@/components/store-switcher";
 import { useRouter } from "@/i18n/navigation";
+import { RoleProvider } from "@/lib/role-context";
 
 /**
  * Admin shell — a fixed sidebar on desktop (lg+) and a drawer on tablet/mobile
@@ -32,6 +33,7 @@ export function AdminShell({
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
+    <RoleProvider role={role}>
     <div className="bg-card flex h-screen overflow-hidden">
       <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
 
@@ -96,5 +98,6 @@ export function AdminShell({
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
+    </RoleProvider>
   );
 }

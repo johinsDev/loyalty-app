@@ -176,15 +176,17 @@ export interface PurchasesKpis {
 }
 
 /** One derived event in a purchase's timeline (no dedicated persistence). */
-export type PurchaseTimelineKind = "sale" | "stamp" | "points" | "redeem";
+export type PurchaseTimelineKind = "sale" | "stamp" | "points" | "redeem" | "adjust";
 export interface PurchaseTimelineEvent {
   kind: PurchaseTimelineKind;
   at: Date;
   actorName: string | null;
-  /** Stamps/points count for stamp/points events. */
+  /** Stamps/points count (signed for `adjust`) for stamp/points/adjust events. */
   amount: number | null;
   /** Reward name for redeem events. */
   rewardName: string | null;
+  /** Free-text reason for `adjust` events (the correction's justification). */
+  reason: string | null;
 }
 
 /** Customer preview block on the admin detail. */

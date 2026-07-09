@@ -45,6 +45,42 @@ export class PointsRepository {
     return inserted.length > 0;
   }
 
+  /** Insert a signed `adjust` row (manual correction / void reversal). Unlike
+   *  `earn` it is never idempotent — each adjustment is a distinct event. */
+  async adjust(input: {
+    orgId: string;
+    customerId: string;
+    points: number;
+    reason: string;
+    purchaseId?: string | null;
+    storeId?: string | null;
+    addedByUserId?: string | null;
+  }): Promise<void> {
+    await this.db.insert(pointsTransaction).values({
+      customerId: input.customerId,
+      organizationId: input.orgId,
+      type: "adjust",
+      points: input.points,
+      reason: input.reason,
+      purchaseId: input.purchaseId ?? null,
+      storeId: input.storeId ?? null,
+      addedByUserId: input.addedByUserId ?? null,
+    });
+  }
+
+  /** The customer + store a purchase belongs to (org-scoped). */
+  async purchaseRef(
+    orgId: string,
+    purchaseId: string,
+  ): Promise<{ customerId: string; storeId: string | null } | null> {
+    const rows = await this.db
+      .select({ customerId: purchase.customerId, storeId: purchase.storeId })
+      .from(purchase)
+      .where(and(eq(purchase.organizationId, orgId), eq(purchase.id, purchaseId)))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
   async balance(orgId: string, customerId: string): Promise<number> {
     const rows = await this.db
       .select({ total: sql<number>`coalesce(sum(${pointsTransaction.points}), 0)` })
