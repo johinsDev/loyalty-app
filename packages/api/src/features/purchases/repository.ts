@@ -374,7 +374,7 @@ export class PurchasesRepository {
       | { stamps?: number; points?: number }
       | undefined;
     const reversal = p.voidedAt
-      ? { stamps: voidMeta?.stamps ?? 0, points: voidMeta?.points ?? 0 }
+      ? { stamps: voidMeta?.stamps ?? stamps, points: voidMeta?.points ?? points }
       : null;
 
     return {
@@ -427,7 +427,11 @@ export class PurchasesRepository {
     purchaseId: string,
     reason: string,
     userId: string,
-  ): Promise<{ customerId: string } | "not_found" | "already_voided"> {
+  ): Promise<
+    | { customerId: string; reversal: { stamps: number; points: number } }
+    | "not_found"
+    | "already_voided"
+  > {
     return this.db.transaction(async (tx) => {
       const rows = await tx
         .select({
@@ -547,7 +551,7 @@ export class PurchasesRepository {
         })
         .where(eq(purchase.id, purchaseId));
 
-      return { customerId: p.customerId };
+      return { customerId: p.customerId, reversal: { stamps: granted, points: earned } };
     });
   }
 

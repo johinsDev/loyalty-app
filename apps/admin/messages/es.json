@@ -2042,7 +2042,7 @@
     "voided": "Anulada",
     "voidAction": "Anular compra",
     "voidTitle": "Anular compra",
-    "voidHint": "Revierte la lealtad de esta venta: quita el sello, resta los puntos ganados y, si canjeó un reward, lo restaura. No se puede deshacer.",
+    "voidHint": "Revierte la lealtad de esta venta: quita el sello, resta los puntos ganados y, si canjeó un reward, lo restaura. Se le avisa al cliente. No se puede deshacer.",
     "voidReasonLabel": "Motivo de la anulación",
     "voidReasonPlaceholder": "Ej. El cliente devolvió el pedido",
     "voidConfirm": "Anular y revertir",

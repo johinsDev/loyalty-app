@@ -2042,7 +2042,7 @@
     "voided": "Voided",
     "voidAction": "Void purchase",
     "voidTitle": "Void purchase",
-    "voidHint": "Reverses this sale's loyalty: removes the stamp, subtracts earned points, and restores a redeemed reward. This can't be undone.",
+    "voidHint": "Reverses this sale's loyalty: removes the stamp, subtracts earned points, and restores a redeemed reward. The customer is notified. This can't be undone.",
     "voidReasonLabel": "Void reason",
     "voidReasonPlaceholder": "e.g. The customer returned the order",
     "voidConfirm": "Void and reverse",

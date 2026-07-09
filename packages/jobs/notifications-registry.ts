@@ -541,6 +541,49 @@ export class PurchaseReceiptNotification
   }
 }
 
+/** The customer is told their purchase was voided and what loyalty was undone. */
+export class PurchaseVoidedNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(private readonly reverted: { stamps: number; points: number }) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["whatsapp", "database"];
+  }
+
+  #parts(): string {
+    const parts: string[] = [];
+    if (this.reverted.stamps > 0) {
+      parts.push(`−${this.reverted.stamps} sello${this.reverted.stamps > 1 ? "s" : ""}`);
+    }
+    if (this.reverted.points > 0) parts.push(`−${this.reverted.points} puntos`);
+    return parts.join(" · ");
+  }
+
+  toWhatsApp() {
+    const parts = this.#parts();
+    return {
+      body: parts
+        ? `Tu compra fue anulada.\nSe revirtieron: ${parts}`
+        : "Tu compra fue anulada.",
+    };
+  }
+
+  toDatabase() {
+    const parts = this.#parts();
+    return {
+      type: "purchase-voided",
+      title: "Compra anulada",
+      body: parts ? `Se revirtieron ${parts}` : "Tu compra fue anulada",
+    };
+  }
+}
+
 /** New tier reached — the big moment (benefits + T&C). */
 export class TierUpNotification
   extends Notification
@@ -993,6 +1036,13 @@ export function createNotification(
         discountCents: typeof r.discountCents === "number" ? r.discountCents : 0,
         totalCents: typeof r.totalCents === "number" ? r.totalCents : 0,
         currency: typeof r.currency === "string" ? r.currency : "COP",
+        stamps: typeof r.stamps === "number" ? r.stamps : 0,
+        points: typeof r.points === "number" ? r.points : 0,
+      });
+    }
+    case "purchase-voided": {
+      const r = (payload ?? {}) as Record<string, unknown>;
+      return new PurchaseVoidedNotification({
         stamps: typeof r.stamps === "number" ? r.stamps : 0,
         points: typeof r.points === "number" ? r.points : 0,
       });

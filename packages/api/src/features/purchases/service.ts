@@ -139,6 +139,15 @@ export class PurchasesService {
       throw new TRPCError({ code: "CONFLICT", message: "PURCHASE_ALREADY_VOIDED" });
     }
     await recomputeTier(res.customerId);
+    // Tell the customer their purchase was voided + what loyalty was undone.
+    await tasks
+      .trigger("send-notification", {
+        customerIds: [res.customerId],
+        organizationId,
+        notificationKey: "purchase-voided",
+        payload: { stamps: res.reversal.stamps, points: res.reversal.points },
+      })
+      .catch(() => {});
     return { voided: true };
   }
 }

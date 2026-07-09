@@ -450,12 +450,11 @@ function LoyaltyBlock({ detail }: { detail: PurchaseAdminDetail }) {
   const isOwner = useHasRole("owner") && !voided;
   const [adjustOpen, setAdjustOpen] = useState(false);
 
-  // For a voided sale show what it HAD granted (now reverted), struck through.
-  const stampsShown = voided ? (detail.reversal?.stamps ?? 0) : detail.stampsEarned;
-  const pointsShown = voided ? (detail.reversal?.points ?? 0) : detail.pointsEarned;
-  const tileValue = voided
-    ? "text-muted-foreground line-through decoration-2"
-    : "text-primary";
+  // For a voided sale show what it originally granted (now reverted): keep the
+  // numbers readable (muted) with a clear "reverted" caption underneath.
+  const stampsShown = voided ? (detail.reversal?.stamps ?? detail.stampsEarned) : detail.stampsEarned;
+  const pointsShown = voided ? (detail.reversal?.points ?? detail.pointsEarned) : detail.pointsEarned;
+  const tileValue = voided ? "text-muted-foreground" : "text-primary";
   const tileBg = voided ? "bg-muted" : "bg-primary/10";
   const tileLabel = voided ? "text-muted-foreground" : "text-primary/80";
 
