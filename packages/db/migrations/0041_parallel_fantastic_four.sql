@@ -1,0 +1,1 @@
+ALTER TABLE `product` ADD `promo_price_cents` integer;
