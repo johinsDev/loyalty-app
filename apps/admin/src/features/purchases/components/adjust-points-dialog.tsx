@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useRouter } from "@/i18n/navigation";
 import { useTRPC } from "@/lib/trpc/client";
 
 /** Owner-only correction of a purchase's points (e.g. the scanner failed).
@@ -31,6 +32,7 @@ export function AdjustPointsDialog({
 }) {
   const t = useTranslations("Purchases");
   const trpc = useTRPC();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [points, setPoints] = useState("");
   const [reason, setReason] = useState("");
@@ -52,10 +54,11 @@ export function AdjustPointsDialog({
       { purchaseId, points: delta, reason: reason.trim() },
       {
         onSuccess: async (res) => {
-          await queryClient.invalidateQueries(trpc.purchases.adminGet.queryFilter());
+          await queryClient.invalidateQueries(trpc.purchases.adminList.queryFilter());
           toast.success(t("adjustOk", { balance: res.balance }));
           reset();
           onOpenChange(false);
+          router.refresh();
         },
         onError: () => toast.error(t("adjustError")),
       },

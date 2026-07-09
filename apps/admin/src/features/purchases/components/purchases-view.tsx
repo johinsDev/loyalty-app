@@ -11,7 +11,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Download, Gift, Tag, X } from "lucide-react";
 import { parseAsArrayOf, parseAsInteger, parseAsIsoDate, parseAsString, useQueryState } from "nuqs";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -28,6 +28,7 @@ import {
 import { useDataTable } from "@/components/data-table/use-data-table";
 import { ViewToggle } from "@/components/view-toggle";
 import { downloadCsv, rowsToCsv } from "@/lib/csv";
+import { useRouter } from "@/i18n/navigation";
 import { money } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -37,7 +38,6 @@ import {
   ENTRY_SOURCE_VALUES,
   REDEMPTION_CURRENCY_VALUES,
 } from "../list-params";
-import { PurchaseDetailModal } from "./purchase-detail-modal";
 import { PurchaseRowActions } from "./purchase-row-actions";
 
 type PurchaseListResult = { rows: PurchaseAdminListItem[]; total: number; pageCount: number };
@@ -46,8 +46,13 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
   const t = useTranslations("Purchases");
   const locale = useLocale();
   const format = useFormatter();
+  const router = useRouter();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const openDetail = useCallback(
+    (id: string) => router.push({ pathname: "/purchases/[id]", params: { id } }),
+    [router],
+  );
 
   // ── URL state (facets + q). page/perPage/sort/view/cols live in useDataTable.
   const [q, setQ] = useQueryState("q", tableParsers.q);
@@ -69,7 +74,6 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
   const [page] = useQueryState("page", tableParsers.page);
   const [perPage] = useQueryState("perPage", tableParsers.perPage);
   const [view, setView] = useQueryState("view", tableParsers.view);
-  const [detailId, setDetailId] = useQueryState("detalle", parseAsString);
 
   const resetPage = () => void setPage(1);
 
@@ -207,7 +211,7 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
           <button
             type="button"
             className="hover:text-primary flex cursor-pointer items-center gap-2.5 text-left hover:underline"
-            onClick={() => void setDetailId(row.original.id)}
+            onClick={() => openDetail(row.original.id)}
           >
             <span className="bg-primary/10 text-primary grid size-8 flex-none place-items-center rounded-full text-xs font-bold">
               {(row.original.customerName ?? row.original.customerPhone).slice(0, 2).toUpperCase()}
@@ -341,7 +345,7 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
         cell: ({ row }) => <PurchaseRowActions id={row.original.id} />,
       },
     ],
-    [t, locale, format, setDetailId],
+    [t, locale, format, openDetail],
   );
 
   const { table, selectedIds, resetSelection } = useDataTable<PurchaseAdminListItem>({
@@ -552,7 +556,7 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
                   key={p.id}
                   type="button"
                   className="bg-card border-border hover:border-primary/40 cursor-pointer rounded-3xl border p-4 text-left shadow-sm transition-colors"
-                  onClick={() => void setDetailId(p.id)}
+                  onClick={() => openDetail(p.id)}
                 >
                   <div className="flex items-start gap-3">
                     <span className="bg-primary/10 text-primary grid size-10 flex-none place-items-center rounded-full text-sm font-bold">
@@ -594,7 +598,6 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
         </Button>
       </DataTableBulkBar>
 
-      <PurchaseDetailModal id={detailId} onClose={() => void setDetailId(null)} />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useRouter } from "@/i18n/navigation";
 import { useTRPC } from "@/lib/trpc/client";
 
 /** Owner-only void (anulación). Reverses the sale's loyalty (stamp, points,
@@ -29,6 +30,7 @@ export function VoidPurchaseDialog({
 }) {
   const t = useTranslations("Purchases");
   const trpc = useTRPC();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [reason, setReason] = useState("");
 
@@ -43,13 +45,13 @@ export function VoidPurchaseDialog({
       {
         onSuccess: async () => {
           await Promise.all([
-            queryClient.invalidateQueries(trpc.purchases.adminGet.queryFilter()),
             queryClient.invalidateQueries(trpc.purchases.adminList.queryFilter()),
             queryClient.invalidateQueries(trpc.purchases.adminKpis.queryFilter()),
           ]);
           toast.success(t("voidOk"));
           setReason("");
           onOpenChange(false);
+          router.refresh();
         },
         onError: () => toast.error(t("voidError")),
       },
