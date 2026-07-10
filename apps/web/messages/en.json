@@ -520,7 +520,9 @@
     "cardTitle": "Your card",
     "cardProgress": "1 / 10 stamps",
     "cardRemaining": "9 more to go for your next free bubble tea.",
-    "viewCard": "View my card"
+    "viewCard": "View my card",
+    "bannedTitle": "Your account is disabled",
+    "bannedBody": "You can’t access T4 Diver Club with this account. If you think this is a mistake, talk to the staff at your T4 store."
   },
   "History": {
     "title": "History",

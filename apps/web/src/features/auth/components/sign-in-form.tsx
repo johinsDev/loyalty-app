@@ -34,7 +34,11 @@ const STEPS = ["intro", "phone", "otp", "success"] as const;
 export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const t = useTranslations("Auth");
   const locale = useLocale();
-  const forbidden = useSearchParams().get("error") === "forbidden";
+  const authError = useSearchParams().get("error");
+  const forbidden = authError === "forbidden";
+  // A banned Google user is redirected here by Better Auth (see the auth
+  // server's `onAPIError.errorURL`).
+  const banned = authError === "banned";
 
   const otp = usePhoneOtp();
   // The whole flow is URL-driven: `?step=` is the wizard stage (the browser
@@ -177,11 +181,13 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
                 every slide. The Google row sits ABOVE it with a reserved height,
                 so it appears on the last slide without moving the button (no
                 jump, button stays low). */}
-            {forbidden && (
+            {banned ? (
+              <BannedNotice title={t("bannedTitle")} body={t("bannedBody")} />
+            ) : forbidden ? (
               <p className="text-center text-sm font-semibold text-amber-600">
                 {t("errorForbidden")}
               </p>
-            )}
+            ) : null}
             <div className="flex h-11 items-center justify-center">
               {slideIdx === lastIntro && googleEnabled && (
                 <button
@@ -282,67 +288,75 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
           }}
         >
           <BackBar onClick={() => void setStep("phone")} label={t("back")} />
-          <Content className="gap-0">
-            <EmojiTile className="mb-6">🔑</EmojiTile>
-            <h1 className="font-display mb-2 text-[2rem] leading-[1.05] font-semibold tracking-tight">
-              {t("otpTitle")}
-            </h1>
-            <p className="text-muted-foreground mb-7 text-base leading-relaxed">
-              {t("codeSentTo", { phone: otp.phone })}
-            </p>
-            <div className="mb-4 flex justify-center">
-              <InputOTP
-                maxLength={6}
-                value={code}
-                onChange={(v) => setCode(v)}
-                autoFocus
+          {otp.isBanned ? (
+            <Content className="justify-center">
+              <BannedNotice title={t("bannedTitle")} body={t("bannedBody")} />
+            </Content>
+          ) : (
+            <Content className="gap-0">
+              <EmojiTile className="mb-6">🔑</EmojiTile>
+              <h1 className="font-display mb-2 text-[2rem] leading-[1.05] font-semibold tracking-tight">
+                {t("otpTitle")}
+              </h1>
+              <p className="text-muted-foreground mb-7 text-base leading-relaxed">
+                {t("codeSentTo", { phone: otp.phone })}
+              </p>
+              <div className="mb-4 flex justify-center">
+                <InputOTP
+                  maxLength={6}
+                  value={code}
+                  onChange={(v) => setCode(v)}
+                  autoFocus
+                >
+                  <InputOTPGroup className="gap-2">
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
+                      <InputOTPSlot key={i} index={i} className="rounded-2xl" />
+                    ))}
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <div className="min-h-6 text-center">
+                {otp.error ? (
+                  <span className="text-destructive text-sm font-bold">
+                    {t("otpError")}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground text-sm">
+                    {t("notReceived")}{" "}
+                    <button
+                      type="button"
+                      onClick={() => void otp.resendOtp()}
+                      disabled={!otp.canResend || otp.isSending}
+                      className="text-primary font-semibold disabled:text-muted-foreground/70 disabled:cursor-not-allowed"
+                    >
+                      {otp.canResend
+                        ? t("resendCode")
+                        : t("resendIn", { seconds: otp.secondsLeft })}
+                    </button>
+                  </span>
+                )}
+              </div>
+            </Content>
+          )}
+          {otp.isBanned ? null : (
+            <Footer>
+              <Button
+                type="submit"
+                variant="gradient"
+                className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
+                disabled={code.length !== 6 || otp.isVerifying}
               >
-                <InputOTPGroup className="gap-2">
-                  {[0, 1, 2, 3, 4, 5].map((i) => (
-                    <InputOTPSlot key={i} index={i} className="rounded-2xl" />
-                  ))}
-                </InputOTPGroup>
-              </InputOTP>
-            </div>
-            <div className="min-h-6 text-center">
-              {otp.error ? (
-                <span className="text-destructive text-sm font-bold">
-                  {t("otpError")}
-                </span>
-              ) : (
-                <span className="text-muted-foreground text-sm">
-                  {t("notReceived")}{" "}
-                  <button
-                    type="button"
-                    onClick={() => void otp.resendOtp()}
-                    disabled={!otp.canResend || otp.isSending}
-                    className="text-primary font-semibold disabled:text-muted-foreground/70 disabled:cursor-not-allowed"
-                  >
-                    {otp.canResend
-                      ? t("resendCode")
-                      : t("resendIn", { seconds: otp.secondsLeft })}
-                  </button>
-                </span>
-              )}
-            </div>
-          </Content>
-          <Footer>
-            <Button
-              type="submit"
-              variant="gradient"
-              className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
-              disabled={code.length !== 6 || otp.isVerifying}
-            >
-              {otp.isVerifying ? (
-                <>
-                  <Spinner className="size-5" />
-                  {t("verifying")}
-                </>
-              ) : (
-                t("verifyButton")
-              )}
-            </Button>
-          </Footer>
+                {otp.isVerifying ? (
+                  <>
+                    <Spinner className="size-5" />
+                    {t("verifying")}
+                  </>
+                ) : (
+                  t("verifyButton")
+                )}
+              </Button>
+            </Footer>
+          )}
         </form>
       )}
 
@@ -383,6 +397,20 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
           </Footer>
         </Screen>
       )}
+    </div>
+  );
+}
+
+/** Terminal "your account is disabled" card. Generic on purpose — Better Auth
+ *  doesn't hand the ban reason to the client, and we don't expose it. */
+function BannedNotice({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="border-destructive/30 bg-destructive/10 flex flex-col items-center gap-3 rounded-3xl border p-6 text-center">
+      <span className="grid size-14 place-items-center rounded-2xl bg-destructive/15 text-3xl">
+        🚫
+      </span>
+      <h2 className="font-display text-xl font-semibold tracking-tight">{title}</h2>
+      <p className="text-muted-foreground text-sm leading-relaxed">{body}</p>
     </div>
   );
 }
