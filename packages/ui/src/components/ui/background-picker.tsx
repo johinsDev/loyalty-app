@@ -98,6 +98,13 @@ interface BackgroundPickerProps {
    *  `url(...)` image. */
   value: string
   onValueChange: (background: string) => void
+  /**
+   * Curated fixed-gradient templates shown as their own grid (with a selected
+   * ring on the active one). Off by default; pass `BACKGROUND_PRESETS` to show
+   * them. Use when a value may be a hand-picked two-color gradient the
+   * recolor-from-one-color styles can't reproduce.
+   */
+  presets?: BackgroundPreset[]
   /** Decorative patterns shown as a second grid. Pass `[]` to hide them. */
   patterns?: BackgroundPreset[]
   swatches?: string[]
@@ -119,6 +126,7 @@ interface BackgroundPickerProps {
 function BackgroundPicker({
   value,
   onValueChange,
+  presets = [],
   patterns = BACKGROUND_PATTERNS,
   swatches,
   uploadLabel = "Drag an image or click",
@@ -190,6 +198,26 @@ function BackgroundPicker({
           )
         })}
       </div>
+
+      {presets.length > 0 ? (
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {presets.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              aria-label={p.key}
+              onClick={() => onValueChange(p.css)}
+              style={{ background: p.css }}
+              className={cn(
+                "h-12 rounded-xl outline-none transition-transform",
+                value === p.css
+                  ? "ring-foreground ring-offset-card ring-2 ring-offset-2"
+                  : "hover:scale-105",
+              )}
+            />
+          ))}
+        </div>
+      ) : null}
 
       {patterns.length > 0 ? (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">

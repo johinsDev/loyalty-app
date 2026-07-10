@@ -5,6 +5,7 @@ import {
   updateOnboardingInputSchema,
 } from "@loyalty/api/features/settings/schemas";
 import {
+  BACKGROUND_PRESETS,
   BackgroundPicker,
   Button,
   IconPicker,
@@ -194,6 +195,7 @@ export function OnboardingSection() {
                   value={step.backgroundCss}
                   onValueChange={(backgroundCss) => patch(step.id, { backgroundCss })}
                   onUploadImage={uploadImage}
+                  presets={BACKGROUND_PRESETS}
                   colorLabel={t("onboarding.customColor")}
                   uploadLabel={t("onboarding.imgUpload")}
                   removeLabel={t("onboarding.imgRemove")}
