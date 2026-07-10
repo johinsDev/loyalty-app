@@ -38,7 +38,7 @@ import {
   ENTRY_SOURCE_VALUES,
   REDEMPTION_CURRENCY_VALUES,
 } from "../list-params";
-import { CustomerFilter, CustomerFilterChip } from "./customer-filter";
+import { CustomerCombobox } from "./customer-combobox";
 import { PurchaseRowActions } from "./purchase-row-actions";
 
 type PurchaseListResult = { rows: PurchaseAdminListItem[]; total: number; pageCount: number };
@@ -65,7 +65,10 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
   );
   const [currency, setCurrency] = useQueryState("currency", parseAsArrayOf(parseAsString).withDefault([]));
   const [entry, setEntry] = useQueryState("entry", parseAsArrayOf(parseAsString).withDefault([]));
-  const [customer, setCustomer] = useQueryState("customer", parseAsString);
+  const [customer, setCustomer] = useQueryState(
+    "customer",
+    parseAsArrayOf(parseAsString).withDefault([]),
+  );
   const [amountMin, setAmountMin] = useQueryState("amountMin", parseAsInteger);
   const [amountMax, setAmountMax] = useQueryState("amountMax", parseAsInteger);
   const [from, setFrom] = useQueryState("from", parseAsIsoDate);
@@ -105,8 +108,9 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
   const isEffFacet = effectiveness.length > 0 && effectiveness.length < EFFECTIVENESS_VALUES.length;
   const isCurFacet = currency.length > 0 && currency.length < REDEMPTION_CURRENCY_VALUES.length;
   const isEntryFacet = entry.length > 0 && entry.length < ENTRY_SOURCE_VALUES.length;
+  // The customer combobox lives in the toolbar next to the search box, not in
+  // the drawer — so it neither counts toward the badge nor clears with it.
   const activeFacets =
-    (customer ? 1 : 0) +
     (store.length > 0 ? 1 : 0) +
     (cashier.length > 0 ? 1 : 0) +
     (isEffFacet ? 1 : 0) +
@@ -116,7 +120,6 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
     (from || to ? 1 : 0);
 
   const clearFilters = () => {
-    void setCustomer(null);
     void setStore([]);
     void setCashier([]);
     void setEffectiveness([]);
@@ -413,26 +416,14 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
           placeholder={t("searchPlaceholder")}
           className="h-10 w-full sm:w-64"
         />
-        {customer ? (
-          <CustomerFilterChip
-            customerId={customer}
-            onClear={() => {
-              void setCustomer(null);
-              resetPage();
-            }}
-          />
-        ) : null}
+        <CustomerCombobox
+          value={customer}
+          onChange={(ids) => {
+            void setCustomer(ids.length > 0 ? ids : null);
+            resetPage();
+          }}
+        />
         <DataTableFilters activeCount={activeFacets} onClear={clearFilters}>
-          <FilterSection label={t("col.customer")}>
-            <CustomerFilter
-              value={customer}
-              onChange={(id) => {
-                void setCustomer(id);
-                resetPage();
-              }}
-            />
-          </FilterSection>
-
           <FilterSection label={t("col.store")}>
             {storeOptions.length === 0 ? (
               <span className="text-muted-foreground text-sm">{t("noStores")}</span>

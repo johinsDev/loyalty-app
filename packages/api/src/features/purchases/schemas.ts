@@ -37,8 +37,8 @@ export const entrySourceSchema = z.enum(["campaign", "shortlink", "organic"]);
 export const purchasesAdminListInputSchema = listQueryBase.extend({
   storeIds: z.array(z.string()).optional(),
   cashierIds: z.array(z.string()).optional(),
-  /** Deep-link from a customer profile ("their purchases"). */
-  customerId: z.string().optional(),
+  /** Customer facet. A single id is also the deep-link from a profile. */
+  customerIds: z.array(z.string()).optional(),
   effectiveness: z.array(purchaseEffectivenessSchema).optional(),
   redemptionCurrency: z.array(redemptionCurrencySchema).optional(),
   entrySource: z.array(entrySourceSchema).optional(),

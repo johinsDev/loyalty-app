@@ -2354,8 +2354,7 @@
     "timelineVoid": "Purchase voided · loyalty reversed",
     "timelineVoidBy": "Voided by {name} · loyalty reversed",
     "searchCustomer": "Search customer…",
-    "noCustomers": "No results",
-    "clearCustomer": "Clear customer filter"
+    "noCustomers": "No results"
   },
   "Stores": {
     "title": "Stores",

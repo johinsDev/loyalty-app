@@ -2354,8 +2354,7 @@
     "timelineVoid": "Compra anulada · lealtad revertida",
     "timelineVoidBy": "Compra anulada por {name} · lealtad revertida",
     "searchCustomer": "Buscar cliente…",
-    "noCustomers": "Sin resultados",
-    "clearCustomer": "Quitar filtro de cliente"
+    "noCustomers": "Sin resultados"
   },
   "Stores": {
     "title": "Tiendas",

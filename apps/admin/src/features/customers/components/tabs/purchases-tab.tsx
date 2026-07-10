@@ -21,7 +21,12 @@ export function PurchasesTab({ customerId }: { customerId: string }) {
   const trpc = useTRPC();
 
   const query = useQuery(
-    trpc.purchases.adminList.queryOptions({ customerId, page: 1, perPage: RECENT, sort: [] }),
+    trpc.purchases.adminList.queryOptions({
+      customerIds: [customerId],
+      page: 1,
+      perPage: RECENT,
+      sort: [],
+    }),
   );
   const rows = query.data?.rows ?? [];
 
