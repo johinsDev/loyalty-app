@@ -1,390 +1,404 @@
 "use client";
 
-import {
-  Badge,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@loyalty/ui";
-import {
-  ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Plus,
-  Search,
-  Users,
-} from "lucide-react";
-import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import type { CustomerListItem, CustomersListInput } from "@loyalty/api/features/customers/schemas";
+import { formatDate, localeFromCode } from "@loyalty/date";
+import { Badge, Button, Calendar, Checkbox, Input } from "@loyalty/ui";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Download, Plus } from "lucide-react";
+import { parseAsArrayOf, parseAsInteger, parseAsIsoDate, parseAsString, useQueryState } from "nuqs";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
-import { EmptyState } from "@/components/empty-state";
-import { type FilterOption, FilterMultiSelect } from "@/components/filters";
-import { type ViewMode, ViewToggle } from "@/components/view-toggle";
-import { useFadeUp } from "@/lib/animate";
+import {
+  DataTable,
+  DataTableBulkBar,
+  DataTableColumnHeader,
+  DataTableFilters,
+  DataTablePagination,
+  DataTableSortList,
+  DataTableViewOptions,
+  FilterSection,
+  tableParsers,
+} from "@/components/data-table";
+import { useDataTable } from "@/components/data-table/use-data-table";
+import { ViewToggle } from "@/components/view-toggle";
+import { downloadCsv, rowsToCsv } from "@/lib/csv";
 import { useRouter } from "@/i18n/navigation";
+import { money } from "@/lib/money";
+import { useTRPC } from "@/lib/trpc/client";
 
-import {
-  type Customer,
-  customerKpis,
-  customers,
-  type Status,
-  type Tier,
-  tierColor,
-} from "../data";
+import { customerInitials } from "../lib/initials";
+import { buildCustomersInput, STATUS_VALUES, TIER_VALUES } from "../list-params";
 
-const PAGE_SIZE = 8;
-const STATUSES: Status[] = ["active", "inactive"];
-const TIERS: Tier[] = ["bronze", "silver", "gold", "diamond"];
+type CustomerListResult = { rows: CustomerListItem[]; total: number; pageCount: number };
 
-/**
- * Clientes — KPI row + a polished data table (search, status/tier select
- * filters, export, add, pagination). Rows open the customer detail; add/edit go
- * to the customer wizard. Design-first / hardcoded (../data); the seam is the
- * tRPC `customers.search` query later.
- */
-export function CustomersView() {
+const THIRTY_DAYS = 30 * 86_400_000;
+
+function statusOf(c: CustomerListItem): "banned" | "active" | "inactive" {
+  if (c.banned) return "banned";
+  if (c.lastVisitAt && Date.now() - new Date(c.lastVisitAt).getTime() <= THIRTY_DAYS) return "active";
+  return "inactive";
+}
+
+export function CustomersView({ initialData }: { initialData?: CustomerListResult }) {
   const t = useTranslations("Customers");
-  const tCommon = useTranslations("Common");
+  const locale = useLocale();
+  const format = useFormatter();
   const router = useRouter();
-  const fade = useFadeUp({ step: 40 });
-
-  const [query, setQuery] = useState("");
-  const [statuses, setStatuses] = useState<Status[]>([...STATUSES]);
-  const [tiers, setTiers] = useState<Tier[]>([...TIERS]);
-  const [view, setView] = useState<ViewMode>("list");
-  const [page, setPage] = useState(0);
-
-  const statusOptions: FilterOption<Status>[] = [
-    { value: "active", label: t("status.active"), dot: "#1f9d68" },
-    { value: "inactive", label: t("status.inactive"), dot: "#9aa1ab" },
-  ];
-  const tierOptions: FilterOption<Tier>[] = TIERS.map((tr) => ({
-    value: tr,
-    label: t(`tier.${tr}`),
-  }));
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return customers.filter((c) => {
-      if (!statuses.includes(c.status)) return false;
-      if (!tiers.includes(c.tier)) return false;
-      if (q && !c.name.toLowerCase().includes(q) && !c.phone.includes(q))
-        return false;
-      return true;
-    });
-  }, [query, statuses, tiers]);
-
-  const clearFilters = () => {
-    reset(() => {
-      setQuery("");
-      setStatuses([...STATUSES]);
-      setTiers([...TIERS]);
-    });
-  };
-
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const current = Math.min(page, pages - 1);
-  const rows = filtered.slice(
-    current * PAGE_SIZE,
-    current * PAGE_SIZE + PAGE_SIZE,
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const openDetail = useCallback(
+    (id: string) => router.push({ pathname: "/customers/[id]", params: { id } }),
+    [router],
   );
 
-  const reset = (fn: () => void) => {
-    fn();
-    setPage(0);
+  const [q, setQ] = useQueryState("q", tableParsers.q);
+  const [tier, setTier] = useQueryState("tier", parseAsArrayOf(parseAsString).withDefault([]));
+  const [status, setStatus] = useQueryState("status", parseAsArrayOf(parseAsString).withDefault([]));
+  const [from, setFrom] = useQueryState("from", parseAsIsoDate);
+  const [to, setTo] = useQueryState("to", parseAsIsoDate);
+  const [spendMin, setSpendMin] = useQueryState("spendMin", parseAsInteger);
+  const [spendMax, setSpendMax] = useQueryState("spendMax", parseAsInteger);
+  const [, setPage] = useQueryState("page", tableParsers.page);
+  const [sort] = useQueryState("sort", tableParsers.sort);
+  const [page] = useQueryState("page", tableParsers.page);
+  const [perPage] = useQueryState("perPage", tableParsers.perPage);
+  const [view, setView] = useQueryState("view", tableParsers.view);
+
+  const resetPage = () => void setPage(1);
+  const [search, setSearch] = useState(q);
+  const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const onSearch = (value: string) => {
+    setSearch(value);
+    clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => {
+      void setQ(value || null);
+      resetPage();
+    }, 350);
   };
 
-  let i = 0;
+  const isTierFacet = tier.length > 0 && tier.length < TIER_VALUES.length;
+  const isStatusFacet = status.length > 0 && status.length < STATUS_VALUES.length;
+  const activeFacets =
+    (isTierFacet ? 1 : 0) +
+    (isStatusFacet ? 1 : 0) +
+    (from || to ? 1 : 0) +
+    (spendMin != null || spendMax != null ? 1 : 0);
+  const clearFilters = () => {
+    void setTier([]);
+    void setStatus([]);
+    void setFrom(null);
+    void setTo(null);
+    void setSpendMin(null);
+    void setSpendMax(null);
+    resetPage();
+  };
+  const toggle = (values: string[], setter: (v: string[]) => void, v: string) => {
+    setter(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+    resetPage();
+  };
+
+  const input: CustomersListInput = useMemo(
+    () => buildCustomersInput({ q, page, perPage, sort, tier, status, from, to, spendMin, spendMax }),
+    [q, page, perPage, sort, tier, status, from, to, spendMin, spendMax],
+  );
+
+  const initialKey = useRef(JSON.stringify(input));
+  const useInitial = initialData && JSON.stringify(input) === initialKey.current;
+  const query = useQuery(
+    trpc.customers.adminList.queryOptions(input, {
+      placeholderData: keepPreviousData,
+      ...(useInitial ? { initialData } : {}),
+    }),
+  );
+  const kpisQuery = useQuery(trpc.customers.adminKpis.queryOptions(undefined, { placeholderData: keepPreviousData }));
+  const rows = query.data?.rows ?? [];
+  const pageCount = query.data?.pageCount ?? 1;
+  const total = query.data?.total ?? 0;
+
+  const columns = useMemo<ColumnDef<CustomerListItem, unknown>[]>(
+    () => [
+      {
+        id: "select",
+        enableSorting: false,
+        enableHiding: false,
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            indeterminate={table.getIsSomePageRowsSelected()}
+            onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+            aria-label={t("selectAll")}
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(v) => row.toggleSelected(!!v)}
+            aria-label={t("selectRow")}
+          />
+        ),
+      },
+      {
+        accessorKey: "name",
+        meta: { label: t("col.customer") },
+        header: ({ column }) => <DataTableColumnHeader column={column} title={t("col.customer")} />,
+        cell: ({ row }) => (
+          <button
+            type="button"
+            className="hover:text-primary flex cursor-pointer items-center gap-2.5 text-left hover:underline"
+            onClick={() => openDetail(row.original.id)}
+          >
+            <span className="bg-primary/10 text-primary grid size-8 flex-none place-items-center rounded-full text-xs font-bold">
+              {customerInitials(row.original.name, row.original.phone)}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate font-semibold">{row.original.name || row.original.phone}</span>
+              <span className="text-muted-foreground block truncate text-xs">{row.original.phone}</span>
+            </span>
+          </button>
+        ),
+      },
+      {
+        accessorKey: "tierKey",
+        enableSorting: false,
+        meta: { label: t("col.tier") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("col.tier")}</span>,
+        cell: ({ row }) => <Badge variant="outline">{t(`tier.${row.original.tierKey ?? "hoja"}`)}</Badge>,
+      },
+      {
+        accessorKey: "visits",
+        meta: { label: t("col.visits") },
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t("col.visits")} className="justify-end" />
+        ),
+        cell: ({ row }) => <div className="text-right text-sm">{row.original.visits}</div>,
+      },
+      {
+        accessorKey: "ltv",
+        meta: { label: t("col.spent") },
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t("col.spent")} className="justify-end" />
+        ),
+        cell: ({ row }) => (
+          <div className="text-right font-bold whitespace-nowrap">{money(format, row.original.ltvCents)}</div>
+        ),
+      },
+      {
+        accessorKey: "lastVisit",
+        meta: { label: t("col.lastVisit") },
+        header: ({ column }) => <DataTableColumnHeader column={column} title={t("col.lastVisit")} />,
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm whitespace-nowrap">
+            {row.original.lastVisitAt ? formatDate(row.original.lastVisitAt, { locale }) : "—"}
+          </span>
+        ),
+      },
+      {
+        id: "status",
+        enableSorting: false,
+        meta: { label: t("col.status") },
+        header: () => <span className="text-muted-foreground text-xs font-bold">{t("col.status")}</span>,
+        cell: ({ row }) => {
+          const s = statusOf(row.original);
+          return (
+            <Badge
+              variant={s === "banned" ? "destructive" : s === "active" ? "default" : "secondary"}
+            >
+              {t(`status.${s}`)}
+            </Badge>
+          );
+        },
+      },
+    ],
+    [t, locale, format, openDetail],
+  );
+
+  const { table, selectedIds, resetSelection } = useDataTable<CustomerListItem>({
+    data: rows,
+    columns,
+    pageCount,
+    getRowId: (r) => r.id,
+  });
+
+  const onExport = async () => {
+    const data = await queryClient.fetchQuery(trpc.customers.adminListByIds.queryOptions({ ids: selectedIds }));
+    downloadCsv(
+      rowsToCsv(data, [
+        { header: t("col.customer"), value: (c) => c.name ?? c.phone },
+        { header: t("col.phone"), value: (c) => c.phone },
+        { header: "Email", value: (c) => c.email ?? "" },
+        { header: t("col.tier"), value: (c) => c.tierKey ?? "" },
+        { header: t("col.visits"), value: (c) => String(c.visits) },
+        { header: t("col.spent"), value: (c) => String(c.ltvCents / 100) },
+        { header: t("col.lastVisit"), value: (c) => (c.lastVisitAt ? formatDate(c.lastVisitAt, { locale }) : "") },
+      ]),
+      `clientes-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+    toast.success(t("exported", { n: selectedIds.length }));
+  };
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground/80 mt-0.5 text-sm font-semibold">
-            {t("subtitle")}
-          </p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="h-10 gap-2 rounded-xl">
-            <Download className="size-4" />
-            {t("export")}
-          </Button>
-          <Button
-            className="h-10 gap-2 rounded-xl font-semibold"
-            onClick={() => router.push("/customers/new")}
-          >
-            <Plus className="size-4" />
-            {t("addCustomer")}
-          </Button>
-        </div>
+        <Button className="h-10 gap-1.5 rounded-xl" onClick={() => router.push("/customers/new")}>
+          <Plus className="size-4" />
+          {t("addCustomer")}
+        </Button>
       </div>
 
-      {/* KPI row */}
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {customerKpis.map((k) => (
-          <div
-            key={k.key}
-            style={fade(i++)}
-            className="bg-card border-border min-w-0 rounded-3xl border p-5 shadow-sm"
-          >
-            <span className="text-muted-foreground/70 text-xs font-extrabold tracking-wider uppercase">
-              {t(`kpi.${k.key}`)}
-            </span>
-            <div className="font-display mt-1 text-3xl font-semibold tracking-tight">
-              {k.value}
-            </div>
-            <span className="mt-1.5 inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600">
-              <ArrowUpRight className="size-3.5" />
-              {k.delta}
-            </span>
-          </div>
-        ))}
+        <Kpi label={t("kpi.total")} value={String(kpisQuery.data?.total ?? 0)} />
+        <Kpi label={t("kpi.new30d")} value={String(kpisQuery.data?.new30d ?? 0)} />
+        <Kpi label={t("kpi.active30d")} value={String(kpisQuery.data?.active30d ?? 0)} />
+        <Kpi label={t("kpi.avgLtv")} value={money(format, kpisQuery.data?.avgLtvCents ?? 0)} />
       </div>
 
-      {/* Table card */}
-      <div
-        style={fade(i++)}
-        className="bg-card border-border mt-5 overflow-hidden rounded-3xl border shadow-sm"
-      >
-        {/* Toolbar */}
-        <div className="border-border flex flex-wrap items-center gap-3 border-b p-4">
-          <div className="relative min-w-52 flex-1">
-            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-            <input
-              value={query}
-              onChange={(e) => reset(() => setQuery(e.target.value))}
-              placeholder={t("searchPlaceholder")}
-              className="border-border bg-muted/40 placeholder:text-muted-foreground h-10 w-full rounded-xl border pr-3 pl-9 text-sm outline-none"
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterMultiSelect
-              label={t("statusFilter")}
-              options={statusOptions}
-              selected={statuses}
-              onChange={(v) => reset(() => setStatuses(v))}
-            />
-            <FilterMultiSelect
-              label={t("tierFilter")}
-              options={tierOptions}
-              selected={tiers}
-              onChange={(v) => reset(() => setTiers(v))}
-            />
-            <ViewToggle
-              value={view}
-              onValueChange={setView}
-              ariaLabel={tCommon("viewToggle")}
-            />
-          </div>
-        </div>
-
-        {rows.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title={t("empty")}
-            hint={t("emptyHint")}
-            action={
-              <Button
-                variant="outline"
-                className="rounded-xl"
-                onClick={clearFilters}
-              >
-                {t("clearFilters")}
-              </Button>
-            }
-          />
-        ) : view === "list" ? (
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("col.customer")}</TableHead>
-                <TableHead>{t("col.tier")}</TableHead>
-                <TableHead className="text-right">{t("col.points")}</TableHead>
-                <TableHead className="text-right">{t("col.visits")}</TableHead>
-                <TableHead className="text-right">{t("col.spent")}</TableHead>
-                <TableHead>{t("col.lastVisit")}</TableHead>
-                <TableHead>{t("col.status")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((c) => (
-                <Row key={c.id} customer={c} router={router} t={t} />
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="mt-5 grid grid-cols-1 gap-3 px-4 pb-4 sm:grid-cols-2 lg:grid-cols-3">
-            {rows.map((c) => (
-              <div
-                key={c.id}
-                style={fade(i++)}
-                className="bg-card border-border cursor-pointer rounded-3xl border p-5 shadow-sm"
-                onClick={() =>
-                  router.push({
-                    pathname: "/customers/[id]",
-                    params: { id: c.id },
-                  })
-                }
-              >
-                <div className="flex items-start gap-3">
-                  <span className="bg-primary/10 text-primary grid size-11 flex-none place-items-center rounded-full text-sm font-bold">
-                    {c.initials}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-bold">{c.name}</div>
-                    <div className="text-muted-foreground/70 truncate text-xs font-semibold">
-                      {c.phone}
-                    </div>
-                  </div>
-                  <span
-                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${tierColor[c.tier]}`}
-                  >
-                    {t(`tier.${c.tier}`)}
-                  </span>
-                </div>
-
-                <div className="border-border mt-4 grid grid-cols-3 gap-2 border-t pt-4">
-                  <div>
-                    <div className="font-bold">{c.points.toLocaleString()}</div>
-                    <div className="text-muted-foreground/70 text-xs font-semibold">
-                      {t("col.points")}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-bold">{c.visits}</div>
-                    <div className="text-muted-foreground/70 text-xs font-semibold">
-                      {t("col.visits")}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-bold">{c.spent}</div>
-                    <div className="text-muted-foreground/70 text-xs font-semibold">
-                      {t("col.spent")}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <Badge
-                    variant="secondary"
-                    className={
-                      c.status === "active"
-                        ? "text-emerald-600"
-                        : "text-muted-foreground"
-                    }
-                  >
-                    {t(`status.${c.status}`)}
-                  </Badge>
-                </div>
-              </div>
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <Input
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          placeholder={t("searchPlaceholder")}
+          className="h-10 w-full sm:w-64"
+        />
+        <DataTableFilters activeCount={activeFacets} onClear={clearFilters}>
+          <FilterSection label={t("col.tier")}>
+            {TIER_VALUES.map((v) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox checked={tier.includes(v)} onCheckedChange={() => toggle(tier, setTier, v)} />
+                {t(`tier.${v}`)}
+              </label>
             ))}
-          </div>
-        )}
-
-        {/* Pagination */}
-        <div className="border-border flex items-center justify-between border-t px-4 py-3 text-sm">
-          <span className="text-muted-foreground font-semibold">
-            {t("showing", {
-              from: filtered.length === 0 ? 0 : current * PAGE_SIZE + 1,
-              to: current * PAGE_SIZE + rows.length,
-              total: filtered.length,
-            })}
-          </span>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-9 rounded-lg"
-              disabled={current === 0}
-              onClick={() => setPage(current - 1)}
-              aria-label={t("prev")}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <span className="text-muted-foreground px-2 font-semibold">
-              {t("pageOf", { page: current + 1, pages })}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-9 rounded-lg"
-              disabled={current >= pages - 1}
-              onClick={() => setPage(current + 1)}
-              aria-label={t("next")}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
+          </FilterSection>
+          <FilterSection label={t("col.status")}>
+            {STATUS_VALUES.map((v) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox checked={status.includes(v)} onCheckedChange={() => toggle(status, setStatus, v)} />
+                {t(`status.${v}`)}
+              </label>
+            ))}
+          </FilterSection>
+          <FilterSection label={t("spendRange")}>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                inputMode="numeric"
+                placeholder={t("min")}
+                className="h-9"
+                value={spendMin ?? ""}
+                onChange={(e) => {
+                  void setSpendMin(e.target.value ? Number(e.target.value) : null);
+                  resetPage();
+                }}
+              />
+              <span className="text-muted-foreground">–</span>
+              <Input
+                type="number"
+                inputMode="numeric"
+                placeholder={t("max")}
+                className="h-9"
+                value={spendMax ?? ""}
+                onChange={(e) => {
+                  void setSpendMax(e.target.value ? Number(e.target.value) : null);
+                  resetPage();
+                }}
+              />
+            </div>
+          </FilterSection>
+          <FilterSection label={t("col.joined")}>
+            <div className="border-border flex justify-center rounded-2xl border p-1.5">
+              <Calendar
+                mode="range"
+                className="[--cell-size:--spacing(9)]"
+                locale={localeFromCode(locale)}
+                selected={{ from: from ?? undefined, to: to ?? undefined }}
+                onSelect={(r: { from?: Date; to?: Date } | undefined) => {
+                  void setFrom(r?.from ?? null);
+                  void setTo(r?.to ?? null);
+                  resetPage();
+                }}
+                disabled={{ after: new Date() }}
+              />
+            </div>
+          </FilterSection>
+        </DataTableFilters>
+        <div className="ml-auto flex items-center gap-2">
+          <DataTableSortList table={table} />
+          <DataTableViewOptions table={table} />
+          <ViewToggle value={view} onValueChange={(v) => setView(v)} ariaLabel={t("viewToggle")} />
         </div>
       </div>
+
+      <div className="mt-4">
+        <DataTable
+          table={table}
+          view={view}
+          isFetching={query.isFetching}
+          emptyState={
+            <div className="text-muted-foreground grid h-40 place-items-center px-6 text-center">
+              <div>
+                <p className="text-foreground font-semibold">{t("empty")}</p>
+                <p className="mt-1 text-sm">{t("emptyHint")}</p>
+              </div>
+            </div>
+          }
+          renderGrid={(items) => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="bg-card border-border hover:border-primary/40 cursor-pointer rounded-3xl border p-4 text-left shadow-sm transition-colors"
+                  onClick={() => openDetail(c.id)}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="bg-primary/10 text-primary grid size-10 flex-none place-items-center rounded-full text-sm font-bold">
+                      {customerInitials(c.name, c.phone)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-bold">{c.name || c.phone}</div>
+                      <div className="text-muted-foreground truncate text-xs">{c.phone}</div>
+                    </div>
+                    <Badge variant="outline">{t(`tier.${c.tierKey ?? "hoja"}`)}</Badge>
+                  </div>
+                  <div className="border-border mt-4 grid grid-cols-2 gap-2 border-t pt-4">
+                    <div>
+                      <div className="font-bold">{money(format, c.ltvCents)}</div>
+                      <div className="text-muted-foreground text-xs">{t("col.spent")}</div>
+                    </div>
+                    <div>
+                      <div className="font-bold">{c.visits}</div>
+                      <div className="text-muted-foreground text-xs">{t("col.visits")}</div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        />
+        <DataTablePagination table={table} total={total} selectedCount={selectedIds.length} />
+      </div>
+
+      <DataTableBulkBar count={selectedIds.length} onClear={resetSelection}>
+        <Button variant="ghost" size="sm" className="h-9 gap-1.5 rounded-full" onClick={onExport}>
+          <Download className="size-4" />
+          {t("bulkExport")}
+        </Button>
+      </DataTableBulkBar>
     </div>
   );
 }
 
-function Row({
-  customer: c,
-  router,
-  t,
-}: {
-  customer: Customer;
-  router: ReturnType<typeof useRouter>;
-  t: ReturnType<typeof useTranslations>;
-}) {
+function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <TableRow
-      className="cursor-pointer"
-      onClick={() =>
-        router.push({ pathname: "/customers/[id]", params: { id: c.id } })
-      }
-    >
-      <TableCell>
-        <div className="flex items-center gap-3">
-          <span className="bg-primary/10 text-primary grid size-9 flex-none place-items-center rounded-full text-xs font-bold">
-            {c.initials}
-          </span>
-          <div className="min-w-0">
-            <div className="truncate font-bold">{c.name}</div>
-            <div className="text-muted-foreground/70 truncate text-xs font-semibold">
-              {c.phone}
-            </div>
-          </div>
-        </div>
-      </TableCell>
-      <TableCell>
-        <span
-          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${tierColor[c.tier]}`}
-        >
-          {t(`tier.${c.tier}`)}
-        </span>
-      </TableCell>
-      <TableCell className="text-right font-bold">
-        {c.points.toLocaleString()}
-      </TableCell>
-      <TableCell className="text-muted-foreground text-right font-semibold">
-        {c.visits}
-      </TableCell>
-      <TableCell className="text-right font-bold">{c.spent}</TableCell>
-      <TableCell className="text-muted-foreground font-semibold">
-        {c.lastVisit}
-      </TableCell>
-      <TableCell>
-        <Badge
-          variant="secondary"
-          className={
-            c.status === "active" ? "text-emerald-600" : "text-muted-foreground"
-          }
-        >
-          {t(`status.${c.status}`)}
-        </Badge>
-      </TableCell>
-    </TableRow>
+    <div className="bg-card border-border min-w-0 rounded-3xl border p-5 shadow-sm">
+      <span className="text-muted-foreground/70 text-xs font-extrabold tracking-wider uppercase">{label}</span>
+      <div className="font-display mt-1 text-2xl font-semibold tracking-tight">{value}</div>
+    </div>
   );
 }

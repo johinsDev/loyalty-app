@@ -35,21 +35,26 @@ import {
   Store,
   Users,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { compactNumber } from "@/lib/money";
+import { useTRPC } from "@/lib/trpc/client";
 import { NotificationsInbox } from "@/components/notifications-inbox";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 
 type Href = string;
 type Sub = { href: Href; key: string };
+/** `badge` names which live count feeds this row (see `dashboard.navCounts`). */
+type BadgeKey = "customers" | "promotions";
 type Item = {
   href: Href;
   key: string;
   icon: LucideIcon;
-  badge?: string;
+  badge?: BadgeKey;
   sub?: Sub[];
 };
 type RoleMin = "staff" | "manager" | "owner";
@@ -61,7 +66,7 @@ const GROUPS: Group[] = [
     min: "staff",
     items: [
       { href: "/dashboard", key: "dashboard", icon: LayoutDashboard },
-      { href: "/customers", key: "customers", icon: Users, badge: "12.8K" },
+      { href: "/customers", key: "customers", icon: Users, badge: "customers" },
       { href: "/purchases", key: "purchases", icon: Receipt },
     ],
   },
@@ -71,7 +76,7 @@ const GROUPS: Group[] = [
     items: [
       { href: "/products", key: "products", icon: Package },
       { href: "/rewards", key: "rewards", icon: Gift },
-      { href: "/promotions", key: "promotions", icon: Sparkles, badge: "4" },
+      { href: "/promotions", key: "promotions", icon: Sparkles, badge: "promotions" },
     ],
   },
   {
@@ -152,8 +157,19 @@ export function AdminNav({
 }) {
   const t = useTranslations("Nav");
   const tRoles = useTranslations("Roles");
+  const format = useFormatter();
   const pathname = usePathname();
+  const trpc = useTRPC();
   const groups = GROUPS.filter((g) => RANK[role] >= ROLE_RANK[g.min]);
+
+  // `navCounts` is a manager procedure; staff never see a badged row anyway.
+  const { data: counts } = useQuery({
+    ...trpc.dashboard.navCounts.queryOptions(),
+    enabled: RANK[role] >= RANK.manager,
+    staleTime: 60_000,
+  });
+  const badgeLabel = (key: BadgeKey): string | null =>
+    counts ? compactNumber(format, counts[key]) : null;
 
   return (
     <div className="bg-card flex h-full flex-col">
@@ -208,9 +224,9 @@ export function AdminNav({
                   >
                     <it.icon className="size-5 flex-none" />
                     <span className="flex-1">{t(it.key)}</span>
-                    {it.badge ? (
+                    {it.badge && badgeLabel(it.badge) ? (
                       <span className="text-muted-foreground/80 text-xs font-semibold">
-                        {it.badge}
+                        {badgeLabel(it.badge)}
                       </span>
                     ) : null}
                   </Link>

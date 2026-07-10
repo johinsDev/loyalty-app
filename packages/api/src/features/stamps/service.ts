@@ -1,3 +1,4 @@
+import { recordAudit } from "@loyalty/db";
 import { tasks } from "@trigger.dev/sdk/v3";
 
 import type { RealtimeBinding } from "../../trpc";
@@ -147,6 +148,43 @@ export class StampsService {
       input.page,
       input.pageSize,
     );
+  }
+
+  /** Owner CRM correction of a customer's stamps (no purchase). Signed delta,
+   *  clamped ≥0; audited; fires the realtime card animation. */
+  async adjustForCustomer(
+    organizationId: string,
+    customerId: string,
+    delta: number,
+    reason: string,
+    addedByUserId: string,
+  ): Promise<{ wallet: WalletView }> {
+    const wallet = await this.repo.adjustStamps({
+      orgId: organizationId,
+      customerId,
+      delta,
+      note: reason,
+      addedByUserId,
+    });
+    await recordAudit({
+      organizationId,
+      actorUserId: addedByUserId,
+      targetUserId: customerId,
+      type: "customer_stamps_adjust",
+      metadata: { delta, reason },
+    });
+    if (wallet.id) {
+      await this.publish(customerId, {
+        event: "stamp.earned",
+        data: {
+          walletId: wallet.id,
+          currentStamps: wallet.currentStamps,
+          walletSize: wallet.walletSize,
+          stampsGoal: wallet.stampsGoal,
+        },
+      });
+    }
+    return { wallet };
   }
 
   private async publish(

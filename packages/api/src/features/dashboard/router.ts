@@ -16,6 +16,9 @@ const orgId = async (): Promise<string> =>
 
 /** Admin dashboard — Tier-1 real aggregates (KPIs, series, recent, top). */
 export const dashboardRouter = router({
+  navCounts: managerProcedure.query(async ({ ctx }) =>
+    new DashboardRepository(ctx.db).navCounts(await orgId()),
+  ),
   overview: managerProcedure
     .input(overviewInputSchema)
     .query(async ({ ctx, input }) =>

@@ -74,6 +74,58 @@ export class StampsRepository {
     return toView(await this.currentWallet(orgId, customerId));
   }
 
+  /** Manual admin stamp correction (CRM): a signed stamp row with no purchase +
+   *  a clamped card-counter update, atomic. Opens an active card if none. */
+  async adjustStamps(input: {
+    orgId: string;
+    customerId: string;
+    delta: number;
+    note: string;
+    addedByUserId: string;
+  }): Promise<WalletView> {
+    return this.db.transaction(async (tx) => {
+      const active = await tx
+        .select()
+        .from(loyaltyCard)
+        .where(
+          and(
+            eq(loyaltyCard.organizationId, input.orgId),
+            eq(loyaltyCard.customerId, input.customerId),
+            eq(loyaltyCard.status, "active"),
+          ),
+        )
+        .orderBy(desc(loyaltyCard.sequence))
+        .limit(1);
+      let card = active[0];
+      if (!card) {
+        const created = await tx
+          .insert(loyaltyCard)
+          .values({
+            customerId: input.customerId,
+            organizationId: input.orgId,
+            currentStamps: 0,
+            status: "active",
+            sequence: 1,
+          })
+          .returning();
+        card = created[0]!;
+      }
+      const next = Math.max(0, card.currentStamps + input.delta);
+      await tx.insert(stamp).values({
+        cardId: card.id,
+        purchaseId: null,
+        addedByUserId: input.addedByUserId,
+        amount: input.delta,
+        note: input.note,
+      });
+      await tx
+        .update(loyaltyCard)
+        .set({ currentStamps: next, updatedAt: new Date() })
+        .where(eq(loyaltyCard.id, card.id));
+      return toView({ ...card, currentStamps: next });
+    });
+  }
+
   async recordPurchase(input: {
     orgId: string;
     customerId: string;

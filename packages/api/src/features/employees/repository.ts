@@ -12,7 +12,6 @@ import {
   store,
   storeStaff,
   user,
-  type AuditType,
   type InvitationRow,
   type MemberRow,
   type UserRow,
@@ -21,6 +20,7 @@ import { and, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 
 import type {
   ActivityEntry,
+  ActivityType,
   EmployeeDetail,
   EmployeeListItem,
   EmployeeStoreRef,
@@ -587,7 +587,9 @@ export class EmployeesRepository {
       .limit(cap);
     return rows.map((r) => ({
       id: r.id,
-      type: r.type as AuditType,
+      // Employee audit rows are always within the employee ActivityType space;
+      // customer-CRM audit types never target an employee user.
+      type: r.type as ActivityType,
       createdAt: r.createdAt,
       metadata: r.metadata ?? null,
     }));

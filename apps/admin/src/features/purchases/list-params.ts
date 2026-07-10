@@ -28,8 +28,8 @@ export const purchasesSearchParams = {
   effectiveness: parseAsArrayOf(parseAsString).withDefault([]),
   currency: parseAsArrayOf(parseAsString).withDefault([]),
   entry: parseAsArrayOf(parseAsString).withDefault([]),
-  /** Deep-link from a customer profile ("their purchases"). */
-  customer: parseAsString,
+  /** Customer facet. A single id is also the deep-link from a profile. */
+  customer: parseAsArrayOf(parseAsString).withDefault([]),
   amountMin: parseAsInteger,
   amountMax: parseAsInteger,
   from: parseAsIsoDate,
@@ -46,7 +46,7 @@ export type PurchasesSearchValues = {
   effectiveness: string[];
   currency: string[];
   entry: string[];
-  customer: string | null;
+  customer: string[];
   amountMin: number | null;
   amountMax: number | null;
   from: Date | null;
@@ -70,7 +70,7 @@ export function buildPurchasesInput(v: PurchasesSearchValues): PurchasesAdminLis
     sort: v.sort,
     storeIds: v.store.length > 0 ? v.store : undefined,
     cashierIds: v.cashier.length > 0 ? v.cashier : undefined,
-    customerId: v.customer ?? undefined,
+    customerIds: v.customer.length > 0 ? v.customer : undefined,
     effectiveness: facet(v.effectiveness, EFFECTIVENESS_VALUES),
     redemptionCurrency: facet(v.currency, REDEMPTION_CURRENCY_VALUES),
     entrySource: facet(v.entry, ENTRY_SOURCE_VALUES),

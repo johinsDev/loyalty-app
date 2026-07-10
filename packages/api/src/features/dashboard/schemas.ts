@@ -171,3 +171,12 @@ export interface FunnelStage {
 export interface FunnelView {
   stages: FunnelStage[];
 }
+
+/** Counts behind the sidebar badges + the topbar caption. */
+export interface NavCounts {
+  customers: number;
+  /** Published promos only — a draft has no badge-worthy existence. */
+  promotions: number;
+  /** Excludes soft-deleted stores. */
+  stores: number;
+}
