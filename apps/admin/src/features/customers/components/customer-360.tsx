@@ -28,6 +28,7 @@ import { type ReactNode, useState } from "react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useHasRole } from "@/lib/role-context";
 
+import { customerInitials } from "../lib/initials";
 import { BanCustomerDialog, UnbanCustomerDialog } from "./dialogs/ban-customer-dialog";
 import { NotifyCustomerDialog } from "./dialogs/notify-customer-dialog";
 import { ActivityTab } from "./tabs/activity-tab";
@@ -218,7 +219,7 @@ export function Customer360({
 }
 
 function Avatar({ detail }: { detail: CustomerDetail }) {
-  const initials = (detail.name ?? detail.phone).slice(0, 2).toUpperCase();
+  const initials = customerInitials(detail.name, detail.phone);
   if (detail.avatarUrl) {
     return (
       <img src={detail.avatarUrl} alt="" className="size-14 flex-none rounded-2xl object-cover" />

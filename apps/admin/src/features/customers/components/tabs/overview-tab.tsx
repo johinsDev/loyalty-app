@@ -12,7 +12,7 @@ import { CalendarClock, Coins, Package, Receipt, Store, TrendingUp } from "lucid
 import { useFormatter, useTranslations } from "next-intl";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 
-import { money } from "@/lib/money";
+import { compactMoney, compactNumber, money } from "@/lib/money";
 
 /** Recharts needs a concrete fill — the admin re-skin doesn't expose `--color-*`
  *  to the chart at paint time. Same accent the other admin charts use. */
@@ -45,9 +45,24 @@ export function OverviewTab({ stats }: { stats: CustomerStats }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Tile icon={Coins} label={t("stat.ltv")} value={money(format, stats.ltvCents)} />
-        <Tile icon={Receipt} label={t("stat.avgTicket")} value={money(format, stats.avgTicketCents)} />
-        <Tile icon={TrendingUp} label={t("stat.visits")} value={String(stats.visits)} />
+        <Tile
+          icon={Coins}
+          label={t("stat.ltv")}
+          value={compactMoney(format, stats.ltvCents)}
+          exact={money(format, stats.ltvCents)}
+        />
+        <Tile
+          icon={Receipt}
+          label={t("stat.avgTicket")}
+          value={compactMoney(format, stats.avgTicketCents)}
+          exact={money(format, stats.avgTicketCents)}
+        />
+        <Tile
+          icon={TrendingUp}
+          label={t("stat.visits")}
+          value={compactNumber(format, stats.visits)}
+          exact={format.number(stats.visits)}
+        />
         <Tile
           icon={CalendarClock}
           label={t("stat.cadence")}
@@ -114,10 +129,14 @@ function Tile({
   icon: Icon,
   label,
   value,
+  exact,
 }: {
   icon: typeof Coins;
   label: string;
+  /** Abbreviated, so it survives a narrow tile. */
   value: string;
+  /** Full-precision value, revealed on hover. */
+  exact?: string;
 }) {
   return (
     <div className="bg-card border-border min-w-0 rounded-2xl border p-4 shadow-sm">
@@ -125,7 +144,12 @@ function Tile({
         <Icon className="size-3.5 flex-none" />
         <span className="truncate">{label}</span>
       </div>
-      <div className="font-display mt-1 truncate text-2xl font-semibold tracking-tight">{value}</div>
+      <div
+        title={exact}
+        className="font-display mt-1 truncate text-2xl font-semibold tracking-tight"
+      >
+        {value}
+      </div>
     </div>
   );
 }

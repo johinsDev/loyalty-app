@@ -29,6 +29,7 @@ import { useRouter } from "@/i18n/navigation";
 import { money } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { customerInitials } from "../lib/initials";
 import { buildCustomersInput, STATUS_VALUES, TIER_VALUES } from "../list-params";
 
 type CustomerListResult = { rows: CustomerListItem[]; total: number; pageCount: number };
@@ -150,7 +151,7 @@ export function CustomersView({ initialData }: { initialData?: CustomerListResul
             onClick={() => openDetail(row.original.id)}
           >
             <span className="bg-primary/10 text-primary grid size-8 flex-none place-items-center rounded-full text-xs font-bold">
-              {(row.original.name ?? row.original.phone).slice(0, 2).toUpperCase()}
+              {customerInitials(row.original.name, row.original.phone)}
             </span>
             <span className="min-w-0">
               <span className="block truncate font-semibold">{row.original.name || row.original.phone}</span>
@@ -357,7 +358,7 @@ export function CustomersView({ initialData }: { initialData?: CustomerListResul
                 >
                   <div className="flex items-start gap-3">
                     <span className="bg-primary/10 text-primary grid size-10 flex-none place-items-center rounded-full text-sm font-bold">
-                      {(c.name ?? c.phone).slice(0, 2).toUpperCase()}
+                      {customerInitials(c.name, c.phone)}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-bold">{c.name || c.phone}</div>
