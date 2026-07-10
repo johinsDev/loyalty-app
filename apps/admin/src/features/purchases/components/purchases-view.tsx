@@ -38,7 +38,7 @@ import {
   ENTRY_SOURCE_VALUES,
   REDEMPTION_CURRENCY_VALUES,
 } from "../list-params";
-import { CustomerCombobox } from "./customer-combobox";
+import { CustomerFilter } from "./customer-filter";
 import { PurchaseRowActions } from "./purchase-row-actions";
 
 type PurchaseListResult = { rows: PurchaseAdminListItem[]; total: number; pageCount: number };
@@ -416,7 +416,7 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
           placeholder={t("searchPlaceholder")}
           className="h-10 w-full sm:w-64"
         />
-        <CustomerCombobox
+        <CustomerFilter
           value={customer}
           onChange={(ids) => {
             void setCustomer(ids.length > 0 ? ids : null);
