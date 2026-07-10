@@ -7,9 +7,9 @@ import {
 import {
   BackgroundPicker,
   Button,
-  IconGlyph,
   IconPicker,
   Input,
+  OnboardingSlideView,
   RichTextEditor,
   Skeleton,
   Tabs,
@@ -223,17 +223,13 @@ export function OnboardingSection() {
             className="border-border mx-auto w-56 rounded-3xl border-8 p-5 text-white"
           >
             <div className="flex min-h-72 flex-col">
-              <div className="flex flex-1 flex-col items-center justify-center text-center">
-                <span className="grid size-16 place-items-center overflow-hidden text-5xl">
-                  <IconGlyph value={first?.icon ?? "🧋"} />
-                </span>
-                <h3 className="font-display mt-4 font-semibold">
-                  {firstText.title || t("onboarding.titlePlaceholder")}
-                </h3>
-                <div
-                  className="prose prose-sm prose-invert mt-2"
-                  // Body is authored as HTML via the rich-text editor.
-                  dangerouslySetInnerHTML={{ __html: firstText.body }}
+              <div className="flex flex-1 flex-col items-center justify-center">
+                <OnboardingSlideView
+                  size="sm"
+                  onDark
+                  icon={first?.icon ?? "🧋"}
+                  title={firstText.title || t("onboarding.titlePlaceholder")}
+                  body={firstText.body || null}
                 />
               </div>
               <div className="mt-4 flex items-center justify-between">

@@ -4,12 +4,12 @@ import type { OnboardingStepView } from "@loyalty/api/features/settings/schemas"
 import { authClient } from "@loyalty/auth/client";
 import {
   Button,
-  IconGlyph,
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
   InputPhone,
   isValidE164Phone,
+  OnboardingSlideView,
   Spinner,
 } from "@loyalty/ui";
 import { useLocale, useTranslations } from "next-intl";
@@ -183,51 +183,33 @@ export function SignInForm({
                 dir === "next" ? "slide-in-from-right-10" : "slide-in-from-left-10"
               }`}
             >
-              <button
-                type="button"
-                onClick={() => goIntro(Math.min(slideIdx + 1, lastIntro))}
-                aria-label={t("next")}
-              >
-                <EmojiTile size="lg">
-                  <span className="grid size-full place-items-center overflow-hidden rounded-[inherit]">
-                    <IconGlyph value={slide.icon} />
-                  </span>
-                </EmojiTile>
-              </button>
-              <div className="flex flex-col gap-3">
-                <h1 className="font-display text-4xl leading-[1.05] font-semibold tracking-tight whitespace-pre-line">
-                  {slide.title}
-                </h1>
-                {slide.bodyHtml ? (
-                  <div
-                    className={`prose prose-sm mx-auto max-w-xs leading-relaxed ${hasBg ? "prose-invert" : ""}`}
-                    // Admin-authored HTML (tiptap) — same trust boundary as the editor preview.
-                    dangerouslySetInnerHTML={{ __html: slide.bodyHtml }}
+              <OnboardingSlideView
+                icon={slide.icon}
+                title={slide.title}
+                body={slide.bodyHtml}
+                sub={slide.sub}
+                onDark={hasBg}
+                onIconClick={() => goIntro(Math.min(slideIdx + 1, lastIntro))}
+                iconAriaLabel={t("next")}
+              />
+            </div>
+            {slides.length > 1 ? (
+              <div className="flex items-center gap-2">
+                {slides.map((s, i) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => goIntro(i)}
+                    aria-label={`${i + 1}`}
+                    className={`h-2.5 rounded-full transition-all ${
+                      slideIdx === i
+                        ? `w-6 ${hasBg ? "bg-white" : "bg-primary"}`
+                        : `w-2.5 ${hasBg ? "bg-white/40" : "bg-muted-foreground/30"}`
+                    }`}
                   />
-                ) : slide.sub ? (
-                  <p
-                    className={`text-base leading-relaxed ${hasBg ? "text-white/85" : "text-muted-foreground"}`}
-                  >
-                    {slide.sub}
-                  </p>
-                ) : null}
+                ))}
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {slides.map((s, i) => (
-                <button
-                  key={s.key}
-                  type="button"
-                  onClick={() => goIntro(i)}
-                  aria-label={`${i + 1}`}
-                  className={`h-2.5 rounded-full transition-all ${
-                    slideIdx === i
-                      ? `w-6 ${hasBg ? "bg-white" : "bg-primary"}`
-                      : `w-2.5 ${hasBg ? "bg-white/40" : "bg-muted-foreground/30"}`
-                  }`}
-                />
-              ))}
-            </div>
+            ) : null}
           </Content>
           <Footer>
             {/* Primary button is the LAST child → anchored at the bottom on
