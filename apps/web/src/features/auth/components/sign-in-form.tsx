@@ -157,14 +157,22 @@ export function SignInForm({
 
   return (
     <div className="text-foreground mx-auto flex min-h-[100dvh] w-full max-w-md flex-col overflow-x-hidden">
+      {/* Onboarding background — full-bleed at the viewport (not the max-w-md
+          column) so desktop shows an intentional backdrop, not white gutters
+          around a phone-width strip. Only for the intro step. */}
+      {step === "intro" && hasBg ? (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-0"
+          style={{ background: slide.bg! }}
+        >
+          {/* Scrim keeps text legible over a photo/bright background. */}
+          <div className="absolute inset-0 bg-black/25" />
+        </div>
+      ) : null}
       {/* ===== 1 · INTRO ===== */}
       {step === "intro" && (
-        <Screen
-          className={`relative ${hasBg ? "text-white" : ""}`}
-          style={hasBg ? { background: slide.bg! } : undefined}
-        >
-          {/* Scrim: keeps text legible over a photo/bright background. */}
-          {hasBg ? <div aria-hidden className="pointer-events-none absolute inset-0 bg-black/25" /> : null}
+        <Screen className={`relative z-10 ${hasBg ? "text-white" : ""}`}>
           <div className="relative z-10 flex h-12 items-center justify-end px-4">
             {slideIdx < lastIntro && (
               <button
@@ -429,17 +437,11 @@ export function SignInForm({
 function Screen({
   children,
   className = "",
-  style,
 }: {
   children: React.ReactNode;
   className?: string;
-  style?: React.CSSProperties;
 }) {
-  return (
-    <div className={`flex flex-1 flex-col ${className}`} style={style}>
-      {children}
-    </div>
-  );
+  return <div className={`flex flex-1 flex-col ${className}`}>{children}</div>;
 }
 
 function Content({

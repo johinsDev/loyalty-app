@@ -61,6 +61,8 @@ export function OnboardingSection() {
 
   const [steps, setSteps] = useState<Step[] | null>(null);
   const [locale, setLocale] = useState(defaultLocale);
+  // Which slide the preview shows — steppable so the author walks the real flow.
+  const [previewIdx, setPreviewIdx] = useState(0);
 
   // Seed once, both queries resolved. Backfill any newly-enabled locale so its
   // tab has an entry to edit.
@@ -120,8 +122,8 @@ export function OnboardingSection() {
     save.mutate(parsed.data);
   };
 
-  const first = steps[0];
-  const firstText = first?.text[locale] ?? { title: "", body: "" };
+  const previewSlide = steps[Math.min(previewIdx, steps.length - 1)] ?? steps[0]!;
+  const previewText = previewSlide.text[locale] ?? { title: "", body: "" };
 
   return (
     <section className="space-y-4">
@@ -219,24 +221,46 @@ export function OnboardingSection() {
             {t("onboarding.previewTitle")}
           </p>
           <div
-            style={{ background: first?.backgroundCss ?? DEFAULT_BG }}
+            style={{ background: previewSlide.backgroundCss || DEFAULT_BG }}
             className="border-border mx-auto w-56 rounded-3xl border-8 p-5 text-white"
           >
             <div className="flex min-h-72 flex-col">
-              <div className="flex flex-1 flex-col items-center justify-center">
+              <div className="flex flex-1 flex-col items-center justify-center gap-3">
                 <OnboardingSlideView
                   size="sm"
                   onDark
-                  icon={first?.icon ?? "🧋"}
-                  title={firstText.title || t("onboarding.titlePlaceholder")}
-                  body={firstText.body || null}
+                  icon={previewSlide.icon || "🧋"}
+                  title={previewText.title || t("onboarding.titlePlaceholder")}
+                  body={previewText.body || null}
                 />
+                {steps.length > 1 ? (
+                  <div className="flex items-center gap-1.5">
+                    {steps.map((s, i) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        aria-label={`${i + 1}`}
+                        onClick={() => setPreviewIdx(i)}
+                        className={`h-1.5 rounded-full transition-all ${
+                          i === previewIdx ? "w-4 bg-white" : "w-1.5 bg-white/40"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                ) : null}
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white/80 hover:bg-white/10 hover:text-white"
+                  onClick={() => setPreviewIdx(steps.length - 1)}
+                >
                   {t("onboarding.skip")}
                 </Button>
-                <Button size="sm">{t("onboarding.next")}</Button>
+                <Button size="sm" onClick={() => setPreviewIdx((i) => (i + 1) % steps.length)}>
+                  {previewIdx >= steps.length - 1 ? t("onboarding.start") : t("onboarding.next")}
+                </Button>
               </div>
             </div>
           </div>
