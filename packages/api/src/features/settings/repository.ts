@@ -23,6 +23,7 @@ type SettingsPatch = Partial<
     | "ogImageUrl"
     | "faviconUrl"
     | "smartDelivery"
+    | "onboarding"
   >
 >;
 

@@ -35,18 +35,3 @@ export type DayHours = {
   closed: boolean;
 };
 export const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
-
-// ── Loyalty rules ───────────────────────────────────────────────────────────
-// ── Onboarding slides ───────────────────────────────────────────────────────
-export type OnboardingSlide = {
-  id: string;
-  emoji: string;
-  title: string;
-  body: string;
-};
-export const onboardingSlides: OnboardingSlide[] = [
-  { id: "o1", emoji: "🧋", title: "Bienvenido a T4 Lovers", body: "Suma sellos en cada compra y canjea premios." },
-  { id: "o2", emoji: "📱", title: "Tu tarjeta, siempre contigo", body: "Muestra tu QR en caja para sumar." },
-  { id: "o3", emoji: "🎁", title: "Premios que amas", body: "Bubble teas gratis, toppings y más." },
-];
-export const SLIDE_EMOJIS = ["🧋", "📱", "🎁", "⭐", "🎉", "💚", "🥤", "🧁"];

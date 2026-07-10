@@ -2149,7 +2149,11 @@
       "iconCustom": "Personalizado",
       "customColor": "Color personalizado",
       "imgUpload": "Arrastra una imagen o haz clic",
-      "imgRemove": "Quitar"
+      "imgRemove": "Quitar",
+      "error": "No se pudo guardar el onboarding",
+      "invalid": "Revisá los pasos: falta algún dato o hay más de 10.",
+      "errDefaultTitle": "El paso {n} necesita un título en {locale} (idioma principal).",
+      "maxReached": "Máximo {n} pasos."
     },
     "team": {
       "title": "Equipo y roles",

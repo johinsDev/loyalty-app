@@ -114,3 +114,48 @@ export interface BrandingView {
     faviconUrl: string | null;
   };
 }
+
+// ─── Onboarding ──────────────────────────────────────────────────────────────
+export const MAX_ONBOARDING_STEPS = 10;
+
+/** Per-locale copy for one step, keyed by locale (`es`, `en`, …). Every entry's
+ *  title is trimmed; body is tiptap HTML. A locale may be absent (falls back to
+ *  the org default at read time). */
+const onboardingTextSchema = z.record(
+  localeSchema,
+  z.object({
+    title: z.string().trim().max(120),
+    body: z.string().max(4000),
+  }),
+);
+
+export const onboardingStepSchema = z.object({
+  id: z.string().min(1).max(60),
+  /** Emoji or an uploaded image URL. */
+  icon: z.string().trim().min(1).max(2000),
+  /** CSS `background` string (template or `url(<r2>)`). */
+  backgroundCss: z.string().trim().min(1).max(4000),
+  text: onboardingTextSchema,
+});
+
+export const updateOnboardingInputSchema = z.object({
+  steps: z.array(onboardingStepSchema).min(1).max(MAX_ONBOARDING_STEPS),
+});
+export type UpdateOnboardingInput = z.infer<typeof updateOnboardingInputSchema>;
+
+/** Raw admin view — every step with all locales, for the editor. */
+export interface OnboardingAdminStep {
+  id: string;
+  icon: string;
+  backgroundCss: string;
+  text: Record<string, { title: string; body: string }>;
+}
+
+/** Customer view — each step resolved to the requested locale. */
+export interface OnboardingStepView {
+  id: string;
+  icon: string;
+  backgroundCss: string;
+  title: string;
+  body: string;
+}

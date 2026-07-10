@@ -1,8 +1,10 @@
 "use client";
 
+import type { OnboardingStepView } from "@loyalty/api/features/settings/schemas";
 import { authClient } from "@loyalty/auth/client";
 import {
   Button,
+  IconGlyph,
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
@@ -31,10 +33,47 @@ const STEPS = ["intro", "phone", "otp", "success"] as const;
  * (`usePhoneOtp` + `authClient.signIn.social`). On verify it lands on a
  * celebration screen; "Ver mi tarjeta" goes home.
  */
-export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
+type Slide = {
+  /** Stable react key (step id, or the fallback slide's own tag). */
+  key: string;
+  icon: string;
+  title: string;
+  /** Rich HTML (dynamic steps). */
+  bodyHtml: string | null;
+  /** Plain subtitle (built-in fallback slides). */
+  sub: string | null;
+  bg: string | null;
+};
+
+export function SignInForm({
+  googleEnabled,
+  onboarding = [],
+}: {
+  googleEnabled: boolean;
+  /** Admin-authored steps (already locale-resolved). Empty → built-in default. */
+  onboarding?: OnboardingStepView[];
+}) {
   const t = useTranslations("Auth");
   const locale = useLocale();
   const forbidden = useSearchParams().get("error") === "forbidden";
+
+  // Prefer the admin-authored carousel; fall back to the built-in i18n intros
+  // so the sign-in never renders blank (and existing installs keep their look).
+  const slides: Slide[] =
+    onboarding.length > 0
+      ? onboarding.map((s) => ({
+          key: s.id,
+          icon: s.icon,
+          title: s.title,
+          bodyHtml: s.body || null,
+          sub: null,
+          bg: s.backgroundCss,
+        }))
+      : [
+          { key: "i1", icon: "🧋", title: t("intro1Title"), bodyHtml: null, sub: t("intro1Sub"), bg: null },
+          { key: "i2", icon: "⭐", title: t("intro2Title"), bodyHtml: null, sub: t("intro2Sub"), bg: null },
+          { key: "i3", icon: "🎁", title: t("intro3Title"), bodyHtml: null, sub: t("intro3Sub"), bg: null },
+        ];
 
   const otp = usePhoneOtp();
   // The whole flow is URL-driven: `?step=` is the wizard stage (the browser
@@ -109,33 +148,35 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
     if (ok) window.location.href = "/";
   };
 
-  const intros = [
-    { emoji: "🧋", title: t("intro1Title"), sub: t("intro1Sub") },
-    { emoji: "⭐", title: t("intro2Title"), sub: t("intro2Sub") },
-    { emoji: "🎁", title: t("intro3Title"), sub: t("intro3Sub") },
-  ];
-  const lastIntro = intros.length - 1;
+  const lastIntro = slides.length - 1;
   // Clamp the URL-supplied slide so a hand-typed `?slide=99` can't index past
   // the carousel (the raw value still drives the slide-direction animation).
   const slideIdx = Math.min(Math.max(intro, 0), lastIntro);
+  const slide = slides[slideIdx]!;
+  const hasBg = slide.bg != null;
 
   return (
     <div className="text-foreground mx-auto flex min-h-[100dvh] w-full max-w-md flex-col overflow-x-hidden">
       {/* ===== 1 · INTRO ===== */}
       {step === "intro" && (
-        <Screen>
-          <div className="flex h-12 items-center justify-end px-4">
+        <Screen
+          className={`relative ${hasBg ? "text-white" : ""}`}
+          style={hasBg ? { background: slide.bg! } : undefined}
+        >
+          {/* Scrim: keeps text legible over a photo/bright background. */}
+          {hasBg ? <div aria-hidden className="pointer-events-none absolute inset-0 bg-black/25" /> : null}
+          <div className="relative z-10 flex h-12 items-center justify-end px-4">
             {slideIdx < lastIntro && (
               <button
                 type="button"
                 onClick={() => goIntro(lastIntro)}
-                className="text-muted-foreground px-2 py-1 text-base font-semibold"
+                className={`px-2 py-1 text-base font-semibold ${hasBg ? "text-white/80" : "text-muted-foreground"}`}
               >
                 {t("skip")}
               </button>
             )}
           </div>
-          <Content className="items-center justify-center gap-7 text-center">
+          <Content className="relative z-10 items-center justify-center gap-7 text-center">
             <div
               key={slideIdx}
               className={`animate-in fade-in-0 flex flex-col items-center gap-7 duration-300 ease-out ${
@@ -147,26 +188,42 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
                 onClick={() => goIntro(Math.min(slideIdx + 1, lastIntro))}
                 aria-label={t("next")}
               >
-                <EmojiTile size="lg">{intros[slideIdx]!.emoji}</EmojiTile>
+                <EmojiTile size="lg">
+                  <span className="grid size-full place-items-center overflow-hidden rounded-[inherit]">
+                    <IconGlyph value={slide.icon} />
+                  </span>
+                </EmojiTile>
               </button>
               <div className="flex flex-col gap-3">
                 <h1 className="font-display text-4xl leading-[1.05] font-semibold tracking-tight whitespace-pre-line">
-                  {intros[slideIdx]!.title}
+                  {slide.title}
                 </h1>
-                <p className="text-muted-foreground text-base leading-relaxed">
-                  {intros[slideIdx]!.sub}
-                </p>
+                {slide.bodyHtml ? (
+                  <div
+                    className={`prose prose-sm mx-auto max-w-xs leading-relaxed ${hasBg ? "prose-invert" : ""}`}
+                    // Admin-authored HTML (tiptap) — same trust boundary as the editor preview.
+                    dangerouslySetInnerHTML={{ __html: slide.bodyHtml }}
+                  />
+                ) : slide.sub ? (
+                  <p
+                    className={`text-base leading-relaxed ${hasBg ? "text-white/85" : "text-muted-foreground"}`}
+                  >
+                    {slide.sub}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {intros.map((slide, i) => (
+              {slides.map((s, i) => (
                 <button
-                  key={slide.emoji}
+                  key={s.key}
                   type="button"
                   onClick={() => goIntro(i)}
                   aria-label={`${i + 1}`}
                   className={`h-2.5 rounded-full transition-all ${
-                    slideIdx === i ? "bg-primary w-6" : "w-2.5 bg-muted-foreground/30"
+                    slideIdx === i
+                      ? `w-6 ${hasBg ? "bg-white" : "bg-primary"}`
+                      : `w-2.5 ${hasBg ? "bg-white/40" : "bg-muted-foreground/30"}`
                   }`}
                 />
               ))}
@@ -182,13 +239,13 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
                 {t("errorForbidden")}
               </p>
             )}
-            <div className="flex h-11 items-center justify-center">
+            <div className="relative z-10 flex h-11 items-center justify-center">
               {slideIdx === lastIntro && googleEnabled && (
                 <button
                   type="button"
                   onClick={() => void onGoogle()}
                   disabled={googleLoading}
-                  className="text-primary text-base font-semibold disabled:opacity-50"
+                  className={`text-base font-semibold disabled:opacity-50 ${hasBg ? "text-white" : "text-primary"}`}
                 >
                   {t("googleLink")}
                 </button>
@@ -196,7 +253,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             </div>
             <Button
               variant="gradient"
-              className="h-14 w-full gap-2.5 rounded-full text-base font-bold"
+              className="relative z-10 h-14 w-full gap-2.5 rounded-full text-base font-bold"
               onClick={() =>
                 slideIdx < lastIntro ? goIntro(slideIdx + 1) : void setStep("phone")
               }
@@ -390,11 +447,17 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
 function Screen({
   children,
   className = "",
+  style,
 }: {
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }) {
-  return <div className={`flex flex-1 flex-col ${className}`}>{children}</div>;
+  return (
+    <div className={`flex flex-1 flex-col ${className}`} style={style}>
+      {children}
+    </div>
+  );
 }
 
 function Content({

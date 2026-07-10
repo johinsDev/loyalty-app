@@ -1,0 +1,1 @@
+ALTER TABLE `organization_settings` ADD `onboarding` text;

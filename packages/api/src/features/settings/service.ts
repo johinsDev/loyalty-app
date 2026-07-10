@@ -7,13 +7,18 @@ import {
   invalidateLocalization,
 } from "../_shared/localize";
 import type { SettingsRepository } from "./repository";
+import { TRPCError } from "@trpc/server";
+
 import type {
   BrandingView,
   LocalizationView,
+  OnboardingAdminStep,
+  OnboardingStepView,
   SetLoyaltyScopeInput,
   SmartDeliveryView,
   UpdateBrandingInput,
   UpdateLocalizationInput,
+  UpdateOnboardingInput,
   UpdateSeoInput,
   UpdateSmartDeliveryInput,
 } from "./schemas";
@@ -110,5 +115,61 @@ export class SettingsService {
   ): Promise<SmartDeliveryView> {
     await this.repo.upsertSettings(orgId, { smartDelivery: input });
     return this.smartDelivery(orgId);
+  }
+
+  // ── Onboarding (customer PWA first-run carousel) ──────────────────────────
+  /** Every step with all locales — for the admin editor. */
+  async onboardingAdmin(orgId: string): Promise<OnboardingAdminStep[]> {
+    const row = await this.repo.get(orgId);
+    return (row?.onboarding ?? []).map((s) => ({
+      id: s.id,
+      icon: s.icon,
+      backgroundCss: s.backgroundCss,
+      text: s.text,
+    }));
+  }
+
+  /** Steps resolved to `locale`, falling back to the org default per field —
+   *  for the customer app. Empty array when unconfigured (app shows its own
+   *  built-in default). */
+  async onboarding(orgId: string, locale: string): Promise<OnboardingStepView[]> {
+    const [row, loc] = await Promise.all([
+      this.repo.get(orgId),
+      getLocalization(this.db, orgId),
+    ]);
+    const steps = row?.onboarding ?? [];
+    return steps.map((s) => {
+      const t = s.text[locale] ?? s.text[loc.defaultLocale] ?? { title: "", body: "" };
+      const fallback = s.text[loc.defaultLocale];
+      return {
+        id: s.id,
+        icon: s.icon,
+        backgroundCss: s.backgroundCss,
+        title: t.title || fallback?.title || "",
+        body: t.body || fallback?.body || "",
+      };
+    });
+  }
+
+  async updateOnboarding(
+    orgId: string,
+    input: UpdateOnboardingInput,
+  ): Promise<OnboardingAdminStep[]> {
+    const loc = await getLocalization(this.db, orgId);
+    // Every step must carry a title in the org's default locale — that's the
+    // fallback the customer read relies on; without it a step renders blank.
+    // `input.text` keys are the locale enum; index by the (string) default
+    // locale through a widened view.
+    const titleIn = (text: UpdateOnboardingInput["steps"][number]["text"], locale: string) =>
+      (text as Record<string, { title: string; body: string }>)[locale]?.title;
+    const missing = input.steps.findIndex((s) => !titleIn(s.text, loc.defaultLocale)?.trim());
+    if (missing !== -1) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `ONBOARDING_DEFAULT_TITLE_REQUIRED:${missing}`,
+      });
+    }
+    await this.repo.upsertSettings(orgId, { onboarding: input.steps });
+    return this.onboardingAdmin(orgId);
   }
 }
