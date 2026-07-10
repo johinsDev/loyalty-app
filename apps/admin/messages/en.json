@@ -1277,7 +1277,7 @@
   "Admin": {
     "menu": "Menu",
     "greeting": "Hi, {name}",
-    "storesMembers": "{stores} stores · {members} members",
+    "storesMembers": "{stores, plural, one {# store} other {# stores}} · {members} members",
     "cashierMode": "Cashier mode",
     "notifications": "Notifications",
     "account": "Account",

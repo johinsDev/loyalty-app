@@ -6,6 +6,7 @@ import {
   pointsAccount,
   pointsTransaction,
   product,
+  promo,
   purchase,
   purchaseItem,
   redemption,
@@ -14,7 +15,7 @@ import {
   streak,
   variantIngredient,
 } from "@loyalty/db/schema";
-import { and, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 
 import {
   computeDeltaPct,
@@ -22,6 +23,7 @@ import {
   type AtRiskRow,
   type CohortsView,
   type FunnelView,
+  type NavCounts,
   type DashboardOverview,
   type DashboardSeriesPoint,
   type KpiStat,
@@ -578,5 +580,28 @@ export class DashboardRepository {
       count: Number(r.count),
       revenueCents: Number(r.revenue),
     }));
+  }
+
+  /** Sidebar badges + topbar caption. Three counts, one round trip. */
+  async navCounts(orgId: string): Promise<NavCounts> {
+    const [customers, promotions, stores] = await Promise.all([
+      this.db
+        .select({ n: sql<number>`count(*)` })
+        .from(customer)
+        .where(eq(customer.organizationId, orgId)),
+      this.db
+        .select({ n: sql<number>`count(*)` })
+        .from(promo)
+        .where(and(eq(promo.organizationId, orgId), eq(promo.status, "published"))),
+      this.db
+        .select({ n: sql<number>`count(*)` })
+        .from(store)
+        .where(and(eq(store.organizationId, orgId), isNull(store.deletedAt))),
+    ]);
+    return {
+      customers: Number(customers[0]?.n ?? 0),
+      promotions: Number(promotions[0]?.n ?? 0),
+      stores: Number(stores[0]?.n ?? 0),
+    };
   }
 }

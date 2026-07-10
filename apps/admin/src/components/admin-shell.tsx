@@ -2,15 +2,20 @@
 
 import type { Role } from "@loyalty/auth/server";
 import { Button, Sheet, SheetContent, SheetTitle } from "@loyalty/ui";
+import { useQuery } from "@tanstack/react-query";
 import { Menu, QrCode } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 
 import { AdminNav } from "@/components/admin-nav";
 import { CommandPalette } from "@/components/command-palette";
 import { StoreSwitcher } from "@/components/store-switcher";
 import { useRouter } from "@/i18n/navigation";
+import { compactNumber } from "@/lib/money";
 import { RoleProvider } from "@/lib/role-context";
+import { useTRPC } from "@/lib/trpc/client";
+
+const RANK: Record<Role, number> = { customer: 0, staff: 1, manager: 2, owner: 3 };
 
 /**
  * Admin shell — a fixed sidebar on desktop (lg+) and a drawer on tablet/mobile
@@ -28,9 +33,17 @@ export function AdminShell({
   children: ReactNode;
 }) {
   const t = useTranslations("Admin");
+  const format = useFormatter();
+  const trpc = useTRPC();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  const { data: counts } = useQuery({
+    ...trpc.dashboard.navCounts.queryOptions(),
+    enabled: RANK[role] >= RANK.manager,
+    staleTime: 60_000,
+  });
 
   return (
     <RoleProvider role={role}>
@@ -78,9 +91,14 @@ export function AdminShell({
             <div className="font-display truncate text-lg font-semibold tracking-tight">
               {t("greeting", { name })}
             </div>
-            <div className="text-muted-foreground/80 truncate text-xs font-semibold">
-              {t("storesMembers", { stores: 3, members: "12.8K" })}
-            </div>
+            {counts ? (
+              <div className="text-muted-foreground/80 truncate text-xs font-semibold">
+                {t("storesMembers", {
+                  stores: counts.stores,
+                  members: compactNumber(format, counts.customers),
+                })}
+              </div>
+            ) : null}
           </div>
 
           <StoreSwitcher />

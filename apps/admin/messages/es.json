@@ -1277,7 +1277,7 @@
   "Admin": {
     "menu": "Menú",
     "greeting": "Hola, {name}",
-    "storesMembers": "{stores} tiendas · {members} socios",
+    "storesMembers": "{stores, plural, one {# tienda} other {# tiendas}} · {members} socios",
     "cashierMode": "Modo caja",
     "notifications": "Notificaciones",
     "account": "Cuenta",
