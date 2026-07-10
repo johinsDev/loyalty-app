@@ -101,9 +101,18 @@ export function OnboardingSection() {
     return <Skeleton className="h-96 w-full rounded-2xl" />;
   }
 
-  const patch = (id: string, p: Partial<Step>) =>
+  // Editing a step jumps the preview to it — so what you tweak is what you see,
+  // even if you were parked on another slide.
+  const focusPreview = (id: string) => {
+    const i = steps.findIndex((s) => s.id === id);
+    if (i !== -1) setPreviewIdx(i);
+  };
+  const patch = (id: string, p: Partial<Step>) => {
+    focusPreview(id);
     setSteps((prev) => prev!.map((s) => (s.id === id ? { ...s, ...p } : s)));
-  const patchText = (id: string, field: "title" | "body", value: string) =>
+  };
+  const patchText = (id: string, field: "title" | "body", value: string) => {
+    focusPreview(id);
     setSteps((prev) =>
       prev!.map((s) => {
         if (s.id !== id) return s;
@@ -111,8 +120,12 @@ export function OnboardingSection() {
         return { ...s, text: { ...s.text, [locale]: { ...entry, [field]: value } } };
       }),
     );
+  };
   const remove = (id: string) => setSteps((prev) => prev!.filter((s) => s.id !== id));
-  const add = () => setSteps((prev) => [...prev!, newStep(enabledLocales)]);
+  const add = () => {
+    setSteps((prev) => [...prev!, newStep(enabledLocales)]);
+    setPreviewIdx(steps.length); // the new last slide
+  };
 
   const onSave = () => {
     const parsed = updateOnboardingInputSchema.safeParse({ steps });
@@ -252,14 +265,25 @@ export function OnboardingSection() {
                 ) : null}
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-white/80 hover:bg-white/10 hover:text-white"
-                  onClick={() => setPreviewIdx(steps.length - 1)}
-                >
-                  {t("onboarding.skip")}
-                </Button>
+                {previewIdx > 0 ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/80 hover:bg-white/10 hover:text-white"
+                    onClick={() => setPreviewIdx((i) => Math.max(0, i - 1))}
+                  >
+                    {t("onboarding.back")}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/80 hover:bg-white/10 hover:text-white"
+                    onClick={() => setPreviewIdx(steps.length - 1)}
+                  >
+                    {t("onboarding.skip")}
+                  </Button>
+                )}
                 <Button size="sm" onClick={() => setPreviewIdx((i) => (i + 1) % steps.length)}>
                   {previewIdx >= steps.length - 1 ? t("onboarding.start") : t("onboarding.next")}
                 </Button>
