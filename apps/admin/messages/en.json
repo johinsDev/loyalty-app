@@ -387,11 +387,22 @@
       "topPercentile": "Top {n}% by spend",
       "favoriteStore": "Favorite store",
       "topProduct": "Favorite product",
-      "monthlySpend": "Spend per month",
+      "monthlySpend": "Spend",
       "monthlyVisits": "Visits",
       "noData": "No data yet",
       "productQty": "{n} units",
-      "storeVisits": "{n} visits"
+      "storeVisits": "{n} visits",
+      "monthlyTitle": "Spend and visits per month",
+      "cadenceSameDay": "several a day",
+      "tierProgress": "Tier progress",
+      "tierNear": "Almost there",
+      "tierRemaining": "{n} points to go, over the last {days} days",
+      "tierMax": "Top tier · {n} points over the last {days} days",
+      "topProducts": "Top products",
+      "redemptionMix": "Redemption mix",
+      "mixStamps": "Stamps",
+      "mixPoints": "Points",
+      "noRedemptions": "No redemptions yet"
     },
     "timeline": {
       "empty": "No activity yet",
@@ -461,6 +472,9 @@
       "voided": "Voided",
       "viewAll": "View all their purchases",
       "items": "{n} items"
+    },
+    "pager": {
+      "page": "Page {n}"
     }
   },
   "Shortlinks": {
@@ -2338,7 +2352,10 @@
     },
     "loyaltyReverted": "Reverted by the void",
     "timelineVoid": "Purchase voided · loyalty reversed",
-    "timelineVoidBy": "Voided by {name} · loyalty reversed"
+    "timelineVoidBy": "Voided by {name} · loyalty reversed",
+    "searchCustomer": "Search customer…",
+    "noCustomers": "No results",
+    "clearCustomer": "Clear customer filter"
   },
   "Stores": {
     "title": "Stores",

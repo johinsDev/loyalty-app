@@ -8,7 +8,7 @@ import { formatDate, localeFromCode } from "@loyalty/date";
 import { Badge, Button, Calendar, Checkbox, Input } from "@loyalty/ui";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Download, Gift, Tag, X } from "lucide-react";
+import { Download, Gift, Tag } from "lucide-react";
 import { parseAsArrayOf, parseAsInteger, parseAsIsoDate, parseAsString, useQueryState } from "nuqs";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -38,6 +38,7 @@ import {
   ENTRY_SOURCE_VALUES,
   REDEMPTION_CURRENCY_VALUES,
 } from "../list-params";
+import { CustomerFilter, CustomerFilterChip } from "./customer-filter";
 import { PurchaseRowActions } from "./purchase-row-actions";
 
 type PurchaseListResult = { rows: PurchaseAdminListItem[]; total: number; pageCount: number };
@@ -105,6 +106,7 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
   const isCurFacet = currency.length > 0 && currency.length < REDEMPTION_CURRENCY_VALUES.length;
   const isEntryFacet = entry.length > 0 && entry.length < ENTRY_SOURCE_VALUES.length;
   const activeFacets =
+    (customer ? 1 : 0) +
     (store.length > 0 ? 1 : 0) +
     (cashier.length > 0 ? 1 : 0) +
     (isEffFacet ? 1 : 0) +
@@ -114,6 +116,7 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
     (from || to ? 1 : 0);
 
   const clearFilters = () => {
+    void setCustomer(null);
     void setStore([]);
     void setCashier([]);
     void setEffectiveness([]);
@@ -411,20 +414,25 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
           className="h-10 w-full sm:w-64"
         />
         {customer ? (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-10 gap-1.5 rounded-xl"
-            onClick={() => {
+          <CustomerFilterChip
+            customerId={customer}
+            onClear={() => {
               void setCustomer(null);
               resetPage();
             }}
-          >
-            {t("customerFilter")}
-            <X className="size-3.5" />
-          </Button>
+          />
         ) : null}
         <DataTableFilters activeCount={activeFacets} onClear={clearFilters}>
+          <FilterSection label={t("col.customer")}>
+            <CustomerFilter
+              value={customer}
+              onChange={(id) => {
+                void setCustomer(id);
+                resetPage();
+              }}
+            />
+          </FilterSection>
+
           <FilterSection label={t("col.store")}>
             {storeOptions.length === 0 ? (
               <span className="text-muted-foreground text-sm">{t("noStores")}</span>

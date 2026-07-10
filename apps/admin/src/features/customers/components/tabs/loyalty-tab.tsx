@@ -4,17 +4,21 @@ import { formatDate } from "@loyalty/date";
 import { Button, Skeleton } from "@loyalty/ui";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Coins, Gift, Pencil, Stamp } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 
-import { useInfiniteSentinel } from "@/features/customers/hooks/use-infinite-sentinel";
+import { useCursorPages } from "@/features/customers/hooks/use-cursor-pages";
 import { useHasRole } from "@/lib/role-context";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { CursorPager } from "../cursor-pager";
 import { AdjustLoyaltyDialog } from "../dialogs/adjust-loyalty-dialog";
+
+const PER_PAGE = 10;
 
 export function LoyaltyTab({ customerId }: { customerId: string }) {
   const t = useTranslations("Customers");
+  const format = useFormatter();
   const trpc = useTRPC();
   const isOwner = useHasRole("owner");
   const [stampsOpen, setStampsOpen] = useState(false);
@@ -49,7 +53,8 @@ export function LoyaltyTab({ customerId }: { customerId: string }) {
         <BalanceCard
           icon={Coins}
           label={t("ledger.pointsBalanceLabel")}
-          value={points.data ? points.data.balance.toLocaleString() : undefined}
+          // A spendable balance is never abbreviated.
+          value={points.data ? format.number(points.data.balance) : undefined}
           action={
             isOwner ? (
               <Button
@@ -122,26 +127,20 @@ function BalanceCard({
 function PointsLedger({ customerId }: { customerId: string }) {
   const t = useTranslations("Customers");
   const locale = useLocale();
+  const format = useFormatter();
   const trpc = useTRPC();
 
   const query = useInfiniteQuery(
     trpc.customers.pointsLedger.infiniteQueryOptions(
-      { customerId, limit: 20 },
+      { customerId, limit: PER_PAGE },
       { getNextPageParam: (last) => last.nextCursor ?? undefined },
     ),
   );
-  const sentinelRef = useInfiniteSentinel(query);
-  const items = query.data?.pages.flatMap((p) => p.items) ?? [];
+  const pages = useCursorPages(query);
 
   return (
-    <LedgerSection
-      title={t("ledger.points")}
-      isPending={query.isPending}
-      isEmpty={items.length === 0}
-      sentinelRef={sentinelRef}
-      isFetchingNextPage={query.isFetchingNextPage}
-    >
-      {items.map((row) => (
+    <LedgerSection title={t("ledger.points")} isPending={query.isPending} pages={pages}>
+      {pages.items.map((row) => (
         <li key={row.id} className="flex items-center gap-3 py-2.5">
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-bold">{t(`ledger.type.${row.type}`)}</div>
@@ -156,7 +155,7 @@ function PointsLedger({ customerId }: { customerId: string }) {
             }`}
           >
             {row.points > 0 ? "+" : ""}
-            {row.points}
+            {format.number(row.points)}
           </span>
         </li>
       ))}
@@ -171,22 +170,15 @@ function StampsLedger({ customerId }: { customerId: string }) {
 
   const query = useInfiniteQuery(
     trpc.customers.stampsHistory.infiniteQueryOptions(
-      { customerId, limit: 20 },
+      { customerId, limit: PER_PAGE },
       { getNextPageParam: (last) => last.nextCursor ?? undefined },
     ),
   );
-  const sentinelRef = useInfiniteSentinel(query);
-  const items = query.data?.pages.flatMap((p) => p.items) ?? [];
+  const pages = useCursorPages(query);
 
   return (
-    <LedgerSection
-      title={t("ledger.stamps")}
-      isPending={query.isPending}
-      isEmpty={items.length === 0}
-      sentinelRef={sentinelRef}
-      isFetchingNextPage={query.isFetchingNextPage}
-    >
-      {items.map((row) => (
+    <LedgerSection title={t("ledger.stamps")} isPending={query.isPending} pages={pages}>
+      {pages.items.map((row) => (
         <li key={row.id} className="flex items-center gap-3 py-2.5">
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-bold">
@@ -218,22 +210,15 @@ function RedemptionsLedger({ customerId }: { customerId: string }) {
 
   const query = useInfiniteQuery(
     trpc.customers.redemptionsHistory.infiniteQueryOptions(
-      { customerId, limit: 20 },
+      { customerId, limit: PER_PAGE },
       { getNextPageParam: (last) => last.nextCursor ?? undefined },
     ),
   );
-  const sentinelRef = useInfiniteSentinel(query);
-  const items = query.data?.pages.flatMap((p) => p.items) ?? [];
+  const pages = useCursorPages(query);
 
   return (
-    <LedgerSection
-      title={t("ledger.redemptions")}
-      isPending={query.isPending}
-      isEmpty={items.length === 0}
-      sentinelRef={sentinelRef}
-      isFetchingNextPage={query.isFetchingNextPage}
-    >
-      {items.map((row) => (
+    <LedgerSection title={t("ledger.redemptions")} isPending={query.isPending} pages={pages}>
+      {pages.items.map((row) => (
         <li key={row.id} className="flex items-center gap-3 py-2.5">
           <span className="bg-primary/10 text-primary grid size-9 flex-none place-items-center rounded-xl">
             <Gift className="size-4" />
@@ -255,19 +240,15 @@ function RedemptionsLedger({ customerId }: { customerId: string }) {
   );
 }
 
-function LedgerSection({
+function LedgerSection<T>({
   title,
   isPending,
-  isEmpty,
-  sentinelRef,
-  isFetchingNextPage,
+  pages,
   children,
 }: {
   title: string;
   isPending: boolean;
-  isEmpty: boolean;
-  sentinelRef: React.RefObject<HTMLDivElement | null>;
-  isFetchingNextPage: boolean;
+  pages: ReturnType<typeof useCursorPages<T>>;
   children: ReactNode;
 }) {
   const t = useTranslations("Customers");
@@ -282,17 +263,12 @@ function LedgerSection({
             <Skeleton key={i} className="h-9 w-full" />
           ))}
         </div>
-      ) : isEmpty ? (
+      ) : pages.items.length === 0 ? (
         <p className="text-muted-foreground py-6 text-center text-sm">{t("ledger.empty")}</p>
       ) : (
         <>
           <ul className="divide-border divide-y">{children}</ul>
-          <div ref={sentinelRef} aria-hidden className="h-px" />
-          {isFetchingNextPage ? (
-            <p className="text-muted-foreground pt-3 text-center text-xs">
-              {t("timeline.loading")}
-            </p>
-          ) : null}
+          <CursorPager pages={pages} />
         </>
       )}
     </section>

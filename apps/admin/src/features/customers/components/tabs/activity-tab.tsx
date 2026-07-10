@@ -13,11 +13,16 @@ import {
   Stamp,
   TrendingUp,
 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 
-import { useInfiniteSentinel } from "@/features/customers/hooks/use-infinite-sentinel";
+import { useCursorPages } from "@/features/customers/hooks/use-cursor-pages";
 import { Link } from "@/i18n/navigation";
+import { money } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
+
+import { CursorPager } from "../cursor-pager";
+
+const PER_PAGE = 10;
 
 const ICONS: Record<TimelineKind, typeof Coins> = {
   purchase: Receipt,
@@ -30,24 +35,23 @@ const ICONS: Record<TimelineKind, typeof Coins> = {
 };
 
 /** Unified feed: purchases, redemptions, ledger moves, tier changes, outbound
- *  messages and admin actions, newest first. Cursor-paginated. */
+ *  messages and admin actions, newest first. */
 export function ActivityTab({ customerId }: { customerId: string }) {
   const t = useTranslations("Customers");
   const trpc = useTRPC();
 
   const query = useInfiniteQuery(
     trpc.customers.timeline.infiniteQueryOptions(
-      { customerId, limit: 20 },
+      { customerId, limit: PER_PAGE },
       { getNextPageParam: (last) => last.nextCursor ?? undefined },
     ),
   );
-  const sentinelRef = useInfiniteSentinel(query);
-  const items = query.data?.pages.flatMap((p) => p.items) ?? [];
+  const pages = useCursorPages(query);
 
   if (query.isPending) {
     return (
       <div className="bg-card border-border space-y-4 rounded-2xl border p-5 shadow-sm">
-        {Array.from({ length: 5 }, (_, i) => (
+        {Array.from({ length: 6 }, (_, i) => (
           <div key={i} className="flex items-center gap-3">
             <Skeleton className="size-9 flex-none rounded-xl" />
             <div className="flex-1 space-y-1.5">
@@ -60,7 +64,7 @@ export function ActivityTab({ customerId }: { customerId: string }) {
     );
   }
 
-  if (items.length === 0) {
+  if (pages.items.length === 0) {
     return (
       <div className="bg-card border-border text-muted-foreground grid h-40 place-items-center rounded-2xl border text-sm shadow-sm">
         {t("timeline.empty")}
@@ -71,24 +75,30 @@ export function ActivityTab({ customerId }: { customerId: string }) {
   return (
     <div className="bg-card border-border rounded-2xl border p-5 shadow-sm">
       <ul className="divide-border divide-y">
-        {items.map((e) => (
+        {pages.items.map((e) => (
           <TimelineRow key={`${e.kind}-${e.id}`} event={e} />
         ))}
       </ul>
-      <div ref={sentinelRef} aria-hidden className="h-px" />
-      {query.isFetchingNextPage ? (
-        <p className="text-muted-foreground pt-4 text-center text-xs">{t("timeline.loading")}</p>
-      ) : null}
+      <CursorPager pages={pages} />
     </div>
   );
 }
 
 function TimelineRow({ event }: { event: TimelineEvent }) {
   const locale = useLocale();
+  const format = useFormatter();
   const Icon = ICONS[event.kind];
 
+  // `amount` carries cents for a purchase and a signed count for everything
+  // else — the same field, two units.
+  const isMoney = event.kind === "purchase";
   const positive = (event.amount ?? 0) > 0;
-  const amount = event.amount == null ? null : `${positive ? "+" : ""}${event.amount}`;
+  let amount: string | null = null;
+  if (event.amount != null) {
+    amount = isMoney
+      ? money(format, event.amount)
+      : `${positive ? "+" : ""}${format.number(event.amount)}`;
+  }
 
   const body = (
     <>
@@ -111,7 +121,13 @@ function TimelineRow({ event }: { event: TimelineEvent }) {
       {amount ? (
         <span
           className={`text-sm font-extrabold whitespace-nowrap ${
-            positive ? "text-primary" : "text-muted-foreground"
+            event.negative
+              ? "text-muted-foreground line-through"
+              : isMoney
+                ? "text-foreground"
+                : positive
+                  ? "text-primary"
+                  : "text-muted-foreground"
           }`}
         >
           {amount}

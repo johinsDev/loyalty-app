@@ -78,7 +78,10 @@ export interface CustomerStats {
   /** Last 6 calendar months, oldest→newest. */
   monthly: { month: string; spendCents: number; visits: number }[];
   favoriteStore: { id: string; name: string | null; visits: number } | null;
-  topProduct: { productId: string; name: string | null; qty: number } | null;
+  /** Most-bought products, qty desc, up to 5. */
+  topProducts: { productId: string; name: string | null; qty: number }[];
+  /** How this customer pays for rewards. Both zero → never redeemed. */
+  redemptionMix: { stamps: number; points: number };
 }
 
 // ---- loyalty tab (staff-scoped ledgers) ------------------------------------

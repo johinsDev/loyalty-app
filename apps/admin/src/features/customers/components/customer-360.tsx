@@ -183,7 +183,7 @@ export function Customer360({
           </TabsList>
 
           <TabsContent value="overview" className="mt-4">
-            <OverviewTab stats={stats} />
+            <OverviewTab stats={stats} customerId={detail.id} />
           </TabsContent>
           <TabsContent value="activity" className="mt-4">
             <ActivityTab customerId={detail.id} />

@@ -305,7 +305,7 @@ export class CustomersRepository {
   // ── stats (overview tab) ────────────────────────────────────────────────────
   async stats(orgId: string, customerId: string, now = new Date()): Promise<CustomerStats> {
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    const [agg, dates, monthlyRows, favStore, topProd, percentile, created] = await Promise.all([
+    const [agg, dates, monthlyRows, favStore, topProd, percentile, created, mix] = await Promise.all([
       this.db
         .select({
           visits: sql<number>`count(*)`,
@@ -343,13 +343,20 @@ export class CustomersRepository {
         .where(scope(orgId, customerId))
         .groupBy(purchaseItem.productId)
         .orderBy(desc(sql`sum(${purchaseItem.qty})`))
-        .limit(1),
+        .limit(5),
       this.spendPercentile(orgId, customerId),
       this.db
         .select({ createdAt: customer.createdAt })
         .from(customer)
         .where(eq(customer.id, customerId))
         .limit(1),
+      this.db
+        .select({ currency: redemption.currency, n: sql<number>`count(*)` })
+        .from(redemption)
+        .where(
+          and(eq(redemption.organizationId, orgId), eq(redemption.customerId, customerId)),
+        )
+        .groupBy(redemption.currency),
     ]);
 
     const visits = Number(agg[0]?.visits ?? 0);
@@ -372,7 +379,7 @@ export class CustomersRepository {
     }
 
     const fav = favStore[0];
-    const prod = topProd[0];
+    const byCurrency = (c: string): number => Number(mix.find((m) => m.currency === c)?.n ?? 0);
     return {
       ltvCents,
       avgTicketCents: visits > 0 ? Math.round(ltvCents / visits) : 0,
@@ -383,7 +390,12 @@ export class CustomersRepository {
       spendPercentile: percentile,
       monthly,
       favoriteStore: fav ? { id: fav.storeId ?? "", name: fav.name ?? null, visits: Number(fav.visits) } : null,
-      topProduct: prod ? { productId: prod.productId, name: prod.name ?? null, qty: Number(prod.qty) } : null,
+      topProducts: topProd.map((p) => ({
+        productId: p.productId,
+        name: p.name ?? null,
+        qty: Number(p.qty),
+      })),
+      redemptionMix: { stamps: byCurrency("stamps"), points: byCurrency("points") },
     };
   }
 
@@ -428,7 +440,7 @@ export class CustomersRepository {
       id: r.id,
       type: r.type as PointsLedgerRow["type"],
       points: r.points,
-      reason: r.reason,
+      reason: cleanReason(r.reason),
       createdAt: r.createdAt,
     }));
   }

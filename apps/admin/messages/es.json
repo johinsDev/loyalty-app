@@ -387,11 +387,22 @@
       "topPercentile": "Top {n}% en gasto",
       "favoriteStore": "Tienda favorita",
       "topProduct": "Producto favorito",
-      "monthlySpend": "Gasto por mes",
+      "monthlySpend": "Gasto",
       "monthlyVisits": "Visitas",
       "noData": "Sin datos todavía",
       "productQty": "{n} unidades",
-      "storeVisits": "{n} visitas"
+      "storeVisits": "{n} visitas",
+      "monthlyTitle": "Gasto y visitas por mes",
+      "cadenceSameDay": "varias por día",
+      "tierProgress": "Progreso de nivel",
+      "tierNear": "A punto de subir",
+      "tierRemaining": "Faltan {n} puntos en los últimos {days} días",
+      "tierMax": "Nivel máximo · {n} puntos en los últimos {days} días",
+      "topProducts": "Top productos",
+      "redemptionMix": "Mix de canjes",
+      "mixStamps": "Sellos",
+      "mixPoints": "Puntos",
+      "noRedemptions": "Todavía no canjeó nada"
     },
     "timeline": {
       "empty": "Sin actividad todavía",
@@ -461,6 +472,9 @@
       "voided": "Anulada",
       "viewAll": "Ver todas sus compras",
       "items": "{n} ítems"
+    },
+    "pager": {
+      "page": "Página {n}"
     }
   },
   "Shortlinks": {
@@ -2338,7 +2352,10 @@
     },
     "loyaltyReverted": "Revertido por la anulación",
     "timelineVoid": "Compra anulada · lealtad revertida",
-    "timelineVoidBy": "Compra anulada por {name} · lealtad revertida"
+    "timelineVoidBy": "Compra anulada por {name} · lealtad revertida",
+    "searchCustomer": "Buscar cliente…",
+    "noCustomers": "Sin resultados",
+    "clearCustomer": "Quitar filtro de cliente"
   },
   "Stores": {
     "title": "Tiendas",

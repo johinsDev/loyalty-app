@@ -37,16 +37,16 @@ export function compactNumber(format: Formatter, value: number): string {
   return `${format.number(scaled, { maximumFractionDigits: digits })}${unit.suffix}`;
 }
 
-/** The locale's currency symbol, with every digit / separator stripped out. */
-function currencySymbol(format: Formatter, currency: string): string {
-  return format
-    .number(0, { style: "currency", currency, maximumFractionDigits: 0 })
-    .replaceAll(/[\d\s .,]/g, "");
-}
-
-/** `money` for tight spaces: abbreviates from a thousand up. */
+/**
+ * `money` for tight spaces: abbreviates from a thousand up. Formats a zero and
+ * swaps that digit for the abbreviation, so the currency keeps the locale's own
+ * placement and spacing — `es` renders "400k COP", `en` renders "COP 400k".
+ * Prefixing a bare symbol instead produced "COP400k", because `es` has no
+ * narrow symbol for COP.
+ */
 export function compactMoney(format: Formatter, cents: number, currency = "COP"): string {
   const value = cents / 100;
   if (Math.abs(value) < 1000) return money(format, cents, currency);
-  return `${currencySymbol(format, currency)}${compactNumber(format, value)}`;
+  const template = format.number(0, { style: "currency", currency, maximumFractionDigits: 0 });
+  return template.replace("0", compactNumber(format, value));
 }
