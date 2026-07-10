@@ -475,7 +475,13 @@
     },
     "pager": {
       "page": "Página {n}"
-    }
+    },
+    "initialHint": "Carga inicial de lealtad al dar de alta (queda registrada como \"alta inicial\").",
+    "errPhoneRequired": "Ingresá un teléfono válido",
+    "errPhoneInUse": "Ese teléfono ya está en uso",
+    "errNicknameInUse": "Ese apodo ya está en uso",
+    "errCreate": "No se pudo crear el cliente",
+    "errUpdate": "No se pudo guardar"
   },
   "Shortlinks": {
     "title": "Enlaces cortos",

@@ -4,8 +4,10 @@ import { TRPCError } from "@trpc/server";
 
 import type { ListResult } from "../_shared/list";
 import type { CustomersRepository } from "./repository";
+import { MARKETING_CHANNELS } from "./schemas";
 import type {
   CheckAvailabilityInput,
+  CreateCustomerInput,
   CustomerDetail,
   CustomerListItem,
   CustomersKpis,
@@ -13,6 +15,7 @@ import type {
   CustomerStats,
   LedgerInput,
   LedgerView,
+  MarketingChannel,
   PointsLedgerRow,
   RedemptionHistoryRow,
   StampsHistoryRow,
@@ -30,10 +33,20 @@ interface AdminApi {
 }
 const adminApi = auth.api as unknown as AdminApi;
 
-/** The signed-in operator; `headers` authorize the Better Auth admin calls. */
+/** The signed-in operator; `headers` authorize the Better Auth admin calls.
+ *  The optional writers let create/update reach loyalty + notification
+ *  preferences without this service importing those heavy graphs — the router
+ *  wires them to the real services. */
 export interface Actor {
   userId: string;
   headers: Headers;
+  applyStamps?: (customerId: string, amount: number, reason: string) => Promise<void>;
+  applyPoints?: (customerId: string, amount: number, reason: string) => Promise<void>;
+  setMarketing?: (
+    customerId: string,
+    channel: MarketingChannel,
+    enabled: boolean,
+  ) => Promise<void>;
 }
 
 /** Read-side business logic for the admin CRM. Thin over the repository; the
@@ -166,7 +179,19 @@ export class CustomersService extends CustomersReadService {
       patch.birthday = input.birthday;
       changed.push("birthday");
     }
+    if (input.notes !== undefined) {
+      patch.notes = input.notes || null;
+      changed.push("notes");
+    }
     if (Object.keys(patch).length > 0) await this.repo.updateFields(orgId, input.id, patch);
+
+    if (input.marketingChannels !== undefined && actor.setMarketing) {
+      const opted = new Set(input.marketingChannels);
+      await Promise.all(
+        MARKETING_CHANNELS.map((ch) => actor.setMarketing!(input.id, ch, opted.has(ch))),
+      );
+      changed.push("channels");
+    }
 
     await recordAudit({
       organizationId: orgId,
@@ -175,5 +200,66 @@ export class CustomersService extends CustomersReadService {
       type: "customer_update",
       metadata: { changed },
     });
+  }
+
+  /**
+   * Admin create: mint a phone-first Better Auth user, insert the customer row,
+   * apply any initial loyalty load, store per-channel marketing opt-outs, and
+   * audit. The loyalty + preference writers are injected on the actor so this
+   * service stays free of the heavy stamps/points/notifications graphs.
+   * Returns the new customer id.
+   */
+  async create(orgId: string, actor: Actor, input: CreateCustomerInput): Promise<string> {
+    const okCustomer = await this.repo.checkAvailability(orgId, {
+      field: "phone",
+      value: input.phone,
+    });
+    if (!okCustomer || (await phoneNumberInUse(input.phone))) {
+      throw new TRPCError({ code: "CONFLICT", message: "PHONE_IN_USE" });
+    }
+    if (input.nickname) {
+      const ok = await this.repo.checkAvailability(orgId, {
+        field: "nickname",
+        value: input.nickname,
+      });
+      if (!ok) throw new TRPCError({ code: "CONFLICT", message: "NICKNAME_IN_USE" });
+    }
+
+    const id = await this.repo.mintPhoneUser({
+      phone: input.phone,
+      name: input.name || null,
+      email: input.email ?? null,
+    });
+    await this.repo.insert({
+      id,
+      orgId,
+      phone: input.phone,
+      name: input.name || null,
+      email: input.email ?? null,
+      nickname: input.nickname ? input.nickname.toLowerCase() : null,
+      birthday: input.birthday ?? null,
+      notes: input.notes || null,
+    });
+
+    if (input.initialStamps && actor.applyStamps) {
+      await actor.applyStamps(id, input.initialStamps, "alta inicial");
+    }
+    if (input.initialPoints && actor.applyPoints) {
+      await actor.applyPoints(id, input.initialPoints, "alta inicial");
+    }
+    if (input.marketingChannels && actor.setMarketing) {
+      const opted = new Set(input.marketingChannels);
+      await Promise.all(
+        MARKETING_CHANNELS.map((ch) => actor.setMarketing!(id, ch, opted.has(ch))),
+      );
+    }
+
+    await recordAudit({
+      organizationId: orgId,
+      actorUserId: actor.userId,
+      targetUserId: id,
+      type: "customer_create",
+    });
+    return id;
   }
 }

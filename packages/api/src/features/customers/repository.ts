@@ -256,6 +256,7 @@ export class CustomersRepository {
         avatarPreset: customer.avatarPreset,
         avatarUrl: customer.avatarUrl,
         birthday: customer.birthday,
+        notes: customer.notes,
         createdAt: customer.createdAt,
         tierKey: pointsAccount.currentTierKey,
         banned: user.banned,
@@ -278,6 +279,7 @@ export class CustomersRepository {
       avatarPreset: c.avatarPreset,
       avatarUrl: c.avatarUrl,
       birthday: c.birthday ?? null,
+      notes: c.notes ?? null,
       tierKey: c.tierKey,
       createdAt: c.createdAt,
       banned: c.banned === true,
@@ -631,12 +633,58 @@ export class CustomersRepository {
       email?: string | null;
       nickname?: string | null;
       birthday?: Date | null;
+      notes?: string | null;
     },
   ): Promise<void> {
     await this.db
       .update(customer)
       .set({ ...patch, updatedAt: new Date() })
       .where(and(eq(customer.organizationId, orgId), eq(customer.id, id)));
+  }
+
+  /** Mint a bare Better Auth user for an admin-created customer. Phone-first
+   *  (no password/account): the person later signs in with a phone OTP, which
+   *  matches this row. `phoneNumberVerified` is true — staff vouch for the
+   *  number in person. Returns the new user id (also the customer id). */
+  async mintPhoneUser(input: {
+    phone: string;
+    name: string | null;
+    email: string | null;
+  }): Promise<string> {
+    const id = crypto.randomUUID();
+    await this.db.insert(user).values({
+      id,
+      name: input.name,
+      email: input.email,
+      emailVerified: false,
+      phoneNumber: input.phone,
+      phoneNumberVerified: true,
+    });
+    return id;
+  }
+
+  /** Insert the customer row for an already-minted Better Auth user
+   *  (`id === user.id`). Assumes phone uniqueness was checked by the service. */
+  async insert(input: {
+    id: string;
+    orgId: string;
+    phone: string;
+    name: string | null;
+    email: string | null;
+    nickname: string | null;
+    birthday: Date | null;
+    notes: string | null;
+  }): Promise<void> {
+    await this.db.insert(customer).values({
+      id: input.id,
+      organizationId: input.orgId,
+      phone: input.phone,
+      name: input.name,
+      email: input.email,
+      nickname: input.nickname,
+      birthday: input.birthday,
+      notes: input.notes,
+    });
   }
 
   /** Phone is the login identifier — update the customer row AND the Better

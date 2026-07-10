@@ -37,6 +37,9 @@ export const customer = sqliteTable(
     // Date of birth (nullable). Powers birthday promos (the Oro tier already
     // promises a birthday drink). Admin-editable; not collected at signup.
     birthday: integer("birthday", { mode: "timestamp" }),
+    // Free-form staff note (preferences, allergies, …). Admin-only; a single
+    // overwritable value, not a threaded/authored history.
+    notes: text("notes"),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),

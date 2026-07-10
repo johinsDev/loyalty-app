@@ -55,6 +55,7 @@ export interface CustomerDetail {
   avatarPreset: string | null;
   avatarUrl: string | null;
   birthday: Date | null;
+  notes: string | null;
   tierKey: string | null;
   createdAt: Date;
   banned: boolean;
@@ -175,6 +176,13 @@ const phoneSchema = z.string().trim().min(6).max(20);
 const emailSchema = z.string().trim().email().max(200);
 const nameSchema = z.string().trim().max(120);
 const nicknameSchema = z.string().trim().min(2).max(40);
+const notesSchema = z.string().trim().max(500);
+
+/** Channels the admin can pre-set a marketing opt-out for at creation, and
+ *  toggle on edit. Mirrors the notifications `preferenceChannelSchema`. */
+export const marketingChannelSchema = z.enum(["mail", "sms", "push", "whatsapp"]);
+export type MarketingChannel = z.infer<typeof marketingChannelSchema>;
+export const MARKETING_CHANNELS = marketingChannelSchema.options;
 
 /** Admin create — mints a Better Auth phone-first user + the customer row. */
 export const createCustomerInputSchema = z.object({
@@ -183,7 +191,9 @@ export const createCustomerInputSchema = z.object({
   email: emailSchema.optional(),
   nickname: nicknameSchema.optional(),
   birthday: z.coerce.date().optional(),
-  notes: z.string().trim().max(500).optional(),
+  notes: notesSchema.optional(),
+  /** Channels the customer is opted IN to; the rest are stored as opt-outs. */
+  marketingChannels: z.array(marketingChannelSchema).optional(),
   /** Initial loyalty load applied on creation (reason "alta inicial"). */
   initialStamps: z.number().int().min(0).max(100).optional(),
   initialPoints: z.number().int().min(0).max(100_000).optional(),
@@ -197,6 +207,9 @@ export const updateCustomerInputSchema = z.object({
   email: emailSchema.nullable().optional(),
   nickname: nicknameSchema.nullable().optional(),
   birthday: z.coerce.date().nullable().optional(),
+  notes: notesSchema.nullable().optional(),
+  /** When present, replaces the customer's opted-in channel set. */
+  marketingChannels: z.array(marketingChannelSchema).optional(),
 });
 export type UpdateCustomerInput = z.infer<typeof updateCustomerInputSchema>;
 

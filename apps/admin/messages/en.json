@@ -475,7 +475,13 @@
     },
     "pager": {
       "page": "Page {n}"
-    }
+    },
+    "initialHint": "Initial loyalty load applied on creation (recorded as \"alta inicial\").",
+    "errPhoneRequired": "Enter a valid phone",
+    "errPhoneInUse": "That phone is already in use",
+    "errNicknameInUse": "That nickname is already in use",
+    "errCreate": "Could not create the customer",
+    "errUpdate": "Could not save"
   },
   "Shortlinks": {
     "title": "Short links",
