@@ -357,7 +357,111 @@
     "spendRange": "Spend range",
     "min": "Min",
     "max": "Max",
-    "viewToggle": "Toggle view"
+    "viewToggle": "Toggle view",
+    "tabs": {
+      "overview": "Overview",
+      "activity": "Activity",
+      "loyalty": "Loyalty",
+      "purchases": "Purchases"
+    },
+    "detail": {
+      "lastVisit": "Last visit",
+      "neverVisited": "No visits",
+      "today": "today",
+      "daysAgo": "{n} d ago",
+      "noEmail": "No email",
+      "noBirthday": "No birthday",
+      "noNickname": "No nickname",
+      "nickname": "Nickname",
+      "bannedTitle": "Banned customer",
+      "bannedReason": "Reason: {reason}",
+      "actions": "Actions",
+      "contact": "Contact"
+    },
+    "stat": {
+      "ltv": "Lifetime spend",
+      "avgTicket": "Avg ticket",
+      "visits": "Visits",
+      "cadence": "Cadence",
+      "cadenceValue": "every {n} d",
+      "topPercentile": "Top {n}% by spend",
+      "favoriteStore": "Favorite store",
+      "topProduct": "Favorite product",
+      "monthlySpend": "Spend per month",
+      "monthlyVisits": "Visits",
+      "noData": "No data yet",
+      "productQty": "{n} units",
+      "storeVisits": "{n} visits"
+    },
+    "timeline": {
+      "empty": "No activity yet",
+      "loadMore": "Load more",
+      "loading": "Loading…"
+    },
+    "ledger": {
+      "points": "Points activity",
+      "stamps": "Stamps activity",
+      "redemptions": "Redemptions",
+      "empty": "No activity",
+      "pointsBalanceLabel": "Points balance",
+      "stampsBalanceLabel": "Stamps on card",
+      "manualAdjust": "Manual adjustment",
+      "fromPurchase": "From a purchase",
+      "spentStamps": "{n} stamps",
+      "spentPoints": "{n} pts",
+      "type": {
+        "earn": "Earned",
+        "redeem": "Redeemed",
+        "adjust": "Adjustment"
+      }
+    },
+    "notify": {
+      "action": "Notify",
+      "title": "Send notification",
+      "hint": "Goes out on the channels the customer has enabled and honors their marketing opt-out.",
+      "titleLabel": "Title",
+      "titlePlaceholder": "2-for-1 bubble tea today 🧋",
+      "bodyLabel": "Message",
+      "bodyPlaceholder": "Today only: bring a friend and the second one is on us.",
+      "confirm": "Send",
+      "ok": "Notification sent",
+      "error": "Could not send the notification"
+    },
+    "ban": {
+      "action": "Ban",
+      "unbanAction": "Unban",
+      "title": "Ban {name}?",
+      "hint": "Their sessions are revoked immediately and they will not be able to sign in.",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "Redemption fraud",
+      "confirm": "Yes, ban",
+      "ok": "{name} was banned",
+      "error": "Could not ban",
+      "unbanTitle": "Unban {name}?",
+      "unbanDescription": "They will be able to sign in and earn again.",
+      "unbanConfirm": "Yes, unban",
+      "unbanOk": "{name} was unbanned",
+      "unbanError": "Could not unban"
+    },
+    "adjust": {
+      "points": "Adjust points",
+      "stamps": "Adjust stamps",
+      "hint": "Use a negative number to deduct. It is recorded in the history.",
+      "amountLabel": "Amount",
+      "amountPlaceholder": "10 or -10",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "Compensation for a register error",
+      "confirm": "Apply adjustment",
+      "okPoints": "Points adjusted · balance {balance}",
+      "okStamps": "Stamps adjusted · balance {balance}",
+      "error": "Could not apply the adjustment"
+    },
+    "purchasesTab": {
+      "empty": "No purchases yet",
+      "voided": "Voided",
+      "viewAll": "View all their purchases",
+      "items": "{n} items"
+    }
   },
   "Shortlinks": {
     "title": "Short links",

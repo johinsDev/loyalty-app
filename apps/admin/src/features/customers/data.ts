@@ -1,7 +1,6 @@
-// Hardcoded customer data for the design-first Clientes CRUD. Seams map onto the
-// Phase A ledger (customer / loyaltyCard / stamp / redemption): the list rows,
-// balances and history come from tRPC later. Amounts are the optional cashier
-// `amount` that feeds revenue/LTV.
+// Hardcoded customer data, still backing the design-first create/edit wizard.
+// The list and the 360 detail are on tRPC now; this file goes away once the
+// wizard moves to `customers.create` / `customers.update`.
 
 export type Tier = "bronze" | "silver" | "gold" | "diamond";
 export type Status = "active" | "inactive";
@@ -20,13 +19,6 @@ export type Customer = {
   lastVisitDays: number;
   status: Status;
 };
-
-export const customerKpis = [
-  { key: "total", value: "12.8K", delta: "+8.2%", trend: "up" as const },
-  { key: "active30", value: "4,210", delta: "+5.1%", trend: "up" as const },
-  { key: "newMonth", value: "318", delta: "+12.4%", trend: "up" as const },
-  { key: "avgLtv", value: "$48.20", delta: "+3.6%", trend: "up" as const },
-];
 
 export const tierColor: Record<Tier, string> = {
   bronze: "bg-amber-700/15 text-amber-700",
@@ -49,64 +41,6 @@ export const customers: Customer[] = [
   { id: "c_011", name: "Natalia Vega", initials: "NV", phone: "+57 319 555 0148", tier: "bronze", points: 60, stamps: 2, visits: 5, spent: "$58", lastVisit: "hace 12 d", lastVisitDays: 12, status: "active" },
   { id: "c_012", name: "Mateo Suárez", initials: "MS", phone: "+57 305 555 0190", tier: "silver", points: 520, stamps: 7, visits: 34, spent: "$448", lastVisit: "hace 64 d", lastVisitDays: 64, status: "inactive" },
 ];
-
-export type Purchase = {
-  id: string;
-  item: string;
-  store: string;
-  amount: string;
-  points: number;
-  ago: string;
-};
-
-export type Redemption = {
-  id: string;
-  reward: string;
-  emoji: string;
-  cost: string;
-  by: string;
-  ago: string;
-};
-
-export type CustomerDetail = Customer & {
-  birthday: string;
-  joined: string;
-  email: string;
-  stampsTarget: number;
-  purchases: Purchase[];
-  redemptions: Redemption[];
-};
-
-const purchases: Purchase[] = [
-  { id: "p1", item: "Taro Milk Tea (L)", store: "T4 Centro", amount: "$6.50", points: 13, ago: "hoy" },
-  { id: "p2", item: "Brown Sugar Boba", store: "T4 Centro", amount: "$5.80", points: 12, ago: "hace 3 d" },
-  { id: "p3", item: "Matcha Latte (M)", store: "T4 Norte", amount: "$5.20", points: 10, ago: "hace 6 d" },
-  { id: "p4", item: "Mango Green Tea", store: "T4 Centro", amount: "$4.90", points: 10, ago: "hace 11 d" },
-  { id: "p5", item: "Thai Tea + topping", store: "T4 Centro", amount: "$6.10", points: 12, ago: "hace 16 d" },
-];
-
-const redemptions: Redemption[] = [
-  { id: "r1", reward: "Bubble tea gratis", emoji: "🧋", cost: "10 sellos", by: "Caja · Ana", ago: "hace 8 d" },
-  { id: "r2", reward: "Topping gratis", emoji: "🍮", cost: "200 pts", by: "Caja · Luis", ago: "hace 24 d" },
-];
-
-/**
- * Resolve a customer for the detail view. Hardcoded: known ids use their row,
- * everything else falls back to the first customer so deep links never 404 in
- * the design build. The history/redemptions are shared sample data.
- */
-export function getCustomer(id: string): CustomerDetail {
-  const base = customers.find((c) => c.id === id) ?? customers[0]!;
-  return {
-    ...base,
-    birthday: "14 de marzo",
-    joined: "ene 2025",
-    email: `${base.initials.toLowerCase()}@example.com`,
-    stampsTarget: 10,
-    purchases,
-    redemptions,
-  };
-}
 
 export type Channel = "push" | "email" | "sms" | "whatsapp";
 export const CHANNELS: Channel[] = ["push", "email", "sms", "whatsapp"];

@@ -204,16 +204,3 @@ export const banCustomerInputSchema = z.object({
   reason: z.string().trim().min(1).max(200),
 });
 export type BanCustomerInput = z.infer<typeof banCustomerInputSchema>;
-
-// ---- manual loyalty adjustment (customer-level, no purchase) ----------------
-
-export const adjustForCustomerInputSchema = z.object({
-  customerId: z.string().min(1),
-  /** Signed, non-zero. */
-  amount: z
-    .number()
-    .int()
-    .refine((v) => v !== 0, "Must be non-zero"),
-  reason: z.string().trim().min(1).max(200),
-});
-export type AdjustForCustomerInput = z.infer<typeof adjustForCustomerInputSchema>;

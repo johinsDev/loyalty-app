@@ -357,7 +357,111 @@
     "spendRange": "Rango de gasto",
     "min": "Mín",
     "max": "Máx",
-    "viewToggle": "Cambiar vista"
+    "viewToggle": "Cambiar vista",
+    "tabs": {
+      "overview": "Resumen",
+      "activity": "Actividad",
+      "loyalty": "Lealtad",
+      "purchases": "Compras"
+    },
+    "detail": {
+      "lastVisit": "Última visita",
+      "neverVisited": "Sin visitas",
+      "today": "hoy",
+      "daysAgo": "hace {n} d",
+      "noEmail": "Sin correo",
+      "noBirthday": "Sin cumpleaños",
+      "noNickname": "Sin apodo",
+      "nickname": "Apodo",
+      "bannedTitle": "Cliente baneado",
+      "bannedReason": "Motivo: {reason}",
+      "actions": "Acciones",
+      "contact": "Contacto"
+    },
+    "stat": {
+      "ltv": "Gasto total",
+      "avgTicket": "Ticket promedio",
+      "visits": "Visitas",
+      "cadence": "Cadencia",
+      "cadenceValue": "cada {n} d",
+      "topPercentile": "Top {n}% en gasto",
+      "favoriteStore": "Tienda favorita",
+      "topProduct": "Producto favorito",
+      "monthlySpend": "Gasto por mes",
+      "monthlyVisits": "Visitas",
+      "noData": "Sin datos todavía",
+      "productQty": "{n} unidades",
+      "storeVisits": "{n} visitas"
+    },
+    "timeline": {
+      "empty": "Sin actividad todavía",
+      "loadMore": "Cargar más",
+      "loading": "Cargando…"
+    },
+    "ledger": {
+      "points": "Movimientos de puntos",
+      "stamps": "Movimientos de sellos",
+      "redemptions": "Canjes",
+      "empty": "Sin movimientos",
+      "pointsBalanceLabel": "Saldo de puntos",
+      "stampsBalanceLabel": "Sellos en la tarjeta",
+      "manualAdjust": "Ajuste manual",
+      "fromPurchase": "Por compra",
+      "spentStamps": "{n} sellos",
+      "spentPoints": "{n} pts",
+      "type": {
+        "earn": "Ganados",
+        "redeem": "Canjeados",
+        "adjust": "Ajuste"
+      }
+    },
+    "notify": {
+      "action": "Notificar",
+      "title": "Enviar notificación",
+      "hint": "Sale por los canales que el cliente tenga activos y respeta su baja de marketing.",
+      "titleLabel": "Título",
+      "titlePlaceholder": "2x1 en bubble tea hoy 🧋",
+      "bodyLabel": "Mensaje",
+      "bodyPlaceholder": "Solo por hoy: traé a un amigo y el segundo va de regalo.",
+      "confirm": "Enviar",
+      "ok": "Notificación enviada",
+      "error": "No se pudo enviar la notificación"
+    },
+    "ban": {
+      "action": "Banear",
+      "unbanAction": "Desbanear",
+      "title": "¿Banear a {name}?",
+      "hint": "Se cierran sus sesiones al instante y no va a poder entrar a la app.",
+      "reasonLabel": "Motivo",
+      "reasonPlaceholder": "Fraude en canjes",
+      "confirm": "Sí, banear",
+      "ok": "{name} fue baneado",
+      "error": "No se pudo banear",
+      "unbanTitle": "¿Desbanear a {name}?",
+      "unbanDescription": "Va a poder iniciar sesión y volver a acumular.",
+      "unbanConfirm": "Sí, desbanear",
+      "unbanOk": "{name} fue desbaneado",
+      "unbanError": "No se pudo desbanear"
+    },
+    "adjust": {
+      "points": "Ajustar puntos",
+      "stamps": "Ajustar sellos",
+      "hint": "Usá un número negativo para descontar. Queda registrado en el historial.",
+      "amountLabel": "Cantidad",
+      "amountPlaceholder": "10 o -10",
+      "reasonLabel": "Motivo",
+      "reasonPlaceholder": "Compensación por error de caja",
+      "confirm": "Aplicar ajuste",
+      "okPoints": "Puntos ajustados · saldo {balance}",
+      "okStamps": "Sellos ajustados · saldo {balance}",
+      "error": "No se pudo aplicar el ajuste"
+    },
+    "purchasesTab": {
+      "empty": "Sin compras todavía",
+      "voided": "Anulada",
+      "viewAll": "Ver todas sus compras",
+      "items": "{n} ítems"
+    }
   },
   "Shortlinks": {
     "title": "Enlaces cortos",
