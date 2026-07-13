@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  PointsCardTemplate,
+  type PointsCardView,
   ResponsiveModal,
   ResponsiveModalContent,
   ResponsiveModalDescription,
@@ -8,35 +10,14 @@ import {
   ResponsiveModalTitle,
 } from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  Crown,
-  Flower2,
-  Gift,
-  Leaf,
-  PauseCircle,
-  ShoppingBag,
-  Sparkles,
-  Wallet,
-} from "lucide-react";
+import { ArrowRight, Gift, ShoppingBag, Sparkles, Wallet } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useEffect, useState, type ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 
 import { Link } from "@/i18n/navigation";
-import { CountUp } from "@/lib/count-up";
 import { useTRPC } from "@/lib/trpc/client";
-import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 import { PointsCardSkeleton } from "./points-card-skeleton";
-
-const RING_CIRCUMFERENCE = 427; // r=68 → 2πr
-
-const TIER_ICONS: Record<string, ComponentType<{ className?: string }>> = {
-  leaf: Leaf,
-  flower: Flower2,
-  crown: Crown,
-};
-const tierIcon = (key: string) => TIER_ICONS[key] ?? Sparkles;
 
 const TX_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   purchase: ShoppingBag,
@@ -76,127 +57,46 @@ export function PointsCard() {
   const t = useTranslations("Home");
   const format = useFormatter();
   const trpc = useTRPC();
-  const reduced = useReducedMotion();
   const [open, setOpen] = useState(false);
 
   const { data: s } = useQuery(trpc.points.mySummary.queryOptions());
-
-  // Ring + bar start empty, then fill toward their targets after mount.
-  const [filled, setFilled] = useState(reduced);
-  useEffect(() => {
-    if (reduced) {
-      setFilled(true);
-      return;
-    }
-    const id = requestAnimationFrame(() => setFilled(true));
-    return () => cancelAnimationFrame(id);
-  }, [reduced]);
+  // Which visual template the org picked (public, cached; falls back to
+  // classic while loading so the card never flashes a different design).
+  const { data: loyalty } = useQuery(trpc.settings.loyaltyConfig.queryOptions());
 
   if (!s) return <PointsCardSkeleton />;
   // Points paused (org runs stamps-only): nothing to earn. With a balance the
   // card stays in a redeem-only state; with none there's nothing to show.
   if (s.paused && s.balance === 0) return null;
 
-  const TierIcon = tierIcon(s.current.icon);
-  const NextIcon = s.next ? tierIcon(s.next.icon) : Crown;
-  const ringOffset = RING_CIRCUMFERENCE * (1 - (filled ? s.progress : 0));
-
-  // Keep the balance legible inside the ring: compact, locale-aware notation for
-  // big numbers (es "13,9 mil" / en "13.9K"), and scale the font by length so it
-  // never overflows.
+  // Keep the balance legible: compact, locale-aware notation for big numbers
+  // (es "13,9 mil" / en "13.9K").
   const formatPoints = (n: number) =>
     s.balance >= 10_000
       ? format.number(n, { notation: "compact", maximumFractionDigits: 1 })
       : format.number(n);
-  const balanceLen = formatPoints(s.balance).length;
-  const balanceSize =
-    balanceLen <= 5 ? "text-5xl" : balanceLen <= 7 ? "text-4xl" : "text-3xl";
+
+  const view: PointsCardView = {
+    balance: s.balance,
+    formatBalance: formatPoints,
+    tierName: s.current.name,
+    tierColor: s.current.color,
+    tierIconKey: s.current.icon,
+    progress: s.progress,
+    nextTierName: s.next?.name ?? null,
+    nextThreshold: s.next?.threshold ?? null,
+    nextLabel: s.next
+      ? t("toNextTier", { points: s.remainingToNext, tier: s.next.name })
+      : null,
+    maxLabel: t("tierMax"),
+    pausedLabel: s.paused ? t("pointsPaused") : null,
+    detailAriaLabel: t("pointsDetailAria"),
+    onPress: () => setOpen(true),
+  };
 
   return (
-    <section className="from-primary/5 to-primary/20 shadow-primary/15 rounded-3xl bg-gradient-to-br p-7 shadow-xl">
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={t("pointsDetailAria")}
-        className="flex w-full flex-col items-center transition-transform active:scale-[0.98]"
-      >
-        <div className="relative grid size-44 place-items-center">
-          <svg viewBox="0 0 160 160" className="absolute inset-0 size-full" aria-hidden>
-            <circle cx="80" cy="80" r="68" fill="none" className="stroke-white/70" strokeWidth="13" />
-            <circle
-              cx="80"
-              cy="80"
-              r="68"
-              fill="none"
-              stroke={s.current.color}
-              strokeWidth="13"
-              strokeLinecap="round"
-              strokeDasharray={RING_CIRCUMFERENCE}
-              strokeDashoffset={ringOffset}
-              transform="rotate(-90 80 80)"
-              style={
-                reduced
-                  ? undefined
-                  : { transition: "stroke-dashoffset 1.1s cubic-bezier(.22,1,.36,1)" }
-              }
-            />
-          </svg>
-          <div className="flex flex-col items-center gap-1.5">
-            <span className="text-muted-foreground text-xs font-bold tracking-wider">
-              {t("pointsLabel")}
-            </span>
-            <CountUp
-              value={s.balance}
-              format={formatPoints}
-              className={`font-display text-foreground ${balanceSize} leading-none font-semibold tracking-tight`}
-            />
-            <span
-              className="bg-card inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap shadow-sm"
-              style={{ color: s.current.color }}
-            >
-              <TierIcon className="size-3.5" />
-              {t("tierBadge", { tier: s.current.name })}
-            </span>
-          </div>
-        </div>
-        {s.paused ? (
-          <p className="text-muted-foreground mt-4 mb-5 flex items-center gap-1.5 text-sm font-semibold">
-            <PauseCircle className="size-4" />
-            {t("pointsPaused")}
-          </p>
-        ) : (
-          <p className="text-primary mt-4 mb-5 text-sm font-semibold">
-            {s.next
-              ? t("toNextTier", { points: s.remainingToNext, tier: s.next.name })
-              : t("tierMax")}
-          </p>
-        )}
-      </button>
-
-      {!s.paused && s.next ? (
-        <>
-          <div className="mb-1.5 flex items-center justify-between text-xs font-bold whitespace-nowrap">
-            <span className="text-foreground inline-flex items-center gap-1">
-              <TierIcon className="size-3.5" style={{ color: s.current.color }} />
-              {s.current.name}
-            </span>
-            <span className="text-muted-foreground inline-flex items-center gap-1">
-              <NextIcon className="size-3.5" />
-              {s.next.name} · {s.next.threshold}
-            </span>
-          </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-white/60">
-            <div
-              className="from-primary to-primary/40 h-full rounded-full bg-gradient-to-r"
-              style={{
-                width: `${(filled ? s.progress : 0) * 100}%`,
-                transition: reduced ? undefined : "width 1.1s cubic-bezier(.22,1,.36,1)",
-              }}
-            />
-          </div>
-        </>
-      ) : null}
-
+    <>
+      <PointsCardTemplate template={loyalty?.pointsCardTemplate ?? "classic"} view={view} />
       <ResponsiveModal open={open} onOpenChange={setOpen}>
         <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
           <PointsDetail
@@ -208,7 +108,7 @@ export function PointsCard() {
           />
         </ResponsiveModalContent>
       </ResponsiveModal>
-    </section>
+    </>
   );
 }
 

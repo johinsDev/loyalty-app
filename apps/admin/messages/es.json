@@ -2177,7 +2177,14 @@
       "confirmAction": "Sí, pausar y avisar",
       "cancel": "Cancelar",
       "error": "No se pudo guardar la configuración",
-      "errRateMissing": "Falta la equivalencia de alguna moneda habilitada."
+      "errRateMissing": "Falta la equivalencia de alguna moneda habilitada.",
+      "templates": {
+        "title": "Diseño de la tarjeta de puntos",
+        "hint": "Cómo se ve la tarjeta en la app del cliente. El preview es el render real.",
+        "sampleTier": "Flor",
+        "sampleNext": "Oro",
+        "sampleNextLabel": "Te faltan 385 pts para Oro"
+      }
     },
     "onboarding": {
       "title": "Onboarding del cliente",

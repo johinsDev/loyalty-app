@@ -13,11 +13,14 @@ import {
   Badge,
   Button,
   NumberInput,
+  POINTS_CARD_TEMPLATES,
+  PointsCardTemplate,
+  type PointsCardView,
   Skeleton,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Coins, Sparkles, Stamp } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -48,6 +51,7 @@ const pointsFor = (cents: number, rate: { per: number; points: number }): number
  */
 export function LoyaltySection() {
   const t = useTranslations("Settings");
+  const locale = useLocale();
   const format = useFormatter();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -57,6 +61,7 @@ export function LoyaltySection() {
 
   const [mode, setMode] = useState<Mode | null>(null);
   const [rates, setRates] = useState<Rates | null>(null);
+  const [template, setTemplate] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Seed once from the server config (brand-section pattern).
@@ -64,6 +69,7 @@ export function LoyaltySection() {
     if (!data || mode !== null) return;
     setMode(data.mode);
     setRates(data.pointsRates);
+    setTemplate(data.pointsCardTemplate);
   }, [data, mode]);
 
   const save = useMutation(
@@ -85,7 +91,7 @@ export function LoyaltySection() {
     }),
   );
 
-  if (!data || mode === null || rates === null) {
+  if (!data || mode === null || rates === null || template === null) {
     return <Skeleton className="h-96 w-full rounded-2xl" />;
   }
 
@@ -102,7 +108,7 @@ export function LoyaltySection() {
 
   const doSave = () => {
     setConfirmOpen(false);
-    save.mutate({ mode, pointsRates: rates });
+    save.mutate({ mode, pointsRates: rates, pointsCardTemplate: template });
   };
   const onSave = () => {
     if (pausesSomething) setConfirmOpen(true);
@@ -110,6 +116,20 @@ export function LoyaltySection() {
   };
 
   const currencies = Object.keys(rates);
+  const sampleView: PointsCardView = {
+    balance: 1240,
+    formatBalance: (n) => format.number(n),
+    tierName: t("loyalty.templates.sampleTier"),
+    tierColor: "#f0a868",
+    tierIconKey: "flower",
+    progress: 0.68,
+    nextTierName: t("loyalty.templates.sampleNext"),
+    nextThreshold: 1200,
+    nextLabel: t("loyalty.templates.sampleNextLabel"),
+    maxLabel: "",
+    pausedLabel: null,
+    detailAriaLabel: "",
+  };
   const pointsRewards = insights.data?.pointsRewards ?? [];
   const multiplierPromos = insights.data?.multiplierPromos ?? [];
 
@@ -271,6 +291,40 @@ export function LoyaltySection() {
               })}
             </p>
           ) : null}
+        </div>
+      </div>
+
+      {/* Points-card template gallery — the previews ARE the customer render
+          (shared PointsCardTemplate), on sample data. */}
+      <div className="space-y-3">
+        <div>
+          <span className="text-sm font-bold">{t("loyalty.templates.title")}</span>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            {t("loyalty.templates.hint")}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {POINTS_CARD_TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.key}
+              type="button"
+              onClick={() => setTemplate(tpl.key)}
+              aria-label={tpl.name[locale === "en" ? "en" : "es"]}
+              className={`rounded-3xl text-left outline-none transition-transform ${
+                template === tpl.key
+                  ? "ring-primary ring-offset-card ring-2 ring-offset-2"
+                  : "hover:scale-[1.01]"
+              }`}
+            >
+              <div className="pointer-events-none">
+                <PointsCardTemplate template={tpl.key} view={sampleView} />
+              </div>
+              <div className="mt-1.5 flex items-center justify-center gap-1.5 pb-1 text-xs font-bold">
+                {template === tpl.key ? <span className="bg-primary size-1.5 rounded-full" /> : null}
+                {tpl.name[locale === "en" ? "en" : "es"]}
+              </div>
+            </button>
+          ))}
         </div>
       </div>
 

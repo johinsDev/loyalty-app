@@ -2177,7 +2177,14 @@
       "confirmAction": "Yes, pause and notify",
       "cancel": "Cancel",
       "error": "Could not save the configuration",
-      "errRateMissing": "An enabled currency is missing its equivalence."
+      "errRateMissing": "An enabled currency is missing its equivalence.",
+      "templates": {
+        "title": "Points card design",
+        "hint": "How the card looks in the customer app. The preview is the real render.",
+        "sampleTier": "Flower",
+        "sampleNext": "Gold",
+        "sampleNextLabel": "385 pts to reach Gold"
+      }
     },
     "onboarding": {
       "title": "Customer onboarding",
