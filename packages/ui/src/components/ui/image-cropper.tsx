@@ -41,16 +41,25 @@ export function ImageCropper({
   onCropped: (blob: Blob) => void;
   onCancel: () => void;
 }) {
-  const [imageUrl] = React.useState(() => URL.createObjectURL(file));
+  // The object URL must be minted INSIDE the effect: with a lazy-useState +
+  // revoke-on-unmount, React StrictMode's simulated remount (dev) revokes the
+  // URL while the preserved state still points at it — the cropper then shows
+  // its mask over a blank image. The effect re-runs on remount and mints a
+  // fresh URL each time.
+  const [imageUrl, setImageUrl] = React.useState<string | null>(null);
   const [crop, setCrop] = React.useState({ x: 0, y: 0 });
   const [zoom, setZoom] = React.useState(1);
   const [area, setArea] = React.useState<Area | null>(null);
   const [working, setWorking] = React.useState(false);
 
-  React.useEffect(() => () => URL.revokeObjectURL(imageUrl), [imageUrl]);
+  React.useEffect(() => {
+    const url = URL.createObjectURL(file);
+    setImageUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   const onConfirm = async () => {
-    if (!area) return;
+    if (!area || !imageUrl) return;
     setWorking(true);
     try {
       onCropped(await cropToBlob(imageUrl, area, aspect, outputWidth, outputType));
@@ -64,17 +73,19 @@ export function ImageCropper({
   return (
     <div className={cn("space-y-4", className)}>
       <div className="bg-muted relative h-64 w-full overflow-hidden rounded-2xl">
-        <Cropper
-          image={imageUrl}
-          crop={crop}
-          zoom={zoom}
-          aspect={aspect}
-          cropShape={cropShape}
-          showGrid={false}
-          onCropChange={setCrop}
-          onZoomChange={setZoom}
-          onCropComplete={(_: Area, px: Area) => setArea(px)}
-        />
+        {imageUrl ? (
+          <Cropper
+            image={imageUrl}
+            crop={crop}
+            zoom={zoom}
+            aspect={aspect}
+            cropShape={cropShape}
+            showGrid={false}
+            onCropChange={setCrop}
+            onZoomChange={setZoom}
+            onCropComplete={(_: Area, px: Area) => setArea(px)}
+          />
+        ) : null}
       </div>
       <input
         type="range"
