@@ -1,12 +1,14 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
+import { loadLocaleContext } from "../_shared/localize";
 import { managerProcedure, publicProcedure, router } from "../../trpc";
 import { SettingsRepository } from "./repository";
 import {
   setLoyaltyScopeInputSchema,
   updateBrandingInputSchema,
   updateLocalizationInputSchema,
+  updateOnboardingInputSchema,
   updateSeoInputSchema,
   updateSmartDeliveryInputSchema,
 } from "./schemas";
@@ -65,5 +67,23 @@ export const settingsRouter = router({
     .input(updateSmartDeliveryInputSchema)
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).updateSmartDelivery(await requireOrg(), input),
+    ),
+
+  // ── Onboarding ────────────────────────────────────────────────────────────
+  /** Customer PWA carousel, resolved to the visitor's locale. Public — the
+   *  sign-in screen reads it before auth. */
+  onboarding: publicProcedure.query(async ({ ctx }) => {
+    const id = await orgId();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    return makeService(ctx.db).onboarding(id, lc.locale);
+  }),
+  /** All steps with every locale — for the admin editor. */
+  onboardingAdmin: managerProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).onboardingAdmin(await requireOrg()),
+  ),
+  updateOnboarding: managerProcedure
+    .input(updateOnboardingInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).updateOnboarding(await requireOrg(), input),
     ),
 });

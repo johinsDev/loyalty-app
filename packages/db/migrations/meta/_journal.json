@@ -330,6 +330,13 @@
       "when": 1783698391623,
       "tag": "0046_wooden_senator_kelly",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "6",
+      "when": 1783717204637,
+      "tag": "0047_normal_scourge",
+      "breakpoints": true
     }
   ]
 }

@@ -42,6 +42,13 @@ interface IconPickerProps {
   uploadLabel?: string
   /** Accessible label for the "remove uploaded image" button. */
   removeLabel?: string
+  /**
+   * Upload the dropped image and return its URL. When provided, the icon is
+   * stored via the app's pipeline (R2) instead of an inline data-URI (which
+   * bloats anything the value is serialized into). Falls back to a data-URI
+   * when omitted.
+   */
+  onUploadImage?: (file: File) => Promise<string | null>
   className?: string
 }
 
@@ -54,17 +61,21 @@ function IconPicker({
   customLabel,
   uploadLabel = "Drag an image or click",
   removeLabel = "Remove",
+  onUploadImage,
   className,
 }: IconPickerProps) {
   const isImage = isImageIcon(value)
 
-  const onDrop = (files: File[]) => {
+  const onDrop = async (files: File[]) => {
     const file = files[0]
     if (!file) return
+    if (onUploadImage) {
+      const url = await onUploadImage(file)
+      if (url) onValueChange(url)
+      return
+    }
     const reader = new FileReader()
-    reader.addEventListener("load", () =>
-      onValueChange(String(reader.result))
-    )
+    reader.addEventListener("load", () => onValueChange(String(reader.result)))
     reader.readAsDataURL(file)
   }
 
@@ -124,7 +135,7 @@ function IconPicker({
           accept={{ "image/*": [] }}
           maxFiles={1}
           multiple={false}
-          onDrop={onDrop}
+          onDrop={(files) => void onDrop(files)}
         >
           <DropzoneArea className="flex-row gap-2 p-4">
             <Upload className="text-muted-foreground size-4" />
