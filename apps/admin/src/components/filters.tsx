@@ -248,3 +248,113 @@ export function FilterMultiSelect<T extends string>({
   );
 }
 
+export type AsyncOption = {
+  value: string;
+  label: string;
+  /** Secondary line (e.g. the phone behind a customer's name). */
+  hint?: string;
+};
+
+/**
+ * `FilterMultiSelect` for an option set too large to preload — the caller owns
+ * the query and feeds results back as `options`. Same trigger and rows as the
+ * static one, so an async facet is indistinguishable from a static one; the
+ * badge is a bare count (there is no meaningful total), and a single selection
+ * names itself on the trigger.
+ *
+ * `selectedOptions` carries the resolved labels for the current selection and
+ * is pinned to the top of the list, so a value can always be unchecked even
+ * when the active search doesn't return it. See `.claude/skills/admin-filters`.
+ */
+export function FilterMultiSelectAsync({
+  label,
+  options,
+  selectedOptions,
+  selected,
+  onChange,
+  query,
+  onQueryChange,
+  isLoading = false,
+  searchPlaceholder = "Buscar…",
+  emptyLabel = "Sin resultados",
+}: {
+  label: string;
+  options: AsyncOption[];
+  selectedOptions: AsyncOption[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  query: string;
+  onQueryChange: (q: string) => void;
+  isLoading?: boolean;
+  searchPlaceholder?: string;
+  emptyLabel?: string;
+}) {
+  const toggle = (v: string) =>
+    onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
+
+  const pinned = selectedOptions.filter((o) => selected.includes(o.value));
+  const rest = options.filter((o) => !selected.includes(o.value));
+  const triggerLabel = pinned.length === 1 ? (pinned[0]?.label ?? label) : label;
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        render={
+          <Button variant="outline" className="h-10 gap-2 rounded-xl">
+            <span className="max-w-40 truncate">{triggerLabel}</span>
+            {selected.length > 1 ? (
+              <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-xs font-bold">
+                {selected.length}
+              </span>
+            ) : null}
+            <ChevronDown className="size-4 opacity-60" />
+          </Button>
+        }
+      />
+      <PopoverContent align="start" className="w-64 rounded-xl p-0">
+        <SearchBox value={query} onChange={onQueryChange} placeholder={searchPlaceholder} />
+        <div className="max-h-64 overflow-y-auto p-1.5">
+          {pinned.map((o) => (
+            <AsyncRow key={o.value} option={o} checked onToggle={() => toggle(o.value)} />
+          ))}
+          {isLoading ? (
+            <p className="text-muted-foreground px-2.5 py-3 text-center text-sm">…</p>
+          ) : rest.length === 0 && pinned.length === 0 ? (
+            <p className="text-muted-foreground px-2.5 py-3 text-center text-sm">{emptyLabel}</p>
+          ) : (
+            rest.map((o) => (
+              <AsyncRow key={o.value} option={o} checked={false} onToggle={() => toggle(o.value)} />
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function AsyncRow({
+  option,
+  checked,
+  onToggle,
+}: {
+  option: AsyncOption;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-medium"
+    >
+      <Checkbox checked={checked} onCheckedChange={onToggle} tabIndex={-1} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{option.label}</span>
+        {option.hint ? (
+          <span className="text-muted-foreground block truncate text-xs">{option.hint}</span>
+        ) : null}
+      </span>
+    </button>
+  );
+}
+

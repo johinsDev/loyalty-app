@@ -17,6 +17,7 @@ Pick the variant by what you're filtering — don't invent a new control:
 | Pick one from a **long** list | `FilterSelect` + `searchable` | adds a search box in the popover. |
 | Pick **several** values | `FilterMultiSelect` | checkbox rows; trigger shows a dot-stack + `selected/total` badge. |
 | Pick several from a **long** list | `FilterMultiSelect` + `searchable` | same, with a search box. |
+| Pick several from an **unbounded** list (customers, …) | `FilterMultiSelectAsync` | the caller owns the query and feeds `options` back; `searchable` filters a preloaded array, which this cannot do. Badge is a bare count; one selection names itself on the trigger. |
 
 > Don't use chip rows (`bg-primary` pills) for filters anymore — they don't scale
 > past ~4 options and read inconsistently across resources. Migrate them to these.
@@ -74,6 +75,36 @@ const [statuses, setStatuses] = useState<Status[]>([...STATUSES]);
 
 // filter: if (!statuses.includes(row.active ? "active" : "inactive")) return false;
 ```
+
+## Async multi-select (unbounded option set)
+
+When the options can't be preloaded — customers, orders, anything that grows —
+`searchable` is not enough: it filters an array you already hold. Use
+`FilterMultiSelectAsync`, own the query yourself, and pass the results down.
+
+An id can arrive from a deep-link (`?customer=<id>`) and never appear in a
+search result, so pass its resolved label in `selectedOptions`. The component
+pins the selection to the top of the list, which is what keeps a deep-linked
+value uncheckable-from-nowhere.
+
+```tsx
+const [query, setQuery] = useState("");
+const debounced = useDebounce(query, { wait: 250 });
+const { data, isFetching } = useQuery(trpc.customers.search.queryOptions({ query: debounced, limit: 20 }));
+
+<FilterMultiSelectAsync
+  label={t("col.customer")}
+  options={(data ?? []).map((c) => ({ value: c.id, label: c.name || c.phone, hint: c.name ? c.phone : undefined }))}
+  selectedOptions={selectedOptions}   // resolved labels for `selected`
+  selected={ids}
+  onChange={setIds}
+  query={query}
+  onQueryChange={setQuery}
+  isLoading={isFetching}
+/>;
+```
+
+Reference: `apps/admin/src/features/purchases/components/customer-filter.tsx`.
 
 ## Toolbar layout
 

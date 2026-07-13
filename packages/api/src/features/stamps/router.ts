@@ -2,6 +2,7 @@ import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
 import {
+  ownerProcedure,
   protectedProcedure,
   type RealtimeBinding,
   rateLimit,
@@ -21,6 +22,7 @@ import { buildRewardsService, RewardsRepository } from "../rewards";
 import { buildStreaksService } from "../streaks";
 import { StampsRepository } from "./repository";
 import {
+  adjustStampsForCustomerInputSchema,
   customerIdInputSchema,
   historyInputSchema,
   previewPurchaseInputSchema,
@@ -281,6 +283,19 @@ export const stampsRouter = router({
     .input(customerIdInputSchema)
     .query(async ({ ctx, input }) =>
       buildService(ctx).walletForCustomer(await orgId(), input.customerId),
+    ),
+
+  // CRM: adjust a customer's stamps directly (no purchase). Owner-only.
+  adjustForCustomer: ownerProcedure
+    .input(adjustStampsForCustomerInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      buildService(ctx).adjustForCustomer(
+        await orgId(),
+        input.customerId,
+        input.stamps,
+        input.reason,
+        ctx.session.user.id,
+      ),
     ),
 
   // ---- Customer (self) ------------------------------------------------

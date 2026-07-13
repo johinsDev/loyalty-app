@@ -9,6 +9,7 @@ import {
 } from "../../trpc";
 import { PointsRepository } from "./repository";
 import {
+  adjustForCustomerInputSchema,
   adjustForPurchaseInputSchema,
   customerIdInputSchema,
   historyInputSchema,
@@ -47,6 +48,19 @@ export const pointsRouter = router({
       buildPointsService(ctx).adjustForPurchase(
         await orgId(),
         input.purchaseId,
+        input.points,
+        input.reason,
+        ctx.session.user.id,
+      ),
+    ),
+
+  // CRM: adjust a customer's points directly (no purchase). Owner-only.
+  adjustForCustomer: ownerProcedure
+    .input(adjustForCustomerInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      buildPointsService(ctx).adjustForCustomer(
+        await orgId(),
+        input.customerId,
         input.points,
         input.reason,
         ctx.session.user.id,

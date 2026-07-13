@@ -16,6 +16,26 @@ export type SmartDeliveryRules = {
   quietHoursEnd: string | null;
 };
 
+/**
+ * One first-run onboarding step for the customer PWA carousel. Authored in the
+ * admin; the customer app renders title → tiptap `body` over `backgroundCss`,
+ * with `icon` (an emoji or an uploaded image URL) above. `icon` + `backgroundCss`
+ * are canonical (not translated); `text` holds the per-locale copy, keyed by
+ * locale — the org default locale is the fallback. Stored as a JSON array on
+ * `organization_settings` (≤10 steps); no separate table, since it's edited as
+ * one config blob, not a CRUD list.
+ */
+export type OnboardingStepText = { title: string; body: string };
+export type OnboardingStep = {
+  id: string;
+  /** Emoji, or an uploaded image URL (from `IconPicker`). */
+  icon: string;
+  /** CSS `background` string — a template gradient/pattern or `url(<r2>)`. */
+  backgroundCss: string;
+  /** Per-locale copy, keyed by locale code (e.g. `es`, `en`). */
+  text: Record<string, OnboardingStepText>;
+};
+
 /** Brand social links (only filled keys are shown in the customer app). */
 export type SocialLinks = {
   instagram?: string;
@@ -66,6 +86,10 @@ export const organizationSettings = sqliteTable("organization_settings", {
 
   // Global campaign "Smart Delivery" rules (frequency cap + quiet hours).
   smartDelivery: text("smart_delivery", { mode: "json" }).$type<SmartDeliveryRules>(),
+
+  // First-run onboarding carousel for the customer PWA (≤10 steps). Null/empty
+  // → the app shows its built-in default so the sign-in never renders blank.
+  onboarding: text("onboarding", { mode: "json" }).$type<OnboardingStep[]>(),
 
   // ── SEO (consumed by the apps' root metadata) ─────────────────────────────
   seoTitle: text("seo_title"),

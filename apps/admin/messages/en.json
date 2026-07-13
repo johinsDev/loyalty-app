@@ -268,18 +268,24 @@
       "total": "Total customers",
       "active30": "Active (30 d)",
       "newMonth": "New this month",
-      "avgLtv": "Avg LTV"
+      "avgLtv": "Avg LTV",
+      "new30d": "New (30 d)",
+      "active30d": "Active (30 d)"
     },
     "status": {
       "all": "All",
       "active": "Active",
-      "inactive": "Inactive"
+      "inactive": "Inactive",
+      "banned": "Banned"
     },
     "tier": {
       "bronze": "Bronze",
       "silver": "Silver",
       "gold": "Gold",
-      "diamond": "Diamond"
+      "diamond": "Diamond",
+      "hoja": "Leaf",
+      "flor": "Flower",
+      "oro": "Gold"
     },
     "col": {
       "customer": "Customer",
@@ -288,7 +294,9 @@
       "visits": "Visits",
       "spent": "Spent",
       "lastVisit": "Last visit",
-      "status": "Status"
+      "status": "Status",
+      "joined": "Joined",
+      "phone": "Phone"
     },
     "create": "Create customer",
     "saveChanges": "Save changes",
@@ -341,7 +349,139 @@
       "whatsapp": "WhatsApp"
     },
     "birthdayHint": "Scroll to pick the date.",
-    "done": "Done"
+    "done": "Done",
+    "selectAll": "Select all",
+    "selectRow": "Select row",
+    "bulkExport": "Export CSV",
+    "exported": "{n} customers exported",
+    "spendRange": "Spend range",
+    "min": "Min",
+    "max": "Max",
+    "viewToggle": "Toggle view",
+    "tabs": {
+      "overview": "Overview",
+      "activity": "Activity",
+      "loyalty": "Loyalty",
+      "purchases": "Purchases"
+    },
+    "detail": {
+      "lastVisit": "Last visit",
+      "neverVisited": "No visits",
+      "today": "today",
+      "daysAgo": "{n} d ago",
+      "noEmail": "No email",
+      "noBirthday": "No birthday",
+      "noNickname": "No nickname",
+      "nickname": "Nickname",
+      "bannedTitle": "Banned customer",
+      "bannedReason": "Reason: {reason}",
+      "actions": "Actions",
+      "contact": "Contact"
+    },
+    "stat": {
+      "ltv": "Lifetime spend",
+      "avgTicket": "Avg ticket",
+      "visits": "Visits",
+      "cadence": "Cadence",
+      "cadenceValue": "every {n} d",
+      "topPercentile": "Top {n}% by spend",
+      "favoriteStore": "Favorite store",
+      "topProduct": "Favorite product",
+      "monthlySpend": "Spend",
+      "monthlyVisits": "Visits",
+      "noData": "No data yet",
+      "productQty": "{n} units",
+      "storeVisits": "{n} visits",
+      "monthlyTitle": "Spend and visits per month",
+      "cadenceSameDay": "several a day",
+      "tierProgress": "Tier progress",
+      "tierNear": "Almost there",
+      "tierRemaining": "{n} points to go, over the last {days} days",
+      "tierMax": "Top tier · {n} points over the last {days} days",
+      "topProducts": "Top products",
+      "redemptionMix": "Redemption mix",
+      "mixStamps": "Stamps",
+      "mixPoints": "Points",
+      "noRedemptions": "No redemptions yet"
+    },
+    "timeline": {
+      "empty": "No activity yet",
+      "loadMore": "Load more",
+      "loading": "Loading…"
+    },
+    "ledger": {
+      "points": "Points activity",
+      "stamps": "Stamps activity",
+      "redemptions": "Redemptions",
+      "empty": "No activity",
+      "pointsBalanceLabel": "Points balance",
+      "stampsBalanceLabel": "Stamps on card",
+      "manualAdjust": "Manual adjustment",
+      "fromPurchase": "From a purchase",
+      "spentStamps": "{n} stamps",
+      "spentPoints": "{n} pts",
+      "type": {
+        "earn": "Earned",
+        "redeem": "Redeemed",
+        "adjust": "Adjustment"
+      }
+    },
+    "notify": {
+      "action": "Notify",
+      "title": "Send notification",
+      "hint": "Goes out on the channels the customer has enabled and honors their marketing opt-out.",
+      "titleLabel": "Title",
+      "titlePlaceholder": "2-for-1 bubble tea today 🧋",
+      "bodyLabel": "Message",
+      "bodyPlaceholder": "Today only: bring a friend and the second one is on us.",
+      "confirm": "Send",
+      "ok": "Notification sent",
+      "error": "Could not send the notification"
+    },
+    "ban": {
+      "action": "Ban",
+      "unbanAction": "Unban",
+      "title": "Ban {name}?",
+      "hint": "Their sessions are revoked immediately and they will not be able to sign in.",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "Redemption fraud",
+      "confirm": "Yes, ban",
+      "ok": "{name} was banned",
+      "error": "Could not ban",
+      "unbanTitle": "Unban {name}?",
+      "unbanDescription": "They will be able to sign in and earn again.",
+      "unbanConfirm": "Yes, unban",
+      "unbanOk": "{name} was unbanned",
+      "unbanError": "Could not unban"
+    },
+    "adjust": {
+      "points": "Adjust points",
+      "stamps": "Adjust stamps",
+      "hint": "Use a negative number to deduct. It is recorded in the history.",
+      "amountLabel": "Amount",
+      "amountPlaceholder": "10 or -10",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "Compensation for a register error",
+      "confirm": "Apply adjustment",
+      "okPoints": "Points adjusted · balance {balance}",
+      "okStamps": "Stamps adjusted · balance {balance}",
+      "error": "Could not apply the adjustment"
+    },
+    "purchasesTab": {
+      "empty": "No purchases yet",
+      "voided": "Voided",
+      "viewAll": "View all their purchases",
+      "items": "{n} items"
+    },
+    "pager": {
+      "page": "Page {n}"
+    },
+    "initialHint": "Initial loyalty load applied on creation (recorded as \"alta inicial\").",
+    "errPhoneRequired": "Enter a valid phone",
+    "errPhoneInUse": "That phone is already in use",
+    "errNicknameInUse": "That nickname is already in use",
+    "errCreate": "Could not create the customer",
+    "errUpdate": "Could not save"
   },
   "Shortlinks": {
     "title": "Short links",
@@ -1143,7 +1283,7 @@
   "Admin": {
     "menu": "Menu",
     "greeting": "Hi, {name}",
-    "storesMembers": "{stores} stores · {members} members",
+    "storesMembers": "{stores, plural, one {# store} other {# stores}} · {members} members",
     "cashierMode": "Cashier mode",
     "notifications": "Notifications",
     "account": "Account",
@@ -2009,7 +2149,12 @@
       "iconCustom": "Custom",
       "customColor": "Custom color",
       "imgUpload": "Drag an image or click",
-      "imgRemove": "Remove"
+      "imgRemove": "Remove",
+      "error": "Could not save the onboarding",
+      "invalid": "Check the steps: something is missing or there are more than 10.",
+      "errDefaultTitle": "Step {n} needs a title in {locale} (the primary language).",
+      "maxReached": "Up to {n} steps.",
+      "back": "Back"
     },
     "team": {
       "title": "Team & roles",
@@ -2218,7 +2363,9 @@
     },
     "loyaltyReverted": "Reverted by the void",
     "timelineVoid": "Purchase voided · loyalty reversed",
-    "timelineVoidBy": "Voided by {name} · loyalty reversed"
+    "timelineVoidBy": "Voided by {name} · loyalty reversed",
+    "searchCustomer": "Search customer…",
+    "noCustomers": "No results"
   },
   "Stores": {
     "title": "Stores",

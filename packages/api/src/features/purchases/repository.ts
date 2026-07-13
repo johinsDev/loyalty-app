@@ -568,7 +568,7 @@ export class PurchasesRepository {
     }
     if (input.storeIds?.length) conds.push(inArray(purchase.storeId, input.storeIds));
     if (input.cashierIds?.length) conds.push(inArray(purchase.addedByUserId, input.cashierIds));
-    if (input.customerId) conds.push(eq(purchase.customerId, input.customerId));
+    if (input.customerIds?.length) conds.push(inArray(purchase.customerId, input.customerIds));
     if (input.dateFrom) conds.push(gte(purchase.createdAt, input.dateFrom));
     if (input.dateTo) conds.push(lte(purchase.createdAt, input.dateTo));
     if (input.amountMin != null) conds.push(gte(purchase.priceCents, input.amountMin));
@@ -919,7 +919,9 @@ export class PurchasesRepository {
       .from(stamp)
       .where(inArray(stamp.purchaseId, purchaseIds))
       .groupBy(stamp.purchaseId);
-    for (const r of rows) out.set(r.purchaseId, r.total);
+    for (const r of rows) {
+      if (r.purchaseId) out.set(r.purchaseId, r.total);
+    }
     return out;
   }
 

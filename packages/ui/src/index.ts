@@ -89,6 +89,7 @@ export type { StoreAddress } from "@loyalty/address";
 export * from "./components/ui/background-picker";
 export * from "./components/ui/color-picker";
 export * from "./components/ui/icon-picker";
+export * from "./components/ui/onboarding-slide";
 export * from "./components/ui/number-stepper";
 export * from "./components/ui/tag-input";
 export * from "./components/ui/time-input";
