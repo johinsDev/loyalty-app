@@ -19,6 +19,10 @@ export const dashboardRouter = router({
   navCounts: managerProcedure.query(async ({ ctx }) =>
     new DashboardRepository(ctx.db).navCounts(await orgId()),
   ),
+  /** Setup checklist — flags computed live; the card hides itself at 100%. */
+  setupChecklist: managerProcedure.query(async ({ ctx }) =>
+    new DashboardRepository(ctx.db).setupChecklist(await orgId()),
+  ),
   overview: managerProcedure
     .input(overviewInputSchema)
     .query(async ({ ctx, input }) =>

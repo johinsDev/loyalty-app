@@ -42,7 +42,8 @@
     "funnel": "Embudo",
     "brand": "Marca",
     "team": "Equipo",
-    "integrations": "Integraciones"
+    "integrations": "Integraciones",
+    "loyalty": "Lealtad"
   },
   "Notifications": {
     "title": "Notificaciones",
@@ -238,7 +239,21 @@
     "comingSoon": "Próximamente",
     "fraudComingSoon": "Detección de anomalías (escaneos rápidos, reuso de códigos). En desarrollo.",
     "dauComingSoon": "Usuarios activos por día. Requiere eventos de sesión.",
-    "impactComingSoon": "Gasto vs no-socios y retorno del plan — próximamente."
+    "impactComingSoon": "Gasto vs no-socios y retorno del plan — próximamente.",
+    "setup": {
+      "title": "Configurá tu negocio",
+      "subtitle": "Los pasos mínimos para que tu programa quede andando.",
+      "progress": "{done} de {total}",
+      "items": {
+        "brand": "Elegí tu logo y colores",
+        "store": "Creá tu tienda",
+        "products": "Agregá tus productos",
+        "loyalty": "Definí las reglas de lealtad",
+        "rewards": "Publicá tus premios",
+        "promos": "Publicá una promo",
+        "onboarding": "Armá el onboarding de la app"
+      }
+    }
   },
   "Customers": {
     "title": "Clientes",

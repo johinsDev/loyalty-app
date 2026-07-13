@@ -7,7 +7,6 @@ import {
   Lock,
   Plug,
   Sparkles,
-  Stamp,
   Store,
   Users,
   type LucideIcon,
@@ -21,7 +20,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SECTIONS, type SettingsSection } from "../data";
 import { BrandSection } from "./brand-section";
 import { HoursSection } from "./hours-section";
-import { LoyaltySection } from "./loyalty-section";
 import { LocalizationSection } from "./localization-section";
 import { OnboardingSection } from "./onboarding-section";
 import { SeoSection } from "./seo-section";
@@ -31,7 +29,6 @@ const ICON: Record<SettingsSection, LucideIcon> = {
   localization: Languages,
   seo: Globe,
   hours: Clock,
-  loyalty: Stamp,
   onboarding: Sparkles,
   team: Users,
   integrations: Plug,
@@ -120,8 +117,6 @@ export function SettingsView({
             <SeoSection />
           ) : active === "hours" ? (
             <HoursSection />
-          ) : active === "loyalty" ? (
-            <LoyaltySection />
           ) : (
             <OnboardingSection />
           )}

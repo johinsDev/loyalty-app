@@ -180,3 +180,15 @@ export interface NavCounts {
   /** Excludes soft-deleted stores. */
   stores: number;
 }
+
+/** Dashboard setup checklist — each flag is computed from real data (no stored
+ *  state): the card disappears once everything is configured. */
+export interface SetupChecklist {
+  brand: boolean;
+  products: boolean;
+  rewards: boolean;
+  promos: boolean;
+  loyalty: boolean;
+  onboarding: boolean;
+  store: boolean;
+}

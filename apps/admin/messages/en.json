@@ -42,7 +42,8 @@
     "funnel": "Funnel",
     "brand": "Brand",
     "team": "Team",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "loyalty": "Loyalty"
   },
   "Notifications": {
     "title": "Notifications",
@@ -238,7 +239,21 @@
     "comingSoon": "Coming soon",
     "fraudComingSoon": "Anomaly detection (rapid scans, code reuse). In progress.",
     "dauComingSoon": "Daily active users. Needs session events.",
-    "impactComingSoon": "Member vs non-member spend and plan ROI — coming soon."
+    "impactComingSoon": "Member vs non-member spend and plan ROI — coming soon.",
+    "setup": {
+      "title": "Set up your business",
+      "subtitle": "The minimum steps to get your program running.",
+      "progress": "{done} of {total}",
+      "items": {
+        "brand": "Pick your logo and colors",
+        "store": "Create your store",
+        "products": "Add your products",
+        "loyalty": "Define your loyalty rules",
+        "rewards": "Publish your rewards",
+        "promos": "Publish a promo",
+        "onboarding": "Build the app onboarding"
+      }
+    }
   },
   "Customers": {
     "title": "Customers",
