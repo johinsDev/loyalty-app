@@ -2102,7 +2102,9 @@
       "logoUploading": "Uploading…",
       "error": "Couldn't save. Try again.",
       "invalidData": "Check the fields before saving.",
-      "invalidField": "Check the “{field}” field."
+      "invalidField": "Check the “{field}” field.",
+      "cropFit": "Fit",
+      "cropFill": "Fill"
     },
     "hours": {
       "title": "Hours & location",

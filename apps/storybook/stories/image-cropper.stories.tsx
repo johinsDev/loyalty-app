@@ -56,6 +56,8 @@ function Demo({
           cropShape={cropShape}
           confirmLabel="Usar logo"
           cancelLabel="Cancelar"
+          fitLabel="Encuadrar"
+          fillLabel="Llenar"
           onCropped={() => {}}
           onCancel={() => {}}
         />

@@ -2102,7 +2102,9 @@
       "logoUploading": "Subiendo…",
       "error": "No se pudo guardar. Inténtalo de nuevo.",
       "invalidData": "Revisá los datos antes de guardar.",
-      "invalidField": "Revisá el campo “{field}”."
+      "invalidField": "Revisá el campo “{field}”.",
+      "cropFit": "Encuadrar",
+      "cropFill": "Llenar"
     },
     "hours": {
       "title": "Horarios y ubicación",
