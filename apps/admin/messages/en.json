@@ -2128,7 +2128,39 @@
         "stamps": "Stamps",
         "points": "Points",
         "both": "Both"
-      }
+      },
+      "modeDesc": {
+        "stamps": "Stamps only: points are paused.",
+        "points": "Points only: stamps are paused.",
+        "both": "Stamps and points on every purchase."
+      },
+      "willPausePoints": "Saving pauses points: customers stop earning (existing balances stay redeemable) and get notified.",
+      "willPauseStamps": "Saving pauses stamps: customers stop collecting stamps (existing ones stay redeemable) and get notified.",
+      "equivalence": "Points equivalence",
+      "equivalenceHint": "How many points each purchase grants, per currency. Purchases below the base amount earn nothing.",
+      "ratePrefix": "For every",
+      "ratePoints": "points",
+      "insights": {
+        "title": "What your rule means",
+        "pointsOff": "Points are off in this mode.",
+        "avgTicket": "Real average ticket: {amount}",
+        "avgCatalog": "Catalog average price: {amount}",
+        "perPurchase": "≈ {n} pts per purchase",
+        "purchases": "≈ {n} purchases",
+        "unreachable": "unreachable",
+        "noData": "No pricing data yet.",
+        "multiplier": "Active multiplier promos: {names}. They lower the purchases needed."
+      },
+      "confirmPointsTitle": "Pause points?",
+      "confirmPointsBody": "Customers stop earning points and get a notice (push + feed). Balances stay redeemable and tiers freeze until you re-enable.",
+      "confirmStampsTitle": "Pause stamps?",
+      "confirmStampsBody": "Customers stop collecting stamps and get a notice (push + feed). Existing stamps stay redeemable.",
+      "confirmPointsRewards": "You have {n} published points rewards — they stay redeemable.",
+      "confirmMultiplier": "You have {n} active points-multiplier promos that will stop having effect.",
+      "confirmAction": "Yes, pause and notify",
+      "cancel": "Cancel",
+      "error": "Could not save the configuration",
+      "errRateMissing": "An enabled currency is missing its equivalence."
     },
     "onboarding": {
       "title": "Customer onboarding",

@@ -159,3 +159,48 @@ export interface OnboardingStepView {
   title: string;
   body: string;
 }
+
+// ─── Loyalty earn config ─────────────────────────────────────────────────────
+
+export const loyaltyModeSchema = z.enum(["stamps", "points", "both"]);
+export type LoyaltyModeInput = z.infer<typeof loyaltyModeSchema>;
+
+/** One currency's earn rule: every `per` major units of spend → `points`. */
+export const pointsRateSchema = z.object({
+  per: z.number().int().min(1).max(10_000_000),
+  points: z.number().int().min(1).max(100_000),
+});
+
+export const updateLoyaltyConfigInputSchema = z.object({
+  mode: loyaltyModeSchema,
+  /** Keyed by currency code. The service enforces that every enabled currency
+   *  has an entry (zod can't see the org's enabledCurrencies). */
+  pointsRates: z.record(currencySchema, pointsRateSchema),
+  pointsCardTemplate: z.string().min(1).max(40).optional(),
+});
+export type UpdateLoyaltyConfigInput = z.infer<typeof updateLoyaltyConfigInputSchema>;
+
+/** Public view — what the PWA needs pre-render. Rates stay manager-only. */
+export interface LoyaltyConfigView {
+  mode: LoyaltyModeInput;
+  pointsCardTemplate: string;
+}
+
+/** Admin view — everything, for the Ajustes → Lealtad editor. */
+export interface LoyaltyConfigAdminView extends LoyaltyConfigView {
+  pointsRates: Record<string, { per: number; points: number }>;
+  tierGraceUntil: Date | null;
+}
+
+/** Static inputs for the live equivalence panel; the per-keystroke math is
+ *  client-side. `avgTicketCents` falls back to the catalog average (flagged by
+ *  `source`) until the org has real sales. */
+export interface LoyaltyInsights {
+  perCurrency: {
+    currency: string;
+    avgTicketCents: number | null;
+    source: "purchases" | "catalog";
+  }[];
+  pointsRewards: { id: string; name: string; icon: string | null; pointsCost: number }[];
+  multiplierPromos: { id: string; name: string; multiplier: number }[];
+}

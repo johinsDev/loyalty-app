@@ -97,7 +97,9 @@
     "rewardClaimCta": "Reclamar — mostrar mi código",
     "rewardBannerText": "¡Reclama tu bebida gratis y seguí disfrutando! 🎁",
     "rewardBannerCta": "Reclamar",
-    "dismiss": "Cerrar"
+    "dismiss": "Cerrar",
+    "pointsPaused": "Puntos en pausa — podés canjear lo que tenés, no se acumulan más.",
+    "stampsPaused": "Sellos en pausa — podés canjear los que tenés, no se suman más."
   },
   "Promos": {
     "title": "Promos",

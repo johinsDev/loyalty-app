@@ -1,10 +1,16 @@
 import type { db as Db } from "@loyalty/db";
+import { tasks } from "@trigger.dev/sdk/v3";
 
 import {
+  DEFAULT_POINTS_RATE,
+  earnsPoints,
+  earnsStamps,
   getBranding,
   getLocalization,
+  getLoyaltyConfig,
   invalidateBranding,
   invalidateLocalization,
+  invalidateLoyaltyConfig,
 } from "../_shared/localize";
 import type { SettingsRepository } from "./repository";
 import { TRPCError } from "@trpc/server";
@@ -12,16 +18,30 @@ import { TRPCError } from "@trpc/server";
 import type {
   BrandingView,
   LocalizationView,
+  LoyaltyConfigAdminView,
+  LoyaltyConfigView,
+  LoyaltyInsights,
   OnboardingAdminStep,
   OnboardingStepView,
   SetLoyaltyScopeInput,
   SmartDeliveryView,
   UpdateBrandingInput,
   UpdateLocalizationInput,
+  UpdateLoyaltyConfigInput,
   UpdateOnboardingInput,
   UpdateSeoInput,
   UpdateSmartDeliveryInput,
 } from "./schemas";
+
+/** What a mode change did to each track — drives the customer announcement. */
+export type LoyaltyModeChange =
+  | "points-paused"
+  | "points-resumed"
+  | "stamps-paused"
+  | "stamps-resumed";
+
+/** Post-reactivation window in which tier recomputes may only raise a tier. */
+const TIER_GRACE_DAYS = 30;
 
 /** "" → null, undefined → undefined (skip). Keeps cleared fields nullable. */
 function nullable(v: string | undefined): string | null | undefined {
@@ -171,5 +191,109 @@ export class SettingsService {
     }
     await this.repo.upsertSettings(orgId, { onboarding: input.steps });
     return this.onboardingAdmin(orgId);
+  }
+
+  // ── Loyalty earn config ─────────────────────────────────────────────────────
+
+  /** Public: what the PWA needs pre-render. Rates stay manager-only. */
+  async loyaltyConfig(orgId: string): Promise<LoyaltyConfigView> {
+    const cfg = await getLoyaltyConfig(this.db, orgId);
+    return { mode: cfg.mode, pointsCardTemplate: cfg.pointsCardTemplate };
+  }
+
+  /** Admin: full config, rates seeded for every enabled currency. */
+  async loyaltyConfigAdmin(orgId: string): Promise<LoyaltyConfigAdminView> {
+    const [cfg, loc] = await Promise.all([
+      getLoyaltyConfig(this.db, orgId),
+      getLocalization(this.db, orgId),
+    ]);
+    // Seed a visible default for any enabled currency the org never rated, so
+    // the editor always shows one row per currency.
+    const pointsRates = Object.fromEntries(
+      loc.enabledCurrencies.map((c) => [c, cfg.pointsRates[c] ?? DEFAULT_POINTS_RATE]),
+    );
+    return {
+      mode: cfg.mode,
+      pointsCardTemplate: cfg.pointsCardTemplate,
+      pointsRates,
+      tierGraceUntil: cfg.tierGraceUntil,
+    };
+  }
+
+  /**
+   * Save mode + rates. Side effects: pausing/resuming a track enqueues the
+   * customer announcement job, and resuming POINTS arms the tier grace window
+   * (the 30d earn window restarts empty — without grace everyone would drop
+   * tier the next day). Redemption is never touched.
+   */
+  async updateLoyaltyConfig(
+    orgId: string,
+    input: UpdateLoyaltyConfigInput,
+  ): Promise<LoyaltyConfigAdminView> {
+    const [before, loc] = await Promise.all([
+      getLoyaltyConfig(this.db, orgId),
+      getLocalization(this.db, orgId),
+    ]);
+
+    // `input.pointsRates` keys are the currency enum; index via a widened view.
+    const rates = input.pointsRates as Record<string, { per: number; points: number }>;
+    const missing = loc.enabledCurrencies.filter((c) => !rates[c]);
+    if (missing.length > 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `LOYALTY_RATE_MISSING:${missing.join(",")}`,
+      });
+    }
+
+    const changes: LoyaltyModeChange[] = [];
+    if (earnsPoints(before.mode) && !earnsPoints(input.mode)) changes.push("points-paused");
+    if (!earnsPoints(before.mode) && earnsPoints(input.mode)) changes.push("points-resumed");
+    if (earnsStamps(before.mode) && !earnsStamps(input.mode)) changes.push("stamps-paused");
+    if (!earnsStamps(before.mode) && earnsStamps(input.mode)) changes.push("stamps-resumed");
+
+    await this.repo.upsertSettings(orgId, {
+      loyaltyMode: input.mode,
+      pointsRates: rates,
+      ...(input.pointsCardTemplate !== undefined
+        ? { pointsCardTemplate: input.pointsCardTemplate }
+        : {}),
+      ...(changes.includes("points-resumed")
+        ? { tierGraceUntil: new Date(Date.now() + TIER_GRACE_DAYS * 24 * 60 * 60 * 1000) }
+        : {}),
+    });
+    await invalidateLoyaltyConfig(orgId);
+
+    if (changes.length > 0) {
+      // Best-effort: a dead queue must not block saving the config.
+      await tasks
+        .trigger("announce-loyalty-mode", { organizationId: orgId, changes })
+        .catch(() => {});
+    }
+    return this.loyaltyConfigAdmin(orgId);
+  }
+
+  /** Static inputs for the live equivalence panel (math runs client-side). */
+  async loyaltyInsights(orgId: string): Promise<LoyaltyInsights> {
+    const loc = await getLocalization(this.db, orgId);
+    const [ticketByCurrency, pointsRewards, multiplierPromos] = await Promise.all([
+      this.repo.avgTicketByCurrency(orgId),
+      this.repo.pointsRewards(orgId),
+      this.repo.multiplierPromos(orgId),
+    ]);
+    const perCurrency = await Promise.all(
+      loc.enabledCurrencies.map(async (currency) => {
+        const fromSales = ticketByCurrency.get(currency);
+        if (fromSales != null && fromSales > 0) {
+          return { currency, avgTicketCents: fromSales, source: "purchases" as const };
+        }
+        const fromCatalog = await this.repo.catalogAvgPrice(
+          orgId,
+          currency,
+          currency === loc.defaultCurrency,
+        );
+        return { currency, avgTicketCents: fromCatalog, source: "catalog" as const };
+      }),
+    );
+    return { perCurrency, pointsRewards, multiplierPromos };
   }
 }

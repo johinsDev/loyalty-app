@@ -78,3 +78,12 @@ export async function customerExistsForUser(userId: string): Promise<boolean> {
     .limit(1);
   return rows.length > 0;
 }
+
+/** Every customer id of an org — for org-wide fan-outs (announcements). */
+export async function listCustomerIds(organizationId: string): Promise<string[]> {
+  const rows = await db
+    .select({ id: schema.customer.id })
+    .from(schema.customer)
+    .where(eq(schema.customer.organizationId, organizationId));
+  return rows.map((r) => r.id);
+}

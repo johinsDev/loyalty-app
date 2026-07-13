@@ -46,6 +46,16 @@ export type SocialLinks = {
   website?: string;
 };
 
+/**
+ * Which loyalty tracks the org runs. The enum (not two booleans) makes the
+ * invalid "everything off" state unrepresentable — at least one track is
+ * always on. `points` means stamps are OFF and vice versa.
+ */
+export type LoyaltyMode = "stamps" | "points" | "both";
+
+/** Points earn rule for one currency: every `per` major units → `points`. */
+export type PointsRate = { per: number; points: number };
+
 // Per-org localization + branding config (1:1 with the org). Started as the
 // locale/currency config and is now the home for the rest of the admin Settings:
 // brand (description, color, social, terms), SEO, and the loyalty wallet scope.
@@ -83,6 +93,21 @@ export const organizationSettings = sqliteTable("organization_settings", {
   // Wallet scope across stores: "org" = shared (today), "store" = per-branch
   // (enforcement deferred — see docs/store-config.md backlog).
   loyaltyScope: text("loyalty_scope").notNull().default("org"),
+
+  // ── Loyalty earn config (org-level; per-store is a future extension) ──────
+  // Which tracks earn: stamps | points | both. Redemption is never gated —
+  // a paused track's balances stay spendable.
+  loyaltyMode: text("loyalty_mode").$type<LoyaltyMode>().notNull().default("both"),
+  // Points earn rule per currency, keyed by currency code. Null → the code
+  // default (100 COP → 4 pts). Every enabled currency must have an entry
+  // (enforced by the settings service on write).
+  pointsRates: text("points_rates", { mode: "json" }).$type<Record<string, PointsRate>>(),
+  // Points-card visual template for the customer PWA home (PR 2 gallery).
+  pointsCardTemplate: text("points_card_template").notNull().default("classic"),
+  // Post-reactivation tier grace: until this instant, tier recomputes may only
+  // raise a customer's tier (the 30d earn window restarts empty on re-enable,
+  // so without this everyone would drop the day after points come back).
+  tierGraceUntil: integer("tier_grace_until", { mode: "timestamp" }),
 
   // Global campaign "Smart Delivery" rules (frequency cap + quiet hours).
   smartDelivery: text("smart_delivery", { mode: "json" }).$type<SmartDeliveryRules>(),

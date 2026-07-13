@@ -8,6 +8,7 @@ import {
   setLoyaltyScopeInputSchema,
   updateBrandingInputSchema,
   updateLocalizationInputSchema,
+  updateLoyaltyConfigInputSchema,
   updateOnboardingInputSchema,
   updateSeoInputSchema,
   updateSmartDeliveryInputSchema,
@@ -86,4 +87,23 @@ export const settingsRouter = router({
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).updateOnboarding(await requireOrg(), input),
     ),
+
+  // ── Loyalty earn config ─────────────────────────────────────────────────────
+  /** Mode + card template for the PWA (public, read pre-render). Rates are not
+   *  exposed here — they're a business decision, not customer data. */
+  loyaltyConfig: publicProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).loyaltyConfig(await orgId()),
+  ),
+  loyaltyConfigAdmin: managerProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).loyaltyConfigAdmin(await requireOrg()),
+  ),
+  updateLoyaltyConfig: managerProcedure
+    .input(updateLoyaltyConfigInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).updateLoyaltyConfig(await requireOrg(), input),
+    ),
+  /** Static inputs for the equivalence panel (avg ticket, rewards, promos). */
+  loyaltyInsights: managerProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).loyaltyInsights(await requireOrg()),
+  ),
 });

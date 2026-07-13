@@ -1,6 +1,12 @@
 import { CacheManager } from "@loyalty/cache";
 import type { db as Db } from "@loyalty/db";
-import { organization, organizationSettings, type StoreHours } from "@loyalty/db/schema";
+import {
+  type LoyaltyMode,
+  organization,
+  organizationSettings,
+  type PointsRate,
+  type StoreHours,
+} from "@loyalty/db/schema";
 import { eq } from "drizzle-orm";
 
 // v1 supported sets. Enabled values are clamped to these in the settings service.
@@ -126,6 +132,62 @@ export function getBranding(db: typeof Db, orgId: string): Promise<Branding> {
 
 export async function invalidateBranding(orgId: string): Promise<void> {
   await cache.delete(brandingKey(orgId));
+}
+
+/**
+ * Org loyalty earn config — which tracks earn (mode), the per-currency points
+ * rate, the PWA card template and the post-reactivation tier grace. Cached like
+ * localization/branding; read on EVERY purchase, so it must stay cheap.
+ * `pointsRates` always carries an entry for the default currency (the code
+ * default seeds it when the org never saved one).
+ */
+export interface LoyaltyConfig {
+  mode: LoyaltyMode;
+  pointsRates: Record<string, PointsRate>;
+  pointsCardTemplate: string;
+  tierGraceUntil: Date | null;
+}
+
+/** The pre-config hardcoded rate (100 COP → 4 pts), kept as the seed default. */
+export const DEFAULT_POINTS_RATE: PointsRate = { per: 100, points: 4 };
+
+export const earnsPoints = (mode: LoyaltyMode): boolean => mode !== "stamps";
+export const earnsStamps = (mode: LoyaltyMode): boolean => mode !== "points";
+
+/** The earn rule for a purchase's currency, falling back to any configured
+ *  rate (an unrated currency shouldn't zero the earn — it means the org never
+ *  saved config for it, not that it's worthless). */
+export function rateForCurrency(cfg: LoyaltyConfig, currency: string): PointsRate {
+  return (
+    cfg.pointsRates[currency] ?? Object.values(cfg.pointsRates)[0] ?? DEFAULT_POINTS_RATE
+  );
+}
+
+const loyaltyKey = (orgId: string) => `org-loyalty:${orgId}`;
+
+export function getLoyaltyConfig(db: typeof Db, orgId: string): Promise<LoyaltyConfig> {
+  return cache.getOrSet(
+    loyaltyKey(orgId),
+    async () => {
+      const [s] = await db
+        .select()
+        .from(organizationSettings)
+        .where(eq(organizationSettings.organizationId, orgId))
+        .limit(1);
+      const defaultCurrency = s?.defaultCurrency ?? "COP";
+      return {
+        mode: s?.loyaltyMode ?? "both",
+        pointsRates: s?.pointsRates ?? { [defaultCurrency]: DEFAULT_POINTS_RATE },
+        pointsCardTemplate: s?.pointsCardTemplate ?? "classic",
+        tierGraceUntil: s?.tierGraceUntil ?? null,
+      };
+    },
+    TTL_SECONDS,
+  );
+}
+
+export async function invalidateLoyaltyConfig(orgId: string): Promise<void> {
+  await cache.delete(loyaltyKey(orgId));
 }
 
 /** Resolve the active locale/currency from request headers, clamped to what the

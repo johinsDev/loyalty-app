@@ -22,7 +22,7 @@ import {
 import { and, asc, eq, gt, inArray, like, or, sql } from "drizzle-orm";
 
 import type { LocaleContext } from "../_shared/localize";
-import { pickPrice } from "../_shared/localize";
+import { getLoyaltyConfig, pickPrice } from "../_shared/localize";
 import { earnFor } from "./earn";
 import type {
   MenuCard,
@@ -145,6 +145,11 @@ export class ProductsRepository {
       .from(product)
       .where(inArray(product.id, productIds))
       .orderBy(asc(product.sortOrder), asc(product.id));
+    // Org loyalty config (cached) — drives the earn preview on every card.
+    const loyalty =
+      rows.length > 0
+        ? await getLoyaltyConfig(this.db, rows[0]!.organizationId)
+        : undefined;
 
     // Per-locale name/description overrides + per-currency price overrides.
     const trByProduct = new Map<string, { name: string; description: string | null }>();
@@ -226,8 +231,8 @@ export class ProductsRepository {
         currency: price.currency,
         imageUrl: firstImage.get(p.id) ?? null,
         categorySlugs: catSlugs.get(p.id) ?? [],
-        // Earn stays in default-currency terms (points config is COP-based).
-        earn: earnFor(p.basePriceCents),
+        // Earn stays in default-currency terms (base prices are default-currency).
+        earn: earnFor(p.basePriceCents, loyalty, ctx.defaultCurrency),
       };
     });
   }
@@ -263,6 +268,7 @@ export class ProductsRepository {
       },
     });
     if (!p) return null;
+    const loyalty = await getLoyaltyConfig(this.db, orgId);
 
     const variantImages = (variantId: string) =>
       p.images.filter((img) => img.variantId === variantId).map((img) => img.url);
@@ -335,7 +341,7 @@ export class ProductsRepository {
       basePriceCents: basePrice.priceCents,
       promoPriceCents:
         detailCurrency === p.currency ? p.promoPriceCents : null,
-      earn: earnFor(p.basePriceCents),
+      earn: earnFor(p.basePriceCents, loyalty, ctx.defaultCurrency),
       images: p.images.map((img) => ({
         url: img.url,
         alt: img.alt,
@@ -351,7 +357,7 @@ export class ProductsRepository {
         priceCents: amountFor(v.priceCents, variantPriceById.get(v.id)),
         isDefault: v.isDefault,
         optionValueIds: v.values.map((vv) => vv.optionValueId),
-        earn: earnFor(v.priceCents),
+        earn: earnFor(v.priceCents, loyalty, ctx.defaultCurrency),
         imageUrls: variantImages(v.id),
       })),
       modifierGroups: p.modifierGroups.map((g) => ({

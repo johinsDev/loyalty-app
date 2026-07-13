@@ -41,10 +41,20 @@ export interface PointsServiceOptions {
 
 const DAY_MS = 86_400_000;
 
-/** Points for a purchase price: `floor((priceCents/100) / EARN_PER) * EARN_POINTS`. */
-export function pointsForPrice(priceCents: number): number {
+/** One currency's earn rule: every `per` major units of spend → `points`. */
+export interface EarnRate {
+  per: number;
+  points: number;
+}
+
+/** The pre-config compile-time rate, kept as the default/fallback. */
+const CODE_RATE: EarnRate = { per: EARN_PER, points: EARN_POINTS };
+
+/** Points for a purchase price: `floor((priceCents/100) / per) * points`.
+ *  Same floor semantics as ever — a purchase below `per` major units earns 0. */
+export function pointsForPrice(priceCents: number, rate: EarnRate = CODE_RATE): number {
   const major = Math.floor(priceCents / 100);
-  return Math.floor(major / EARN_PER) * EARN_POINTS;
+  return Math.floor(major / rate.per) * rate.points;
 }
 
 /**
@@ -61,23 +71,31 @@ export class PointsService {
   ) {}
 
   /** Called after a purchase records. Idempotent per purchaseId. Returns the
-   *  points earned (0 if disabled / dup / below the rate floor) + new balance. */
+   *  points earned (0 if disabled / dup / below the rate floor) + new balance.
+   *  `opts.loyalty` carries the org's config (mode gate + the purchase
+   *  currency's rate) — omitted, the compile-time defaults apply, so the
+   *  global `POINTS_ENABLED` kill-switch always holds. */
   async earnForPurchase(
     organizationId: string,
     customerId: string,
     priceCents: number,
     purchaseId: string,
     storeId: string,
-    opts: { multiplier?: number } = {},
+    opts: {
+      multiplier?: number;
+      loyalty?: { enabled: boolean; rate: EarnRate; tierGraceUntil?: Date | null };
+    } = {},
   ): Promise<{
     earned: number;
     balance: number;
     tierUp?: { tierName: string } | null;
   }> {
-    if (!POINTS_ENABLED) {
+    if (!POINTS_ENABLED || opts.loyalty?.enabled === false) {
       return { earned: 0, balance: await this.repo.balance(organizationId, customerId) };
     }
-    const points = Math.round(pointsForPrice(priceCents) * (opts.multiplier ?? 1));
+    const points = Math.round(
+      pointsForPrice(priceCents, opts.loyalty?.rate) * (opts.multiplier ?? 1),
+    );
     if (points <= 0) {
       return { earned: 0, balance: await this.repo.balance(organizationId, customerId) };
     }
@@ -96,18 +114,25 @@ export class PointsService {
       event: "points.earned",
       data: { earned: points, balance },
     });
-    const tierUp = await this.recompute(organizationId, customerId);
+    // Within the post-reactivation grace the on-earn recompute may only raise:
+    // the first earn against a restarted (near-empty) window must not demote.
+    const grace = opts.loyalty?.tierGraceUntil;
+    const tierUp = await this.recompute(organizationId, customerId, {
+      noDowngrade: grace != null && grace.getTime() > Date.now(),
+    });
     return { earned: points, balance, tierUp };
   }
 
   /** Recompute the tier from the window; fire up/down + near-threshold side
    *  effects. Shared by earn (instant up) and the cron (time-based down).
    *  Returns the tier name when the customer moved UP (so the purchase
-   *  orchestration can fold it into the single rewards-unlock celebration). */
+   *  orchestration can fold it into the single rewards-unlock celebration).
+   *  `noDowngrade` (the post-reactivation grace): a would-be drop is skipped
+   *  entirely — no write, no tier-down notification; ups still apply. */
   async recompute(
     organizationId: string,
     customerId: string,
-    opts: { silent?: boolean } = {},
+    opts: { silent?: boolean; noDowngrade?: boolean } = {},
   ): Promise<{ tierName: string } | null> {
     const windowStart = new Date(Date.now() - WINDOW_DAYS * DAY_MS);
     const tierPoints = await this.repo.tierPoints(
@@ -122,6 +147,7 @@ export class PointsService {
     const newKey = view.current.key;
     const oldRank = oldKey ? tierRank(oldKey) : 0;
     const newRank = tierRank(newKey);
+    if (opts.noDowngrade && oldKey !== null && newRank < oldRank) return null;
     let nearKey = account?.nearNotifiedTierKey ?? null;
 
     const tierChanged = newKey !== oldKey;

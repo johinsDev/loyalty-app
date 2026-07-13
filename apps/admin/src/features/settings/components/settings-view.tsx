@@ -21,6 +21,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SECTIONS, type SettingsSection } from "../data";
 import { BrandSection } from "./brand-section";
 import { HoursSection } from "./hours-section";
+import { LoyaltySection } from "./loyalty-section";
 import { LocalizationSection } from "./localization-section";
 import { OnboardingSection } from "./onboarding-section";
 import { SeoSection } from "./seo-section";
@@ -39,7 +40,7 @@ const ICON: Record<SettingsSection, LucideIcon> = {
 /** Sections whose editors aren't wired to a real backend yet — shown with a
  *  "coming soon" placeholder instead of the mock content. Team/roles now live in
  *  the Empleados feature; loyalty rules + integrations are pending. */
-const COMING_SOON = new Set<SettingsSection>(["loyalty", "team", "integrations"]);
+const COMING_SOON = new Set<SettingsSection>(["team", "integrations"]);
 
 /**
  * Ajustes — a settings hub with a left section nav and the active section on the
@@ -119,6 +120,8 @@ export function SettingsView({
             <SeoSection />
           ) : active === "hours" ? (
             <HoursSection />
+          ) : active === "loyalty" ? (
+            <LoyaltySection />
           ) : (
             <OnboardingSection />
           )}

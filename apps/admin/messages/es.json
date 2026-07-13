@@ -2128,7 +2128,39 @@
         "stamps": "Sellos",
         "points": "Puntos",
         "both": "Ambos"
-      }
+      },
+      "modeDesc": {
+        "stamps": "Solo sellos: los puntos se pausan.",
+        "points": "Solo puntos: los sellos se pausan.",
+        "both": "Sellos y puntos en cada compra."
+      },
+      "willPausePoints": "Al guardar se pausan los puntos: tus clientes dejan de acumular (lo que tienen sigue canjeable) y se les avisa.",
+      "willPauseStamps": "Al guardar se pausan los sellos: tus clientes dejan de sumar sellos (los que tienen siguen canjeables) y se les avisa.",
+      "equivalence": "Equivalencia de puntos",
+      "equivalenceHint": "Cuántos puntos otorga cada compra, por moneda. Compras menores al monto base no suman.",
+      "ratePrefix": "Por cada",
+      "ratePoints": "puntos",
+      "insights": {
+        "title": "Qué significa tu regla",
+        "pointsOff": "Los puntos están apagados en este modo.",
+        "avgTicket": "Ticket promedio real: {amount}",
+        "avgCatalog": "Precio promedio del catálogo: {amount}",
+        "perPurchase": "≈ {n} pts por compra",
+        "purchases": "≈ {n} compras",
+        "unreachable": "inalcanzable",
+        "noData": "Sin datos de precios todavía.",
+        "multiplier": "Promos multiplicadoras activas: {names}. Con ellas se necesita menos compras."
+      },
+      "confirmPointsTitle": "¿Pausar los puntos?",
+      "confirmPointsBody": "Tus clientes dejan de acumular puntos y les llega un aviso (push + feed). Lo acumulado sigue canjeable y los niveles se congelan hasta que reactives.",
+      "confirmStampsTitle": "¿Pausar los sellos?",
+      "confirmStampsBody": "Tus clientes dejan de sumar sellos y les llega un aviso (push + feed). Los sellos que tienen siguen canjeables.",
+      "confirmPointsRewards": "Tenés {n} premios canjeables por puntos publicados — seguirán canjeables.",
+      "confirmMultiplier": "Tenés {n} promos de puntos multiplicados activas que dejarán de tener efecto.",
+      "confirmAction": "Sí, pausar y avisar",
+      "cancel": "Cancelar",
+      "error": "No se pudo guardar la configuración",
+      "errRateMissing": "Falta la equivalencia de alguna moneda habilitada."
     },
     "onboarding": {
       "title": "Onboarding del cliente",

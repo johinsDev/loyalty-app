@@ -49,6 +49,9 @@ export function StampsCard() {
   );
 
   if (!w || !history) return <StampsCardSkeleton />;
+  // Stamps paused (org runs points-only): nothing to earn. With stamps on the
+  // card it stays in a redeem-only state; empty, there's nothing to show.
+  if (w.paused && w.currentStamps === 0) return null;
 
   const goal = w.stampsGoal;
   // The card has `walletSize` spots: `stampsGoal` stamps + the last (free
@@ -106,8 +109,10 @@ export function StampsCard() {
           {t("stampsCount", { filled, total: goal })}
         </span>
       </div>
-      <p className="text-primary mb-4 text-sm font-semibold">
-        {t("stampsRemaining", { count: remaining })}
+      <p className={`mb-4 text-sm font-semibold ${w.paused ? "text-muted-foreground" : "text-primary"}`}>
+        {w.paused
+          ? t("stampsPaused")
+          : t("stampsRemaining", { count: remaining })}
       </p>
       <div className="grid grid-cols-5 gap-3">
         {stamps.map((n) => {

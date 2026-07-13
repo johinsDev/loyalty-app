@@ -14,6 +14,7 @@ import {
   Flower2,
   Gift,
   Leaf,
+  PauseCircle,
   ShoppingBag,
   Sparkles,
   Wallet,
@@ -92,6 +93,9 @@ export function PointsCard() {
   }, [reduced]);
 
   if (!s) return <PointsCardSkeleton />;
+  // Points paused (org runs stamps-only): nothing to earn. With a balance the
+  // card stays in a redeem-only state; with none there's nothing to show.
+  if (s.paused && s.balance === 0) return null;
 
   const TierIcon = tierIcon(s.current.icon);
   const NextIcon = s.next ? tierIcon(s.next.icon) : Crown;
@@ -155,14 +159,21 @@ export function PointsCard() {
             </span>
           </div>
         </div>
-        <p className="text-primary mt-4 mb-5 text-sm font-semibold">
-          {s.next
-            ? t("toNextTier", { points: s.remainingToNext, tier: s.next.name })
-            : t("tierMax")}
-        </p>
+        {s.paused ? (
+          <p className="text-muted-foreground mt-4 mb-5 flex items-center gap-1.5 text-sm font-semibold">
+            <PauseCircle className="size-4" />
+            {t("pointsPaused")}
+          </p>
+        ) : (
+          <p className="text-primary mt-4 mb-5 text-sm font-semibold">
+            {s.next
+              ? t("toNextTier", { points: s.remainingToNext, tier: s.next.name })
+              : t("tierMax")}
+          </p>
+        )}
       </button>
 
-      {s.next ? (
+      {!s.paused && s.next ? (
         <>
           <div className="mb-1.5 flex items-center justify-between text-xs font-bold whitespace-nowrap">
             <span className="text-foreground inline-flex items-center gap-1">

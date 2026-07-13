@@ -171,3 +171,73 @@ describe("PointsService.recompute", () => {
     expect(repo.saveAccount).toHaveBeenCalled(); // but the account is created
   });
 });
+
+describe("per-currency rate + loyalty gating (points config)", () => {
+  let repo: FakeRepo;
+  beforeEach(() => {
+    repo = new FakeRepo();
+  });
+
+  it("pointsForPrice honors a custom per-currency rate", () => {
+    // 1 USD (100 cents) → 4 pts at {per:1, points:4}
+    expect(pointsForPrice(100, { per: 1, points: 4 })).toBe(4);
+    // 4.99 USD floors to 4 major units → 16 pts
+    expect(pointsForPrice(499, { per: 1, points: 4 })).toBe(16);
+    // below `per` major units → 0 (same floor semantics as ever)
+    expect(pointsForPrice(50_000, { per: 1_000, points: 10 })).toBe(0);
+  });
+
+  it("earns 0 (no row, no side effects) when the org paused points", async () => {
+    const { service, realtime } = build(repo);
+    const res = await service.earnForPurchase(ORG, CUSTOMER, 100_000, "p1", STORE, {
+      loyalty: { enabled: false, rate: { per: 100, points: 4 } },
+    });
+    expect(res.earned).toBe(0);
+    expect(repo.earn).not.toHaveBeenCalled();
+    expect(realtime.publish).not.toHaveBeenCalled();
+  });
+
+  it("earns with the purchase currency's rate when provided", async () => {
+    const { service } = build(repo);
+    // 5 USD at {per:1, points:4} → 20 pts (the COP default would give 0).
+    const res = await service.earnForPurchase(ORG, CUSTOMER, 500, "p1", STORE, {
+      loyalty: { enabled: true, rate: { per: 1, points: 4 } },
+    });
+    expect(res.earned).toBe(20);
+  });
+
+  it("recompute with noDowngrade keeps a higher stored tier (grace)", async () => {
+    repo.tierPointsValue = 100; // window says hoja…
+    repo.accountRow = {
+      id: "a1",
+      customerId: CUSTOMER,
+      organizationId: ORG,
+      currentTierKey: "oro", // …but the customer froze at oro
+      nearNotifiedTierKey: null,
+      updatedAt: new Date(),
+    };
+    const { service, enqueue } = build(repo);
+    const res = await service.recompute(ORG, CUSTOMER, { noDowngrade: true });
+    expect(res).toBeNull();
+    expect(repo.saveAccount).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it("recompute with noDowngrade still allows an upgrade", async () => {
+    repo.tierPointsValue = 1200; // → oro
+    repo.accountRow = {
+      id: "a1",
+      customerId: CUSTOMER,
+      organizationId: ORG,
+      currentTierKey: "hoja",
+      nearNotifiedTierKey: null,
+      updatedAt: new Date(),
+    };
+    const { service, enqueue } = build(repo);
+    const res = await service.recompute(ORG, CUSTOMER, { noDowngrade: true });
+    expect(res?.tierName).toBeTruthy();
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ notificationKey: "tier-up" }),
+    );
+  });
+});

@@ -11,7 +11,13 @@ import {
 } from "../../trpc";
 import { tasks } from "@trigger.dev/sdk/v3";
 
-import { loadLocaleContext } from "../_shared/localize";
+import {
+  earnsPoints,
+  earnsStamps,
+  getLoyaltyConfig,
+  loadLocaleContext,
+  rateForCurrency,
+} from "../_shared/localize";
 import { resolveAttribution } from "../_shared/attribution";
 import { resolveActiveStoreId } from "../_shared/store-context";
 import { buildPointsService } from "../points";
@@ -209,6 +215,17 @@ export const stampsRouter = router({
         };
       }
 
+      // Org loyalty config (cached): which tracks earn + the purchase
+      // currency's points rate. Redemption paths are never gated — a paused
+      // track's balances stay spendable.
+      const loyalty = await getLoyaltyConfig(ctx.db, org);
+      const stampsOn = earnsStamps(loyalty.mode);
+      const pointsOn = earnsPoints(loyalty.mode);
+      grantStamp = grantStamp && stampsOn;
+      if (resolved.grantStamp !== undefined || !stampsOn) {
+        resolved = { ...resolved, grantStamp };
+      }
+
       // Spendable balances BEFORE the purchase — used to detect rewards that
       // cross from not-claimable to claimable after this purchase's grants.
       const rewardsRepo = new RewardsRepository(ctx.db);
@@ -239,6 +256,11 @@ export const stampsRouter = router({
       const points = await buildPointsService(ctx)
         .earnForPurchase(org, input.customerId, netPrice, purchaseId, storeId, {
           multiplier: pointsMultiplier,
+          loyalty: {
+            enabled: pointsOn,
+            rate: rateForCurrency(loyalty, input.currency ?? "COP"),
+            tierGraceUntil: loyalty.tierGraceUntil,
+          },
         })
         .catch(() => ({ earned: 0, balance: 0, tierUp: null }));
       if (grantStamp) {
@@ -299,9 +321,16 @@ export const stampsRouter = router({
     ),
 
   // ---- Customer (self) ------------------------------------------------
-  myWallet: protectedProcedure.query(async ({ ctx }) =>
-    buildService(ctx).myWallet(await orgId(), ctx.session.user.id),
-  ),
+  // `paused` rides along so the card can show the redeem-only state (mode
+  // gates EARNING only; collected stamps stay spendable).
+  myWallet: protectedProcedure.query(async ({ ctx }) => {
+    const org = await orgId();
+    const [wallet, loyalty] = await Promise.all([
+      buildService(ctx).myWallet(org, ctx.session.user.id),
+      getLoyaltyConfig(ctx.db, org),
+    ]);
+    return { ...wallet, paused: !earnsStamps(loyalty.mode) };
+  }),
 
   myHistory: protectedProcedure
     .input(historyInputSchema)
