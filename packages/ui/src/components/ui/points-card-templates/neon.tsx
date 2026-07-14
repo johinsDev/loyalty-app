@@ -43,7 +43,9 @@ export function NeonPointsCard({ view }: { view: PointsCardView }) {
           }
           transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
         >
-          <svg viewBox="0 0 160 160" className="absolute inset-0 size-full" aria-hidden>
+          {/* overflow-visible: the neon drop-shadow must bleed past the svg
+              box, or the glow clips into a visible square. */}
+          <svg viewBox="0 0 160 160" className="absolute inset-0 size-full overflow-visible" aria-hidden>
             <circle cx="80" cy="80" r="68" fill="none" strokeWidth="10" className="stroke-white/10" />
             <circle
               cx="80"
