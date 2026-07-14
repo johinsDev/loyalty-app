@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 
-import { balanceSizeClass, CountUp, PausedNotice, TierIcon, usePrefersReducedMotion } from "./shared";
+import { balanceSizeClass, CountUp, PausedNotice, PressArea, TierIcon, usePrefersReducedMotion } from "./shared";
 import type { PointsCardView } from "./types";
 
 /** Deterministic pearl layout (no Math.random — SSR-stable). */
@@ -37,10 +37,8 @@ export function BubblesPointsCard({ view }: { view: PointsCardView }) {
           ))
         : null}
 
-      <button
-        type="button"
-        onClick={view.onPress}
-        aria-label={view.detailAriaLabel}
+      <PressArea
+        view={view}
         className="relative z-10 flex w-full flex-col items-center transition-transform active:scale-[0.98]"
       >
         <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold">
@@ -57,7 +55,7 @@ export function BubblesPointsCard({ view }: { view: PointsCardView }) {
             {view.nextLabel ?? view.maxLabel}
           </p>
         )}
-      </button>
+      </PressArea>
 
       {!view.pausedLabel && view.nextTierName ? (
         <div className="relative z-10 mt-5">

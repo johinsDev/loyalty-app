@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 
-import { CountUp, PausedNotice, TierIcon, usePrefersReducedMotion } from "./shared";
+import { CountUp, PausedNotice, PressArea, TierIcon, usePrefersReducedMotion } from "./shared";
 import type { PointsCardView } from "./types";
 
 /** Template #4 — "Holográfica": premium credit-card look with a holographic
@@ -14,7 +14,7 @@ export function HoloPointsCard({ view }: { view: PointsCardView }) {
     <motion.section
       className="relative overflow-hidden rounded-3xl p-6 text-white shadow-xl shadow-black/30"
       style={{
-        background: `linear-gradient(135deg, #1f2937 0%, #111827 55%, ${view.tierColor}55 130%)`,
+        background: `linear-gradient(135deg, color-mix(in srgb, var(--primary) 40%, #10131a) 0%, color-mix(in srgb, var(--primary) 14%, #0a0d13) 55%, ${view.tierColor}55 130%)`,
         aspectRatio: "1.586", // ISO card
       }}
       whileTap={reduced ? undefined : { rotateX: 6, rotateY: -6, scale: 0.99 }}
@@ -33,10 +33,8 @@ export function HoloPointsCard({ view }: { view: PointsCardView }) {
         transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut", repeatDelay: 1.2 }}
       />
 
-      <button
-        type="button"
-        onClick={view.onPress}
-        aria-label={view.detailAriaLabel}
+      <PressArea
+        view={view}
         className="relative z-10 flex h-full w-full flex-col justify-between text-left"
       >
         <div className="flex items-center justify-between">
@@ -72,7 +70,7 @@ export function HoloPointsCard({ view }: { view: PointsCardView }) {
             </div>
           ) : null}
         </div>
-      </button>
+      </PressArea>
     </motion.section>
   );
 }

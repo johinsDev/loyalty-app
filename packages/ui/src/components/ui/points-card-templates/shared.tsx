@@ -24,6 +24,31 @@ export function TierIcon({
   return <Icon className={className} style={style} />;
 }
 
+/** The card's pressable area. Renders a real <button> only when the view has
+ *  an onPress — gallery previews (no onPress) get a <div>, so nesting the
+ *  preview inside the picker's own <button> stays valid HTML. */
+export function PressArea({
+  view,
+  className,
+  children,
+}: {
+  view: PointsCardView;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  if (!view.onPress) return <div className={className}>{children}</div>;
+  return (
+    <button
+      type="button"
+      onClick={view.onPress}
+      aria-label={view.detailAriaLabel}
+      className={className}
+    >
+      {children}
+    </button>
+  );
+}
+
 /** Shared reduced-motion check (templates freeze their loops when set). */
 export function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = React.useState(false);

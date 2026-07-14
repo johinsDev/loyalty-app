@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import * as React from "react";
 
-import { balanceSizeClass, CountUp, PausedNotice, TierIcon, usePrefersReducedMotion } from "./shared";
+import { balanceSizeClass, CountUp, PausedNotice, PressArea, TierIcon, usePrefersReducedMotion } from "./shared";
 import type { PointsCardView } from "./types";
 
 const RING_CIRCUMFERENCE = 427; // r=68 → 2πr
@@ -26,11 +26,12 @@ export function NeonPointsCard({ view }: { view: PointsCardView }) {
   const balanceLabel = view.formatBalance(view.balance);
 
   return (
-    <section className="rounded-3xl bg-slate-950 p-7 text-white shadow-xl shadow-black/40 ring-1 ring-white/10">
-      <button
-        type="button"
-        onClick={view.onPress}
-        aria-label={view.detailAriaLabel}
+    <section
+      className="rounded-3xl p-7 text-white shadow-xl shadow-black/40 ring-1 ring-white/10"
+      style={{ background: "color-mix(in srgb, var(--primary) 18%, #05060a)" }}
+    >
+      <PressArea
+        view={view}
         className="flex w-full flex-col items-center transition-transform active:scale-[0.98]"
       >
         <motion.div
@@ -81,7 +82,7 @@ export function NeonPointsCard({ view }: { view: PointsCardView }) {
             {view.nextLabel ?? view.maxLabel}
           </p>
         )}
-      </button>
+      </PressArea>
     </section>
   );
 }

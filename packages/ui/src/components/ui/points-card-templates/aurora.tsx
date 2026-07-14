@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 
-import { balanceSizeClass, CountUp, PausedNotice, TierIcon, usePrefersReducedMotion } from "./shared";
+import { balanceSizeClass, CountUp, PausedNotice, PressArea, TierIcon, usePrefersReducedMotion } from "./shared";
 import type { PointsCardView } from "./types";
 
 /** Template #2 — "Aurora líquida": soft blobs of the tier color drifting
@@ -21,7 +21,7 @@ export function AuroraPointsCard({ view }: { view: PointsCardView }) {
         };
 
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 p-7 shadow-xl shadow-black/10 dark:from-slate-900 dark:to-slate-950">
+    <section className="from-primary/10 via-background to-primary/5 relative overflow-hidden rounded-3xl bg-gradient-to-br p-7 shadow-xl shadow-black/10">
       {/* Aurora blobs — tier color + brand, blurred and drifting. */}
       <motion.div
         aria-hidden
@@ -37,10 +37,8 @@ export function AuroraPointsCard({ view }: { view: PointsCardView }) {
         transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      <button
-        type="button"
-        onClick={view.onPress}
-        aria-label={view.detailAriaLabel}
+      <PressArea
+        view={view}
         className="relative z-10 flex w-full flex-col items-center transition-transform active:scale-[0.98]"
       >
         <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase">
@@ -57,7 +55,7 @@ export function AuroraPointsCard({ view }: { view: PointsCardView }) {
             {view.nextLabel ?? view.maxLabel}
           </p>
         )}
-      </button>
+      </PressArea>
 
       {!view.pausedLabel && view.nextTierName ? (
         <div className="relative z-10 mt-5 h-2 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">

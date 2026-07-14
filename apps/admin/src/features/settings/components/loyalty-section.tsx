@@ -19,7 +19,7 @@ import {
   Skeleton,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Coins, Sparkles, Stamp } from "lucide-react";
+import { Check, Coins, Sparkles, Stamp } from "lucide-react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -38,6 +38,11 @@ const MODES: { key: Mode; icon: typeof Coins }[] = [
 
 const earnsPoints = (m: Mode) => m !== "stamps";
 const earnsStamps = (m: Mode) => m !== "points";
+
+const templateName = (key: string, locale: string): string => {
+  const tpl = POINTS_CARD_TEMPLATES.find((x) => x.key === key);
+  return tpl ? tpl.name[locale === "en" ? "en" : "es"] : key;
+};
 
 /** Same floor math as the server's `pointsForPrice` — keep in sync. */
 const pointsFor = (cents: number, rate: { per: number; points: number }): number =>
@@ -303,28 +308,61 @@ export function LoyaltySection() {
             {t("loyalty.templates.hint")}
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {POINTS_CARD_TEMPLATES.map((tpl) => (
-            <button
-              key={tpl.key}
-              type="button"
-              onClick={() => setTemplate(tpl.key)}
-              aria-label={tpl.name[locale === "en" ? "en" : "es"]}
-              className={`rounded-3xl text-left outline-none transition-transform ${
-                template === tpl.key
-                  ? "ring-primary ring-offset-card ring-2 ring-offset-2"
-                  : "hover:scale-[1.01]"
-              }`}
-            >
-              <div className="pointer-events-none">
-                <PointsCardTemplate template={tpl.key} view={sampleView} />
-              </div>
-              <div className="mt-1.5 flex items-center justify-center gap-1.5 pb-1 text-xs font-bold">
-                {template === tpl.key ? <span className="bg-primary size-1.5 rounded-full" /> : null}
-                {tpl.name[locale === "en" ? "en" : "es"]}
-              </div>
-            </button>
-          ))}
+        {/* `.preview-customer` re-themes --primary etc. to the tenant brand, so
+            these previews render in the STORE's colors, not the admin violet. */}
+        <div className="preview-customer grid gap-5 lg:grid-cols-[minmax(0,340px)_1fr] lg:items-start">
+          <div className="space-y-2">
+            <PointsCardTemplate template={template} view={sampleView} />
+            <p className="text-muted-foreground text-center text-xs font-bold">
+              {templateName(template, locale)}
+            </p>
+          </div>
+
+          <div
+            role="radiogroup"
+            aria-label={t("loyalty.templates.title")}
+            className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5"
+          >
+            {POINTS_CARD_TEMPLATES.map((tpl) => {
+              const selected = template === tpl.key;
+              return (
+                <button
+                  key={tpl.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setTemplate(tpl.key)}
+                  className={`group rounded-2xl text-left outline-none ${
+                    selected ? "" : "opacity-80 hover:opacity-100"
+                  }`}
+                >
+                  <div
+                    className={`bg-muted/40 relative h-24 overflow-hidden rounded-2xl transition-shadow ${
+                      selected
+                        ? "ring-primary ring-2"
+                        : "ring-border group-hover:ring-primary/40 ring-1"
+                    }`}
+                  >
+                    <div className="pointer-events-none absolute top-0 left-1/2 w-[320px] origin-top -translate-x-1/2 scale-50 p-2">
+                      <PointsCardTemplate template={tpl.key} view={sampleView} />
+                    </div>
+                    {selected ? (
+                      <span className="bg-primary absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-full text-white shadow-sm">
+                        <Check className="size-3.5" strokeWidth={3} />
+                      </span>
+                    ) : null}
+                  </div>
+                  <div
+                    className={`mt-1 truncate text-center text-xs font-bold ${
+                      selected ? "" : "text-muted-foreground"
+                    }`}
+                  >
+                    {tpl.name[locale === "en" ? "en" : "es"]}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
