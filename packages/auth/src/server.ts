@@ -136,6 +136,12 @@ export function createAuth(
         crossSubDomainCookies: { enabled: true, domain: cookieDomain },
       },
     }),
+    // Where the admin plugin sends a banned user hitting the OAuth callback
+    // (Google). Without this it defaults to `${baseURL}/error` — the Worker
+    // origin, which has no such route. Point it at the web sign-in so the
+    // `?error=banned` notice renders. Only OAuth-callback errors redirect here;
+    // admin (magic-link/password) never reaches this branch.
+    onAPIError: { errorURL: `${webURL}/sign-in` },
     rateLimit: {
       enabled: true,
       window: 60,
