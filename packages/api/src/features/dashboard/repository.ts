@@ -92,13 +92,20 @@ export class DashboardRepository {
       this.db
         .select({ v: cnt })
         .from(purchase)
-        .where(and(eq(purchase.organizationId, orgId), gte(purchase.createdAt, curStart))),
+        .where(
+          and(
+            eq(purchase.organizationId, orgId),
+            isNull(purchase.voidedAt),
+            gte(purchase.createdAt, curStart),
+          ),
+        ),
       this.db
         .select({ v: cnt })
         .from(purchase)
         .where(
           and(
             eq(purchase.organizationId, orgId),
+            isNull(purchase.voidedAt),
             gte(purchase.createdAt, prevStart),
             lt(purchase.createdAt, curStart),
           ),
@@ -106,13 +113,20 @@ export class DashboardRepository {
       this.db
         .select({ v: revenue })
         .from(purchase)
-        .where(and(eq(purchase.organizationId, orgId), gte(purchase.createdAt, curStart))),
+        .where(
+          and(
+            eq(purchase.organizationId, orgId),
+            isNull(purchase.voidedAt),
+            gte(purchase.createdAt, curStart),
+          ),
+        ),
       this.db
         .select({ v: revenue })
         .from(purchase)
         .where(
           and(
             eq(purchase.organizationId, orgId),
+            isNull(purchase.voidedAt),
             gte(purchase.createdAt, prevStart),
             lt(purchase.createdAt, curStart),
           ),
@@ -152,7 +166,13 @@ export class DashboardRepository {
       this.db
         .select({ createdAt: purchase.createdAt })
         .from(purchase)
-        .where(and(eq(purchase.organizationId, orgId), gte(purchase.createdAt, start))),
+        .where(
+        and(
+          eq(purchase.organizationId, orgId),
+          isNull(purchase.voidedAt),
+          gte(purchase.createdAt, start),
+        ),
+      ),
       this.db
         .select({ createdAt: redemption.createdAt })
         .from(redemption)
@@ -189,7 +209,7 @@ export class DashboardRepository {
       .from(purchase)
       .innerJoin(customer, eq(customer.id, purchase.customerId))
       .leftJoin(store, eq(store.id, purchase.storeId))
-      .where(eq(purchase.organizationId, orgId))
+      .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt)))
       .orderBy(desc(purchase.createdAt))
       .limit(limit);
     return rows.map((r) => ({
@@ -245,7 +265,13 @@ export class DashboardRepository {
       })
       .from(purchase)
       .innerJoin(customer, eq(customer.id, purchase.customerId))
-      .where(and(eq(purchase.organizationId, orgId), gte(purchase.createdAt, start)))
+      .where(
+        and(
+          eq(purchase.organizationId, orgId),
+          isNull(purchase.voidedAt),
+          gte(purchase.createdAt, start),
+        ),
+      )
       .groupBy(customer.id)
       .orderBy(desc(sql`coalesce(sum(${purchase.priceCents}), 0)`))
       .limit(limit);
@@ -262,7 +288,7 @@ export class DashboardRepository {
     const rows = await this.db
       .select({ customerId: purchase.customerId, createdAt: purchase.createdAt })
       .from(purchase)
-      .where(eq(purchase.organizationId, orgId));
+      .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt)));
     // Last purchase per customer (drizzle returns Date; avoids sql max() ambiguity).
     const last = new Map<string, Date>();
     for (const p of rows) {
@@ -295,7 +321,13 @@ export class DashboardRepository {
     const rows = await this.db
       .select({ customerId: purchase.customerId, c: sql<number>`count(*)` })
       .from(purchase)
-      .where(and(eq(purchase.organizationId, orgId), gte(purchase.createdAt, start)))
+      .where(
+        and(
+          eq(purchase.organizationId, orgId),
+          isNull(purchase.voidedAt),
+          gte(purchase.createdAt, start),
+        ),
+      )
       .groupBy(purchase.customerId);
     const activeCustomers = rows.length;
     const totalVisits = rows.reduce((s, r) => s + Number(r.c), 0);
@@ -429,7 +461,13 @@ export class DashboardRepository {
       })
       .from(purchaseItem)
       .innerJoin(purchase, eq(purchase.id, purchaseItem.purchaseId))
-      .where(and(eq(purchase.organizationId, orgId), gte(purchase.createdAt, start)));
+      .where(
+        and(
+          eq(purchase.organizationId, orgId),
+          isNull(purchase.voidedAt),
+          gte(purchase.createdAt, start),
+        ),
+      );
     if (lines.length === 0) return [];
 
     // COGS per variant (Σ qty × ingredient cost) for the sold variants.
@@ -493,7 +531,7 @@ export class DashboardRepository {
     const rows = await this.db
       .select({ customerId: purchase.customerId, createdAt: purchase.createdAt })
       .from(purchase)
-      .where(eq(purchase.organizationId, orgId));
+      .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt)));
 
     const active = new Map<string, Set<number>>();
     for (const p of rows) {
@@ -544,7 +582,13 @@ export class DashboardRepository {
       this.db
         .select({ v: sql<number>`count(distinct ${purchase.customerId})` })
         .from(purchase)
-        .where(and(eq(purchase.organizationId, orgId), gte(purchase.createdAt, start))),
+        .where(
+        and(
+          eq(purchase.organizationId, orgId),
+          isNull(purchase.voidedAt),
+          gte(purchase.createdAt, start),
+        ),
+      ),
       this.db
         .select({ v: sql<number>`count(distinct ${redemption.customerId})` })
         .from(redemption)
@@ -571,7 +615,13 @@ export class DashboardRepository {
       })
       .from(purchase)
       .leftJoin(store, eq(store.id, purchase.storeId))
-      .where(and(eq(purchase.organizationId, orgId), gte(purchase.createdAt, start)))
+      .where(
+        and(
+          eq(purchase.organizationId, orgId),
+          isNull(purchase.voidedAt),
+          gte(purchase.createdAt, start),
+        ),
+      )
       .groupBy(purchase.storeId)
       .orderBy(desc(sql`coalesce(sum(${purchase.priceCents}), 0)`));
     return rows.map((r) => ({
