@@ -234,7 +234,7 @@ export function SignInForm({
               <p className="text-center text-sm font-semibold text-amber-600">
                 {t("errorForbidden")}
               </p>
-            )}
+            ) : null}
             <div className="relative z-10 flex h-11 items-center justify-center">
               {slideIdx === lastIntro && googleEnabled && (
                 <button
