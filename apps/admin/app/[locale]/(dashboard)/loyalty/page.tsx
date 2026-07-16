@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { LoyaltySection } from "@/features/settings/components/loyalty-section";
+import { StampsSection } from "@/features/settings/components/stamps-section";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -19,8 +20,13 @@ export default async function LoyaltyPage({ params }: Props) {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-6 lg:px-8">
-      <div className="bg-card border-border rounded-3xl border p-6 shadow-sm">
-        <LoyaltySection />
+      <div className="space-y-6">
+        <div className="bg-card border-border rounded-3xl border p-6 shadow-sm">
+          <LoyaltySection />
+        </div>
+        <div className="bg-card border-border rounded-3xl border p-6 shadow-sm">
+          <StampsSection />
+        </div>
       </div>
     </div>
   );

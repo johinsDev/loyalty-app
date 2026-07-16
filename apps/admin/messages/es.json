@@ -2178,6 +2178,80 @@
       "cancel": "Cancelar",
       "error": "No se pudo guardar la configuración",
       "errRateMissing": "Falta la equivalencia de alguna moneda habilitada.",
+      "stamps": {
+        "title": "Tarjeta de sellos",
+        "desc": "El premio, las reglas para ganar sellos y el diseño de la tarjeta que ven tus clientes.",
+        "pointsOnly": "Los sellos están en pausa porque tu modelo es solo puntos. Cambiá el modelo arriba para volver a editarlos.",
+        "prize": "Premio de la tarjeta",
+        "prizeUnlinked": "Sin premio vinculado",
+        "unlinkedNudge": "Vinculá un premio del catálogo para que la tarjeta muestre qué se gana. Mientras tanto la meta queda en 9 sellos.",
+        "brokenLink": "El premio vinculado ya no está publicado o dejó de costar sellos. Elegí otro para que la tarjeta vuelva a mostrarlo.",
+        "goal": "Meta de sellos",
+        "goalHint": "Al guardar se actualiza el costo en sellos del premio vinculado.",
+        "perStamp": "Compras por sello",
+        "perStampHint": "1 = cada compra suma un sello.",
+        "minAmount": "Monto mínimo por compra",
+        "minAmountHint": "0 = sin mínimo. Las compras por debajo no suman sello.",
+        "categories": "Categorías que suman",
+        "categoriesHint": "Sin selección = todas las categorías suman sellos.",
+        "editor": "Diseño del sello",
+        "icon": "Ícono",
+        "iconUpload": "Subir imagen",
+        "onColor": "Color del sello ganado",
+        "brandColor": "Color de marca",
+        "customColor": "Personalizado",
+        "resetColor": "Volver al color de marca",
+        "offStyle": "Sellos pendientes",
+        "offStyleOpt": {
+          "dim": "Atenuado",
+          "outline": "Contorno",
+          "number": "Número"
+        },
+        "offStyleDesc": {
+          "dim": "El ícono se ve tenue hasta ganarlo.",
+          "outline": "Solo el borde del ícono.",
+          "number": "Muestra el número del sello."
+        },
+        "sampleCount": "{count} sellos",
+        "templates": {
+          "title": "Diseño de la tarjeta de sellos",
+          "hint": "Cómo se ve la tarjeta en la app del cliente. El preview es el render real."
+        },
+        "copies": {
+          "title": "Textos de la tarjeta",
+          "hint": "Dejá un campo vacío para usar el texto por defecto de la app.",
+          "tabLabel": "Idioma de los textos",
+          "label": {
+            "title": "Título",
+            "subtitle": "Subtítulo",
+            "filledTitle": "Sello ganado — título",
+            "filledBody": "Sello ganado — detalle",
+            "emptyTitle": "Sello pendiente — título",
+            "emptyBody": "Sello pendiente — detalle",
+            "rewardTitle": "Premio — título",
+            "rewardBody": "Premio — detalle",
+            "paused": "Aviso de pausa"
+          },
+          "ph": {
+            "title": "Tu tarjeta de sellos",
+            "subtitle": "Te faltan '{count}' sellos para tu bebida gratis 🧋",
+            "filledTitle": "Sello ganado",
+            "filledBody": "Sello ganado",
+            "emptyTitle": "Sello pendiente",
+            "emptyBody": "Te faltan '{count}' sellos para tu bebida gratis 🧋",
+            "rewardTitle": "Tu premio",
+            "rewardBody": "Completa tu tarjeta y reclama una bebida gratis 🧋",
+            "paused": "Sellos en pausa — podés canjear los que tenés, no se suman más."
+          },
+          "countHint": "Podés usar '{count}' para el número de sellos que faltan.",
+          "countRequired": "Tiene que incluir '{count}' — el número de sellos que faltan."
+        },
+        "confirmLowerTitle": "¿Bajar la meta de sellos?",
+        "confirmLowerBody": "Los clientes que ya llegan a la nueva meta verán su premio desbloqueado al instante y entran a los recordatorios de canje.",
+        "confirmLowerAction": "Sí, guardar",
+        "errReward": "El premio elegido no es válido: tiene que estar publicado y costar sellos.",
+        "errPlaceholder": "Hay un texto que usa mal los marcadores: revisá que '{count}' esté donde corresponde."
+      },
       "templates": {
         "title": "Diseño de la tarjeta de puntos",
         "hint": "Cómo se ve la tarjeta en la app del cliente. El preview es el render real.",

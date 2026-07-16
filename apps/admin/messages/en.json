@@ -2178,6 +2178,80 @@
       "cancel": "Cancel",
       "error": "Could not save the configuration",
       "errRateMissing": "An enabled currency is missing its equivalence.",
+      "stamps": {
+        "title": "Stamp card",
+        "desc": "The prize, the earning rules, and the card design your customers see.",
+        "pointsOnly": "Stamps are paused because your model is points-only. Switch the model above to edit them again.",
+        "prize": "Card prize",
+        "prizeUnlinked": "No prize linked",
+        "unlinkedNudge": "Link a catalog reward so the card shows what customers earn. Meanwhile the goal defaults to 9 stamps.",
+        "brokenLink": "The linked prize is no longer published or no longer costs stamps. Pick another one so the card shows it again.",
+        "goal": "Stamp goal",
+        "goalHint": "Saving updates the linked reward's stamp cost.",
+        "perStamp": "Purchases per stamp",
+        "perStampHint": "1 = every purchase earns a stamp.",
+        "minAmount": "Minimum per purchase",
+        "minAmountHint": "0 = no minimum. Purchases below it earn no stamp.",
+        "categories": "Categories that count",
+        "categoriesHint": "No selection = every category earns stamps.",
+        "editor": "Stamp design",
+        "icon": "Icon",
+        "iconUpload": "Upload image",
+        "onColor": "Earned-stamp color",
+        "brandColor": "Brand color",
+        "customColor": "Custom",
+        "resetColor": "Back to brand color",
+        "offStyle": "Pending stamps",
+        "offStyleOpt": {
+          "dim": "Dimmed",
+          "outline": "Outline",
+          "number": "Number"
+        },
+        "offStyleDesc": {
+          "dim": "The icon shows faded until earned.",
+          "outline": "Only the icon's outline.",
+          "number": "Shows the stamp's number."
+        },
+        "sampleCount": "{count} stamps",
+        "templates": {
+          "title": "Stamp card design",
+          "hint": "How the card looks in the customer app. The preview is the real render."
+        },
+        "copies": {
+          "title": "Card texts",
+          "hint": "Leave a field empty to use the app's default text.",
+          "tabLabel": "Text language",
+          "label": {
+            "title": "Title",
+            "subtitle": "Subtitle",
+            "filledTitle": "Earned stamp — title",
+            "filledBody": "Earned stamp — detail",
+            "emptyTitle": "Pending stamp — title",
+            "emptyBody": "Pending stamp — detail",
+            "rewardTitle": "Prize — title",
+            "rewardBody": "Prize — detail",
+            "paused": "Pause notice"
+          },
+          "ph": {
+            "title": "Your stamp card",
+            "subtitle": "'{count}' more stamps for your free drink 🧋",
+            "filledTitle": "Stamp earned",
+            "filledBody": "Stamp earned",
+            "emptyTitle": "Stamp pending",
+            "emptyBody": "'{count}' more stamps for your free drink 🧋",
+            "rewardTitle": "Your reward",
+            "rewardBody": "Complete your card and claim a free drink 🧋",
+            "paused": "Stamps paused — you can redeem the ones you have, no new earning."
+          },
+          "countHint": "You can use '{count}' for the number of stamps left.",
+          "countRequired": "Must include '{count}' — the number of stamps left."
+        },
+        "confirmLowerTitle": "Lower the stamp goal?",
+        "confirmLowerBody": "Customers already at the new goal will see their prize unlocked right away and enter the redeem reminders.",
+        "confirmLowerAction": "Yes, save",
+        "errReward": "The chosen prize isn't valid: it must be published and cost stamps.",
+        "errPlaceholder": "A text misuses the placeholders: check that '{count}' is where it belongs."
+      },
       "templates": {
         "title": "Points card design",
         "hint": "How the card looks in the customer app. The preview is the real render.",
