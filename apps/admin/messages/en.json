@@ -42,7 +42,8 @@
     "funnel": "Funnel",
     "brand": "Brand",
     "team": "Team",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "loyalty": "Loyalty"
   },
   "Notifications": {
     "title": "Notifications",
@@ -238,7 +239,21 @@
     "comingSoon": "Coming soon",
     "fraudComingSoon": "Anomaly detection (rapid scans, code reuse). In progress.",
     "dauComingSoon": "Daily active users. Needs session events.",
-    "impactComingSoon": "Member vs non-member spend and plan ROI — coming soon."
+    "impactComingSoon": "Member vs non-member spend and plan ROI — coming soon.",
+    "setup": {
+      "title": "Set up your business",
+      "subtitle": "The minimum steps to get your program running.",
+      "progress": "{done} of {total}",
+      "items": {
+        "brand": "Pick your logo and colors",
+        "store": "Create your store",
+        "products": "Add your products",
+        "loyalty": "Define your loyalty rules",
+        "rewards": "Publish your rewards",
+        "promos": "Publish a promo",
+        "onboarding": "Build the app onboarding"
+      }
+    }
   },
   "Customers": {
     "title": "Customers",
@@ -2087,7 +2102,9 @@
       "logoUploading": "Uploading…",
       "error": "Couldn't save. Try again.",
       "invalidData": "Check the fields before saving.",
-      "invalidField": "Check the “{field}” field."
+      "invalidField": "Check the “{field}” field.",
+      "cropFit": "Fit",
+      "cropFill": "Fill"
     },
     "hours": {
       "title": "Hours & location",
@@ -2128,6 +2145,120 @@
         "stamps": "Stamps",
         "points": "Points",
         "both": "Both"
+      },
+      "modeDesc": {
+        "stamps": "Stamps only: points are paused.",
+        "points": "Points only: stamps are paused.",
+        "both": "Stamps and points on every purchase."
+      },
+      "willPausePoints": "Saving pauses points: customers stop earning (existing balances stay redeemable) and get notified.",
+      "willPauseStamps": "Saving pauses stamps: customers stop collecting stamps (existing ones stay redeemable) and get notified.",
+      "equivalence": "Points equivalence",
+      "equivalenceHint": "How many points each purchase grants, per currency. Purchases below the base amount earn nothing.",
+      "ratePrefix": "For every",
+      "ratePoints": "points",
+      "insights": {
+        "title": "What your rule means",
+        "pointsOff": "Points are off in this mode.",
+        "avgTicket": "Real average ticket: {amount}",
+        "avgCatalog": "Catalog average price: {amount}",
+        "perPurchase": "≈ {n} pts per purchase",
+        "purchases": "≈ {n} purchases",
+        "unreachable": "unreachable",
+        "noData": "No pricing data yet.",
+        "multiplier": "Active multiplier promos: {names}. They lower the purchases needed."
+      },
+      "confirmPointsTitle": "Pause points?",
+      "confirmPointsBody": "Customers stop earning points and get a notice (push + feed). Balances stay redeemable and tiers freeze until you re-enable.",
+      "confirmStampsTitle": "Pause stamps?",
+      "confirmStampsBody": "Customers stop collecting stamps and get a notice (push + feed). Existing stamps stay redeemable.",
+      "confirmPointsRewards": "You have {n} published points rewards — they stay redeemable.",
+      "confirmMultiplier": "You have {n} active points-multiplier promos that will stop having effect.",
+      "confirmAction": "Yes, pause and notify",
+      "cancel": "Cancel",
+      "error": "Could not save the configuration",
+      "errRateMissing": "An enabled currency is missing its equivalence.",
+      "stamps": {
+        "title": "Stamp card",
+        "desc": "The prize, the earning rules, and the card design your customers see.",
+        "prize": "Card prize",
+        "prizeUnlinked": "No prize linked",
+        "unlinkedNudge": "Link a catalog reward so the card shows what customers earn. Meanwhile the goal defaults to 9 stamps.",
+        "brokenLink": "The linked prize is no longer published or no longer costs stamps. Pick another one so the card shows it again.",
+        "goal": "Stamp goal",
+        "goalHint": "Saving updates the linked reward's stamp cost.",
+        "perStamp": "Purchases per stamp",
+        "perStampHint": "1 = every purchase earns a stamp.",
+        "minAmount": "Minimum per purchase",
+        "minAmountHint": "0 = no minimum. Purchases below it earn no stamp.",
+        "categories": "Categories that count",
+        "categoriesHint": "No selection = every category earns stamps.",
+        "icon": "Icon",
+        "iconUpload": "Upload image",
+        "onColor": "Earned-stamp color",
+        "brandColor": "Brand color",
+        "customColor": "Custom",
+        "resetColor": "Back to brand color",
+        "offStyle": "Pending stamps",
+        "offStyleOpt": {
+          "dim": "Dimmed",
+          "outline": "Outline",
+          "number": "Number"
+        },
+        "offStyleDesc": {
+          "dim": "The icon shows faded until earned.",
+          "outline": "Only the icon's outline.",
+          "number": "Shows the stamp's number."
+        },
+        "sampleCount": "{count} stamps",
+        "copies": {
+          "title": "Card texts",
+          "hint": "Leave a field empty to use the app's default text.",
+          "tabLabel": "Text language",
+          "label": {
+            "title": "Title",
+            "subtitle": "Subtitle",
+            "filledTitle": "Earned stamp — title",
+            "filledBody": "Earned stamp — detail",
+            "emptyTitle": "Pending stamp — title",
+            "emptyBody": "Pending stamp — detail",
+            "rewardTitle": "Prize — title",
+            "rewardBody": "Prize — detail",
+            "paused": "Pause notice"
+          },
+          "ph": {
+            "title": "Your stamp card",
+            "subtitle": "'{count}' more stamps for your free drink 🧋",
+            "filledTitle": "Stamp earned",
+            "filledBody": "Stamp earned",
+            "emptyTitle": "Stamp pending",
+            "emptyBody": "'{count}' more stamps for your free drink 🧋",
+            "rewardTitle": "Your reward",
+            "rewardBody": "Complete your card and claim a free drink 🧋",
+            "paused": "Stamps paused — you can redeem the ones you have, no new earning."
+          },
+          "countHint": "You can use '{count}' for the number of stamps left.",
+          "countRequired": "Must include '{count}' — the number of stamps left."
+        },
+        "confirmLowerTitle": "Lower the stamp goal?",
+        "confirmLowerBody": "Customers already at the new goal will see their prize unlocked right away and enter the redeem reminders.",
+        "confirmLowerAction": "Yes, save",
+        "errReward": "The chosen prize isn't valid: it must be published and cost stamps.",
+        "errPlaceholder": "A text misuses the placeholders: check that '{count}' is where it belongs.",
+        "design": "Card design",
+        "designHint": "How it looks in the customer app. The preview is the real render.",
+        "template": "Template",
+        "prizeSearch": "Search a catalog reward…",
+        "prizeOption": "{name} ({n} stamps)",
+        "categoriesSearch": "Search and add categories…",
+        "noResults": "No results"
+      },
+      "templates": {
+        "title": "Points card design",
+        "hint": "How the card looks in the customer app. The preview is the real render.",
+        "sampleTier": "Flower",
+        "sampleNext": "Gold",
+        "sampleNextLabel": "385 pts to reach Gold"
       }
     },
     "onboarding": {

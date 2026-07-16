@@ -8,9 +8,11 @@ import {
   setLoyaltyScopeInputSchema,
   updateBrandingInputSchema,
   updateLocalizationInputSchema,
+  updateLoyaltyConfigInputSchema,
   updateOnboardingInputSchema,
   updateSeoInputSchema,
   updateSmartDeliveryInputSchema,
+  updateStampsConfigInputSchema,
 } from "./schemas";
 import { SettingsService } from "./service";
 
@@ -85,5 +87,37 @@ export const settingsRouter = router({
     .input(updateOnboardingInputSchema)
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).updateOnboarding(await requireOrg(), input),
+    ),
+
+  // ── Loyalty earn config ─────────────────────────────────────────────────────
+  /** Mode + card templates + locale-resolved stamp card copy/prize for the PWA
+   *  (public, read pre-render). Rates are not exposed here — they're a business
+   *  decision, not customer data. */
+  loyaltyConfig: publicProcedure.query(async ({ ctx }) => {
+    const id = await orgId();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    return makeService(ctx.db).loyaltyConfig(id, lc);
+  }),
+  loyaltyConfigAdmin: managerProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).loyaltyConfigAdmin(await requireOrg()),
+  ),
+  updateLoyaltyConfig: managerProcedure
+    .input(updateLoyaltyConfigInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).updateLoyaltyConfig(await requireOrg(), input),
+    ),
+  /** Static inputs for the equivalence panel (avg ticket, rewards, promos). */
+  loyaltyInsights: managerProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).loyaltyInsights(await requireOrg()),
+  ),
+
+  // ── Stamps config ───────────────────────────────────────────────────────────
+  stampsConfigAdmin: managerProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).stampsConfigAdmin(await requireOrg()),
+  ),
+  updateStampsConfig: managerProcedure
+    .input(updateStampsConfigInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).updateStampsConfig(await requireOrg(), input),
     ),
 });

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bash ../../scripts/api/gen-dev-vars.sh && wrangler dev",
+    "dev": "bash ../../scripts/api/gen-dev-vars.sh && bash ../../scripts/api/run-wrangler.sh dev",
     "deploy": "wrangler deploy",
     "smoke": "bun run src/smoke.ts",
     "lint": "oxlint src",

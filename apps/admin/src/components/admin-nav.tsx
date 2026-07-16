@@ -24,6 +24,7 @@ import {
   LifeBuoy,
   LogOut,
   type LucideIcon,
+  Medal,
   Megaphone,
   MoreHorizontal,
   Package,
@@ -77,6 +78,7 @@ const GROUPS: Group[] = [
       { href: "/products", key: "products", icon: Package },
       { href: "/rewards", key: "rewards", icon: Gift },
       { href: "/promotions", key: "promotions", icon: Sparkles, badge: "promotions" },
+      { href: "/loyalty", key: "loyalty", icon: Medal },
     ],
   },
   {

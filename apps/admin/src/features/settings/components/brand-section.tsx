@@ -240,6 +240,8 @@ function LogoField({
               outputWidth={512}
               confirmLabel={t("brand.logoCropConfirm")}
               cancelLabel={t("cancel")}
+              fitLabel={t("brand.cropFit")}
+              fillLabel={t("brand.cropFill")}
               busyLabel={t("brand.logoUploading")}
               busy={upload.isUploading}
               onCropped={(blob) =>

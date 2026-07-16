@@ -3,6 +3,8 @@ import {
   customer,
   ingredient,
   loyaltyCard,
+  organization,
+  organizationSettings,
   pointsAccount,
   pointsTransaction,
   product,
@@ -24,6 +26,7 @@ import {
   type CohortsView,
   type FunnelView,
   type NavCounts,
+  type SetupChecklist,
   type DashboardOverview,
   type DashboardSeriesPoint,
   type KpiStat,
@@ -630,6 +633,64 @@ export class DashboardRepository {
       count: Number(r.count),
       revenueCents: Number(r.revenue),
     }));
+  }
+
+  /** Setup checklist — every flag derived from live data, nothing stored. */
+  async setupChecklist(orgId: string): Promise<SetupChecklist> {
+    const exists = async (q: Promise<{ n: number }[]>) =>
+      Number((await q)[0]?.n ?? 0) > 0;
+    const [brandRow, settingsRow, products, rewards, promos, stores] = await Promise.all([
+      this.db
+        .select({ logo: organization.logo })
+        .from(organization)
+        .where(eq(organization.id, orgId))
+        .limit(1),
+      this.db
+        .select({
+          brandColor: organizationSettings.brandColor,
+          pointsRates: organizationSettings.pointsRates,
+          onboarding: organizationSettings.onboarding,
+        })
+        .from(organizationSettings)
+        .where(eq(organizationSettings.organizationId, orgId))
+        .limit(1),
+      exists(
+        this.db
+          .select({ n: sql<number>`count(*)` })
+          .from(product)
+          .where(and(eq(product.organizationId, orgId), eq(product.status, "active"))),
+      ),
+      exists(
+        this.db
+          .select({ n: sql<number>`count(*)` })
+          .from(reward)
+          .where(and(eq(reward.organizationId, orgId), eq(reward.status, "published"))),
+      ),
+      exists(
+        this.db
+          .select({ n: sql<number>`count(*)` })
+          .from(promo)
+          .where(and(eq(promo.organizationId, orgId), eq(promo.status, "published"))),
+      ),
+      exists(
+        this.db
+          .select({ n: sql<number>`count(*)` })
+          .from(store)
+          .where(and(eq(store.organizationId, orgId), isNull(store.deletedAt))),
+      ),
+    ]);
+    const s = settingsRow[0];
+    return {
+      brand: Boolean(brandRow[0]?.logo) && Boolean(s?.brandColor),
+      products,
+      rewards,
+      promos,
+      // "Saved at least once" — the loyalty rules card links here until the
+      // owner has made the earn rules an explicit decision.
+      loyalty: s?.pointsRates != null,
+      onboarding: (s?.onboarding?.length ?? 0) > 0,
+      store: stores,
+    };
   }
 
   /** Sidebar badges + topbar caption. Three counts, one round trip. */

@@ -17,6 +17,7 @@ import {
   updateCustomerInputSchema,
 } from "../features/customers/schemas";
 import { type Actor, CustomersService } from "../features/customers/service";
+import { getLoyaltyConfig } from "../features/_shared/localize";
 import { DrizzleNotificationPreferences } from "../features/notifications/preferences-repository";
 import { PointsRepository } from "../features/points/repository";
 import { PointsService } from "../features/points/service";
@@ -52,7 +53,11 @@ function actorOf(ctx: ActorCtx, org: string): Actor {
     userId: by,
     headers: ctx.headers,
     applyStamps: async (customerId, amount, reason) => {
-      await stamps.adjustForCustomer(org, customerId, amount, reason, by);
+      const loyalty = await getLoyaltyConfig(ctx.db, org);
+      await stamps.adjustForCustomer(org, customerId, amount, reason, by, {
+        goal: loyalty.stamps.goal,
+        purchasesPerStamp: loyalty.stamps.purchasesPerStamp,
+      });
     },
     applyPoints: async (customerId, amount, reason) => {
       await points.adjustForCustomer(org, customerId, amount, reason, by);

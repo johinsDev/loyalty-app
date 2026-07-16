@@ -3,8 +3,14 @@ import {
   organization,
   organizationSettings,
   type OrganizationSettingsRow,
+  product,
+  productPrice,
+  promo,
+  purchase,
+  reward,
+  rewardTranslation,
 } from "@loyalty/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 
 import type { UpdateLocalizationInput } from "./schemas";
 
@@ -24,6 +30,17 @@ type SettingsPatch = Partial<
     | "faviconUrl"
     | "smartDelivery"
     | "onboarding"
+    | "loyaltyMode"
+    | "pointsRates"
+    | "pointsCardTemplate"
+    | "tierGraceUntil"
+    | "stampsCardRewardId"
+    | "purchasesPerStamp"
+    | "stampMinAmount"
+    | "stampCategoryIds"
+    | "stampsCardTemplate"
+    | "stampStyle"
+    | "stampsCardCopy"
   >
 >;
 
@@ -84,5 +101,172 @@ export class SettingsRepository {
   async updateOrg(orgId: string, patch: { name?: string; logo?: string | null }): Promise<void> {
     if (patch.name === undefined && patch.logo === undefined) return;
     await this.db.update(organization).set(patch).where(eq(organization.id, orgId));
+  }
+
+  // ── Stamps config ────────────────────────────────────────────────────────
+
+  /** One reward by id, org-scoped (link validation + prize resolution). */
+  async getReward(
+    orgId: string,
+    id: string,
+  ): Promise<{
+    id: string;
+    name: string;
+    description: string | null;
+    stampsRequired: number | null;
+    status: string;
+  } | null> {
+    const rows = await this.db
+      .select({
+        id: reward.id,
+        name: reward.name,
+        description: reward.description,
+        stampsRequired: reward.stampsRequired,
+        status: reward.status,
+      })
+      .from(reward)
+      .where(and(eq(reward.organizationId, orgId), eq(reward.id, id)))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  /** Published stamps-priced rewards — the card-prize picker options. */
+  async stampsRewardOptions(
+    orgId: string,
+  ): Promise<{ id: string; name: string; stampsRequired: number | null }[]> {
+    return this.db
+      .select({
+        id: reward.id,
+        name: reward.name,
+        stampsRequired: reward.stampsRequired,
+      })
+      .from(reward)
+      .where(
+        and(
+          eq(reward.organizationId, orgId),
+          eq(reward.status, "published"),
+          isNotNull(reward.stampsRequired),
+        ),
+      )
+      .orderBy(reward.sortOrder, reward.name);
+  }
+
+  /** Per-locale name/description overrides for one reward (prize copy). */
+  async rewardTranslations(
+    rewardId: string,
+  ): Promise<{ locale: string; name: string; description: string | null }[]> {
+    return this.db
+      .select({
+        locale: rewardTranslation.locale,
+        name: rewardTranslation.name,
+        description: rewardTranslation.description,
+      })
+      .from(rewardTranslation)
+      .where(eq(rewardTranslation.rewardId, rewardId));
+  }
+
+  /** Write the goal onto the linked reward (single source of truth). */
+  async setRewardStampsRequired(
+    orgId: string,
+    id: string,
+    stampsRequired: number,
+  ): Promise<void> {
+    await this.db
+      .update(reward)
+      .set({ stampsRequired, updatedAt: new Date() })
+      .where(and(eq(reward.organizationId, orgId), eq(reward.id, id)));
+  }
+
+  // ── Loyalty equivalence insights (static inputs for the live panel) ─────────
+
+  /** Average ticket per currency from real, non-voided sales. */
+  async avgTicketByCurrency(orgId: string): Promise<Map<string, number>> {
+    const rows = await this.db
+      .select({
+        currency: purchase.currency,
+        avg: sql<number>`avg(${purchase.priceCents})`,
+      })
+      .from(purchase)
+      .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt)))
+      .groupBy(purchase.currency);
+    return new Map(rows.map((r) => [r.currency, Math.round(Number(r.avg))]));
+  }
+
+  /** Catalog average price for one currency (day-one fallback, before sales).
+   *  Default currency reads product base prices; others read the per-currency
+   *  override rows. Zero-priced products (variant-priced) are excluded. */
+  async catalogAvgPrice(
+    orgId: string,
+    currency: string,
+    isDefaultCurrency: boolean,
+  ): Promise<number | null> {
+    if (isDefaultCurrency) {
+      const rows = await this.db
+        .select({ avg: sql<number>`avg(${product.basePriceCents})` })
+        .from(product)
+        .where(
+          and(
+            eq(product.organizationId, orgId),
+            eq(product.status, "active"),
+            gt(product.basePriceCents, 0),
+          ),
+        );
+      const avg = rows[0]?.avg;
+      return avg == null ? null : Math.round(Number(avg));
+    }
+    const rows = await this.db
+      .select({ avg: sql<number>`avg(${productPrice.amountCents})` })
+      .from(productPrice)
+      .innerJoin(product, eq(product.id, productPrice.productId))
+      .where(
+        and(
+          eq(product.organizationId, orgId),
+          eq(product.status, "active"),
+          eq(productPrice.currency, currency),
+          gt(productPrice.amountCents, 0),
+        ),
+      );
+    const avg = rows[0]?.avg;
+    return avg == null ? null : Math.round(Number(avg));
+  }
+
+  /** Published rewards purchasable with points, cheapest first. */
+  async pointsRewards(
+    orgId: string,
+  ): Promise<{ id: string; name: string; icon: string | null; pointsCost: number }[]> {
+    const rows = await this.db
+      .select({ id: reward.id, name: reward.name, icon: reward.icon, pointsCost: reward.pointsCost })
+      .from(reward)
+      .where(
+        and(
+          eq(reward.organizationId, orgId),
+          eq(reward.status, "published"),
+          isNotNull(reward.pointsCost),
+        ),
+      )
+      .orderBy(reward.pointsCost);
+    return rows.map((r) => ({ ...r, pointsCost: r.pointsCost! }));
+  }
+
+  /** Published promos whose effect multiplies points earn. */
+  async multiplierPromos(
+    orgId: string,
+  ): Promise<{ id: string; name: string; multiplier: number }[]> {
+    const rows = await this.db
+      .select({ id: promo.id, name: promo.name, rule: promo.rule })
+      .from(promo)
+      .where(
+        and(
+          eq(promo.organizationId, orgId),
+          eq(promo.status, "published"),
+          sql`json_extract(${promo.rule}, '$.effect.kind') = 'pointsMultiplier'`,
+        ),
+      );
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name ?? "",
+      multiplier:
+        r.rule?.effect.kind === "pointsMultiplier" ? r.rule.effect.multiplier : 1,
+    }));
   }
 }

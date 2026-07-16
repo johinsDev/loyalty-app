@@ -1,7 +1,4 @@
-import { STAMPS_PER_REWARD, WALLET_SIZE } from "@loyalty/db/schema";
 import { z } from "zod";
-
-export { STAMPS_PER_REWARD, WALLET_SIZE };
 
 // Customer ids mirror Better Auth `user.id` (not necessarily a UUID), so all
 // customer-id inputs are validated as a non-empty string.
@@ -76,18 +73,29 @@ export const historyInputSchema = z.object({
   pageSize: z.number().int().min(1).max(50).default(20),
 });
 
+/** The org accrual numbers the repository needs to shape a `WalletView` —
+ *  resolved by the router from the cached `LoyaltyConfig` (`loyalty.stamps`). */
+export interface StampsAccrual {
+  goal: number;
+  purchasesPerStamp: number;
+}
+
 /**
  * The customer's spendable stamp card, shaped for the FE. `id` is null before
  * any purchase exists. `currentStamps` is the spendable balance (it may exceed
  * `walletSize` — the card never auto-completes and never blocks purchases; the
- * free-drink reward is claimed via the rewards flow). `walletSize`/`stampsGoal`
- * are kept so the FE can still render the buy-9-get-1 card visual (progress =
- * `currentStamps % stampsGoal`). */
+ * card prize is a catalog reward claimed via the rewards flow). `stampsGoal`
+ * comes from the org config (`walletSize = goal + 1`, the extra spot being the
+ * prize); progress = `currentStamps % stampsGoal`. `pendingPurchases` /
+ * `purchasesPerStamp` let the FE show "2/3 visits to your next stamp" when the
+ * org grants a stamp every N purchases. */
 export interface WalletView {
   id: string | null;
   currentStamps: number;
   walletSize: number;
   stampsGoal: number;
+  pendingPurchases: number;
+  purchasesPerStamp: number;
   sequence: number;
 }
 

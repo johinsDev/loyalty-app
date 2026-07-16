@@ -7,6 +7,7 @@ import type {
   HistoryInput,
   PurchaseHistoryItem,
   RecordPurchaseInput,
+  StampsAccrual,
   WalletView,
 } from "./schemas";
 
@@ -61,7 +62,8 @@ export class StampsService {
       discountCents?: number;
       promoDiscountCents?: number;
       rewardDiscountCents?: number;
-      grantStamp?: boolean;
+      stampEligible: boolean;
+      acc: StampsAccrual;
       entrySource?: string | null;
       metadata?: Record<string, unknown> | null;
     },
@@ -77,7 +79,8 @@ export class StampsService {
       discountCents: input.discountCents,
       promoDiscountCents: input.promoDiscountCents,
       rewardDiscountCents: input.rewardDiscountCents,
-      grantStamp: input.grantStamp,
+      stampEligible: input.stampEligible,
+      acc: input.acc,
       currency: input.currency,
       appliedPromoId: input.appliedPromoId ?? null,
       entrySource: input.entrySource ?? null,
@@ -129,12 +132,17 @@ export class StampsService {
   walletForCustomer(
     organizationId: string,
     customerId: string,
+    acc: StampsAccrual,
   ): Promise<WalletView> {
-    return this.repo.walletView(organizationId, customerId);
+    return this.repo.walletView(organizationId, customerId, acc);
   }
 
-  myWallet(organizationId: string, customerId: string): Promise<WalletView> {
-    return this.repo.walletView(organizationId, customerId);
+  myWallet(
+    organizationId: string,
+    customerId: string,
+    acc: StampsAccrual,
+  ): Promise<WalletView> {
+    return this.repo.walletView(organizationId, customerId, acc);
   }
 
   myHistory(
@@ -158,6 +166,7 @@ export class StampsService {
     delta: number,
     reason: string,
     addedByUserId: string,
+    acc: StampsAccrual,
   ): Promise<{ wallet: WalletView }> {
     const wallet = await this.repo.adjustStamps({
       orgId: organizationId,
@@ -165,6 +174,7 @@ export class StampsService {
       delta,
       note: reason,
       addedByUserId,
+      acc,
     });
     await recordAudit({
       organizationId,

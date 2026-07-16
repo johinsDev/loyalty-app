@@ -7,7 +7,6 @@ import {
   Lock,
   Plug,
   Sparkles,
-  Stamp,
   Store,
   Users,
   type LucideIcon,
@@ -30,7 +29,6 @@ const ICON: Record<SettingsSection, LucideIcon> = {
   localization: Languages,
   seo: Globe,
   hours: Clock,
-  loyalty: Stamp,
   onboarding: Sparkles,
   team: Users,
   integrations: Plug,
@@ -39,7 +37,7 @@ const ICON: Record<SettingsSection, LucideIcon> = {
 /** Sections whose editors aren't wired to a real backend yet — shown with a
  *  "coming soon" placeholder instead of the mock content. Team/roles now live in
  *  the Empleados feature; loyalty rules + integrations are pending. */
-const COMING_SOON = new Set<SettingsSection>(["loyalty", "team", "integrations"]);
+const COMING_SOON = new Set<SettingsSection>(["team", "integrations"]);
 
 /**
  * Ajustes — a settings hub with a left section nav and the active section on the

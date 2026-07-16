@@ -29,6 +29,7 @@ export const notificationKeySchema = z.enum([
   "tier-down",
   "tier-near",
   "phone-changed",
+  "loyalty-mode",
 ]);
 
 export const feedFilterSchema = z.enum(["all", "unread"]);

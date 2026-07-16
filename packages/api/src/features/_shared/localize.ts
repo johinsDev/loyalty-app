@@ -1,6 +1,15 @@
 import { CacheManager } from "@loyalty/cache";
 import type { db as Db } from "@loyalty/db";
-import { organization, organizationSettings, type StoreHours } from "@loyalty/db/schema";
+import {
+  type LoyaltyMode,
+  organization,
+  organizationSettings,
+  type PointsRate,
+  reward,
+  type StampCardCopy,
+  type StampStyle,
+  type StoreHours,
+} from "@loyalty/db/schema";
 import { eq } from "drizzle-orm";
 
 // v1 supported sets. Enabled values are clamped to these in the settings service.
@@ -126,6 +135,105 @@ export function getBranding(db: typeof Db, orgId: string): Promise<Branding> {
 
 export async function invalidateBranding(orgId: string): Promise<void> {
   await cache.delete(brandingKey(orgId));
+}
+
+/**
+ * Org loyalty earn config — which tracks earn (mode), the per-currency points
+ * rate, the PWA card template and the post-reactivation tier grace. Cached like
+ * localization/branding; read on EVERY purchase, so it must stay cheap.
+ * `pointsRates` always carries an entry for the default currency (the code
+ * default seeds it when the org never saved one).
+ */
+export interface LoyaltyConfig {
+  mode: LoyaltyMode;
+  pointsRates: Record<string, PointsRate>;
+  pointsCardTemplate: string;
+  tierGraceUntil: Date | null;
+  stamps: StampsConfig;
+}
+
+/**
+ * Org stamps config. `goal` resolves from the linked card reward's
+ * `stampsRequired` (the single source of truth); a missing/unpublished link
+ * falls back to the pilot default so the card never breaks.
+ */
+export interface StampsConfig {
+  goal: number;
+  /** The linked reward when the link is healthy (published, stamps-priced). */
+  cardRewardId: string | null;
+  purchasesPerStamp: number;
+  minAmount: Record<string, number> | null;
+  categoryIds: string[] | null;
+  cardTemplate: string;
+  style: StampStyle | null;
+  copy: StampCardCopy | null;
+}
+
+/** Pre-config pilot goal, kept as the fallback when no reward is linked. */
+export const DEFAULT_STAMPS_GOAL = 9;
+
+/** The pre-config hardcoded rate (100 COP → 4 pts), kept as the seed default. */
+export const DEFAULT_POINTS_RATE: PointsRate = { per: 100, points: 4 };
+
+export const earnsPoints = (mode: LoyaltyMode): boolean => mode !== "stamps";
+export const earnsStamps = (mode: LoyaltyMode): boolean => mode !== "points";
+
+/** The earn rule for a purchase's currency, falling back to any configured
+ *  rate (an unrated currency shouldn't zero the earn — it means the org never
+ *  saved config for it, not that it's worthless). */
+export function rateForCurrency(cfg: LoyaltyConfig, currency: string): PointsRate {
+  return (
+    cfg.pointsRates[currency] ?? Object.values(cfg.pointsRates)[0] ?? DEFAULT_POINTS_RATE
+  );
+}
+
+const loyaltyKey = (orgId: string) => `org-loyalty:${orgId}`;
+
+export function getLoyaltyConfig(db: typeof Db, orgId: string): Promise<LoyaltyConfig> {
+  return cache.getOrSet(
+    loyaltyKey(orgId),
+    async () => {
+      const [row] = await db
+        .select({
+          settings: organizationSettings,
+          cardRewardStatus: reward.status,
+          cardRewardStamps: reward.stampsRequired,
+        })
+        .from(organizationSettings)
+        .leftJoin(reward, eq(reward.id, organizationSettings.stampsCardRewardId))
+        .where(eq(organizationSettings.organizationId, orgId))
+        .limit(1);
+      const s = row?.settings;
+      const defaultCurrency = s?.defaultCurrency ?? "COP";
+      // The link is healthy only while the reward stays published and priced
+      // in stamps; otherwise fall back so the card keeps working.
+      const linkedGoal =
+        row?.cardRewardStatus === "published" && row.cardRewardStamps != null
+          ? row.cardRewardStamps
+          : null;
+      return {
+        mode: s?.loyaltyMode ?? "both",
+        pointsRates: s?.pointsRates ?? { [defaultCurrency]: DEFAULT_POINTS_RATE },
+        pointsCardTemplate: s?.pointsCardTemplate ?? "classic",
+        tierGraceUntil: s?.tierGraceUntil ?? null,
+        stamps: {
+          goal: linkedGoal ?? DEFAULT_STAMPS_GOAL,
+          cardRewardId: linkedGoal != null ? (s?.stampsCardRewardId ?? null) : null,
+          purchasesPerStamp: s?.purchasesPerStamp ?? 1,
+          minAmount: s?.stampMinAmount ?? null,
+          categoryIds: s?.stampCategoryIds ?? null,
+          cardTemplate: s?.stampsCardTemplate ?? "classic",
+          style: s?.stampStyle ?? null,
+          copy: s?.stampsCardCopy ?? null,
+        },
+      };
+    },
+    TTL_SECONDS,
+  );
+}
+
+export async function invalidateLoyaltyConfig(orgId: string): Promise<void> {
+  await cache.delete(loyaltyKey(orgId));
 }
 
 /** Resolve the active locale/currency from request headers, clamped to what the

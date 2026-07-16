@@ -23,6 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { type Kpi } from "../data";
 import { AreaChart, Donut, Sparkline } from "./charts";
+import { SetupChecklist } from "./setup-checklist";
 
 const PERIODS = ["7d", "30d", "90d"] as const;
 type Period = (typeof PERIODS)[number];
@@ -166,6 +167,7 @@ export function DashboardView({
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
+      <SetupChecklist />
       {/* Period + export */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="bg-card border-border inline-flex rounded-full border p-1">

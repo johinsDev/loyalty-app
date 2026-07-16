@@ -42,7 +42,8 @@
     "funnel": "Embudo",
     "brand": "Marca",
     "team": "Equipo",
-    "integrations": "Integraciones"
+    "integrations": "Integraciones",
+    "loyalty": "Lealtad"
   },
   "Notifications": {
     "title": "Notificaciones",
@@ -238,7 +239,21 @@
     "comingSoon": "Próximamente",
     "fraudComingSoon": "Detección de anomalías (escaneos rápidos, reuso de códigos). En desarrollo.",
     "dauComingSoon": "Usuarios activos por día. Requiere eventos de sesión.",
-    "impactComingSoon": "Gasto vs no-socios y retorno del plan — próximamente."
+    "impactComingSoon": "Gasto vs no-socios y retorno del plan — próximamente.",
+    "setup": {
+      "title": "Configurá tu negocio",
+      "subtitle": "Los pasos mínimos para que tu programa quede andando.",
+      "progress": "{done} de {total}",
+      "items": {
+        "brand": "Elegí tu logo y colores",
+        "store": "Creá tu tienda",
+        "products": "Agregá tus productos",
+        "loyalty": "Definí las reglas de lealtad",
+        "rewards": "Publicá tus premios",
+        "promos": "Publicá una promo",
+        "onboarding": "Armá el onboarding de la app"
+      }
+    }
   },
   "Customers": {
     "title": "Clientes",
@@ -2087,7 +2102,9 @@
       "logoUploading": "Subiendo…",
       "error": "No se pudo guardar. Inténtalo de nuevo.",
       "invalidData": "Revisá los datos antes de guardar.",
-      "invalidField": "Revisá el campo “{field}”."
+      "invalidField": "Revisá el campo “{field}”.",
+      "cropFit": "Encuadrar",
+      "cropFill": "Llenar"
     },
     "hours": {
       "title": "Horarios y ubicación",
@@ -2128,6 +2145,120 @@
         "stamps": "Sellos",
         "points": "Puntos",
         "both": "Ambos"
+      },
+      "modeDesc": {
+        "stamps": "Solo sellos: los puntos se pausan.",
+        "points": "Solo puntos: los sellos se pausan.",
+        "both": "Sellos y puntos en cada compra."
+      },
+      "willPausePoints": "Al guardar se pausan los puntos: tus clientes dejan de acumular (lo que tienen sigue canjeable) y se les avisa.",
+      "willPauseStamps": "Al guardar se pausan los sellos: tus clientes dejan de sumar sellos (los que tienen siguen canjeables) y se les avisa.",
+      "equivalence": "Equivalencia de puntos",
+      "equivalenceHint": "Cuántos puntos otorga cada compra, por moneda. Compras menores al monto base no suman.",
+      "ratePrefix": "Por cada",
+      "ratePoints": "puntos",
+      "insights": {
+        "title": "Qué significa tu regla",
+        "pointsOff": "Los puntos están apagados en este modo.",
+        "avgTicket": "Ticket promedio real: {amount}",
+        "avgCatalog": "Precio promedio del catálogo: {amount}",
+        "perPurchase": "≈ {n} pts por compra",
+        "purchases": "≈ {n} compras",
+        "unreachable": "inalcanzable",
+        "noData": "Sin datos de precios todavía.",
+        "multiplier": "Promos multiplicadoras activas: {names}. Con ellas se necesita menos compras."
+      },
+      "confirmPointsTitle": "¿Pausar los puntos?",
+      "confirmPointsBody": "Tus clientes dejan de acumular puntos y les llega un aviso (push + feed). Lo acumulado sigue canjeable y los niveles se congelan hasta que reactives.",
+      "confirmStampsTitle": "¿Pausar los sellos?",
+      "confirmStampsBody": "Tus clientes dejan de sumar sellos y les llega un aviso (push + feed). Los sellos que tienen siguen canjeables.",
+      "confirmPointsRewards": "Tenés {n} premios canjeables por puntos publicados — seguirán canjeables.",
+      "confirmMultiplier": "Tenés {n} promos de puntos multiplicados activas que dejarán de tener efecto.",
+      "confirmAction": "Sí, pausar y avisar",
+      "cancel": "Cancelar",
+      "error": "No se pudo guardar la configuración",
+      "errRateMissing": "Falta la equivalencia de alguna moneda habilitada.",
+      "stamps": {
+        "title": "Tarjeta de sellos",
+        "desc": "El premio, las reglas para ganar sellos y el diseño de la tarjeta que ven tus clientes.",
+        "prize": "Premio de la tarjeta",
+        "prizeUnlinked": "Sin premio vinculado",
+        "unlinkedNudge": "Vinculá un premio del catálogo para que la tarjeta muestre qué se gana. Mientras tanto la meta queda en 9 sellos.",
+        "brokenLink": "El premio vinculado ya no está publicado o dejó de costar sellos. Elegí otro para que la tarjeta vuelva a mostrarlo.",
+        "goal": "Meta de sellos",
+        "goalHint": "Al guardar se actualiza el costo en sellos del premio vinculado.",
+        "perStamp": "Compras por sello",
+        "perStampHint": "1 = cada compra suma un sello.",
+        "minAmount": "Monto mínimo por compra",
+        "minAmountHint": "0 = sin mínimo. Las compras por debajo no suman sello.",
+        "categories": "Categorías que suman",
+        "categoriesHint": "Sin selección = todas las categorías suman sellos.",
+        "icon": "Ícono",
+        "iconUpload": "Subir imagen",
+        "onColor": "Color del sello ganado",
+        "brandColor": "Color de marca",
+        "customColor": "Personalizado",
+        "resetColor": "Volver al color de marca",
+        "offStyle": "Sellos pendientes",
+        "offStyleOpt": {
+          "dim": "Atenuado",
+          "outline": "Contorno",
+          "number": "Número"
+        },
+        "offStyleDesc": {
+          "dim": "El ícono se ve tenue hasta ganarlo.",
+          "outline": "Solo el borde del ícono.",
+          "number": "Muestra el número del sello."
+        },
+        "sampleCount": "{count} sellos",
+        "copies": {
+          "title": "Textos de la tarjeta",
+          "hint": "Dejá un campo vacío para usar el texto por defecto de la app.",
+          "tabLabel": "Idioma de los textos",
+          "label": {
+            "title": "Título",
+            "subtitle": "Subtítulo",
+            "filledTitle": "Sello ganado — título",
+            "filledBody": "Sello ganado — detalle",
+            "emptyTitle": "Sello pendiente — título",
+            "emptyBody": "Sello pendiente — detalle",
+            "rewardTitle": "Premio — título",
+            "rewardBody": "Premio — detalle",
+            "paused": "Aviso de pausa"
+          },
+          "ph": {
+            "title": "Tu tarjeta de sellos",
+            "subtitle": "Te faltan '{count}' sellos para tu bebida gratis 🧋",
+            "filledTitle": "Sello ganado",
+            "filledBody": "Sello ganado",
+            "emptyTitle": "Sello pendiente",
+            "emptyBody": "Te faltan '{count}' sellos para tu bebida gratis 🧋",
+            "rewardTitle": "Tu premio",
+            "rewardBody": "Completa tu tarjeta y reclama una bebida gratis 🧋",
+            "paused": "Sellos en pausa — podés canjear los que tenés, no se suman más."
+          },
+          "countHint": "Podés usar '{count}' para el número de sellos que faltan.",
+          "countRequired": "Tiene que incluir '{count}' — el número de sellos que faltan."
+        },
+        "confirmLowerTitle": "¿Bajar la meta de sellos?",
+        "confirmLowerBody": "Los clientes que ya llegan a la nueva meta verán su premio desbloqueado al instante y entran a los recordatorios de canje.",
+        "confirmLowerAction": "Sí, guardar",
+        "errReward": "El premio elegido no es válido: tiene que estar publicado y costar sellos.",
+        "errPlaceholder": "Hay un texto que usa mal los marcadores: revisá que '{count}' esté donde corresponde.",
+        "design": "Diseño de la tarjeta",
+        "designHint": "Cómo se ve en la app del cliente. El preview es el render real.",
+        "template": "Plantilla",
+        "prizeSearch": "Buscá un premio del catálogo…",
+        "prizeOption": "{name} ({n} sellos)",
+        "categoriesSearch": "Buscá y agregá categorías…",
+        "noResults": "Sin resultados"
+      },
+      "templates": {
+        "title": "Diseño de la tarjeta de puntos",
+        "hint": "Cómo se ve la tarjeta en la app del cliente. El preview es el render real.",
+        "sampleTier": "Flor",
+        "sampleNext": "Oro",
+        "sampleNextLabel": "Te faltan 385 pts para Oro"
       }
     },
     "onboarding": {

@@ -7,6 +7,7 @@ import {
   router,
   staffProcedure,
 } from "../../trpc";
+import { earnsPoints, getLoyaltyConfig } from "../_shared/localize";
 import { PointsRepository } from "./repository";
 import {
   adjustForCustomerInputSchema,
@@ -68,9 +69,16 @@ export const pointsRouter = router({
     ),
 
   // ---- Customer (self) ------------------------------------------------
-  mySummary: protectedProcedure.query(async ({ ctx }) =>
-    buildPointsService(ctx).mySummary(await orgId(), ctx.session.user.id),
-  ),
+  // `paused` rides along so the card can show the redeem-only state (mode
+  // gates EARNING only; the balance stays spendable).
+  mySummary: protectedProcedure.query(async ({ ctx }) => {
+    const org = await orgId();
+    const [summary, loyalty] = await Promise.all([
+      buildPointsService(ctx).mySummary(org, ctx.session.user.id),
+      getLoyaltyConfig(ctx.db, org),
+    ]);
+    return { ...summary, paused: !earnsPoints(loyalty.mode) };
+  }),
 
   myHistory: protectedProcedure
     .input(historyInputSchema)

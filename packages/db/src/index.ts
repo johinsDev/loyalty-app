@@ -2,6 +2,8 @@ export { db, type Database } from "./client";
 export * as schema from "./schema";
 export {
   customerExistsForUser,
+  listCustomerIds,
+  listCustomersWithStampsAtLeast,
   phoneNumberInUse,
   provisionCustomerForUser,
   type ProvisionCustomerInput,

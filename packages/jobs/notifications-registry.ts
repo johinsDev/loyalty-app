@@ -938,6 +938,39 @@ export class PhoneChangedNotification
   }
 }
 
+
+/**
+ * Org loyalty-mode change ("points paused/resumed", "stamps paused/resumed").
+ * Transactional — it affects the customer's balances, so the marketing opt-out
+ * does not apply. Feed + push only (no WhatsApp: operational notice, not worth
+ * per-message spend). Title/body are computed by the announce-loyalty-mode job.
+ */
+export class LoyaltyModeNotification
+  extends Notification
+  implements NotificationRenderers
+{
+  readonly category = "transactional" as const;
+
+  constructor(
+    private readonly title: string,
+    private readonly body: string,
+  ) {
+    super();
+  }
+
+  via(): ChannelName[] {
+    return ["push", "database"];
+  }
+
+  toPush() {
+    return { title: this.title, body: this.body };
+  }
+
+  toDatabase() {
+    return { type: "loyalty-mode", title: this.title, body: this.body };
+  }
+}
+
 /** Builds a notification from its key + the admin-supplied payload. */
 export function createNotification(
   key: NotificationKey,
@@ -1076,6 +1109,11 @@ export function createNotification(
           ? payload.newPhoneMasked
           : "";
       return new PhoneChangedNotification(masked);
+    }
+    case "loyalty-mode": {
+      const title = typeof payload?.title === "string" ? payload.title : "";
+      const body = typeof payload?.body === "string" ? payload.body : "";
+      return new LoyaltyModeNotification(title, body);
     }
   }
 }

@@ -17,6 +17,7 @@ import {
   setPendingClaimCurrency,
   verifyPendingClaim,
 } from "../_shared/claim-code";
+import { invalidateLoyaltyConfig } from "../_shared/localize";
 import { TIERS } from "../points/config";
 import { tierFor } from "../points/tier-calc";
 import type { WizardState } from "../_shared/wizard";
@@ -298,6 +299,11 @@ export class RewardsService {
     if (current.status === "archived") return current;
     const archived = await this.repo.markArchived(orgId, id);
     await this.invalidateCatalog(orgId);
+    // Archiving the stamps-card prize breaks the link — drop the cached goal
+    // so purchases/PWA fall back immediately instead of after the TTL.
+    if (await this.repo.isCardReward(orgId, id)) {
+      await invalidateLoyaltyConfig(orgId);
+    }
     return archived;
   }
 
@@ -320,8 +326,10 @@ export class RewardsService {
         code: "PRECONDITION_FAILED",
         message: "Reward has redemptions — archive it instead of deleting",
       });
+    const wasCardReward = await this.repo.isCardReward(orgId, id);
     await this.repo.remove(orgId, id);
     await this.invalidateCatalog(orgId);
+    if (wasCardReward) await invalidateLoyaltyConfig(orgId);
     return { ok: true };
   }
 

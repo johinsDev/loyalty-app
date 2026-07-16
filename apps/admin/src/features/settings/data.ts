@@ -7,17 +7,17 @@ export type SettingsSection =
   | "localization"
   | "seo"
   | "hours"
-  | "loyalty"
   | "onboarding"
   | "team"
   | "integrations";
 
+// "loyalty" moved to its own first-level page (/loyalty) — core config, not a
+// buried settings tab.
 export const SECTIONS: SettingsSection[] = [
   "brand",
   "localization",
   "seo",
   "hours",
-  "loyalty",
   "onboarding",
   "team",
   "integrations",
