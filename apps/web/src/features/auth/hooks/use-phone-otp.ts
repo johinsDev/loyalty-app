@@ -13,6 +13,9 @@ type State = {
   isSending: boolean;
   isVerifying: boolean;
   error: string | null;
+  /** The account is banned — a distinct terminal error (Better Auth
+   *  `code: "BANNED_USER"`), not a retryable bad-code. */
+  banned: boolean;
   resendUntil: number; // epoch ms
 };
 
@@ -22,8 +25,14 @@ const initial: State = {
   isSending: false,
   isVerifying: false,
   error: null,
+  banned: false,
   resendUntil: 0,
 };
+
+/** Better Auth returns a machine-readable `code` on its client errors. */
+function isBannedError(error: { code?: string } | null | undefined): boolean {
+  return error?.code === "BANNED_USER";
+}
 
 function startCooldown(): number {
   return Date.now() + RESEND_COOLDOWN_SECONDS * 1000;
@@ -46,7 +55,7 @@ export function usePhoneOtp() {
   const canResend = state.resendUntil > 0 && secondsLeft === 0;
 
   const requestOtp = useCallback(async (phone: string): Promise<boolean> => {
-    setState((s) => ({ ...s, isSending: true, error: null, phone }));
+    setState((s) => ({ ...s, isSending: true, error: null, banned: false, phone }));
     const { error } = await authClient.phoneNumber.sendOtp({
       phoneNumber: phone,
     });
@@ -55,6 +64,7 @@ export function usePhoneOtp() {
         ...s,
         isSending: false,
         error: error.message ?? "errorOtpFailed",
+        banned: isBannedError(error),
       }));
       return false;
     }
@@ -72,7 +82,7 @@ export function usePhoneOtp() {
       code: string,
       opts?: { updatePhoneNumber?: boolean },
     ): Promise<boolean> => {
-      setState((s) => ({ ...s, isVerifying: true, error: null }));
+      setState((s) => ({ ...s, isVerifying: true, error: null, banned: false }));
       const { error } = await authClient.phoneNumber.verify({
         phoneNumber: state.phone,
         code,
@@ -85,6 +95,7 @@ export function usePhoneOtp() {
           ...s,
           isVerifying: false,
           error: error.message ?? "errorOtpFailed",
+          banned: isBannedError(error),
         }));
         return false;
       }
@@ -96,7 +107,7 @@ export function usePhoneOtp() {
 
   const resendOtp = useCallback(async (): Promise<boolean> => {
     if (!canResend || !state.phone) return false;
-    setState((s) => ({ ...s, isSending: true, error: null }));
+    setState((s) => ({ ...s, isSending: true, error: null, banned: false }));
     const { error } = await authClient.phoneNumber.sendOtp({
       phoneNumber: state.phone,
     });
@@ -105,6 +116,7 @@ export function usePhoneOtp() {
         ...s,
         isSending: false,
         error: error.message ?? "errorOtpFailed",
+        banned: isBannedError(error),
       }));
       return false;
     }
@@ -122,6 +134,7 @@ export function usePhoneOtp() {
     step: state.step,
     phone: state.phone,
     error: state.error,
+    isBanned: state.banned,
     isSending: state.isSending,
     isVerifying: state.isVerifying,
     secondsLeft,

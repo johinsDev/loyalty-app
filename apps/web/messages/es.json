@@ -520,7 +520,9 @@
     "cardTitle": "Tu tarjeta",
     "cardProgress": "1 / 10 sellos",
     "cardRemaining": "Te faltan 9 para tu próximo bubble tea gratis.",
-    "viewCard": "Ver mi tarjeta"
+    "viewCard": "Ver mi tarjeta",
+    "bannedTitle": "Tu cuenta está inhabilitada",
+    "bannedBody": "No podés acceder a T4 Diver Club con esta cuenta. Si creés que es un error, hablá con el personal de tu tienda T4."
   },
   "History": {
     "title": "Historial",
