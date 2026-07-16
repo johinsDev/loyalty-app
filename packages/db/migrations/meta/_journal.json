@@ -351,13 +351,6 @@
       "when": 1784222347962,
       "tag": "0049_petite_moonstone",
       "breakpoints": true
-    },
-    {
-      "idx": 50,
-      "version": "6",
-      "when": 1784222369858,
-      "tag": "0050_backfill_stamps_card_reward",
-      "breakpoints": true
     }
   ]
 }
