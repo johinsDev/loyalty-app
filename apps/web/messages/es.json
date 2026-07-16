@@ -99,7 +99,8 @@
     "rewardBannerCta": "Reclamar",
     "dismiss": "Cerrar",
     "pointsPaused": "Puntos en pausa — podés canjear lo que tenés, no se acumulan más.",
-    "stampsPaused": "Sellos en pausa — podés canjear los que tenés, no se suman más."
+    "stampsPaused": "Sellos en pausa — podés canjear los que tenés, no se suman más.",
+    "stampsPending": "{have} / {need} compras para tu próximo sello"
   },
   "Promos": {
     "title": "Promos",

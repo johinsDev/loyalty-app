@@ -99,7 +99,8 @@
     "rewardBannerCta": "Claim",
     "dismiss": "Dismiss",
     "pointsPaused": "Points paused — you can redeem what you have, no new earning.",
-    "stampsPaused": "Stamps paused — you can redeem the ones you have, no new earning."
+    "stampsPaused": "Stamps paused — you can redeem the ones you have, no new earning.",
+    "stampsPending": "{have} / {need} purchases to your next stamp"
   },
   "Promos": {
     "title": "Promos",

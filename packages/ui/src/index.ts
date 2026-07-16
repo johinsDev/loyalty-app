@@ -91,6 +91,8 @@ export * from "./components/ui/color-picker";
 export * from "./components/ui/icon-picker";
 export * from "./components/ui/onboarding-slide";
 export * from "./components/ui/points-card-templates";
+export * from "./components/ui/stamp-card-templates";
+export { TiltCard } from "./components/ui/tilt-card";
 export * from "./components/ui/number-stepper";
 export * from "./components/ui/tag-input";
 export * from "./components/ui/time-input";

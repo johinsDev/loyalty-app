@@ -8,6 +8,7 @@ import {
   ResponsiveModalDescription,
   ResponsiveModalHeader,
   ResponsiveModalTitle,
+  TiltCard,
 } from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Gift, ShoppingBag, Sparkles, Wallet } from "lucide-react";
@@ -96,7 +97,9 @@ export function PointsCard() {
 
   return (
     <>
-      <PointsCardTemplate template={loyalty?.pointsCardTemplate ?? "classic"} view={view} />
+      <TiltCard>
+        <PointsCardTemplate template={loyalty?.pointsCardTemplate ?? "classic"} view={view} />
+      </TiltCard>
       <ResponsiveModal open={open} onOpenChange={setOpen}>
         <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
           <PointsDetail
