@@ -26,6 +26,7 @@ import { enrichCart } from "../promotions/stitch";
 import { evaluateRewardForCart } from "../rewards/pos-evaluate";
 import { buildRewardsService, RewardsRepository } from "../rewards";
 import { buildStreaksService } from "../streaks";
+import { evaluateStampEligibility } from "./eligibility";
 import { StampsRepository } from "./repository";
 import {
   adjustStampsForCustomerInputSchema,
@@ -39,6 +40,14 @@ import { StampsService } from "./service";
 /** The single principal org (single-tenant pilot). */
 const orgId = async (): Promise<string> =>
   (await getPrimaryOrganizationId()) ?? "";
+
+/** The accrual numbers a `WalletView` needs, from the cached loyalty config. */
+const accOf = (loyalty: {
+  stamps: { goal: number; purchasesPerStamp: number };
+}) => ({
+  goal: loyalty.stamps.goal,
+  purchasesPerStamp: loyalty.stamps.purchasesPerStamp,
+});
 
 function buildService(ctx: {
   db: typeof Db;
@@ -141,11 +150,10 @@ export const stampsRouter = router({
         discountCents?: number;
         promoDiscountCents?: number;
         rewardDiscountCents?: number;
-        grantStamp?: boolean;
       } = input;
       let netPrice = input.priceCents;
       let pointsMultiplier = 1;
-      let grantStamp = true;
+      let isRedemptionOnly = false;
       if (input.items && input.items.length > 0) {
         const subtotal = input.items.reduce((s, it) => s + it.unitAmountCents * it.qty, 0);
         const promoRepo = new PromoRepository(ctx.db);
@@ -202,7 +210,7 @@ export const stampsRouter = router({
         netPrice = Math.max(0, subtotal - discountTotal);
         // A redemption-only ticket (net $0 with a reward) is a claim, not a
         // purchase — no stamp, no streak advance.
-        grantStamp = !(netPrice === 0 && Boolean(input.inlineReward));
+        isRedemptionOnly = netPrice === 0 && Boolean(input.inlineReward);
         resolved = {
           ...input,
           priceCents: netPrice,
@@ -211,20 +219,37 @@ export const stampsRouter = router({
           promoDiscountCents: promoDiscount,
           rewardDiscountCents: rewardDiscount,
           appliedPromoId,
-          grantStamp,
         };
       }
 
       // Org loyalty config (cached): which tracks earn + the purchase
-      // currency's points rate. Redemption paths are never gated — a paused
-      // track's balances stay spendable.
+      // currency's points rate + the stamp accrual rules. Redemption paths are
+      // never gated — a paused track's balances stay spendable.
       const loyalty = await getLoyaltyConfig(ctx.db, org);
       const stampsOn = earnsStamps(loyalty.mode);
       const pointsOn = earnsPoints(loyalty.mode);
-      grantStamp = grantStamp && stampsOn;
-      if (resolved.grantStamp !== undefined || !stampsOn) {
-        resolved = { ...resolved, grantStamp };
+
+      // Stamp accrual rules (pure): track on → not a claim → min ticket →
+      // category allowlist. Cart categories are fetched only when both an
+      // allowlist and items exist; an item-less purchase always passes the
+      // category rule (`null`). None of this gates points or streaks.
+      let cartCategoryIds: string[] | null = null;
+      const allowlist = loyalty.stamps.categoryIds;
+      if (allowlist && allowlist.length > 0 && input.items && input.items.length > 0) {
+        cartCategoryIds = await new StampsRepository(ctx.db).categoriesForProducts(
+          input.items.map((it) => it.productId),
+        );
       }
+      const eligibility = evaluateStampEligibility({
+        stampsOn,
+        isRedemptionOnly,
+        netPriceCents: netPrice,
+        currency: input.currency ?? "COP",
+        minAmount: loyalty.stamps.minAmount,
+        eligibleCategoryIds: allowlist,
+        cartCategoryIds,
+      });
+      const acc = accOf(loyalty);
 
       // Spendable balances BEFORE the purchase — used to detect rewards that
       // cross from not-claimable to claimable after this purchase's grants.
@@ -248,6 +273,8 @@ export const stampsRouter = router({
         storeId,
         {
           ...resolved,
+          stampEligible: eligibility.eligible,
+          acc,
           entrySource: attribution?.entrySource ?? null,
           metadata: attribution?.metadata ?? null,
         },
@@ -263,7 +290,9 @@ export const stampsRouter = router({
           },
         })
         .catch(() => ({ earned: 0, balance: 0, tierUp: null }));
-      if (grantStamp) {
+      // Streaks track visits, not stamps: any real purchase advances while the
+      // stamps track is on — immune to min/category/per-N accrual rules.
+      if (stampsOn && !isRedemptionOnly) {
         await buildStreaksService(ctx)
           .advanceForPurchase(org, input.customerId)
           .catch(() => {});
@@ -303,32 +332,41 @@ export const stampsRouter = router({
 
   walletForCustomer: staffProcedure
     .input(customerIdInputSchema)
-    .query(async ({ ctx, input }) =>
-      buildService(ctx).walletForCustomer(await orgId(), input.customerId),
-    ),
+    .query(async ({ ctx, input }) => {
+      const org = await orgId();
+      return buildService(ctx).walletForCustomer(
+        org,
+        input.customerId,
+        accOf(await getLoyaltyConfig(ctx.db, org)),
+      );
+    }),
 
   // CRM: adjust a customer's stamps directly (no purchase). Owner-only.
   adjustForCustomer: ownerProcedure
     .input(adjustStampsForCustomerInputSchema)
-    .mutation(async ({ ctx, input }) =>
-      buildService(ctx).adjustForCustomer(
-        await orgId(),
+    .mutation(async ({ ctx, input }) => {
+      const org = await orgId();
+      return buildService(ctx).adjustForCustomer(
+        org,
         input.customerId,
         input.stamps,
         input.reason,
         ctx.session.user.id,
-      ),
-    ),
+        accOf(await getLoyaltyConfig(ctx.db, org)),
+      );
+    }),
 
   // ---- Customer (self) ------------------------------------------------
   // `paused` rides along so the card can show the redeem-only state (mode
   // gates EARNING only; collected stamps stay spendable).
   myWallet: protectedProcedure.query(async ({ ctx }) => {
     const org = await orgId();
-    const [wallet, loyalty] = await Promise.all([
-      buildService(ctx).myWallet(org, ctx.session.user.id),
-      getLoyaltyConfig(ctx.db, org),
-    ]);
+    const loyalty = await getLoyaltyConfig(ctx.db, org);
+    const wallet = await buildService(ctx).myWallet(
+      org,
+      ctx.session.user.id,
+      accOf(loyalty),
+    );
     return { ...wallet, paused: !earnsStamps(loyalty.mode) };
   }),
 

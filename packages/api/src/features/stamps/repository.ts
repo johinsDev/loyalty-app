@@ -2,40 +2,33 @@ import type { db as Db } from "@loyalty/db";
 import {
   loyaltyCard,
   type LoyaltyCardRow,
+  productCategory,
   promoRedemption,
   purchase,
   purchaseItem,
   reward,
   stamp,
-  STAMPS_PER_REWARD,
-  WALLET_SIZE,
 } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { redeemWithinTx } from "../rewards/redeem-tx";
-import type { PurchaseHistoryItem, WalletView } from "./schemas";
+import { applyStampProgress } from "./eligibility";
+import type { PurchaseHistoryItem, StampsAccrual, WalletView } from "./schemas";
 
 export type RecordResult =
   | { kind: "recorded"; wallet: WalletView; purchaseId: string }
   | { kind: "idempotent"; wallet: WalletView; purchaseId: string };
 
-function toView(card: LoyaltyCardRow | null): WalletView {
-  if (!card) {
-    return {
-      id: null,
-      currentStamps: 0,
-      walletSize: WALLET_SIZE,
-      stampsGoal: STAMPS_PER_REWARD,
-      sequence: 1,
-    };
-  }
+function toView(card: LoyaltyCardRow | null, acc: StampsAccrual): WalletView {
   return {
-    id: card.id,
-    currentStamps: card.currentStamps,
-    walletSize: WALLET_SIZE,
-    stampsGoal: STAMPS_PER_REWARD,
-    sequence: card.sequence,
+    id: card?.id ?? null,
+    currentStamps: card?.currentStamps ?? 0,
+    walletSize: acc.goal + 1,
+    stampsGoal: acc.goal,
+    pendingPurchases: card?.pendingPurchases ?? 0,
+    purchasesPerStamp: acc.purchasesPerStamp,
+    sequence: card?.sequence ?? 1,
   };
 }
 
@@ -70,18 +63,34 @@ export class StampsRepository {
     return rows[0] ?? null;
   }
 
-  async walletView(orgId: string, customerId: string): Promise<WalletView> {
-    return toView(await this.currentWallet(orgId, customerId));
+  async walletView(
+    orgId: string,
+    customerId: string,
+    acc: StampsAccrual,
+  ): Promise<WalletView> {
+    return toView(await this.currentWallet(orgId, customerId), acc);
+  }
+
+  /** Distinct category ids of the given products (cart eligibility check). */
+  async categoriesForProducts(productIds: string[]): Promise<string[]> {
+    if (productIds.length === 0) return [];
+    const rows = await this.db
+      .selectDistinct({ categoryId: productCategory.categoryId })
+      .from(productCategory)
+      .where(inArray(productCategory.productId, productIds));
+    return rows.map((r) => r.categoryId);
   }
 
   /** Manual admin stamp correction (CRM): a signed stamp row with no purchase +
-   *  a clamped card-counter update, atomic. Opens an active card if none. */
+   *  a clamped card-counter update, atomic. Opens an active card if none.
+   *  Never touches `pendingPurchases` — corrections move stamps, not visits. */
   async adjustStamps(input: {
     orgId: string;
     customerId: string;
     delta: number;
     note: string;
     addedByUserId: string;
+    acc: StampsAccrual;
   }): Promise<WalletView> {
     return this.db.transaction(async (tx) => {
       const active = await tx
@@ -122,7 +131,7 @@ export class StampsRepository {
         .update(loyaltyCard)
         .set({ currentStamps: next, updatedAt: new Date() })
         .where(eq(loyaltyCard.id, card.id));
-      return toView({ ...card, currentStamps: next });
+      return toView({ ...card, currentStamps: next }, input.acc);
     });
   }
 
@@ -146,9 +155,13 @@ export class StampsRepository {
     // on the redemption. Fall back to `discountCents` when not split.
     promoDiscountCents?: number;
     rewardDiscountCents?: number;
-    // False for a redemption-only ticket (net $0 with a reward) — no stamp is
-    // granted (it's a claim, not a purchase). Defaults to granting a stamp.
-    grantStamp?: boolean;
+    // Whether this purchase counts toward a stamp (org accrual rules already
+    // evaluated by the router: track on, not redemption-only, min amount,
+    // categories). An eligible purchase advances the per-N counter; the stamp
+    // lands when the counter completes.
+    stampEligible: boolean;
+    /** Org accrual numbers (goal + purchases-per-stamp), from cached config. */
+    acc: StampsAccrual;
     /** Marketing attribution resolved at record time (best-effort context). */
     entrySource?: string | null;
     metadata?: Record<string, unknown> | null;
@@ -188,7 +201,7 @@ export class StampsRepository {
           .limit(1);
         return {
           kind: "idempotent",
-          wallet: toView(card[0] ?? null),
+          wallet: toView(card[0] ?? null, input.acc),
           purchaseId: existing[0].id,
         };
       }
@@ -267,25 +280,36 @@ export class StampsRepository {
         });
       }
 
-      // A redemption-only ticket (net $0 with a reward) grants no stamp.
-      let wallet = toView(active);
-      if (input.grantStamp !== false) {
-        await tx.insert(stamp).values({
-          cardId: active.id,
-          purchaseId,
-          addedByUserId: input.addedByUserId,
-          storeId: input.storeId,
-          amount: 1,
-        });
+      // Eligible purchase → advance the per-N counter; the stamp lands when it
+      // completes. An ineligible purchase (paused / redemption-only / below-min
+      // / category) moves neither the counter nor the balance.
+      let wallet = toView(active, input.acc);
+      if (input.stampEligible) {
+        const progress = applyStampProgress(
+          active.pendingPurchases,
+          input.acc.purchasesPerStamp,
+        );
+        if (progress.grant) {
+          await tx.insert(stamp).values({
+            cardId: active.id,
+            purchaseId,
+            addedByUserId: input.addedByUserId,
+            storeId: input.storeId,
+            amount: 1,
+          });
+        }
         const updated = await tx
           .update(loyaltyCard)
           .set({
-            currentStamps: active.currentStamps + 1,
+            ...(progress.grant
+              ? { currentStamps: active.currentStamps + 1 }
+              : {}),
+            pendingPurchases: progress.nextPending,
             updatedAt: new Date(),
           })
           .where(eq(loyaltyCard.id, active.id))
           .returning();
-        wallet = toView(updated[0] ?? null);
+        wallet = toView(updated[0] ?? null, input.acc);
       }
 
       // Inline reward redeem: AFTER the stamp + card bump (so the just-earned
@@ -344,21 +368,26 @@ export class StampsRepository {
     pageSize: number,
   ): Promise<{ rows: PurchaseHistoryItem[]; total: number }> {
     const offset = (page - 1) * pageSize;
+    // Real per-purchase stamp count (accrual rules mean not every purchase
+    // earns one) so the FE maps filled spots only to stamping purchases.
     const rows = await this.db
       .select({
         id: purchase.id,
         priceCents: purchase.priceCents,
         createdAt: purchase.createdAt,
         walletSequence: loyaltyCard.sequence,
+        stamps: sql<number>`coalesce(sum(${stamp.amount}), 0)`,
       })
       .from(purchase)
       .innerJoin(loyaltyCard, eq(purchase.walletId, loyaltyCard.id))
+      .leftJoin(stamp, eq(stamp.purchaseId, purchase.id))
       .where(
         and(
           eq(purchase.organizationId, orgId),
           eq(purchase.customerId, customerId),
         ),
       )
+      .groupBy(purchase.id)
       .orderBy(desc(purchase.createdAt))
       .limit(pageSize)
       .offset(offset);
@@ -377,7 +406,7 @@ export class StampsRepository {
       rows: rows.map((r) => ({
         id: r.id,
         priceCents: r.priceCents,
-        stamps: 1,
+        stamps: r.stamps,
         walletSequence: r.walletSequence,
         createdAt: r.createdAt,
       })),

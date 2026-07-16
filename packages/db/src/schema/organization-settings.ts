@@ -56,6 +56,36 @@ export type LoyaltyMode = "stamps" | "points" | "both";
 /** Points earn rule for one currency: every `per` major units → `points`. */
 export type PointsRate = { per: number; points: number };
 
+/**
+ * Visual style of one stamp spot on the customer card. `icon` is either a key
+ * from the curated lucide set in `@loyalty/ui` or an uploaded image URL —
+ * both render as a tintable silhouette (CSS mask), so `onColor` always works.
+ * Null column → defaults (cup-soda, brand primary, "dim").
+ */
+export type StampStyle = {
+  icon: { kind: "lucide" | "image"; value: string };
+  /** Hex for the filled stamp; null → the brand primary. */
+  onColor: string | null;
+  /** How an unearned spot renders: dimmed icon, outline, or its number. */
+  offStyle: "dim" | "outline" | "number";
+};
+
+/** Editable stamp-card texts; every key optional → i18n default fallback. */
+export type StampCardCopyKey =
+  | "title"
+  | "subtitle"
+  | "filledTitle"
+  | "filledBody"
+  | "emptyTitle"
+  | "emptyBody"
+  | "rewardTitle"
+  | "rewardBody"
+  | "paused";
+export type StampCardCopy = Record<
+  string,
+  Partial<Record<StampCardCopyKey, string>>
+>;
+
 // Per-org localization + branding config (1:1 with the org). Started as the
 // locale/currency config and is now the home for the rest of the admin Settings:
 // brand (description, color, social, terms), SEO, and the loyalty wallet scope.
@@ -108,6 +138,32 @@ export const organizationSettings = sqliteTable("organization_settings", {
   // raise a customer's tier (the 30d earn window restarts empty on re-enable,
   // so without this everyone would drop the day after points come back).
   tierGraceUntil: integer("tier_grace_until", { mode: "timestamp" }),
+
+  // ── Stamps config (org-level) ─────────────────────────────────────────────
+  // The catalog reward that IS the card prize; its `stampsRequired` is the
+  // single source of truth for the stamps goal. Plain text (no FK) to avoid a
+  // loyalty.ts ↔ organization-settings.ts import cycle — the settings service
+  // validates org + published on write. Null / broken link → runtime fallback
+  // (goal 9, generic gift copy) and an admin nudge to link one.
+  stampsCardRewardId: text("stamps_card_reward_id"),
+  // 1 stamp per N *eligible* purchases (progress persisted on loyalty_card).
+  purchasesPerStamp: integer("purchases_per_stamp").notNull().default(1),
+  // Minimum net ticket (cents) per currency for a purchase to count toward a
+  // stamp. Missing/0 entry = no minimum for that currency.
+  stampMinAmount: text("stamp_min_amount", { mode: "json" }).$type<
+    Record<string, number>
+  >(),
+  // Category allowlist for earning stamps: an itemized purchase counts when at
+  // least one item's product is in one of these. Null/empty = all categories.
+  // Item-less (amount-only) purchases always count.
+  stampCategoryIds: text("stamp_category_ids", { mode: "json" }).$type<
+    string[]
+  >(),
+  // Stamps-card visual template for the customer PWA home.
+  stampsCardTemplate: text("stamps_card_template").notNull().default("classic"),
+  stampStyle: text("stamp_style", { mode: "json" }).$type<StampStyle>(),
+  // Per-locale copy overrides for the stamps card + its tap modals.
+  stampsCardCopy: text("stamps_card_copy", { mode: "json" }).$type<StampCardCopy>(),
 
   // Global campaign "Smart Delivery" rules (frequency cap + quiet hours).
   smartDelivery: text("smart_delivery", { mode: "json" }).$type<SmartDeliveryRules>(),

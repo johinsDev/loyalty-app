@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "./client";
 import { getPrimaryOrganizationId } from "./primary-org";
-import { reward, type RewardInsert, STAMPS_PER_REWARD } from "./schema/loyalty";
+import { reward, type RewardInsert } from "./schema/loyalty";
 
 /**
  * CLI: seed a spread of rewards into the principal org, covering every case the
@@ -23,10 +23,11 @@ type SeedReward = Omit<
 
 const REWARDS: SeedReward[] = [
   {
-    // The classic buy-9-get-1: a stamps reward costing a full card.
+    // The classic buy-9-get-1: a stamps reward costing a full card (the pilot
+    // goal; the org's linked card reward drives the real goal).
     name: "Bebida gratis",
     description: "Completa tu tarjeta y reclama cualquier bebida clásica.",
-    stampsRequired: STAMPS_PER_REWARD,
+    stampsRequired: 9,
     pointsCost: null,
     costMode: "or",
     allowedTiers: null,

@@ -9,12 +9,16 @@ const STAFF = "staff_1";
 const STORE = "store_1";
 const CUSTOMER = "cust_1";
 
+const ACC = { goal: 9, purchasesPerStamp: 1 };
+
 function view(over: Partial<WalletView> = {}): WalletView {
   return {
     id: "w1",
     currentStamps: 1,
     walletSize: 10,
     stampsGoal: 9,
+    pendingPurchases: 0,
+    purchasesPerStamp: 1,
     sequence: 1,
     ...over,
   };
@@ -56,6 +60,8 @@ describe("StampsService.recordPurchase", () => {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-12345678",
+      stampEligible: true,
+      acc: ACC,
     });
     expect(wallet.currentStamps).toBe(1);
     expect(realtime.publish).toHaveBeenCalledWith(
@@ -81,6 +87,8 @@ describe("StampsService.recordPurchase", () => {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-87654321",
+      stampEligible: true,
+      acc: ACC,
     });
     // Realtime still animates the card; the WhatsApp/feed line is consolidated
     // with points into the purchase-recap at the router level.
@@ -102,8 +110,10 @@ describe("StampsService.recordPurchase", () => {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-accrues",
+      stampEligible: true,
+      acc: ACC,
     });
-    // Balance can exceed WALLET_SIZE; the card never auto-completes.
+    // Balance can exceed the wallet size; the card never auto-completes.
     expect(wallet.currentStamps).toBe(15);
     expect(realtime.publish).toHaveBeenCalledWith(
       `customer:${CUSTOMER}`,
@@ -124,6 +134,8 @@ describe("StampsService.recordPurchase", () => {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-retry",
+      stampEligible: true,
+      acc: ACC,
     });
     expect(wallet.currentStamps).toBe(1);
     expect(realtime.publish).not.toHaveBeenCalled();
@@ -136,6 +148,8 @@ describe("StampsService.recordPurchase", () => {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-inline-1",
+      stampEligible: true,
+      acc: ACC,
       inlineReward: { rewardId: "rw_1", currency: "stamps" },
     });
     expect(repo.recordPurchase).toHaveBeenCalledWith(
@@ -149,12 +163,31 @@ describe("StampsService.recordPurchase", () => {
     );
   });
 
+  it("threads eligibility + accrual config into the repo untouched", async () => {
+    const { service } = build(repo);
+    await service.recordPurchase(ORG, STAFF, STORE, {
+      customerId: CUSTOMER,
+      priceCents: 900,
+      idempotencyKey: "idem-ineligible",
+      stampEligible: false,
+      acc: { goal: 5, purchasesPerStamp: 2 },
+    });
+    expect(repo.recordPurchase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stampEligible: false,
+        acc: { goal: 5, purchasesPerStamp: 2 },
+      }),
+    );
+  });
+
   it("omits inlineReward when not provided", async () => {
     const { service } = build(repo);
     await service.recordPurchase(ORG, STAFF, STORE, {
       customerId: CUSTOMER,
       priceCents: 1500,
       idempotencyKey: "idem-inline-2",
+      stampEligible: true,
+      acc: ACC,
     });
     expect(repo.recordPurchase).toHaveBeenCalledWith(
       expect.objectContaining({ inlineReward: undefined }),

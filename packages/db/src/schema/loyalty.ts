@@ -56,16 +56,11 @@ export const customer = sqliteTable(
   }),
 );
 
-// Buy-9-get-the-10th-free. The card shows WALLET_SIZE spots: STAMPS_PER_REWARD
-// paid stamps + 1 free reward (the last spot). The card completes at
-// STAMPS_PER_REWARD stamps; the final spot is the bebida gratis you claim.
-// Hardcoded for the pilot (no per-org config yet).
-export const WALLET_SIZE = 10;
-export const STAMPS_PER_REWARD = WALLET_SIZE - 1;
-
-// A wallet (loyalty card). A customer fills it one stamp at a time; at
-// STAMPS_PER_REWARD it becomes `completed` (the free drink is pending to claim)
-// and a fresh `active` wallet is opened. `status`: active | completed | claimed.
+// A wallet (loyalty card): the customer's perpetual spendable stamp balance.
+// The goal ("buy N, the next one's free") is org config — it resolves from the
+// linked card reward's `stampsRequired` (see `organization_settings.
+// stampsCardRewardId`), not from a constant. `status`: active | completed |
+// claimed (legacy lifecycle; current cards stay `active`).
 export const loyaltyCard = sqliteTable("loyalty_card", {
   id: text("id")
     .primaryKey()
@@ -77,6 +72,10 @@ export const loyaltyCard = sqliteTable("loyalty_card", {
     .notNull()
     .references(() => organization.id, { onDelete: "cascade" }),
   currentStamps: integer("current_stamps").notNull().default(0),
+  // Eligible purchases not yet converted into a stamp (for orgs where
+  // `purchasesPerStamp` > 1). Reset to 0 whenever a stamp is granted; never
+  // touched by manual stamp adjustments or config changes.
+  pendingPurchases: integer("pending_purchases").notNull().default(0),
   status: text("status").notNull().default("active"),
   // 1-based index of this wallet for the customer (the Nth card they fill).
   sequence: integer("sequence").notNull().default(1),

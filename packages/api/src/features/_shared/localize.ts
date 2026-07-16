@@ -5,6 +5,9 @@ import {
   organization,
   organizationSettings,
   type PointsRate,
+  reward,
+  type StampCardCopy,
+  type StampStyle,
   type StoreHours,
 } from "@loyalty/db/schema";
 import { eq } from "drizzle-orm";
@@ -146,7 +149,28 @@ export interface LoyaltyConfig {
   pointsRates: Record<string, PointsRate>;
   pointsCardTemplate: string;
   tierGraceUntil: Date | null;
+  stamps: StampsConfig;
 }
+
+/**
+ * Org stamps config. `goal` resolves from the linked card reward's
+ * `stampsRequired` (the single source of truth); a missing/unpublished link
+ * falls back to the pilot default so the card never breaks.
+ */
+export interface StampsConfig {
+  goal: number;
+  /** The linked reward when the link is healthy (published, stamps-priced). */
+  cardRewardId: string | null;
+  purchasesPerStamp: number;
+  minAmount: Record<string, number> | null;
+  categoryIds: string[] | null;
+  cardTemplate: string;
+  style: StampStyle | null;
+  copy: StampCardCopy | null;
+}
+
+/** Pre-config pilot goal, kept as the fallback when no reward is linked. */
+export const DEFAULT_STAMPS_GOAL = 9;
 
 /** The pre-config hardcoded rate (100 COP → 4 pts), kept as the seed default. */
 export const DEFAULT_POINTS_RATE: PointsRate = { per: 100, points: 4 };
@@ -169,17 +193,39 @@ export function getLoyaltyConfig(db: typeof Db, orgId: string): Promise<LoyaltyC
   return cache.getOrSet(
     loyaltyKey(orgId),
     async () => {
-      const [s] = await db
-        .select()
+      const [row] = await db
+        .select({
+          settings: organizationSettings,
+          cardRewardStatus: reward.status,
+          cardRewardStamps: reward.stampsRequired,
+        })
         .from(organizationSettings)
+        .leftJoin(reward, eq(reward.id, organizationSettings.stampsCardRewardId))
         .where(eq(organizationSettings.organizationId, orgId))
         .limit(1);
+      const s = row?.settings;
       const defaultCurrency = s?.defaultCurrency ?? "COP";
+      // The link is healthy only while the reward stays published and priced
+      // in stamps; otherwise fall back so the card keeps working.
+      const linkedGoal =
+        row?.cardRewardStatus === "published" && row.cardRewardStamps != null
+          ? row.cardRewardStamps
+          : null;
       return {
         mode: s?.loyaltyMode ?? "both",
         pointsRates: s?.pointsRates ?? { [defaultCurrency]: DEFAULT_POINTS_RATE },
         pointsCardTemplate: s?.pointsCardTemplate ?? "classic",
         tierGraceUntil: s?.tierGraceUntil ?? null,
+        stamps: {
+          goal: linkedGoal ?? DEFAULT_STAMPS_GOAL,
+          cardRewardId: linkedGoal != null ? (s?.stampsCardRewardId ?? null) : null,
+          purchasesPerStamp: s?.purchasesPerStamp ?? 1,
+          minAmount: s?.stampMinAmount ?? null,
+          categoryIds: s?.stampCategoryIds ?? null,
+          cardTemplate: s?.stampsCardTemplate ?? "classic",
+          style: s?.stampStyle ?? null,
+          copy: s?.stampsCardCopy ?? null,
+        },
       };
     },
     TTL_SECONDS,
