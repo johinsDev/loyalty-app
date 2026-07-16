@@ -1,6 +1,7 @@
 import type { db as Db } from "@loyalty/db";
 import {
   loyaltyCard,
+  organizationSettings,
   pointsTransaction,
   redemption,
   reward,
@@ -96,6 +97,17 @@ export class RewardsRepository {
       .where(and(eq(reward.id, id), eq(reward.organizationId, orgId)))
       .returning();
     return this.#firstOr(rows, "publish");
+  }
+
+  /** Whether this reward is the org's stamps-card prize (its `stampsRequired`
+   *  IS the cached stamps goal — mutations must invalidate the config). */
+  async isCardReward(orgId: string, id: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ linked: organizationSettings.stampsCardRewardId })
+      .from(organizationSettings)
+      .where(eq(organizationSettings.organizationId, orgId))
+      .limit(1);
+    return rows[0]?.linked === id;
   }
 
   async markArchived(orgId: string, id: string): Promise<RewardRow> {

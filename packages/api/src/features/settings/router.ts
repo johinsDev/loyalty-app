@@ -12,6 +12,7 @@ import {
   updateOnboardingInputSchema,
   updateSeoInputSchema,
   updateSmartDeliveryInputSchema,
+  updateStampsConfigInputSchema,
 } from "./schemas";
 import { SettingsService } from "./service";
 
@@ -89,11 +90,14 @@ export const settingsRouter = router({
     ),
 
   // ── Loyalty earn config ─────────────────────────────────────────────────────
-  /** Mode + card template for the PWA (public, read pre-render). Rates are not
-   *  exposed here — they're a business decision, not customer data. */
-  loyaltyConfig: publicProcedure.query(async ({ ctx }) =>
-    makeService(ctx.db).loyaltyConfig(await orgId()),
-  ),
+  /** Mode + card templates + locale-resolved stamp card copy/prize for the PWA
+   *  (public, read pre-render). Rates are not exposed here — they're a business
+   *  decision, not customer data. */
+  loyaltyConfig: publicProcedure.query(async ({ ctx }) => {
+    const id = await orgId();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    return makeService(ctx.db).loyaltyConfig(id, lc);
+  }),
   loyaltyConfigAdmin: managerProcedure.query(async ({ ctx }) =>
     makeService(ctx.db).loyaltyConfigAdmin(await requireOrg()),
   ),
@@ -106,4 +110,14 @@ export const settingsRouter = router({
   loyaltyInsights: managerProcedure.query(async ({ ctx }) =>
     makeService(ctx.db).loyaltyInsights(await requireOrg()),
   ),
+
+  // ── Stamps config ───────────────────────────────────────────────────────────
+  stampsConfigAdmin: managerProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).stampsConfigAdmin(await requireOrg()),
+  ),
+  updateStampsConfig: managerProcedure
+    .input(updateStampsConfigInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).updateStampsConfig(await requireOrg(), input),
+    ),
 });

@@ -8,6 +8,7 @@ import {
   promo,
   purchase,
   reward,
+  rewardTranslation,
 } from "@loyalty/db/schema";
 import { and, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 
@@ -33,6 +34,13 @@ type SettingsPatch = Partial<
     | "pointsRates"
     | "pointsCardTemplate"
     | "tierGraceUntil"
+    | "stampsCardRewardId"
+    | "purchasesPerStamp"
+    | "stampMinAmount"
+    | "stampCategoryIds"
+    | "stampsCardTemplate"
+    | "stampStyle"
+    | "stampsCardCopy"
   >
 >;
 
@@ -93,6 +101,80 @@ export class SettingsRepository {
   async updateOrg(orgId: string, patch: { name?: string; logo?: string | null }): Promise<void> {
     if (patch.name === undefined && patch.logo === undefined) return;
     await this.db.update(organization).set(patch).where(eq(organization.id, orgId));
+  }
+
+  // ── Stamps config ────────────────────────────────────────────────────────
+
+  /** One reward by id, org-scoped (link validation + prize resolution). */
+  async getReward(
+    orgId: string,
+    id: string,
+  ): Promise<{
+    id: string;
+    name: string;
+    description: string | null;
+    stampsRequired: number | null;
+    status: string;
+  } | null> {
+    const rows = await this.db
+      .select({
+        id: reward.id,
+        name: reward.name,
+        description: reward.description,
+        stampsRequired: reward.stampsRequired,
+        status: reward.status,
+      })
+      .from(reward)
+      .where(and(eq(reward.organizationId, orgId), eq(reward.id, id)))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  /** Published stamps-priced rewards — the card-prize picker options. */
+  async stampsRewardOptions(
+    orgId: string,
+  ): Promise<{ id: string; name: string; stampsRequired: number | null }[]> {
+    return this.db
+      .select({
+        id: reward.id,
+        name: reward.name,
+        stampsRequired: reward.stampsRequired,
+      })
+      .from(reward)
+      .where(
+        and(
+          eq(reward.organizationId, orgId),
+          eq(reward.status, "published"),
+          isNotNull(reward.stampsRequired),
+        ),
+      )
+      .orderBy(reward.sortOrder, reward.name);
+  }
+
+  /** Per-locale name/description overrides for one reward (prize copy). */
+  async rewardTranslations(
+    rewardId: string,
+  ): Promise<{ locale: string; name: string; description: string | null }[]> {
+    return this.db
+      .select({
+        locale: rewardTranslation.locale,
+        name: rewardTranslation.name,
+        description: rewardTranslation.description,
+      })
+      .from(rewardTranslation)
+      .where(eq(rewardTranslation.rewardId, rewardId));
+  }
+
+  /** Write the goal onto the linked reward (single source of truth). */
+  async setRewardStampsRequired(
+    orgId: string,
+    id: string,
+    stampsRequired: number,
+  ): Promise<void> {
+    await this.db
+      .update(reward)
+      .set({ stampsRequired, updatedAt: new Date() })
+      .where(and(eq(reward.organizationId, orgId), eq(reward.id, id)));
   }
 
   // ── Loyalty equivalence insights (static inputs for the live panel) ─────────

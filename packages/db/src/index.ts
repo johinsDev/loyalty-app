@@ -3,6 +3,7 @@ export * as schema from "./schema";
 export {
   customerExistsForUser,
   listCustomerIds,
+  listCustomersWithStampsAtLeast,
   phoneNumberInUse,
   provisionCustomerForUser,
   type ProvisionCustomerInput,

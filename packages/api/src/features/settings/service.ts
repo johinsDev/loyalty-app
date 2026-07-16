@@ -3,6 +3,7 @@ import { tasks } from "@trigger.dev/sdk/v3";
 
 import {
   DEFAULT_POINTS_RATE,
+  DEFAULT_STAMPS_GOAL,
   earnsPoints,
   earnsStamps,
   getBranding,
@@ -11,26 +12,33 @@ import {
   invalidateBranding,
   invalidateLocalization,
   invalidateLoyaltyConfig,
+  pickTranslation,
 } from "../_shared/localize";
 import type { SettingsRepository } from "./repository";
 import { TRPCError } from "@trpc/server";
+import type { StampCardCopy, StampCardCopyKey } from "@loyalty/db/schema";
 
-import type {
-  BrandingView,
-  LocalizationView,
-  LoyaltyConfigAdminView,
-  LoyaltyConfigView,
-  LoyaltyInsights,
-  OnboardingAdminStep,
-  OnboardingStepView,
-  SetLoyaltyScopeInput,
-  SmartDeliveryView,
-  UpdateBrandingInput,
-  UpdateLocalizationInput,
-  UpdateLoyaltyConfigInput,
-  UpdateOnboardingInput,
-  UpdateSeoInput,
-  UpdateSmartDeliveryInput,
+import {
+  STAMP_CARD_COPY_KEYS,
+  STAMP_COPY_PLACEHOLDERS,
+  type BrandingView,
+  type LocalizationView,
+  type LoyaltyConfigAdminView,
+  type LoyaltyConfigView,
+  type LoyaltyInsights,
+  type OnboardingAdminStep,
+  type OnboardingStepView,
+  type SetLoyaltyScopeInput,
+  type SmartDeliveryView,
+  type StampsCardPublicView,
+  type StampsConfigAdminView,
+  type UpdateBrandingInput,
+  type UpdateLocalizationInput,
+  type UpdateLoyaltyConfigInput,
+  type UpdateOnboardingInput,
+  type UpdateSeoInput,
+  type UpdateSmartDeliveryInput,
+  type UpdateStampsConfigInput,
 } from "./schemas";
 
 /** What a mode change did to each track — drives the customer announcement. */
@@ -46,6 +54,47 @@ const TIER_GRACE_DAYS = 30;
 /** "" → null, undefined → undefined (skip). Keeps cleared fields nullable. */
 function nullable(v: string | undefined): string | null | undefined {
   return v === undefined ? undefined : v === "" ? null : v;
+}
+
+/**
+ * Whether saving this stamps config must re-evaluate reward availability:
+ * only when a linked goal got LOWER than the effective one (customers may
+ * already be at the new goal) or the prize was relinked (different reward's
+ * availability needs arming). Raising the goal never revokes anything, and an
+ * unlink just falls back — neither needs the job.
+ */
+export function shouldReevaluateStampGoal(
+  before: { goal: number; cardRewardId: string | null },
+  input: { goal: number; cardRewardId: string | null },
+): boolean {
+  if (!input.cardRewardId) return false;
+  return input.goal < before.goal || input.cardRewardId !== before.cardRewardId;
+}
+
+/**
+ * Enforce the per-key placeholder policy on stamp-card copy overrides: only
+ * `allowed` tokens may appear (anything else renders literally in the PWA) and
+ * every `required` one must be present. Throws `STAMPS_COPY_PLACEHOLDER:
+ * <locale>.<key>` so the editor can point at the exact field.
+ */
+export function validateStampCopy(copy: StampCardCopy): void {
+  for (const [locale, entries] of Object.entries(copy)) {
+    for (const key of STAMP_CARD_COPY_KEYS) {
+      const value = entries?.[key];
+      if (!value) continue;
+      const policy = STAMP_COPY_PLACEHOLDERS[key];
+      const tokens = [...value.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!);
+      const bad =
+        tokens.some((t) => !policy.allowed.includes(t)) ||
+        policy.required.some((t) => !tokens.includes(t));
+      if (bad) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `STAMPS_COPY_PLACEHOLDER:${locale}.${key}`,
+        });
+      }
+    }
+  }
 }
 
 /**
@@ -195,10 +244,44 @@ export class SettingsService {
 
   // ── Loyalty earn config ─────────────────────────────────────────────────────
 
-  /** Public: what the PWA needs pre-render. Rates stay manager-only. */
-  async loyaltyConfig(orgId: string): Promise<LoyaltyConfigView> {
+  /** Public: what the PWA needs pre-render (locale-resolved stamp card copy +
+   *  prize). Rates stay manager-only. */
+  async loyaltyConfig(
+    orgId: string,
+    lc: { locale: string; defaultLocale: string },
+  ): Promise<LoyaltyConfigView> {
     const cfg = await getLoyaltyConfig(this.db, orgId);
-    return { mode: cfg.mode, pointsCardTemplate: cfg.pointsCardTemplate };
+    const s = cfg.stamps;
+
+    // Copy overrides resolved to the request locale, org default as fallback.
+    const copy: Partial<Record<StampCardCopyKey, string>> = {
+      ...s.copy?.[lc.defaultLocale],
+      ...s.copy?.[lc.locale],
+    };
+
+    // Prize = the linked reward's localized name/description (single pk read;
+    // only when linked). Copy overrides for reward* still win in the FE.
+    let prize: StampsCardPublicView["prize"] = null;
+    if (s.cardRewardId) {
+      const rw = await this.repo.getReward(orgId, s.cardRewardId);
+      if (rw) {
+        const translations = await this.repo.rewardTranslations(rw.id);
+        prize = pickTranslation(rw, translations, lc);
+      }
+    }
+
+    return {
+      mode: cfg.mode,
+      pointsCardTemplate: cfg.pointsCardTemplate,
+      stampsCard: {
+        template: s.cardTemplate,
+        goal: s.goal,
+        purchasesPerStamp: s.purchasesPerStamp,
+        style: s.style,
+        copy,
+        prize,
+      },
+    };
   }
 
   /** Admin: full config, rates seeded for every enabled currency. */
@@ -270,6 +353,97 @@ export class SettingsService {
         .catch(() => {});
     }
     return this.loyaltyConfigAdmin(orgId);
+  }
+
+  // ── Stamps config ──────────────────────────────────────────────────────────
+
+  /** Admin editor state: raw copy (all locales), link health, picker options. */
+  async stampsConfigAdmin(orgId: string): Promise<StampsConfigAdminView> {
+    const [row, loc, rewardOptions] = await Promise.all([
+      this.repo.get(orgId),
+      getLocalization(this.db, orgId),
+      this.repo.stampsRewardOptions(orgId),
+    ]);
+    const savedRewardId = row?.stampsCardRewardId ?? null;
+    const linkedReward = savedRewardId
+      ? await this.repo.getReward(orgId, savedRewardId)
+      : null;
+    const healthy =
+      linkedReward?.status === "published" && linkedReward.stampsRequired != null;
+    // Seed a visible 0 ("no minimum") for every enabled currency, like rates.
+    const minAmount = Object.fromEntries(
+      loc.enabledCurrencies.map((c) => [c, row?.stampMinAmount?.[c] ?? 0]),
+    );
+    return {
+      cardRewardId: savedRewardId,
+      brokenLink: savedRewardId != null && !healthy,
+      goal: healthy ? linkedReward.stampsRequired! : DEFAULT_STAMPS_GOAL,
+      purchasesPerStamp: row?.purchasesPerStamp ?? 1,
+      minAmount,
+      categoryIds: row?.stampCategoryIds ?? [],
+      template: row?.stampsCardTemplate ?? "classic",
+      style: row?.stampStyle ?? null,
+      copy: row?.stampsCardCopy ?? {},
+      linkedReward: linkedReward
+        ? {
+            id: linkedReward.id,
+            name: linkedReward.name,
+            stampsRequired: linkedReward.stampsRequired,
+            status: linkedReward.status,
+          }
+        : null,
+      rewardOptions,
+    };
+  }
+
+  /**
+   * Save the stamps config. The goal is written onto the linked reward's
+   * `stampsRequired` (single source of truth). Lowering the effective goal (or
+   * relinking) enqueues the re-evaluation job so customers already at the new
+   * goal get their availability armed without waiting for a purchase; raising
+   * it never revokes anything.
+   */
+  async updateStampsConfig(
+    orgId: string,
+    input: UpdateStampsConfigInput,
+  ): Promise<StampsConfigAdminView> {
+    validateStampCopy(input.copy as StampCardCopy);
+
+    if (input.cardRewardId) {
+      const rw = await this.repo.getReward(orgId, input.cardRewardId);
+      if (!rw || rw.status !== "published") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "STAMPS_REWARD_INVALID",
+        });
+      }
+    }
+
+    const before = await getLoyaltyConfig(this.db, orgId);
+    if (input.cardRewardId) {
+      await this.repo.setRewardStampsRequired(orgId, input.cardRewardId, input.goal);
+    }
+    await this.repo.upsertSettings(orgId, {
+      stampsCardRewardId: input.cardRewardId,
+      purchasesPerStamp: input.purchasesPerStamp,
+      stampMinAmount: input.minAmount as Record<string, number>,
+      stampCategoryIds: input.categoryIds,
+      stampsCardTemplate: input.template,
+      stampStyle: input.style,
+      stampsCardCopy: input.copy as StampCardCopy,
+    });
+    await invalidateLoyaltyConfig(orgId);
+
+    if (shouldReevaluateStampGoal(before.stamps, input)) {
+      // Best-effort: a dead queue must not block saving the config.
+      await tasks
+        .trigger("reevaluate-stamp-goal", {
+          organizationId: orgId,
+          rewardId: input.cardRewardId,
+        })
+        .catch(() => {});
+    }
+    return this.stampsConfigAdmin(orgId);
   }
 
   /** Static inputs for the live equivalence panel (math runs client-side). */

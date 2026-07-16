@@ -1,4 +1,4 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, gte, ne } from "drizzle-orm";
 
 import { db } from "./client";
 import * as schema from "./schema";
@@ -86,4 +86,23 @@ export async function listCustomerIds(organizationId: string): Promise<string[]>
     .from(schema.customer)
     .where(eq(schema.customer.organizationId, organizationId));
   return rows.map((r) => r.id);
+}
+
+/** Customers whose active stamp card already holds ≥ `stamps` — the candidate
+ *  set for arming reward availability after the stamps goal is lowered. */
+export async function listCustomersWithStampsAtLeast(
+  organizationId: string,
+  stamps: number,
+): Promise<string[]> {
+  const rows = await db
+    .select({ customerId: schema.loyaltyCard.customerId })
+    .from(schema.loyaltyCard)
+    .where(
+      and(
+        eq(schema.loyaltyCard.organizationId, organizationId),
+        eq(schema.loyaltyCard.status, "active"),
+        gte(schema.loyaltyCard.currentStamps, stamps),
+      ),
+    );
+  return rows.map((r) => r.customerId);
 }
