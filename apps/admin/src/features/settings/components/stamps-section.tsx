@@ -69,7 +69,8 @@ const templateName = (key: string, locale: string): string => {
  * earning rules (purchases per stamp, min ticket, category allowlist), the
  * stamp look (icon / on-color / off-style), the card template, and per-locale
  * copy overrides. Drives `settings.stampsConfigAdmin` / `updateStampsConfig`.
- * The whole editor dims when the loyalty mode is points-only.
+ * Only on screen while stamps earn — `LoyaltyView` hides it in points-only
+ * mode (reacting to the draft mode, before saving).
  */
 export function StampsSection() {
   const t = useTranslations("Settings");
@@ -79,7 +80,6 @@ export function StampsSection() {
   const uploadImage = useUploadImage();
 
   const { data } = useQuery(trpc.settings.stampsConfigAdmin.queryOptions());
-  const loyalty = useQuery(trpc.settings.loyaltyConfigAdmin.queryOptions());
   const categories = useQuery(trpc.menu.categories.queryOptions());
   const loc = useQuery(trpc.settings.localization.queryOptions());
 
@@ -134,7 +134,6 @@ export function StampsSection() {
     return <Skeleton className="h-96 w-full rounded-2xl" />;
   }
 
-  const pointsOnly = loyalty.data?.mode === "points";
   const enabledLocales = loc.data?.enabledLocales ?? ["es"];
   const activeCopyLocale = enabledLocales.includes(copyLocale)
     ? copyLocale
@@ -253,13 +252,7 @@ export function StampsSection() {
         <p className="text-muted-foreground mt-1 text-sm">{t("loyalty.stamps.desc")}</p>
       </div>
 
-      {pointsOnly ? (
-        <p className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm font-semibold text-amber-700">
-          {t("loyalty.stamps.pointsOnly")}
-        </p>
-      ) : null}
-
-      <div className={`space-y-6 ${pointsOnly ? "pointer-events-none opacity-50" : ""}`}>
+      <div className="space-y-6">
         {/* Prize & goal */}
         <div className="space-y-3">
           <div className="grid gap-4 sm:grid-cols-2">

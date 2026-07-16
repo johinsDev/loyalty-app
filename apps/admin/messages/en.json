@@ -2181,7 +2181,6 @@
       "stamps": {
         "title": "Stamp card",
         "desc": "The prize, the earning rules, and the card design your customers see.",
-        "pointsOnly": "Stamps are paused because your model is points-only. Switch the model above to edit them again.",
         "prize": "Card prize",
         "prizeUnlinked": "No prize linked",
         "unlinkedNudge": "Link a catalog reward so the card shows what customers earn. Meanwhile the goal defaults to 9 stamps.",

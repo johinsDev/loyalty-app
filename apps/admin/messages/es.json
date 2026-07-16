@@ -2181,7 +2181,6 @@
       "stamps": {
         "title": "Tarjeta de sellos",
         "desc": "El premio, las reglas para ganar sellos y el diseño de la tarjeta que ven tus clientes.",
-        "pointsOnly": "Los sellos están en pausa porque tu modelo es solo puntos. Cambiá el modelo arriba para volver a editarlos.",
         "prize": "Premio de la tarjeta",
         "prizeUnlinked": "Sin premio vinculado",
         "unlinkedNudge": "Vinculá un premio del catálogo para que la tarjeta muestre qué se gana. Mientras tanto la meta queda en 9 sellos.",

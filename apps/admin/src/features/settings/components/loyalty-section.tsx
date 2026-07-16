@@ -27,7 +27,7 @@ import { toast } from "sonner";
 import { money } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
 
-type Mode = LoyaltyConfigAdminView["mode"];
+export type Mode = LoyaltyConfigAdminView["mode"];
 type Rates = Record<string, { per: number; points: number }>;
 
 const MODES: { key: Mode; icon: typeof Coins }[] = [
@@ -54,7 +54,12 @@ const pointsFor = (cents: number, rate: { per: number; points: number }): number
  * a live insights panel that shows what the rate means against real rewards and
  * ticket sizes. Pausing a track asks for confirmation (customers get notified).
  */
-export function LoyaltySection() {
+export function LoyaltySection({
+  onModeChange,
+}: {
+  /** Notifies the page shell of the DRAFT mode so sibling cards react live. */
+  onModeChange?: (mode: Mode) => void;
+} = {}) {
   const t = useTranslations("Settings");
   const locale = useLocale();
   const format = useFormatter();
@@ -155,7 +160,10 @@ export function LoyaltySection() {
             <button
               key={key}
               type="button"
-              onClick={() => setMode(key)}
+              onClick={() => {
+                setMode(key);
+                onModeChange?.(key);
+              }}
               className={`rounded-2xl border p-4 text-left transition-colors ${
                 mode === key
                   ? "border-primary bg-primary/5 ring-primary/30 ring-2"
@@ -177,7 +185,13 @@ export function LoyaltySection() {
         ) : null}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Points config only exists on screen while points earn — the whole
+          panel adapts to the (draft) mode instead of showing disabled rows. */}
+      {!earnsPoints(mode) ? (
+        <p className="text-muted-foreground text-sm">{t("loyalty.insights.pointsOff")}</p>
+      ) : null}
+
+      <div className={earnsPoints(mode) ? "grid gap-6 lg:grid-cols-2" : "hidden"}>
         {/* Equivalence */}
         <div className="space-y-3">
           <div>
@@ -300,8 +314,9 @@ export function LoyaltySection() {
       </div>
 
       {/* Points-card template gallery — the previews ARE the customer render
-          (shared PointsCardTemplate), on sample data. */}
-      <div className="space-y-3">
+          (shared PointsCardTemplate), on sample data. Hidden while points
+          don't earn (the stamps card below owns the screen in that mode). */}
+      <div className={earnsPoints(mode) ? "space-y-3" : "hidden"}>
         <div>
           <span className="text-sm font-bold">{t("loyalty.templates.title")}</span>
           <p className="text-muted-foreground mt-0.5 text-xs">
