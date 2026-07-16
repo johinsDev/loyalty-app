@@ -2193,7 +2193,6 @@
         "minAmountHint": "0 = no minimum. Purchases below it earn no stamp.",
         "categories": "Categories that count",
         "categoriesHint": "No selection = every category earns stamps.",
-        "editor": "Stamp design",
         "icon": "Icon",
         "iconUpload": "Upload image",
         "onColor": "Earned-stamp color",
@@ -2212,10 +2211,6 @@
           "number": "Shows the stamp's number."
         },
         "sampleCount": "{count} stamps",
-        "templates": {
-          "title": "Stamp card design",
-          "hint": "How the card looks in the customer app. The preview is the real render."
-        },
         "copies": {
           "title": "Card texts",
           "hint": "Leave a field empty to use the app's default text.",
@@ -2249,7 +2244,14 @@
         "confirmLowerBody": "Customers already at the new goal will see their prize unlocked right away and enter the redeem reminders.",
         "confirmLowerAction": "Yes, save",
         "errReward": "The chosen prize isn't valid: it must be published and cost stamps.",
-        "errPlaceholder": "A text misuses the placeholders: check that '{count}' is where it belongs."
+        "errPlaceholder": "A text misuses the placeholders: check that '{count}' is where it belongs.",
+        "design": "Card design",
+        "designHint": "How it looks in the customer app. The preview is the real render.",
+        "template": "Template",
+        "prizeSearch": "Search a catalog reward…",
+        "prizeOption": "{name} ({n} stamps)",
+        "categoriesSearch": "Search and add categories…",
+        "noResults": "No results"
       },
       "templates": {
         "title": "Points card design",

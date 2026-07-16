@@ -7,6 +7,10 @@ import {
   STAMPS_GOAL_MIN,
 } from "@loyalty/api/features/settings/schemas";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -17,9 +21,16 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
   Input,
-  NativeSelect,
-  NativeSelectOption,
   NumberInput,
   Skeleton,
   STAMP_CARD_TEMPLATES,
@@ -52,6 +63,9 @@ const DEFAULT_STYLE: Style = {
 };
 
 const OFF_STYLES: OffStyle[] = ["dim", "outline", "number"];
+
+type PrizeOption = { id: string; label: string };
+type CategoryItem = { id: string; name: string };
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
@@ -219,6 +233,34 @@ export function StampsSection() {
     data.rewardOptions.find((r) => r.id === cardRewardId)?.name ??
     (cardRewardId === data.cardRewardId ? (data.linkedReward?.name ?? null) : null);
 
+  // Searchable prize picker options: unlinked first, then the (possibly broken)
+  // saved link, then every published stamps-priced reward with its cost.
+  const prizeOptions: PrizeOption[] = [
+    { id: "", label: t("loyalty.stamps.prizeUnlinked") },
+    ...(brokenOption ? [{ id: brokenOption.id, label: brokenOption.name }] : []),
+    ...data.rewardOptions.map((r) => ({
+      id: r.id,
+      label:
+        r.stampsRequired != null
+          ? t("loyalty.stamps.prizeOption", { name: r.name, n: r.stampsRequired })
+          : r.name,
+    })),
+  ];
+
+  // Copies are advanced/optional: the disclosure starts open only when the
+  // org already saved at least one override.
+  const hasCopyOverrides = Object.values(data.copy ?? {}).some((entries) =>
+    Object.values(entries ?? {}).some((v) => !!v?.trim()),
+  );
+
+  const categoryItems: CategoryItem[] = (categories.data ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+  }));
+  const selectedCategories: CategoryItem[] = categoryIds.map(
+    (id) => categoryItems.find((c) => c.id === id) ?? { id, name: id },
+  );
+
   // Live sample fed to every preview — the editor state IS the customer render.
   const filled = clamp(Math.round(goal * 0.6), 1, goal - 1);
   const remaining = goal - filled;
@@ -257,30 +299,31 @@ export function StampsSection() {
         <div className="space-y-3">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-bold" htmlFor="stamps-prize">
-                {t("loyalty.stamps.prize")}
-              </label>
-              <NativeSelect
-                id="stamps-prize"
-                value={cardRewardId ?? ""}
-                onChange={(e) => onSelectReward(e.target.value || null)}
-                className="w-full [&>select]:h-10 [&>select]:rounded-xl"
+              <span className="text-sm font-bold">{t("loyalty.stamps.prize")}</span>
+              <Combobox<PrizeOption>
+                items={prizeOptions}
+                value={prizeOptions.find((p) => p.id === (cardRewardId ?? "")) ?? null}
+                onValueChange={(sel) => onSelectReward(sel?.id ? sel.id : null)}
+                itemToStringLabel={(p) => p.label}
+                isItemEqualToValue={(a, b) => a.id === b.id}
               >
-                <NativeSelectOption value="">
-                  {t("loyalty.stamps.prizeUnlinked")}
-                </NativeSelectOption>
-                {brokenOption ? (
-                  <NativeSelectOption value={brokenOption.id}>
-                    {brokenOption.name}
-                  </NativeSelectOption>
-                ) : null}
-                {data.rewardOptions.map((r) => (
-                  <NativeSelectOption key={r.id} value={r.id}>
-                    {r.name}
-                    {r.stampsRequired != null ? ` (${r.stampsRequired})` : ""}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+                <ComboboxInput
+                  placeholder={t("loyalty.stamps.prizeSearch")}
+                  className="h-10 w-full rounded-xl"
+                />
+                <ComboboxContent>
+                  <ComboboxEmpty className="py-3">
+                    {t("loyalty.stamps.noResults")}
+                  </ComboboxEmpty>
+                  <ComboboxList className="p-1.5">
+                    {prizeOptions.map((p) => (
+                      <ComboboxItem key={p.id || "none"} value={p} className="rounded-lg">
+                        {p.label}
+                      </ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-bold" htmlFor="stamps-goal">
@@ -358,44 +401,111 @@ export function StampsSection() {
                 {t("loyalty.stamps.categoriesHint")}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {(categories.data ?? []).map((c) => {
-                const selected = categoryIds.includes(c.id);
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={selected}
-                    onClick={() =>
-                      setCategoryIds((prev) =>
-                        selected ? prev.filter((id) => id !== c.id) : [...prev, c.id],
-                      )
-                    }
-                    className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
-                      selected
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border text-muted-foreground hover:border-primary/40"
-                    }`}
-                  >
-                    {selected ? <Check className="size-3.5" strokeWidth={3} /> : null}
-                    {c.name}
-                  </button>
-                );
-              })}
-            </div>
+            <Combobox
+              items={categoryItems}
+              multiple
+              value={selectedCategories}
+              onValueChange={(v: CategoryItem[]) => setCategoryIds(v.map((c) => c.id))}
+              itemToStringLabel={(c: CategoryItem) => c.name}
+              isItemEqualToValue={(a: CategoryItem, b: CategoryItem) => a.id === b.id}
+            >
+              <ComboboxChips className="min-h-10 rounded-xl">
+                {selectedCategories.map((c) => (
+                  <ComboboxChip key={c.id}>{c.name}</ComboboxChip>
+                ))}
+                <ComboboxChipsInput
+                  placeholder={
+                    selectedCategories.length === 0
+                      ? t("loyalty.stamps.categoriesSearch")
+                      : undefined
+                  }
+                />
+              </ComboboxChips>
+              <ComboboxContent>
+                <ComboboxEmpty className="py-3">
+                  {t("loyalty.stamps.noResults")}
+                </ComboboxEmpty>
+                <ComboboxList className="p-1.5">
+                  {categoryItems.map((c) => (
+                    <ComboboxItem key={c.id} value={c} className="rounded-lg">
+                      {c.name}
+                    </ComboboxItem>
+                  ))}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           </div>
         </div>
 
-        {/* Stamp editor — live preview left, icon/color/off-style right */}
+        {/* Card design — ONE live preview + every visual control beside it
+            (template, icon, color, off-style). The preview and the thumbnails
+            are `.preview-customer`-scoped so they render in the STORE's brand
+            colors, not the admin violet. */}
         <div className="space-y-3">
-          <span className="text-sm font-bold">{t("loyalty.stamps.editor")}</span>
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,340px)_1fr] lg:items-start">
-            <div className="preview-customer">
+          <div>
+            <span className="text-sm font-bold">{t("loyalty.stamps.design")}</span>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              {t("loyalty.stamps.designHint")}
+            </p>
+          </div>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr] lg:items-start">
+            <div className="preview-customer space-y-2 lg:sticky lg:top-6">
               <StampCardTemplate template={template} view={sampleView} />
+              <p className="text-muted-foreground text-center text-xs font-bold">
+                {templateName(template, locale)}
+              </p>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <span className="text-sm font-bold">{t("loyalty.stamps.template")}</span>
+                <div
+                  role="radiogroup"
+                  aria-label={t("loyalty.stamps.template")}
+                  className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5"
+                >
+                  {STAMP_CARD_TEMPLATES.map((tpl) => {
+                    const selected = template === tpl.key;
+                    return (
+                      <button
+                        key={tpl.key}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setTemplate(tpl.key)}
+                        className={`group rounded-2xl text-left outline-none ${
+                          selected ? "" : "opacity-80 hover:opacity-100"
+                        }`}
+                      >
+                        <div
+                          className={`bg-muted/40 relative h-24 overflow-hidden rounded-2xl transition-shadow ${
+                            selected
+                              ? "ring-primary ring-2"
+                              : "ring-border group-hover:ring-primary/40 ring-1"
+                          }`}
+                        >
+                          <div className="preview-customer pointer-events-none absolute top-0 left-1/2 w-[320px] origin-top -translate-x-1/2 scale-50 p-2">
+                            <StampCardTemplate template={tpl.key} view={sampleView} />
+                          </div>
+                          {selected ? (
+                            <span className="bg-primary absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-full text-white shadow-sm">
+                              <Check className="size-3.5" strokeWidth={3} />
+                            </span>
+                          ) : null}
+                        </div>
+                        <div
+                          className={`mt-1 truncate text-center text-xs font-bold ${
+                            selected ? "" : "text-muted-foreground"
+                          }`}
+                        >
+                          {tpl.name[locale === "en" ? "en" : "es"]}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <span className="text-sm font-bold">{t("loyalty.stamps.icon")}</span>
                 <div className="flex flex-wrap gap-2">
@@ -529,95 +639,36 @@ export function StampsSection() {
           </div>
         </div>
 
-        {/* Stamp-card template gallery — the previews ARE the customer render
-            (shared StampCardTemplate), on the live editor state. */}
-        <div className="space-y-3">
-          <div>
-            <span className="text-sm font-bold">{t("loyalty.stamps.templates.title")}</span>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              {t("loyalty.stamps.templates.hint")}
-            </p>
-          </div>
-          {/* `.preview-customer` re-themes --primary etc. to the tenant brand, so
-              these previews render in the STORE's colors, not the admin violet. */}
-          <div className="preview-customer grid gap-5 lg:grid-cols-[minmax(0,340px)_1fr] lg:items-start">
-            <div className="space-y-2">
-              <StampCardTemplate template={template} view={sampleView} />
-              <p className="text-muted-foreground text-center text-xs font-bold">
-                {templateName(template, locale)}
-              </p>
-            </div>
-
-            <div
-              role="radiogroup"
-              aria-label={t("loyalty.stamps.templates.title")}
-              className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5"
-            >
-              {STAMP_CARD_TEMPLATES.map((tpl) => {
-                const selected = template === tpl.key;
-                return (
-                  <button
-                    key={tpl.key}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => setTemplate(tpl.key)}
-                    className={`group rounded-2xl text-left outline-none ${
-                      selected ? "" : "opacity-80 hover:opacity-100"
-                    }`}
-                  >
-                    <div
-                      className={`bg-muted/40 relative h-24 overflow-hidden rounded-2xl transition-shadow ${
-                        selected
-                          ? "ring-primary ring-2"
-                          : "ring-border group-hover:ring-primary/40 ring-1"
-                      }`}
-                    >
-                      <div className="pointer-events-none absolute top-0 left-1/2 w-[320px] origin-top -translate-x-1/2 scale-50 p-2">
-                        <StampCardTemplate template={tpl.key} view={sampleView} />
-                      </div>
-                      {selected ? (
-                        <span className="bg-primary absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-full text-white shadow-sm">
-                          <Check className="size-3.5" strokeWidth={3} />
-                        </span>
-                      ) : null}
-                    </div>
-                    <div
-                      className={`mt-1 truncate text-center text-xs font-bold ${
-                        selected ? "" : "text-muted-foreground"
-                      }`}
-                    >
-                      {tpl.name[locale === "en" ? "en" : "es"]}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Copies editor — per-locale overrides; empty input = app default */}
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <div>
-              <span className="text-sm font-bold">{t("loyalty.stamps.copies.title")}</span>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                {t("loyalty.stamps.copies.hint")}
-              </p>
-            </div>
-            {enabledLocales.length > 1 ? (
-              <Tabs value={activeCopyLocale} onValueChange={setCopyLocale}>
-                <TabsList className="h-9" aria-label={t("loyalty.stamps.copies.tabLabel")}>
-                  {enabledLocales.map((l) => (
-                    <TabsTrigger key={l} value={l} className="px-3 uppercase">
-                      {l}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            ) : null}
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+        {/* Copies editor — advanced/optional, so it lives behind a disclosure;
+            open by default only when the org already saved overrides. */}
+        <Accordion
+          defaultValue={hasCopyOverrides ? ["copies"] : []}
+          className="border-border rounded-2xl border"
+        >
+          <AccordionItem value="copies" className="border-none">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="text-left">
+                <span className="text-sm font-bold">
+                  {t("loyalty.stamps.copies.title")}
+                </span>
+                <p className="text-muted-foreground mt-0.5 text-xs font-normal">
+                  {t("loyalty.stamps.copies.hint")}
+                </p>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="space-y-3 px-4 pb-4">
+              {enabledLocales.length > 1 ? (
+                <Tabs value={activeCopyLocale} onValueChange={setCopyLocale}>
+                  <TabsList className="h-9" aria-label={t("loyalty.stamps.copies.tabLabel")}>
+                    {enabledLocales.map((l) => (
+                      <TabsTrigger key={l} value={l} className="px-3 uppercase">
+                        {l}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              ) : null}
+              <div className="grid gap-3 sm:grid-cols-2">
             {STAMP_CARD_COPY_KEYS.map((key) => (
               <div key={key} className="space-y-1">
                 <label className="text-sm font-bold" htmlFor={`stamps-copy-${key}`}>
@@ -648,8 +699,10 @@ export function StampsSection() {
                 ) : null}
               </div>
             ))}
-          </div>
-        </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
         <Button
           onClick={onSave}

@@ -2193,7 +2193,6 @@
         "minAmountHint": "0 = sin mínimo. Las compras por debajo no suman sello.",
         "categories": "Categorías que suman",
         "categoriesHint": "Sin selección = todas las categorías suman sellos.",
-        "editor": "Diseño del sello",
         "icon": "Ícono",
         "iconUpload": "Subir imagen",
         "onColor": "Color del sello ganado",
@@ -2212,10 +2211,6 @@
           "number": "Muestra el número del sello."
         },
         "sampleCount": "{count} sellos",
-        "templates": {
-          "title": "Diseño de la tarjeta de sellos",
-          "hint": "Cómo se ve la tarjeta en la app del cliente. El preview es el render real."
-        },
         "copies": {
           "title": "Textos de la tarjeta",
           "hint": "Dejá un campo vacío para usar el texto por defecto de la app.",
@@ -2249,7 +2244,14 @@
         "confirmLowerBody": "Los clientes que ya llegan a la nueva meta verán su premio desbloqueado al instante y entran a los recordatorios de canje.",
         "confirmLowerAction": "Sí, guardar",
         "errReward": "El premio elegido no es válido: tiene que estar publicado y costar sellos.",
-        "errPlaceholder": "Hay un texto que usa mal los marcadores: revisá que '{count}' esté donde corresponde."
+        "errPlaceholder": "Hay un texto que usa mal los marcadores: revisá que '{count}' esté donde corresponde.",
+        "design": "Diseño de la tarjeta",
+        "designHint": "Cómo se ve en la app del cliente. El preview es el render real.",
+        "template": "Plantilla",
+        "prizeSearch": "Buscá un premio del catálogo…",
+        "prizeOption": "{name} ({n} sellos)",
+        "categoriesSearch": "Buscá y agregá categorías…",
+        "noResults": "Sin resultados"
       },
       "templates": {
         "title": "Diseño de la tarjeta de puntos",
