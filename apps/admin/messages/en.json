@@ -2149,7 +2149,12 @@
       "iconCustom": "Custom",
       "customColor": "Custom color",
       "imgUpload": "Drag an image or click",
-      "imgRemove": "Remove"
+      "imgRemove": "Remove",
+      "error": "Could not save the onboarding",
+      "invalid": "Check the steps: something is missing or there are more than 10.",
+      "errDefaultTitle": "Step {n} needs a title in {locale} (the primary language).",
+      "maxReached": "Up to {n} steps.",
+      "back": "Back"
     },
     "team": {
       "title": "Team & roles",
