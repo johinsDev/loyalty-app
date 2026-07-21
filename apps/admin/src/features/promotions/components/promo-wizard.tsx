@@ -45,9 +45,11 @@ import {
   type Channel,
 } from "@/features/campaigns/lib/campaign-message";
 import { FileUpload } from "@/features/storage/components/file-upload";
+import { StoreAvailabilityField } from "@/features/stores/components/store-availability-field";
 import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 import { useRouter } from "@/i18n/nav";
 import { useNavigationGuard } from "@/lib/use-unsaved-guard";
+import { useStoreScope } from "@/lib/store-scope";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { promoAnnounceInitial, promoLinkUrl } from "../lib/promo-announce";
@@ -98,6 +100,7 @@ type Form = {
   audienceType: AudienceType;
   tierKey: TierKey;
   audienceCustomerIds: string[];
+  storeIds: string[] | null;
   startsAt: Date | null;
   endsAt: Date | null;
   // schedule
@@ -127,6 +130,7 @@ const EMPTY: Form = {
   audienceType: "all",
   tierKey: "oro",
   audienceCustomerIds: [],
+  storeIds: null,
   startsAt: null,
   endsAt: null,
   recurrenceMode: "always",
@@ -161,6 +165,7 @@ export function PromoWizard({ id }: { id: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const uploadImage = useUploadImage();
+  const { storeId } = useStoreScope();
 
   const [form, setForm] = useState<Form>(EMPTY);
   const [announce, setAnnounce] = useState<AnnounceValue | null>(null);
@@ -224,6 +229,8 @@ export function PromoWizard({ id }: { id: string }) {
       audienceType: (p.audienceType as AudienceType) ?? "all",
       tierKey: (p.tierKey as TierKey) ?? "oro",
       audienceCustomerIds: p.audienceCustomerIds ?? [],
+      // Edit: keep the promo's stored scope. Fresh draft: default to the active store.
+      storeIds: p.storeIds ?? (storeId ? [storeId] : null),
       startsAt: p.startsAt,
       endsAt: p.endsAt,
       recurrenceMode: rec?.kind ?? "always",
@@ -362,6 +369,7 @@ export function PromoWizard({ id }: { id: string }) {
             ...(form.audienceType === "specific"
               ? { audienceCustomerIds: form.audienceCustomerIds }
               : {}),
+            storeIds: form.storeIds,
             startsAt: form.startsAt,
             endsAt: form.endsAt,
             schedule: buildSchedule(),
@@ -627,6 +635,11 @@ export function PromoWizard({ id }: { id: string }) {
                 />
               ) : null}
             </div>
+
+            <StoreAvailabilityField
+              value={form.storeIds}
+              onChange={(v) => set("storeIds", v)}
+            />
 
             <div className="border-border space-y-4 rounded-2xl border p-4">
               <p className="text-sm font-semibold">{t("scheduleTitle")}</p>

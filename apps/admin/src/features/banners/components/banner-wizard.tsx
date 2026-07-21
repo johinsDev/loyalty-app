@@ -44,8 +44,10 @@ import {
   type Channel,
 } from "@/features/campaigns/lib/campaign-message";
 import { FileUpload } from "@/features/storage/components/file-upload";
+import { StoreAvailabilityField } from "@/features/stores/components/store-availability-field";
 import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 import { useRouter } from "@/i18n/nav";
+import { useStoreScope } from "@/lib/store-scope";
 import { useNavigationGuard } from "@/lib/use-unsaved-guard";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -68,6 +70,7 @@ type Form = {
   mainImageUrl: string | null;
   displayFrom: Date | null;
   displayUntil: Date | null;
+  storeIds: string[] | null;
 };
 
 const EMPTY: Form = {
@@ -82,6 +85,7 @@ const EMPTY: Form = {
   mainImageUrl: null,
   displayFrom: null,
   displayUntil: null,
+  storeIds: null,
 };
 
 /** Reverse a stored ctaHref into the editor's target + value (a slug for
@@ -134,6 +138,7 @@ export function BannerWizard({ id }: { id?: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const uploadImage = useUploadImage();
+  const { storeId } = useStoreScope();
 
   const [bannerId, setBannerId] = useState<string | undefined>(id);
   const [form, setForm] = useState<Form>(EMPTY);
@@ -204,6 +209,7 @@ export function BannerWizard({ id }: { id?: string }) {
     mainImageUrl: string | null;
     displayFrom: Date | null;
     displayUntil: Date | null;
+    storeIds: string[] | null;
   }) {
     setForm({
       name: b.name === "Borrador" ? "" : b.name,
@@ -216,6 +222,7 @@ export function BannerWizard({ id }: { id?: string }) {
       mainImageUrl: b.mainImageUrl,
       displayFrom: b.displayFrom,
       displayUntil: b.displayUntil,
+      storeIds: b.storeIds,
     });
   }
 
@@ -227,6 +234,8 @@ export function BannerWizard({ id }: { id?: string }) {
     createMut.mutate(undefined, {
       onSuccess: (res) => {
         setBannerId(res.banner.id);
+        // Default a new banner to the store you're currently scoped into.
+        setForm((f) => ({ ...f, storeIds: storeId ? [storeId] : null }));
         seeded.current = true;
       },
     });
@@ -324,6 +333,7 @@ export function BannerWizard({ id }: { id?: string }) {
           input: {
             displayFrom: form.displayFrom ?? undefined,
             displayUntil: form.displayUntil ?? undefined,
+            storeIds: form.storeIds,
           },
         });
       }
@@ -584,6 +594,10 @@ export function BannerWizard({ id }: { id?: string }) {
               />
             </Field>
           </div>
+          <StoreAvailabilityField
+            value={form.storeIds}
+            onChange={(v) => set("storeIds", v)}
+          />
         </div>
       ) : step === "difusion" ? (
         announce ? (

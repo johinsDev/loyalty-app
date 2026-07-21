@@ -147,6 +147,8 @@ export const adminListInputSchema = listQueryBase.extend({
   audience: z.array(audienceTypeSchema).optional(),
   startsFrom: z.coerce.date().optional(),
   startsTo: z.coerce.date().optional(),
+  /** Restrict to promos available at this store (skips the aggregate view). */
+  storeId: z.string().optional(),
 });
 export type AdminListInput = z.infer<typeof adminListInputSchema>;
 

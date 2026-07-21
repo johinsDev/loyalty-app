@@ -49,6 +49,8 @@ export const rewardCostInputSchema = z
     limitPerCustomer: z.enum(["unlimited", "once"]),
     sections: z.array(z.string().max(60)),
     sortOrder: z.number().int(),
+    // Stores this reward is available at (null/empty = every store).
+    storeIds: z.array(z.string()).nullable().optional(),
   })
   .superRefine((v, ctx) => {
     if (v.stampsRequired == null && v.pointsCost == null)
@@ -76,6 +78,8 @@ export type RewardPatchContentInput = z.infer<typeof rewardPatchContentSchema>;
 export const rewardAdminListInputSchema = listQueryBase.extend({
   status: z.array(rewardStatusSchema).optional(),
   type: z.array(rewardTypeSchema).optional(),
+  /** Restrict to rewards available at this store (the active admin scope). */
+  storeId: z.string().optional(),
 });
 export type RewardAdminListInput = z.infer<typeof rewardAdminListInputSchema>;
 
@@ -184,6 +188,8 @@ export interface RewardListItem {
   pointsCost: number | null;
   costMode: CostMode;
   allowedTiers: string[] | null;
+  /** Stores this reward is available at (null/empty = every store). */
+  storeIds: string[] | null;
   sections: string[];
   sortOrder: number;
   limitPerCustomer: LimitPerCustomer;

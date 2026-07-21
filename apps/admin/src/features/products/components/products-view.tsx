@@ -31,8 +31,10 @@ import {
   FilterSelect,
 } from "@/components/filters";
 import { type ViewMode, ViewToggle } from "@/components/view-toggle";
+import { StoreAvailabilityBadge } from "@/features/stores/components/store-availability-badge";
 import { useFadeUp } from "@/lib/animate";
 import { useRouter } from "@/i18n/nav";
+import { useStoreScope } from "@/lib/store-scope";
 import { useTRPC } from "@/lib/trpc/client";
 
 const STATUSES = ["active", "draft", "archived"] as const;
@@ -47,6 +49,7 @@ interface Row {
   imageUrl: string | null;
   variantCount: number;
   categoryName: string;
+  storeIds: string[] | null;
 }
 
 /**
@@ -63,6 +66,7 @@ export function ProductsView() {
 
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const { storeId } = useStoreScope();
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
@@ -71,7 +75,12 @@ export function ProductsView() {
   const [toDelete, setToDelete] = useState<Row | null>(null);
 
   const listQuery = useQuery(
-    trpc.menu.adminList.queryOptions({ perPage: 100, sort: "updated", dir: "desc" }),
+    trpc.menu.adminList.queryOptions({
+      perPage: 100,
+      sort: "updated",
+      dir: "desc",
+      storeId: storeId ?? undefined,
+    }),
   );
   const categoriesQuery = useQuery(trpc.menu.categories.queryOptions());
   const remove = useMutation(trpc.menu.remove.mutationOptions());
@@ -84,6 +93,7 @@ export function ProductsView() {
     imageUrl: p.imageUrl,
     variantCount: p.variantCount,
     categoryName: p.categoryNames[0] ?? "",
+    storeIds: p.storeIds,
   }));
 
   const categoryOptions: FilterOption<string>[] = (categoriesQuery.data ?? []).map((c) => ({
@@ -236,9 +246,12 @@ export function ProductsView() {
                 </div>
                 <span className="font-bold">${p.price.toFixed(2)}</span>
               </div>
-              <p className="text-muted-foreground/70 mt-2 text-xs font-semibold">
-                {t("variantsCount", { n: p.variantCount })}
-              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <p className="text-muted-foreground/70 text-xs font-semibold">
+                  {t("variantsCount", { n: p.variantCount })}
+                </p>
+                <StoreAvailabilityBadge storeIds={p.storeIds} />
+              </div>
               <div className="border-border mt-3 flex items-center gap-1 border-t pt-3">
                 <Button
                   variant="outline"
@@ -304,6 +317,7 @@ export function ProductsView() {
                         )}
                       </span>
                       <span className="font-bold">{p.name}</span>
+                      <StoreAvailabilityBadge storeIds={p.storeIds} />
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground font-semibold">

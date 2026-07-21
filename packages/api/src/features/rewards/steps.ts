@@ -92,6 +92,8 @@ export class CostStep extends WizardStep<RewardRow, RewardCostInput, RewardStepS
       limitPerCustomer: input.limitPerCustomer,
       sections: input.sections,
       sortOrder: input.sortOrder,
+      // Empty selection = available at every store → normalize to null.
+      storeIds: input.storeIds && input.storeIds.length > 0 ? input.storeIds : null,
     });
   }
 }

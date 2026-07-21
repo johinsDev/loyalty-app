@@ -833,6 +833,7 @@
       "colType": "Type",
       "colStatus": "Status",
       "colVigency": "Vigency",
+      "colAvailability": "Availability",
       "colWindow": "Window",
       "colUses": "Uses",
       "colCreated": "Created",
@@ -1325,6 +1326,15 @@
     "createStorePlaceholder": "Store name",
     "createStoreSubmit": "Create and continue",
     "createStoreError": "Couldn't create the store."
+  },
+  "StoreAvailability": {
+    "title": "Available at",
+    "hint": "Choose which stores it appears in. All stores by default.",
+    "allStores": "All stores",
+    "unnamed": "Unnamed store",
+    "badgeAll": "All stores",
+    "badgeOne": "1 store",
+    "badgeCount": "{n} stores"
   },
   "Roles": {
     "customer": "Customer",
@@ -1969,6 +1979,7 @@
     "colSlug": "Slug",
     "colState": "State",
     "colSchedule": "Schedule",
+    "colStores": "Stores",
     "colNotifications": "Notif.",
     "colCreated": "Created",
     "namePlaceholder": "Untitled",

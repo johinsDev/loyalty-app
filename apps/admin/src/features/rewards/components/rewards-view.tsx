@@ -23,7 +23,9 @@ import {
 } from "@/components/data-table";
 import { useDataTable } from "@/components/data-table/use-data-table";
 import { ViewToggle } from "@/components/view-toggle";
+import { StoreAvailabilityBadge } from "@/features/stores/components/store-availability-badge";
 import { useRouter } from "@/i18n/nav";
+import { useStoreScope } from "@/lib/store-scope";
 import { useTRPC } from "@/lib/trpc/client";
 
 import {
@@ -40,6 +42,7 @@ export function RewardsView({ initialData }: { initialData?: RewardListResult })
   const locale = useLocale();
   const trpc = useTRPC();
   const router = useRouter();
+  const { storeId } = useStoreScope();
 
   // Feature-specific URL state (facets + q). page/perPage/sort/view/cols live in
   // useDataTable.
@@ -80,8 +83,11 @@ export function RewardsView({ initialData }: { initialData?: RewardListResult })
   const toggleType = toggle(type, (next) => void setType(next));
 
   const input: RewardAdminListInput = useMemo(
-    () => buildRewardsInput({ q, page, perPage, sort, status, type }),
-    [q, page, perPage, sort, status, type],
+    () => ({
+      ...buildRewardsInput({ q, page, perPage, sort, status, type }),
+      storeId: storeId ?? undefined,
+    }),
+    [q, page, perPage, sort, status, type, storeId],
   );
 
   const initialKey = useRef(JSON.stringify(input));
@@ -132,6 +138,7 @@ export function RewardsView({ initialData }: { initialData?: RewardListResult })
               {row.original.icon ? <IconGlyph value={row.original.icon} /> : null}
             </span>
             <span className="font-semibold">{row.original.name || t("list.namePlaceholder")}</span>
+            <StoreAvailabilityBadge storeIds={row.original.storeIds} />
           </span>
         ),
       },
@@ -295,6 +302,9 @@ export function RewardsView({ initialData }: { initialData?: RewardListResult })
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-semibold">{r.name || t("list.namePlaceholder")}</p>
                       {statusBadge(r.status)}
+                    </div>
+                    <div className="mt-2">
+                      <StoreAvailabilityBadge storeIds={r.storeIds} />
                     </div>
                     <div className="text-muted-foreground mt-3 flex items-center gap-2 text-xs">
                       <span>{typeLabel(r.type)}</span>

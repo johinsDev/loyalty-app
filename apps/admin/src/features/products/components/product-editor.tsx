@@ -44,9 +44,13 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { useSearchParams } from "next/navigation";
+
 import { WizardShell } from "@/components/wizard-shell";
+import { StoreAvailabilityField } from "@/features/stores/components/store-availability-field";
 import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 import { useRouter } from "@/i18n/nav";
+import { useStoreScope } from "@/lib/store-scope";
 import { useTRPC } from "@/lib/trpc/client";
 
 import {
@@ -99,6 +103,8 @@ export function ProductEditor({ id }: { id?: string }) {
   const locale = useLocale();
   const router = useRouter();
   const trpc = useTRPC();
+  const searchParams = useSearchParams();
+  const { storeId: scopeStoreId } = useStoreScope();
   const [draft, setDraft] = useState<ProductDraft>(emptyProductDraft);
   const [status, setStatus] = useState<ProductStatus>("active");
   const [passthrough, setPassthrough] = useState<ProductPassthrough>({
@@ -128,7 +134,12 @@ export function ProductEditor({ id }: { id?: string }) {
     if (id) return;
     let cancelled = false;
     void createDraft.mutateAsync().then((newId) => {
-      if (!cancelled) router.replace({ pathname: "/products/[id]", params: { id: newId } });
+      if (!cancelled)
+        router.replace({
+          pathname: "/products/[id]",
+          params: { id: newId },
+          query: { new: "1" },
+        });
     });
     return () => {
       cancelled = true;
@@ -152,6 +163,11 @@ export function ProductEditor({ id }: { id?: string }) {
     if (!detailQuery.data || loadedIdRef.current === id) return;
     loadedIdRef.current = id ?? null;
     const mapped = detailToDraft(detailQuery.data);
+    // Freshly created product (redirected from /new): default the store scope to
+    // the active store when the admin is scoped to one; otherwise leave null (all).
+    if (searchParams.get("new") === "1" && scopeStoreId) {
+      mapped.draft.storeIds = [scopeStoreId];
+    }
     setDraft(mapped.draft);
     setStatus(mapped.status);
     setPassthrough(mapped.passthrough);
@@ -827,6 +843,11 @@ export function ProductEditor({ id }: { id?: string }) {
               {t("manageCategories")}
             </button>
           </Block>
+
+          <StoreAvailabilityField
+            value={draft.storeIds}
+            onChange={(v) => set("storeIds", v)}
+          />
 
           <Block title={t("secFeatured")} divided>
             <p className="text-muted-foreground text-sm font-semibold">

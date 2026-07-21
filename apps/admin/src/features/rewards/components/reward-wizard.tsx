@@ -39,8 +39,10 @@ import {
   type Channel,
 } from "@/features/campaigns/lib/campaign-message";
 import { FileUpload } from "@/features/storage/components/file-upload";
+import { StoreAvailabilityField } from "@/features/stores/components/store-availability-field";
 import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
 import { useRouter } from "@/i18n/nav";
+import { useStoreScope } from "@/lib/store-scope";
 import { useNavigationGuard } from "@/lib/use-unsaved-guard";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -66,6 +68,8 @@ type Form = {
   limitPerCustomer: "unlimited" | "once";
   sections: string[];
   sortOrder: number;
+  // stores this reward is available at (null = every store)
+  storeIds: string[] | null;
   // design
   backgroundCss: string;
   imageUrl: string | null;
@@ -83,6 +87,7 @@ const EMPTY: Form = {
   limitPerCustomer: "unlimited",
   sections: [],
   sortOrder: 0,
+  storeIds: null,
   backgroundCss: "linear-gradient(135deg, #1BAD9D, #0e6f64)",
   imageUrl: null,
   icon: "🎁",
@@ -105,6 +110,7 @@ export function RewardWizard({ id }: { id: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const uploadImage = useUploadImage();
+  const { storeId: scopeStoreId } = useStoreScope();
 
   const [form, setForm] = useState<Form>(EMPTY);
   const [announce, setAnnounce] = useState<AnnounceValue | null>(null);
@@ -162,6 +168,13 @@ export function RewardWizard({ id }: { id: string }) {
       limitPerCustomer: (r.limitPerCustomer as "unlimited" | "once") ?? "unlimited",
       sections: r.sections ?? [],
       sortOrder: r.sortOrder ?? 0,
+      // On edit, seed from the saved value; on a fresh draft (cost step never
+      // persisted) default to the store the admin is currently scoped to.
+      storeIds:
+        r.storeIds ??
+        (r.stampsRequired == null && r.pointsCost == null && scopeStoreId
+          ? [scopeStoreId]
+          : null),
       backgroundCss: r.backgroundCss ?? EMPTY.backgroundCss,
       imageUrl: r.imageUrl,
       icon: r.icon ?? "",
@@ -172,7 +185,7 @@ export function RewardWizard({ id }: { id: string }) {
     const current = stateQuery.data.state.current;
     const idx = (STEPS as readonly string[]).indexOf(current);
     setStepIndex(current === "review" ? STEPS.indexOf("review") : idx >= 0 ? idx : 0);
-  }, [stateQuery.data]);
+  }, [stateQuery.data, scopeStoreId]);
 
   const advanceMut = useMutation(trpc.rewards.advance.mutationOptions());
   const publishMut = useMutation(trpc.rewards.publish.mutationOptions());
@@ -249,6 +262,7 @@ export function RewardWizard({ id }: { id: string }) {
             limitPerCustomer: form.limitPerCustomer,
             sections: form.sections,
             sortOrder: form.sortOrder,
+            storeIds: form.storeIds,
           },
         });
       } else if (step === "design") {
@@ -430,7 +444,13 @@ export function RewardWizard({ id }: { id: string }) {
             ) : null}
           </div>
         ) : step === "cost" ? (
-          <CostStepFields value={costForm} onChange={(next) => setForm((f) => ({ ...f, ...next }))} />
+          <div className="space-y-4">
+            <CostStepFields value={costForm} onChange={(next) => setForm((f) => ({ ...f, ...next }))} />
+            <StoreAvailabilityField
+              value={form.storeIds}
+              onChange={(storeIds) => set("storeIds", storeIds)}
+            />
+          </div>
         ) : step === "design" ? (
           <div className="space-y-4">
             <Field label={t("fieldBg")}>

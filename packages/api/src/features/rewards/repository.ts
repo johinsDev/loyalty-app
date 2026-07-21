@@ -18,6 +18,7 @@ import {
   pageOffset,
   type ListResult,
 } from "../_shared/list";
+import { availableAtStore } from "../_shared/store-availability";
 import { WINDOW_DAYS } from "../points/config";
 import { currentTierKey } from "../points/tier-calc";
 import { DRAFT_NAME } from "./steps";
@@ -29,7 +30,7 @@ export type RewardPatch = Partial<
     RewardInsert,
     | "name" | "type" | "benefit" | "description" | "imageUrl" | "backgroundCss"
     | "icon" | "fulfillmentNote" | "stampsRequired" | "pointsCost" | "costMode"
-    | "allowedTiers" | "limitPerCustomer" | "sections" | "sortOrder"
+    | "allowedTiers" | "limitPerCustomer" | "sections" | "sortOrder" | "storeIds"
   >
 >;
 
@@ -138,6 +139,7 @@ export class RewardsRepository {
     if (input.q) conds.push(like(reward.name, `%${input.q}%`));
     if (input.status?.length) conds.push(inArray(reward.status, input.status));
     if (input.type?.length) conds.push(inArray(reward.type, input.type));
+    if (input.storeId) conds.push(availableAtStore(reward.storeIds, input.storeId));
     const where = and(...conds.filter((c): c is SQL => Boolean(c)));
 
     const orderBy = buildOrderBy(

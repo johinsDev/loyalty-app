@@ -89,6 +89,10 @@ export class ScheduleStep extends WizardStep<
     return ctx.services.repo.patch(ctx.organizationId, d.id, {
       displayFrom: input.displayFrom ?? null,
       displayUntil: input.displayUntil ?? null,
+      // Only write store scope when present; empty = every store (null).
+      ...(input.storeIds !== undefined
+        ? { storeIds: input.storeIds && input.storeIds.length > 0 ? input.storeIds : null }
+        : {}),
     });
   }
 }

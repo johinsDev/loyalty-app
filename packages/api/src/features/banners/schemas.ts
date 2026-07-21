@@ -38,6 +38,8 @@ export const scheduleStepSchema = z
   .object({
     displayFrom: z.coerce.date().optional(),
     displayUntil: z.coerce.date().optional(),
+    // null / empty = every store; a subset restricts the banner to those stores.
+    storeIds: z.array(z.string()).nullable().optional(),
   })
   .refine((v) => !(v.displayFrom && v.displayUntil) || v.displayUntil > v.displayFrom, {
     message: "displayUntil must be after displayFrom",
@@ -98,6 +100,9 @@ export const bannersListInputSchema = listQueryBase.extend({
   state: z.array(bannerDisplayStateSchema).optional(),
   createdFrom: z.coerce.date().optional(),
   createdTo: z.coerce.date().optional(),
+  // Active store scope: keep only banners available at this store (null/empty
+  // storeIds = every store). Omitted / sentinel "all" → no store filter.
+  storeId: z.string().optional(),
 });
 export type BannersListInput = z.infer<typeof bannersListInputSchema>;
 
@@ -112,6 +117,7 @@ export interface BannerListItem {
   mainImageUrl: string | null;
   displayFrom: Date | null;
   displayUntil: Date | null;
+  storeIds: string[] | null;
   sortOrder: number;
   createdAt: Date;
 }

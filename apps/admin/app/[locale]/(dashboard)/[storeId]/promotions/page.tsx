@@ -6,17 +6,21 @@ import { buildPromotionsInput, loadPromotionsSearchParams } from "@/features/pro
 import { trpc } from "@/lib/trpc/server";
 
 type Props = {
-  params: Promise<{ locale: string }>;
+  params: Promise<{ locale: string; storeId: string }>;
   searchParams: Promise<SearchParams>;
 };
 
 /** RSC: prefetch the first page (from the URL searchParams) so the list paints
  *  server-rendered; the client then drives refetching via nuqs + react-query. */
 export default async function PromotionsPage({ params, searchParams }: Props) {
-  const { locale } = await params;
+  const { locale, storeId } = await params;
   setRequestLocale(locale);
 
-  const input = buildPromotionsInput(await loadPromotionsSearchParams(searchParams));
+  const input = {
+    ...buildPromotionsInput(await loadPromotionsSearchParams(searchParams)),
+    // Keep the SSR query key in sync with the client (`"all"` = aggregate view).
+    storeId: storeId === "all" ? undefined : storeId,
+  };
   let initialData:
     | Awaited<ReturnType<Awaited<ReturnType<typeof trpc>>["promociones"]["adminList"]>>
     | undefined;

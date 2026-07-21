@@ -13,6 +13,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, like, lte, or, sql } from "dr
 import { type ListResult, pageCountOf, pageOffset } from "../_shared/list";
 import type { LocaleContext } from "../_shared/localize";
 import { slugify, slugSuffix } from "../_shared/slugify";
+import { availableAtStore } from "../_shared/store-availability";
 import type {
   BannerAnalytics,
   BannerCard,
@@ -61,6 +62,7 @@ export type BannerPatch = Partial<
     | "ctaKind"
     | "displayFrom"
     | "displayUntil"
+    | "storeIds"
     | "seoTitle"
     | "seoDescription"
     | "ogImageUrl"
@@ -318,6 +320,7 @@ export class BannersRepository {
     }
     if (input.createdFrom) conds.push(gte(banner.createdAt, input.createdFrom));
     if (input.createdTo) conds.push(lte(banner.createdAt, input.createdTo));
+    if (input.storeId) conds.push(availableAtStore(banner.storeIds, input.storeId));
 
     const all = await this.db.select().from(banner).where(and(...conds));
     const now = new Date();
@@ -332,6 +335,7 @@ export class BannersRepository {
       mainImageUrl: r.mainImageUrl,
       displayFrom: r.displayFrom,
       displayUntil: r.displayUntil,
+      storeIds: r.storeIds ?? null,
       sortOrder: r.sortOrder,
       createdAt: r.createdAt,
     }));
@@ -377,6 +381,7 @@ export class BannersRepository {
       mainImageUrl: r.mainImageUrl,
       displayFrom: r.displayFrom,
       displayUntil: r.displayUntil,
+      storeIds: r.storeIds ?? null,
       sortOrder: r.sortOrder,
       createdAt: r.createdAt,
     }));

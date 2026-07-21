@@ -23,6 +23,7 @@ import { and, asc, desc, eq, getTableColumns, gt, gte, inArray, isNull, like, lt
 
 import { buildOrderBy, pageCountOf, pageOffset, type ListResult } from "../_shared/list";
 import type { LocaleContext } from "../_shared/localize";
+import { availableAtStore } from "../_shared/store-availability";
 import { slugify, slugSuffix } from "../_shared/slugify";
 import { benefitSummary, type SummaryLocale } from "./format";
 import type { ItemRef } from "./schemas";
@@ -99,7 +100,7 @@ export type PromoPatch = Partial<
     PromoInsert,
     | "name" | "slug" | "shortDescription" | "longDescription" | "badgeLabel" | "icon"
     | "backgroundCss" | "mainImageUrl" | "type" | "rule" | "schedule" | "conditions"
-    | "audienceType" | "tierKey" | "audienceCustomerIds" | "category" | "featured"
+    | "audienceType" | "tierKey" | "audienceCustomerIds" | "storeIds" | "category" | "featured"
     | "sortOrder" | "startsAt" | "endsAt" | "seoTitle" | "seoDescription" | "ogImageUrl"
   >
 >;
@@ -356,6 +357,7 @@ export class PromoRepository {
     if (input.status?.length) conds.push(inArray(promo.status, input.status));
     if (input.type?.length) conds.push(inArray(promo.type, input.type));
     if (input.audience?.length) conds.push(inArray(promo.audienceType, input.audience));
+    if (input.storeId) conds.push(availableAtStore(promo.storeIds, input.storeId));
     if (input.startsFrom) conds.push(gte(promo.startsAt, input.startsFrom));
     if (input.startsTo) conds.push(lte(promo.startsAt, input.startsTo));
     if (input.vigency?.length) {

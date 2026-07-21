@@ -833,6 +833,7 @@
       "colType": "Tipo",
       "colStatus": "Estado",
       "colVigency": "Vigencia",
+      "colAvailability": "Disponibilidad",
       "colWindow": "Ventana",
       "colUses": "Usos",
       "colCreated": "Creada",
@@ -1325,6 +1326,15 @@
     "createStorePlaceholder": "Nombre de la tienda",
     "createStoreSubmit": "Crear y continuar",
     "createStoreError": "No se pudo crear la tienda."
+  },
+  "StoreAvailability": {
+    "title": "Disponible en",
+    "hint": "Elegí en qué tiendas aparece. Por defecto, en todas.",
+    "allStores": "Todas las tiendas",
+    "unnamed": "Tienda sin nombre",
+    "badgeAll": "Todas las tiendas",
+    "badgeOne": "1 tienda",
+    "badgeCount": "{n} tiendas"
   },
   "Roles": {
     "customer": "Cliente",
@@ -1969,6 +1979,7 @@
     "colSlug": "Slug",
     "colState": "Estado",
     "colSchedule": "Vigencia",
+    "colStores": "Tiendas",
     "colNotifications": "Notif.",
     "colCreated": "Creado",
     "namePlaceholder": "Sin nombre",

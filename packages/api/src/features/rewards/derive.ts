@@ -74,6 +74,7 @@ export function deriveItem(
     pointsCost: rw.pointsCost,
     costMode: rw.costMode as "or" | "and",
     allowedTiers: rw.allowedTiers,
+    storeIds: rw.storeIds,
     sections: rw.sections,
     sortOrder: rw.sortOrder,
     limitPerCustomer: rw.limitPerCustomer as "unlimited" | "once",
