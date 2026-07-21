@@ -6,17 +6,22 @@ import { buildPurchasesInput, loadPurchasesSearchParams } from "@/features/purch
 import { trpc } from "@/lib/trpc/server";
 
 type Props = {
-  params: Promise<{ locale: string }>;
+  params: Promise<{ locale: string; storeId: string }>;
   searchParams: Promise<SearchParams>;
 };
 
 /** RSC: prefetch the first page (from the URL searchParams) so the list paints
- *  server-rendered; the client then drives refetching via nuqs + react-query. */
+ *  server-rendered; the client then drives refetching via nuqs + react-query.
+ *  Scoped to a store → hard-filter the prefetch to it so no all-store rows flash
+ *  under a store view (matches the client's scoped input). */
 export default async function Page({ params, searchParams }: Props) {
-  const { locale } = await params;
+  const { locale, storeId: segment } = await params;
   setRequestLocale(locale);
 
-  const input = buildPurchasesInput(await loadPurchasesSearchParams(searchParams));
+  const loaded = await loadPurchasesSearchParams(searchParams);
+  const input = buildPurchasesInput(
+    segment === "all" ? loaded : { ...loaded, store: [segment] },
+  );
   let initialData:
     | Awaited<ReturnType<Awaited<ReturnType<typeof trpc>>["purchases"]["adminList"]>>
     | undefined;

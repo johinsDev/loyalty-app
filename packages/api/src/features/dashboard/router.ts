@@ -26,17 +26,17 @@ export const dashboardRouter = router({
   overview: managerProcedure
     .input(overviewInputSchema)
     .query(async ({ ctx, input }) =>
-      new DashboardRepository(ctx.db).overview(await orgId(), input.period),
+      new DashboardRepository(ctx.db, input.storeId).overview(await orgId(), input.period),
     ),
   series: managerProcedure
     .input(seriesInputSchema)
     .query(async ({ ctx, input }) =>
-      new DashboardRepository(ctx.db).series(await orgId(), input.period),
+      new DashboardRepository(ctx.db, input.storeId).series(await orgId(), input.period),
     ),
   recentPurchases: managerProcedure
     .input(recentInputSchema)
     .query(async ({ ctx, input }) =>
-      new DashboardRepository(ctx.db).recentPurchases(await orgId(), input.limit),
+      new DashboardRepository(ctx.db, input.storeId).recentPurchases(await orgId(), input.limit),
     ),
   recentRedemptions: managerProcedure
     .input(recentInputSchema)
@@ -46,12 +46,16 @@ export const dashboardRouter = router({
   topCustomers: managerProcedure
     .input(topCustomersInputSchema)
     .query(async ({ ctx, input }) =>
-      new DashboardRepository(ctx.db).topCustomers(await orgId(), input.period, input.limit),
+      new DashboardRepository(ctx.db, input.storeId).topCustomers(
+        await orgId(),
+        input.period,
+        input.limit,
+      ),
     ),
   atRisk: managerProcedure
     .input(atRiskInputSchema)
     .query(async ({ ctx, input }) =>
-      new DashboardRepository(ctx.db).atRisk(await orgId(), input.days, input.limit),
+      new DashboardRepository(ctx.db, input.storeId).atRisk(await orgId(), input.days, input.limit),
     ),
   retention: managerProcedure
     .input(seriesInputSchema)
@@ -74,7 +78,11 @@ export const dashboardRouter = router({
   topProducts: managerProcedure
     .input(topProductsInputSchema)
     .query(async ({ ctx, input }) =>
-      new DashboardRepository(ctx.db).topProducts(await orgId(), input.period, input.limit),
+      new DashboardRepository(ctx.db, input.storeId).topProducts(
+        await orgId(),
+        input.period,
+        input.limit,
+      ),
     ),
   salesByStore: managerProcedure
     .input(seriesInputSchema)

@@ -29,6 +29,7 @@ import { useDataTable } from "@/components/data-table/use-data-table";
 import { ViewToggle } from "@/components/view-toggle";
 import { downloadCsv, rowsToCsv } from "@/lib/csv";
 import { useRouter } from "@/i18n/nav";
+import { useStoreScope } from "@/lib/store-scope";
 import { money } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -50,6 +51,7 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
   const router = useRouter();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const { storeId: scopeStoreId } = useStoreScope();
   const openDetail = useCallback(
     (id: string) => router.push({ pathname: "/purchases/[id]", params: { id } }),
     [router],
@@ -147,7 +149,9 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
         page,
         perPage,
         sort,
-        store,
+        // Scoped to a store → hard-filter to it (the manual store facet is
+        // hidden in that view); "all" → honor the manual store filter.
+        store: scopeStoreId ? [scopeStoreId] : store,
         cashier,
         effectiveness,
         currency,
@@ -158,7 +162,7 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
         from,
         to,
       }),
-    [q, page, perPage, sort, store, cashier, effectiveness, currency, entry, customer, amountMin, amountMax, from, to],
+    [q, page, perPage, sort, scopeStoreId, store, cashier, effectiveness, currency, entry, customer, amountMin, amountMax, from, to],
   );
 
   const initialKey = useRef(JSON.stringify(input));

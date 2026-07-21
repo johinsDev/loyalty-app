@@ -5,14 +5,20 @@ export type Period = z.infer<typeof periodSchema>;
 
 export const PERIOD_DAYS: Record<Period, number> = { "7d": 7, "30d": 30, "90d": 90 };
 
-export const overviewInputSchema = z.object({ period: periodSchema.default("30d") });
-export const seriesInputSchema = z.object({ period: periodSchema.default("30d") });
+/** Active-store scope for the dashboard: `null`/undefined = aggregate (all
+ *  stores); a store id filters purchase-based aggregates to that store. */
+const storeScope = { storeId: z.string().nullish() };
+
+export const overviewInputSchema = z.object({ period: periodSchema.default("30d"), ...storeScope });
+export const seriesInputSchema = z.object({ period: periodSchema.default("30d"), ...storeScope });
 export const recentInputSchema = z.object({
   limit: z.number().int().min(1).max(20).default(8),
+  ...storeScope,
 });
 export const topCustomersInputSchema = z.object({
   period: periodSchema.default("30d"),
   limit: z.number().int().min(1).max(20).default(8),
+  ...storeScope,
 });
 
 /** A KPI figure with its delta vs the immediately-preceding window. */
@@ -77,10 +83,12 @@ export interface TopCustomerRow {
 export const atRiskInputSchema = z.object({
   days: z.number().int().min(1).max(365).default(30),
   limit: z.number().int().min(1).max(50).default(8),
+  ...storeScope,
 });
 export const topProductsInputSchema = z.object({
   period: periodSchema.default("30d"),
   limit: z.number().int().min(1).max(50).default(8),
+  ...storeScope,
 });
 
 /** A customer who hasn't purchased in `days` — a churn/win-back candidate. */
