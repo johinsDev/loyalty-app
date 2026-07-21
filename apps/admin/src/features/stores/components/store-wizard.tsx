@@ -32,7 +32,7 @@ import { useAddressLabels } from "@/components/use-address-labels";
 import { WizardShell } from "@/components/wizard-shell";
 import { FileUpload } from "@/features/storage/components/file-upload";
 import { env } from "@/env";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { useNavigationGuard } from "@/lib/use-unsaved-guard";
 import { useTRPC } from "@/lib/trpc/client";
 

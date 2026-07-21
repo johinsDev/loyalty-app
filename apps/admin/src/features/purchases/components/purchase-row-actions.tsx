@@ -13,7 +13,7 @@ import { Eye, MoreHorizontal, Send } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 /** Per-row ⋯ menu: open the detail page · resend the WhatsApp receipt. */

@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Receipt } from "lucide-react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/i18n/nav";
 import { money } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
 

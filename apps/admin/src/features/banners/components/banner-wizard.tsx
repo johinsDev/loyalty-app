@@ -45,7 +45,7 @@ import {
 } from "@/features/campaigns/lib/campaign-message";
 import { FileUpload } from "@/features/storage/components/file-upload";
 import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { useNavigationGuard } from "@/lib/use-unsaved-guard";
 import { useTRPC } from "@/lib/trpc/client";
 

@@ -25,7 +25,7 @@ import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/nav";
 import { useHasRole } from "@/lib/role-context";
 
 import { customerInitials } from "../lib/initials";

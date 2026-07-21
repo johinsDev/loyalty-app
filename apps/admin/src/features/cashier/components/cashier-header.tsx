@@ -3,7 +3,7 @@
 import { LogOut, TrendingUp } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 
 import { DAILY_CAP, STAMPS_TODAY, store } from "../data";
 import { StoreSwitcher } from "./store-switcher";

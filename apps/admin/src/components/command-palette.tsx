@@ -27,7 +27,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 
 type Href = Parameters<ReturnType<typeof useRouter>["push"]>[0];
 

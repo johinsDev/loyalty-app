@@ -32,7 +32,7 @@ import {
 } from "@/components/filters";
 import { type ViewMode, ViewToggle } from "@/components/view-toggle";
 import { useFadeUp } from "@/lib/animate";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 const STATUSES = ["active", "draft", "archived"] as const;

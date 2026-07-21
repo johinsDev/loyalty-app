@@ -1,12 +1,13 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
-import { managerProcedure, publicProcedure, router } from "../../trpc";
+import { managerProcedure, publicProcedure, router, staffProcedure } from "../../trpc";
 import type { MapDeps } from "./service";
 import { StoresRepository } from "./repository";
 import {
   bulkIdsSchema,
   bulkSetPublishedSchema,
+  createStoreInputSchema,
   idInputSchema,
   storesListInputSchema,
   updateStoreInputSchema,
@@ -47,6 +48,9 @@ export const storesRouter = router({
   list: managerProcedure
     .input(storesListInputSchema)
     .query(async ({ ctx, input }) => makeService(ctx.db).adminList(await requireOrg(), input)),
+  switcherList: staffProcedure.query(async ({ ctx }) =>
+    makeService(ctx.db).switcherList(await requireOrg()),
+  ),
   listByIds: managerProcedure
     .input(bulkIdsSchema)
     .query(async ({ ctx, input }) => makeService(ctx.db).listByIds(await requireOrg(), input.ids)),
@@ -56,9 +60,11 @@ export const storesRouter = router({
   get: managerProcedure
     .input(idInputSchema)
     .query(async ({ ctx, input }) => makeService(ctx.db).get(await requireOrg(), input.id)),
-  create: managerProcedure.mutation(async ({ ctx }) =>
-    makeService(ctx.db).create(await requireOrg()),
-  ),
+  create: managerProcedure
+    .input(createStoreInputSchema.optional())
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).create(await requireOrg(), input?.name),
+    ),
   update: managerProcedure
     .input(updateStoreInputSchema)
     .mutation(async ({ ctx, input }) =>

@@ -6,7 +6,7 @@ import { Loader2, MailCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 type State = "loading" | "sent" | "accepting" | "done" | "invalid" | "error";

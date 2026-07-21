@@ -9,7 +9,7 @@ import { MousePointerClick, Pencil, Users } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { BannerStatsChart } from "./banner-stats-chart";

@@ -1310,8 +1310,7 @@
     "comingSoon": "Esta sección está en camino. La estamos construyendo.",
     "store": {
       "allStores": "Todas las tiendas",
-      "t4Centro": "T4 Centro",
-      "t4Norte": "T4 Norte"
+      "unnamed": "Tienda sin nombre"
     },
     "settingsLink": "Ajustes",
     "help": "Ayuda",
@@ -1320,7 +1319,12 @@
     "allNormal": "Todo normal",
     "storeSearch": "Buscar tienda…",
     "storeEmpty": "Sin tiendas.",
-    "createStore": "Crear tienda"
+    "createStore": "Crear tienda",
+    "createStoreTitle": "Nueva tienda",
+    "createStoreDesc": "Ponele un nombre para empezar. Después completás la dirección, horarios y marca.",
+    "createStorePlaceholder": "Nombre de la tienda",
+    "createStoreSubmit": "Crear y continuar",
+    "createStoreError": "No se pudo crear la tienda."
   },
   "Roles": {
     "customer": "Cliente",

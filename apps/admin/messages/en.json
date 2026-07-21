@@ -1310,8 +1310,7 @@
     "comingSoon": "This section is on the way. We're building it.",
     "store": {
       "allStores": "All stores",
-      "t4Centro": "T4 Centro",
-      "t4Norte": "T4 Norte"
+      "unnamed": "Unnamed store"
     },
     "settingsLink": "Settings",
     "help": "Help",
@@ -1320,7 +1319,12 @@
     "allNormal": "All normal",
     "storeSearch": "Find store…",
     "storeEmpty": "No stores.",
-    "createStore": "Create store"
+    "createStore": "Create store",
+    "createStoreTitle": "New store",
+    "createStoreDesc": "Give it a name to get started. You'll add the address, hours and brand next.",
+    "createStorePlaceholder": "Store name",
+    "createStoreSubmit": "Create and continue",
+    "createStoreError": "Couldn't create the store."
   },
   "Roles": {
     "customer": "Customer",

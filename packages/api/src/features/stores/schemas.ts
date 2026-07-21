@@ -45,6 +45,20 @@ export type UpdateStoreInput = z.infer<typeof updateStoreInputSchema>;
 
 export const idInputSchema = z.object({ id: z.string().uuid() });
 
+/** Quick-create from the store switcher: an optional name, then the wizard. */
+export const createStoreInputSchema = z.object({
+  name: z.string().trim().max(120).optional(),
+});
+export type CreateStoreInput = z.infer<typeof createStoreInputSchema>;
+
+/** Lean row for the admin store switcher (no heavy columns). */
+export interface StoreSwitcherItem {
+  id: string;
+  name: string;
+  isPrimary: boolean;
+  status: string;
+}
+
 export type StoreSocialLinks = z.infer<typeof storeSocialLinksSchema>;
 
 // ── Admin data-table list + bulk ──────────────────────────────────────────────

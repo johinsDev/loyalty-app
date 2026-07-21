@@ -10,7 +10,7 @@ import { type ReactNode, useState } from "react";
 import { AdminNav } from "@/components/admin-nav";
 import { CommandPalette } from "@/components/command-palette";
 import { StoreSwitcher } from "@/components/store-switcher";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { compactNumber } from "@/lib/money";
 import { RoleProvider } from "@/lib/role-context";
 import { useTRPC } from "@/lib/trpc/client";

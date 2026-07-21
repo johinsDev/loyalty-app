@@ -46,7 +46,7 @@ import { toast } from "sonner";
 
 import { WizardShell } from "@/components/wizard-shell";
 import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 import {

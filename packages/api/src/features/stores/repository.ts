@@ -3,7 +3,7 @@ import { store, type StoreRow } from "@loyalty/db/schema";
 import { and, asc, desc, eq, gte, inArray, isNull, like, lte, ne, or, sql } from "drizzle-orm";
 
 import { buildOrderBy, type ListResult, pageCountOf, pageOffset } from "../_shared/list";
-import type { StoreListItem, StoresListInput } from "./schemas";
+import type { StoreListItem, StoresListInput, StoreSwitcherItem } from "./schemas";
 
 type StorePatch = Partial<typeof store.$inferInsert>;
 
@@ -40,6 +40,20 @@ export class StoresRepository {
       .select()
       .from(store)
       .where(and(...conds))
+      .orderBy(desc(store.isPrimary), asc(store.sortOrder), asc(store.createdAt));
+  }
+
+  /** Lean list of active stores for the admin switcher (primary first). */
+  async switcherList(orgId: string): Promise<StoreSwitcherItem[]> {
+    return this.db
+      .select({
+        id: store.id,
+        name: store.name,
+        isPrimary: store.isPrimary,
+        status: store.status,
+      })
+      .from(store)
+      .where(and(eq(store.organizationId, orgId), isNull(store.deletedAt)))
       .orderBy(desc(store.isPrimary), asc(store.sortOrder), asc(store.createdAt));
   }
 

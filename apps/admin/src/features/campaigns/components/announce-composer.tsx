@@ -3,7 +3,7 @@
 import { Switch } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/i18n/nav";
 
 import type { AudienceValue } from "../lib/campaign-audience";
 import type { CampaignMessageValue } from "../lib/campaign-message";

@@ -37,7 +37,7 @@ import {
 import { useDataTable } from "@/components/data-table/use-data-table";
 import { ViewToggle } from "@/components/view-toggle";
 import { downloadCsv, rowsToCsv } from "@/lib/csv";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { buildStoresInput } from "../list-params";

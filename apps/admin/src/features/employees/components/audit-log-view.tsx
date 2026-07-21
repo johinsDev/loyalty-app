@@ -13,7 +13,7 @@ import {
   FilterMultiSelect,
   FilterSelect,
 } from "@/components/filters";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 
 import { type LogType, LOG_TYPES, auditLog, employees } from "../data";
 

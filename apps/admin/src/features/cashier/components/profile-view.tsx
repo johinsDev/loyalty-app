@@ -26,7 +26,7 @@ import { toast } from "sonner";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 
 import {
   AVATAR_ACCEPT,

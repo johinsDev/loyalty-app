@@ -6,7 +6,13 @@ import { TRPCError } from "@trpc/server";
 import { getBranding } from "../_shared/localize";
 import type { ListResult } from "../_shared/list";
 import type { StoresRepository } from "./repository";
-import type { StoreListItem, StoresListInput, StoreView, UpdateStoreInput } from "./schemas";
+import type {
+  StoreListItem,
+  StoresListInput,
+  StoreSwitcherItem,
+  StoreView,
+  UpdateStoreInput,
+} from "./schemas";
 import { directionsUrl, generateStoreMap } from "./static-map";
 
 /** Expand the structured address input into the persisted store columns:
@@ -61,6 +67,11 @@ export class StoresService {
     return this.repo.listByIds(orgId, ids);
   }
 
+  /** Lean active-store list powering the admin store switcher. */
+  switcherList(orgId: string): Promise<StoreSwitcherItem[]> {
+    return this.repo.switcherList(orgId);
+  }
+
   /** The primary store row (admin editing — e.g. the Settings location block). */
   primaryRow(orgId: string): Promise<StoreRow | null> {
     return this.repo.findPrimary(orgId, false);
@@ -86,9 +97,10 @@ export class StoresService {
     return this.repo.get(orgId, id);
   }
 
-  /** Start an empty draft; the wizard fills it step by step, then publishes. */
-  create(orgId: string): Promise<StoreRow> {
-    return this.repo.create(orgId, { name: "", status: "draft" });
+  /** Start a draft (optionally named from quick-create); the wizard fills the
+   *  rest step by step, then publishes. */
+  create(orgId: string, name?: string): Promise<StoreRow> {
+    return this.repo.create(orgId, { name: name?.trim() ?? "", status: "draft" });
   }
 
   async update(orgId: string, input: UpdateStoreInput, deps: MapDeps): Promise<StoreRow> {

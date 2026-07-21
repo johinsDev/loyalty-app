@@ -26,7 +26,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/i18n/nav";
 
 import { type Category, categories as seed, type Subcategory } from "../data";
 

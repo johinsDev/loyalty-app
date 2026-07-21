@@ -7,7 +7,7 @@ import type { inferRouterOutputs } from "@trpc/server";
 import { Clock, Pencil, Phone } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 
 type StoreDetail = NonNullable<inferRouterOutputs<AppRouter>["stores"]["get"]>;
 
