@@ -173,3 +173,8 @@ export const slugAvailableInputSchema = z.object({
   excludeId: z.string().uuid().optional(),
 });
 export const slugInputSchema = z.object({ slug: z.string().min(1) });
+
+// Public home rail: optionally restrict to the customer's active store
+// (null/empty storeIds = every store). Omitted → no store filter.
+export const homeBannersInputSchema = z.object({ storeId: z.string().optional() });
+export type HomeBannersInput = z.infer<typeof homeBannersInputSchema>;

@@ -49,10 +49,10 @@ export class PromoService {
   ) {}
 
   // ── Public (cached, localized) ─────────────────────────────────────────────
-  homePromos(orgId: string, lc: LocaleContext): Promise<PromoCard[]> {
+  homePromos(orgId: string, lc: LocaleContext, storeId?: string): Promise<PromoCard[]> {
     return cache.getOrSet(
-      `promos:${orgId}:home:${lc.locale}`,
-      () => this.repo.listHomePromos(orgId, lc),
+      `promos:${orgId}:home:${storeId ?? ""}:${lc.locale}`,
+      () => this.repo.listHomePromos(orgId, lc, storeId),
       TTL_SECONDS,
     );
   }
@@ -62,7 +62,7 @@ export class PromoService {
     input: PublicListInput,
   ): Promise<{ items: PromoCard[]; nextCursor: string | null }> {
     return cache.getOrSet(
-      `promos:${orgId}:list:${input.category ?? ""}:${input.cursor ?? ""}:${input.pageSize}:${lc.locale}`,
+      `promos:${orgId}:list:${input.category ?? ""}:${input.cursor ?? ""}:${input.pageSize}:${input.storeId ?? ""}:${lc.locale}`,
       () => this.repo.listPromos(orgId, lc, input),
       TTL_SECONDS,
     );

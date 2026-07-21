@@ -97,6 +97,9 @@ export const listInputSchema = z.object({
   filter: rewardFilterSchema.default("all"),
   cursor: z.string().optional(),
   limit: z.number().int().min(1).max(50).default(20),
+  // Active customer store: keep only rewards available at it (null/empty
+  // storeIds = every store). Omitted → no store filter.
+  storeId: z.string().optional(),
 });
 
 export const rewardIdInputSchema = z.object({

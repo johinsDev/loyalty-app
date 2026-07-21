@@ -243,6 +243,7 @@
   },
   "Store": {
     "title": "Our store",
+    "switcherTitle": "Choose your store",
     "subtitle": "Address, hours and directions",
     "open": "Open",
     "closed": "Closed",

@@ -28,7 +28,7 @@ export class MenuService {
   constructor(private readonly repo: ProductsRepository) {}
 
   list(orgId: string, input: ListInput, lc: LocaleContext): Promise<MenuList> {
-    const key = `menu:${orgId}:list:${input.categorySlug ?? ""}:${input.sectionSlug ?? ""}:${input.search ?? ""}:${input.cursor ?? ""}:${input.pageSize}:${lcKey(lc)}`;
+    const key = `menu:${orgId}:list:${input.categorySlug ?? ""}:${input.sectionSlug ?? ""}:${input.search ?? ""}:${input.cursor ?? ""}:${input.pageSize}:${input.storeId ?? ""}:${lcKey(lc)}`;
     return cache.getOrSet(key, () => this.repo.listProducts({ orgId, ...input, ctx: lc }), TTL_SECONDS);
   }
 
@@ -40,10 +40,15 @@ export class MenuService {
     );
   }
 
-  sections(orgId: string, placement: string, lc: LocaleContext): Promise<SectionView[]> {
+  sections(
+    orgId: string,
+    placement: string,
+    lc: LocaleContext,
+    storeId?: string | null,
+  ): Promise<SectionView[]> {
     return cache.getOrSet(
-      `menu:${orgId}:sections:${placement}:${lcKey(lc)}`,
-      () => this.repo.sections(orgId, placement, lc),
+      `menu:${orgId}:sections:${placement}:${storeId ?? ""}:${lcKey(lc)}`,
+      () => this.repo.sections(orgId, placement, lc, storeId),
       TTL_SECONDS,
     );
   }

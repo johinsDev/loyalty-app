@@ -432,11 +432,22 @@ export class PromoRepository {
     );
   }
 
-  async listHomePromos(orgId: string, ctx: LocaleContext, now = new Date()): Promise<PromoCard[]> {
+  async listHomePromos(
+    orgId: string,
+    ctx: LocaleContext,
+    storeId?: string,
+    now = new Date(),
+  ): Promise<PromoCard[]> {
     const rows = await this.db
       .select()
       .from(promo)
-      .where(and(this.#publishedInWindow(orgId, now), eq(promo.featured, true)))
+      .where(
+        and(
+          this.#publishedInWindow(orgId, now),
+          eq(promo.featured, true),
+          storeId ? availableAtStore(promo.storeIds, storeId) : undefined,
+        ),
+      )
       .orderBy(asc(promo.sortOrder), asc(promo.id))
       .limit(12);
     return this.#withTranslations(rows, ctx);
@@ -450,6 +461,7 @@ export class PromoRepository {
   ): Promise<{ items: PromoCard[]; nextCursor: string | null }> {
     const conds = [this.#publishedInWindow(orgId, now)];
     if (input.category) conds.push(eq(promo.category, input.category));
+    if (input.storeId) conds.push(availableAtStore(promo.storeIds, input.storeId));
     const offset = input.cursor ? Number(input.cursor) || 0 : 0;
     const rows = await this.db
       .select()

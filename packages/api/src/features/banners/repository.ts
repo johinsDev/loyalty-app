@@ -131,6 +131,7 @@ export class BannersRepository {
   async listHomeBanners(
     orgId: string,
     ctx: LocaleContext,
+    storeId?: string,
     now = new Date(),
   ): Promise<BannerCard[]> {
     const rows = await this.db
@@ -142,6 +143,7 @@ export class BannersRepository {
           eq(banner.status, "published"),
           or(isNull(banner.displayFrom), lte(banner.displayFrom, now)),
           or(isNull(banner.displayUntil), gte(banner.displayUntil, now)),
+          storeId ? availableAtStore(banner.storeIds, storeId) : undefined,
         ),
       )
       .orderBy(asc(banner.sortOrder), asc(banner.id));

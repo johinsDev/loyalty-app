@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { useActiveCustomerStoreId } from "@/features/store/use-active-customer-store";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { PromoCard } from "./promo-card";
@@ -18,8 +19,13 @@ export function Promos() {
   const t = useTranslations("Promos");
   const trpc = useTRPC();
   const [category, setCategory] = useState<string | null>(null);
+  const storeId = useActiveCustomerStoreId() ?? undefined;
   const { data, isLoading } = useQuery(
-    trpc.promociones.listPublic.queryOptions({ category: category ?? undefined, pageSize: 40 }),
+    trpc.promociones.listPublic.queryOptions({
+      category: category ?? undefined,
+      pageSize: 40,
+      storeId,
+    }),
   );
 
   const items = data?.items ?? [];

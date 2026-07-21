@@ -157,8 +157,15 @@ export const publicListInputSchema = z.object({
   category: z.string().optional(),
   cursor: z.string().nullish(),
   pageSize: z.number().int().min(1).max(40).default(12),
+  // Active customer store: keep only promos available at it (null/empty
+  // storeIds = every store). Omitted → no store filter.
+  storeId: z.string().optional(),
 });
 export type PublicListInput = z.infer<typeof publicListInputSchema>;
+
+// Public home rail: optionally restrict to the customer's active store.
+export const homePromosInputSchema = z.object({ storeId: z.string().optional() });
+export type HomePromosInput = z.infer<typeof homePromosInputSchema>;
 
 // ─── Apply / checkout IO ─────────────────────────────────────────────────────
 export const cartLineSchema = z.object({

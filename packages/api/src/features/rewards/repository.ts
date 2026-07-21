@@ -178,12 +178,18 @@ export class RewardsRepository {
    *  cursor is the last item's `id` (stable within the deterministic order). */
   async listCatalog(
     orgId: string,
-    opts: { search?: string; cursor?: string; limit: number },
+    opts: { search?: string; cursor?: string; storeId?: string; limit: number },
   ): Promise<{ rows: RewardRow[]; nextCursor: string | null }> {
     const all = await this.db
       .select()
       .from(reward)
-      .where(and(eq(reward.organizationId, orgId), eq(reward.status, "published")))
+      .where(
+        and(
+          eq(reward.organizationId, orgId),
+          eq(reward.status, "published"),
+          opts.storeId ? availableAtStore(reward.storeIds, opts.storeId) : undefined,
+        ),
+      )
       .orderBy(asc(reward.sortOrder), asc(reward.createdAt), asc(reward.id));
 
     const search = opts.search?.toLowerCase();

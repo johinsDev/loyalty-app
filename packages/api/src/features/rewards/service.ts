@@ -130,7 +130,7 @@ export class RewardsService {
     // (search-filtered) catalog once, derive every item, apply the status
     // filter, THEN page the filtered list so each page is full and the cursor
     // tracks the filtered set.
-    const rows = await this.cachedCatalog(organizationId, input.search);
+    const rows = await this.cachedCatalog(organizationId, input.search, input.storeId);
     const [balances, tierKey, claimedCount, lastRedeemed] = await Promise.all([
       this.repo.balances(organizationId, customerId),
       this.repo.tierKey(organizationId, customerId),
@@ -805,12 +805,13 @@ export class RewardsService {
   private async cachedCatalog(
     organizationId: string,
     search: string | undefined,
+    storeId?: string,
   ): Promise<RewardRow[]> {
     const load = async () =>
-      (await this.repo.listCatalog(organizationId, { search, limit: CATALOG_MAX }))
+      (await this.repo.listCatalog(organizationId, { search, storeId, limit: CATALOG_MAX }))
         .rows;
     if (!this.opts.cache) return load();
-    const key = `rewards:catalog:${organizationId}:${search ?? ""}`;
+    const key = `rewards:catalog:${organizationId}:${storeId ?? ""}:${search ?? ""}`;
     return this.opts.cache.getOrSet(key, load, CATALOG_TTL_SECONDS);
   }
 

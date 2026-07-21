@@ -6,12 +6,16 @@ export const listInputSchema = z.object({
   categorySlug: z.string().nullish(),
   sectionSlug: z.string().nullish(),
   search: z.string().nullish(),
+  // Active customer store: keep only products available at it (null/empty
+  // storeIds = every store). Omitted → no store filter.
+  storeId: z.string().optional(),
 });
 
 export const slugInputSchema = z.object({ slug: z.string().min(1) });
 
 export const placementInputSchema = z.object({
   placement: z.enum(["menu", "home", "both"]).default("menu"),
+  storeId: z.string().optional(),
 });
 
 export const productIdInputSchema = z.object({ productId: z.string().min(1) });
