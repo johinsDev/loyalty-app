@@ -17,12 +17,13 @@ export interface StoreScope<T> {
   store: T | null;
 }
 
-/** Resolve the `[storeId]` segment against the org's stores. `null` = invalid. */
-export function resolveStoreScope<T extends { id: string }>(
+/** Resolve the `/[store]` segment (a slug, or an id fallback for slug-less
+ *  rows) against the org's stores. `null` = invalid → caller redirects. */
+export function resolveStoreScope<T extends { id: string; slug?: string | null }>(
   stores: readonly T[],
   segment: string,
 ): StoreScope<T> | null {
   if (segment === ALL_STORES) return { storeId: null, store: null };
-  const store = stores.find((s) => s.id === segment);
+  const store = stores.find((s) => s.slug === segment || s.id === segment);
   return store ? { storeId: store.id, store } : null;
 }

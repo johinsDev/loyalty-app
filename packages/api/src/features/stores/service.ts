@@ -6,6 +6,7 @@ import { TRPCError } from "@trpc/server";
 import { getBranding } from "../_shared/localize";
 import type { ListResult } from "../_shared/list";
 import type { StoresRepository } from "./repository";
+import { slugify, uniqueSlug } from "./slug";
 import type {
   StoreListItem,
   StoresListInput,
@@ -67,8 +68,10 @@ export class StoresService {
     return this.repo.listByIds(orgId, ids);
   }
 
-  /** Lean active-store list powering the admin store switcher. */
-  switcherList(orgId: string): Promise<StoreSwitcherItem[]> {
+  /** Lean active-store list powering the admin store switcher. Backfills any
+   *  missing slugs first so the `/[store]` URLs are always slug-based. */
+  async switcherList(orgId: string): Promise<StoreSwitcherItem[]> {
+    await this.repo.ensureSlugs(orgId);
     return this.repo.switcherList(orgId);
   }
 
@@ -98,9 +101,13 @@ export class StoresService {
   }
 
   /** Start a draft (optionally named from quick-create); the wizard fills the
-   *  rest step by step, then publishes. */
-  create(orgId: string, name?: string): Promise<StoreRow> {
-    return this.repo.create(orgId, { name: name?.trim() ?? "", status: "draft" });
+   *  rest step by step, then publishes. Assigns a unique slug up front so the
+   *  store has a clean `/[store]` URL from creation. */
+  async create(orgId: string, name?: string): Promise<StoreRow> {
+    const trimmed = name?.trim() ?? "";
+    const taken = new Set(await this.repo.existingSlugs(orgId));
+    const slug = uniqueSlug(slugify(trimmed), taken);
+    return this.repo.create(orgId, { name: trimmed, slug, status: "draft" });
   }
 
   async update(orgId: string, input: UpdateStoreInput, deps: MapDeps): Promise<StoreRow> {

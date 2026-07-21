@@ -51,9 +51,11 @@ export const createStoreInputSchema = z.object({
 });
 export type CreateStoreInput = z.infer<typeof createStoreInputSchema>;
 
-/** Lean row for the admin store switcher (no heavy columns). */
+/** Lean row for the admin store switcher (no heavy columns). `slug` powers the
+ *  `/[store]` URL segment; `null` for legacy rows not yet backfilled. */
 export interface StoreSwitcherItem {
   id: string;
+  slug: string | null;
   name: string;
   isPrimary: boolean;
   status: string;

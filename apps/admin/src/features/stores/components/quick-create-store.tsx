@@ -40,10 +40,10 @@ export function QuickCreateStore({
       onSuccess: (row) => {
         onOpenChange(false);
         setName("");
-        // Land inside the new store, on its wizard, to finish setup.
+        // Land inside the new store (by slug), on its wizard, to finish setup.
         router.push({
           pathname: "/stores/[id]/edit",
-          params: { storeId: row.id, id: row.id },
+          params: { storeId: row.slug ?? row.id, id: row.id },
         });
       },
       onError: () => toast.error(t("createStoreError")),
@@ -66,7 +66,7 @@ export function QuickCreateStore({
               {t("createStoreDesc")}
             </ResponsiveModalDescription>
           </ResponsiveModalHeader>
-          <div className="px-4 py-2 sm:px-0">
+          <div className="px-4 pb-2">
             <Input
               autoFocus
               value={name}

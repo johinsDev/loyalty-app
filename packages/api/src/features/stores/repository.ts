@@ -4,6 +4,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, like, lte, ne, or, sql } from
 
 import { buildOrderBy, type ListResult, pageCountOf, pageOffset } from "../_shared/list";
 import type { StoreListItem, StoresListInput, StoreSwitcherItem } from "./schemas";
+import { slugify, uniqueSlug } from "./slug";
 
 type StorePatch = Partial<typeof store.$inferInsert>;
 
@@ -48,6 +49,7 @@ export class StoresRepository {
     return this.db
       .select({
         id: store.id,
+        slug: store.slug,
         name: store.name,
         isPrimary: store.isPrimary,
         status: store.status,
@@ -55,6 +57,35 @@ export class StoresRepository {
       .from(store)
       .where(and(eq(store.organizationId, orgId), isNull(store.deletedAt)))
       .orderBy(desc(store.isPrimary), asc(store.sortOrder), asc(store.createdAt));
+  }
+
+  /** The org's existing (non-null) store slugs — for uniqueness checks. */
+  async existingSlugs(orgId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ slug: store.slug })
+      .from(store)
+      .where(and(eq(store.organizationId, orgId), isNull(store.deletedAt)));
+    return rows.map((r) => r.slug).filter((s): s is string => !!s);
+  }
+
+  /** Backfill slugs for any active store missing one (self-healing, idempotent —
+   *  runs a no-op once every store has a slug). Called before the switcher list
+   *  so URLs are always slug-based. */
+  async ensureSlugs(orgId: string): Promise<void> {
+    const rows = await this.db
+      .select({ id: store.id, name: store.name, slug: store.slug })
+      .from(store)
+      .where(and(eq(store.organizationId, orgId), isNull(store.deletedAt)));
+    const taken = new Set(rows.map((r) => r.slug).filter((s): s is string => !!s));
+    const missing = rows.filter((r) => !r.slug);
+    for (const row of missing) {
+      const slug = uniqueSlug(slugify(row.name), taken);
+      taken.add(slug);
+      await this.db
+        .update(store)
+        .set({ slug })
+        .where(and(eq(store.id, row.id), eq(store.organizationId, orgId)));
+    }
   }
 
   /** Paginated/filtered/sorted list for the admin data-table. */

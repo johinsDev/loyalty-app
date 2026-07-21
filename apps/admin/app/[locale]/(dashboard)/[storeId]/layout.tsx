@@ -1,4 +1,3 @@
-import { resolveStoreScope } from "@loyalty/api/features/_shared/store-scope";
 import { STAFF_OR_ABOVE } from "@loyalty/auth/server";
 import type { ReactNode } from "react";
 
@@ -7,7 +6,7 @@ import { ImpersonationBanner } from "@/features/employees/components/impersonati
 import { redirect } from "@/i18n/navigation";
 import { requireRole } from "@/lib/auth-guard";
 import { StoreScopeProvider } from "@/lib/store-scope";
-import { trpc } from "@/lib/trpc/server";
+import { loadStoreScope } from "@/lib/store-scope-server";
 
 type Props = {
   children: ReactNode;
@@ -25,9 +24,7 @@ export default async function StoreLayout({ children, params }: Props) {
   const { session, role } = await requireRole(STAFF_OR_ABOVE);
   const name = (session.user as { name?: string }).name?.trim() || "Equipo";
 
-  const api = await trpc();
-  const stores = await api.stores.switcherList().catch(() => []);
-  const scope = resolveStoreScope(stores, storeId);
+  const { stores, scope } = await loadStoreScope(storeId);
   if (!scope) {
     redirect({ href: { pathname: "/[storeId]/dashboard", params: { storeId: "all" } }, locale });
     return null;

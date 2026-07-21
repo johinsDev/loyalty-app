@@ -87,8 +87,8 @@ export function StoreSwitcher() {
                   <StoreRow
                     icon={<Store className="text-muted-foreground size-4 flex-none" />}
                     label={s.name || t("store.unnamed")}
-                    selected={segment === s.id}
-                    onSelect={() => switchTo(s.id)}
+                    selected={segment === (s.slug ?? s.id)}
+                    onSelect={() => switchTo(s.slug ?? s.id)}
                   />
                 </li>
               ))
