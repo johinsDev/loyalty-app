@@ -13,6 +13,7 @@ import { StoreSwitcher } from "@/components/store-switcher";
 import { useRouter } from "@/i18n/nav";
 import { compactNumber } from "@/lib/money";
 import { RoleProvider } from "@/lib/role-context";
+import { useStoreScope } from "@/lib/store-scope";
 import { useTRPC } from "@/lib/trpc/client";
 
 const RANK: Record<Role, number> = { customer: 0, staff: 1, manager: 2, owner: 3 };
@@ -36,8 +37,14 @@ export function AdminShell({
   const format = useFormatter();
   const trpc = useTRPC();
   const router = useRouter();
+  const { storeId } = useStoreScope();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Cashier mode inherits the active store when scoped (the register pre-selects
+  // it); the aggregate view leaves the cashier's own default.
+  const openCashier = () =>
+    router.push(storeId ? { pathname: "/register", query: { storeId } } : "/register");
 
   const { data: counts } = useQuery({
     ...trpc.dashboard.navCounts.queryOptions(),
@@ -105,7 +112,7 @@ export function AdminShell({
 
           <Button
             type="button"
-            onClick={() => router.push("/register")}
+            onClick={openCashier}
             className="bg-foreground text-background hover:bg-foreground/90 h-10 gap-2 rounded-xl font-semibold"
           >
             <QrCode className="size-4" />

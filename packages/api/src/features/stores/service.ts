@@ -152,6 +152,7 @@ export class StoresService {
     }
     if (row.isPrimary) await this.repo.promoteAnotherPrimary(orgId, id);
     await this.repo.softDelete(orgId, id);
+    await this.repo.stripStoreFromCatalog(orgId, id);
     return { ok: true };
   }
 
@@ -166,6 +167,7 @@ export class StoresService {
     }
     await this.repo.bulkSoftDelete(orgId, ids);
     await this.repo.ensurePrimary(orgId);
+    for (const id of ids) await this.repo.stripStoreFromCatalog(orgId, id);
     return { ok: true, deleted: ids.length };
   }
 

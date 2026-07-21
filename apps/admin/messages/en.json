@@ -2609,6 +2609,7 @@
     "leaveConfirm": "Leave",
     "draft": "Draft",
     "deleteTypeHint": "Type the store's exact name (\"{name}\") to confirm.",
+    "deleteImpact": "Historical purchases are kept. The store is removed from product, reward, promo and banner availability.",
     "deleteLastError": "Can't delete the last store.",
     "fixErrors": "Check the highlighted fields.",
     "errorName": "Enter a name.",

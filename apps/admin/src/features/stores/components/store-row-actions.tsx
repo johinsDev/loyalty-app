@@ -102,6 +102,9 @@ export function StoreRowActions({ store }: { store: { id: string; name: string; 
               <p className="text-muted-foreground text-sm">
                 {t("deleteTypeHint", { name: store.name })}
               </p>
+              <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs font-semibold text-amber-700">
+                {t("deleteImpact")}
+              </p>
               <Input className="h-10" placeholder={store.name} autoFocus {...register("confirm")} />
             </div>
             <ResponsiveModalFooter className="gap-3">

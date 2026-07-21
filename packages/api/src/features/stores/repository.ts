@@ -1,5 +1,5 @@
 import type { db as Db } from "@loyalty/db";
-import { store, type StoreRow } from "@loyalty/db/schema";
+import { banner, product, promo, reward, store, type StoreRow } from "@loyalty/db/schema";
 import { and, asc, desc, eq, gte, inArray, isNull, like, lte, ne, or, sql } from "drizzle-orm";
 
 import { buildOrderBy, type ListResult, pageCountOf, pageOffset } from "../_shared/list";
@@ -140,6 +140,30 @@ export class StoresRepository {
       .where(and(eq(store.id, id), eq(store.organizationId, orgId), isNull(store.deletedAt)))
       .limit(1);
     return rows[0] ?? null;
+  }
+
+  /** On store deletion, remove its id from every catalog row's `storeIds` so no
+   *  product/reward/promo/banner keeps a dangling restriction. A row that ends
+   *  up empty collapses to `null` (= available everywhere, never "nowhere"). */
+  async stripStoreFromCatalog(orgId: string, storeId: string): Promise<void> {
+    for (const table of [product, reward, promo, banner]) {
+      const rows = await this.db
+        .select({ id: table.id, storeIds: table.storeIds })
+        .from(table)
+        .where(
+          and(
+            eq(table.organizationId, orgId),
+            sql`EXISTS (SELECT 1 FROM json_each(${table.storeIds}) WHERE value = ${storeId})`,
+          ),
+        );
+      for (const row of rows) {
+        const next = (row.storeIds ?? []).filter((s) => s !== storeId);
+        await this.db
+          .update(table)
+          .set({ storeIds: next.length ? next : null })
+          .where(and(eq(table.id, row.id), eq(table.organizationId, orgId)));
+      }
+    }
   }
 
   async findPrimary(orgId: string, publishedOnly = false): Promise<StoreRow | null> {

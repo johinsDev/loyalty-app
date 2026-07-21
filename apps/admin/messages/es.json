@@ -2609,6 +2609,7 @@
     "leaveConfirm": "Salir",
     "draft": "Borrador",
     "deleteTypeHint": "Escribí el nombre exacto de la tienda (\"{name}\") para confirmar.",
+    "deleteImpact": "Las compras históricas se conservan. La tienda se quita de la disponibilidad de productos, premios, promos y banners.",
     "deleteLastError": "No se puede eliminar la última tienda.",
     "fixErrors": "Revisá los campos marcados.",
     "errorName": "Ingresá un nombre.",
