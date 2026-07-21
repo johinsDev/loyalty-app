@@ -1,6 +1,7 @@
-import { MissingDependencyError, ProviderError } from "../errors";
+import { Redis } from "@upstash/redis";
+
+import { ProviderError } from "../errors";
 import type { CacheProvider, UpstashProviderConfig } from "../types";
-import { dynamicImport } from "./_lazy";
 
 /**
  * Upstash Redis provider. Serverless-friendly (REST-based, no
@@ -24,16 +25,14 @@ export class UpstashProvider implements CacheProvider {
 
   async #getClient(): Promise<UpstashClientLike> {
     if (this.#client) return this.#client as UpstashClientLike;
-    let mod: { Redis: { fromEnv: () => UpstashClientLike; new (init: { url: string; token: string }): UpstashClientLike } };
-    try {
-      mod = (await dynamicImport("@upstash/redis")) as unknown as typeof mod;
-    } catch {
-      throw new MissingDependencyError("upstash", "@upstash/redis");
-    }
+    // Static import (mirrors @loyalty/rate-limit's upstash provider): `@upstash/redis`
+    // is REST/fetch-based and Workers-safe, so the bundler must include it. The old
+    // `new Function` dynamic import was forbidden by workerd (no code-gen) and hid the
+    // specifier from esbuild, so it never landed in the API Worker bundle.
     this.#client =
       this.#config.url && this.#config.token
-        ? new mod.Redis({ url: this.#config.url, token: this.#config.token })
-        : mod.Redis.fromEnv();
+        ? new Redis({ url: this.#config.url, token: this.#config.token })
+        : Redis.fromEnv();
     return this.#client as UpstashClientLike;
   }
 
