@@ -293,6 +293,9 @@ export const reward = sqliteTable(
       .$type<string[]>()
       .notNull()
       .default([]),
+    // JSON array of store ids this reward is available at (null/empty = every
+    // store).
+    storeIds: text("store_ids", { mode: "json" }).$type<string[] | null>(),
     sortOrder: integer("sort_order").notNull().default(0),
     // "unlimited" | "once"
     limitPerCustomer: text("limit_per_customer").notNull().default("unlimited"),

@@ -76,6 +76,9 @@ export const product = sqliteTable(
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     ogImageUrl: text("og_image_url"),
+    // JSON array of store ids this product is available at (null/empty = every
+    // store). Powers the admin's per-store scope + the customer store switcher.
+    storeIds: text("store_ids", { mode: "json" }).$type<string[] | null>(),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()

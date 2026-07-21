@@ -114,6 +114,8 @@ export const promo = sqliteTable(
     audienceType: text("audience_type").notNull().default("all"), // all | tier | specific
     tierKey: text("tier_key"),
     audienceCustomerIds: text("audience_customer_ids", { mode: "json" }).$type<string[]>(),
+    // JSON array of store ids this promo runs at (null/empty = every store).
+    storeIds: text("store_ids", { mode: "json" }).$type<string[] | null>(),
 
     // Visual / content
     shortDescription: text("short_description"),
