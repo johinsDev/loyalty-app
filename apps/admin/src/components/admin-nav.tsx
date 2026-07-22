@@ -45,7 +45,7 @@ import { compactNumber } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
 import { NotificationsInbox } from "@/components/notifications-inbox";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/nav";
 
 type Href = string;
 type Sub = { href: Href; key: string };

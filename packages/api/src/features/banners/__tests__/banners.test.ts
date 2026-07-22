@@ -31,6 +31,7 @@ describe("displayState", () => {
     name: "X",
     status: "published",
     sortOrder: 0,
+    storeIds: null,
     shortDescription: null,
     longDescription: null,
     backgroundCss: null,

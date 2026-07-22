@@ -4,5 +4,8 @@ type Props = { params: Promise<{ locale: string }> };
 
 export default async function HomePage({ params }: Props) {
   const { locale } = await params;
-  redirect({ href: "/dashboard", locale });
+  redirect({
+    href: { pathname: "/[storeId]/dashboard", params: { storeId: "all" } },
+    locale,
+  });
 }

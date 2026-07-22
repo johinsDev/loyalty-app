@@ -101,6 +101,8 @@ export type ProductDraft = {
   ageRange: string;
   gender: string;
   categoryIds: string[];
+  /** Stores this product is available at (null = every store). */
+  storeIds: string[] | null;
   featuredSections: string[];
   tags: string[];
   brand: string;
@@ -142,6 +144,7 @@ export const emptyProductDraft: ProductDraft = {
   ageRange: "all",
   gender: "unisex",
   categoryIds: [],
+  storeIds: null,
   featuredSections: [],
   tags: [],
   brand: "",

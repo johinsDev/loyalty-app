@@ -23,6 +23,7 @@ import { and, asc, desc, eq, getTableColumns, gt, gte, inArray, isNull, like, lt
 
 import { buildOrderBy, pageCountOf, pageOffset, type ListResult } from "../_shared/list";
 import type { LocaleContext } from "../_shared/localize";
+import { availableAtStore } from "../_shared/store-availability";
 import { slugify, slugSuffix } from "../_shared/slugify";
 import { benefitSummary, type SummaryLocale } from "./format";
 import type { ItemRef } from "./schemas";
@@ -99,7 +100,7 @@ export type PromoPatch = Partial<
     PromoInsert,
     | "name" | "slug" | "shortDescription" | "longDescription" | "badgeLabel" | "icon"
     | "backgroundCss" | "mainImageUrl" | "type" | "rule" | "schedule" | "conditions"
-    | "audienceType" | "tierKey" | "audienceCustomerIds" | "category" | "featured"
+    | "audienceType" | "tierKey" | "audienceCustomerIds" | "storeIds" | "category" | "featured"
     | "sortOrder" | "startsAt" | "endsAt" | "seoTitle" | "seoDescription" | "ogImageUrl"
   >
 >;
@@ -356,6 +357,7 @@ export class PromoRepository {
     if (input.status?.length) conds.push(inArray(promo.status, input.status));
     if (input.type?.length) conds.push(inArray(promo.type, input.type));
     if (input.audience?.length) conds.push(inArray(promo.audienceType, input.audience));
+    if (input.storeId) conds.push(availableAtStore(promo.storeIds, input.storeId));
     if (input.startsFrom) conds.push(gte(promo.startsAt, input.startsFrom));
     if (input.startsTo) conds.push(lte(promo.startsAt, input.startsTo));
     if (input.vigency?.length) {
@@ -430,11 +432,22 @@ export class PromoRepository {
     );
   }
 
-  async listHomePromos(orgId: string, ctx: LocaleContext, now = new Date()): Promise<PromoCard[]> {
+  async listHomePromos(
+    orgId: string,
+    ctx: LocaleContext,
+    storeId?: string,
+    now = new Date(),
+  ): Promise<PromoCard[]> {
     const rows = await this.db
       .select()
       .from(promo)
-      .where(and(this.#publishedInWindow(orgId, now), eq(promo.featured, true)))
+      .where(
+        and(
+          this.#publishedInWindow(orgId, now),
+          eq(promo.featured, true),
+          storeId ? availableAtStore(promo.storeIds, storeId) : undefined,
+        ),
+      )
       .orderBy(asc(promo.sortOrder), asc(promo.id))
       .limit(12);
     return this.#withTranslations(rows, ctx);
@@ -448,6 +461,7 @@ export class PromoRepository {
   ): Promise<{ items: PromoCard[]; nextCursor: string | null }> {
     const conds = [this.#publishedInWindow(orgId, now)];
     if (input.category) conds.push(eq(promo.category, input.category));
+    if (input.storeId) conds.push(availableAtStore(promo.storeIds, input.storeId));
     const offset = input.cursor ? Number(input.cursor) || 0 : 0;
     const rows = await this.db
       .select()

@@ -7,7 +7,7 @@ import { PurchaseDetailView } from "@/features/purchases/components/purchase-det
 import { Link } from "@/i18n/navigation";
 import { trpc } from "@/lib/trpc/server";
 
-type Props = { params: Promise<{ locale: string; id: string }> };
+type Props = { params: Promise<{ locale: string; storeId: string; id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 /** Full purchase "radiografía" page — rendered on direct load / reload / share.
  *  In-app navigation from the list opens the `?detalle=` modal instead. */
 export default async function PurchaseDetailPage({ params }: Props) {
-  const { locale, id } = await params;
+  const { locale, storeId, id } = await params;
   setRequestLocale(locale);
 
   const api = await trpc();
@@ -30,7 +30,7 @@ export default async function PurchaseDetailPage({ params }: Props) {
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
       <Link
-        href="/purchases"
+        href={{ pathname: "/[storeId]/purchases", params: { storeId } }}
         className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm font-bold"
       >
         <ArrowLeft className="size-4" />

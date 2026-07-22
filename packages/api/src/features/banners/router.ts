@@ -10,6 +10,7 @@ import {
   bannerStatsInputSchema,
   bulkIdsSchema,
   getStateInputSchema,
+  homeBannersInputSchema,
   listInputSchema,
   publishInputSchema,
   recordStatInputSchema,
@@ -41,11 +42,13 @@ async function requireOrg(): Promise<string> {
  */
 export const bannersRouter = router({
   // ── Public (cacheable) ─────────────────────────────────────────────────────
-  homeBanners: publicProcedure.query(async ({ ctx }) => {
-    const id = await orgId();
-    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
-    return makeService(ctx.db).homeBanners(id, lc);
-  }),
+  homeBanners: publicProcedure
+    .input(homeBannersInputSchema)
+    .query(async ({ ctx, input }) => {
+      const id = await orgId();
+      const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+      return makeService(ctx.db).homeBanners(id, lc, input.storeId);
+    }),
   bySlug: publicProcedure
     .input(slugInputSchema)
     .query(async ({ ctx, input }) => {

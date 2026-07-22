@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { useQrDrawer } from "@/features/qr/hooks/use-qr-drawer";
 import { autoCurrency } from "@/features/rewards/lib/cost";
 import type { RewardListItem } from "@/features/rewards/types";
+import { useActiveCustomerStoreId } from "@/features/store/use-active-customer-store";
 import { useFadeUp } from "@/lib/animate";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -23,8 +24,9 @@ export function RewardCard() {
   const fade = useFadeUp();
   const trpc = useTRPC();
 
+  const storeId = useActiveCustomerStoreId() ?? undefined;
   const { data, isPending } = useQuery(
-    trpc.rewards.list.queryOptions({ filter: "listos", limit: 1 }),
+    trpc.rewards.list.queryOptions({ filter: "listos", limit: 1, storeId }),
   );
   const reward = data?.items[0] ?? null;
 

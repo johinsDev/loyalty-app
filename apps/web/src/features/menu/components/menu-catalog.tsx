@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
 import { useEffect, useRef, useState } from "react";
 
+import { useActiveCustomerStoreId } from "@/features/store/use-active-customer-store";
 import { useFadeUp } from "@/lib/animate";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -47,8 +48,10 @@ export function MenuCatalog() {
 
   const filtering = Boolean(q.cat || q.section || q.search || q.fav);
 
+  const storeId = useActiveCustomerStoreId() ?? undefined;
+
   const categories = useQuery(trpc.menu.categories.queryOptions());
-  const sections = useQuery(trpc.menu.sections.queryOptions({ placement: "menu" }));
+  const sections = useQuery(trpc.menu.sections.queryOptions({ placement: "menu", storeId }));
 
   const list = useInfiniteQuery(
     trpc.menu.list.infiniteQueryOptions(
@@ -57,6 +60,7 @@ export function MenuCatalog() {
         categorySlug: q.cat || undefined,
         sectionSlug: q.section || undefined,
         search: q.search || undefined,
+        storeId,
       },
       {
         getNextPageParam: (last) => last.nextCursor ?? undefined,

@@ -54,9 +54,22 @@ function isoDay(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Drizzle aggregates for the admin dashboard (Tier-1 real stats). */
+/** Drizzle aggregates for the admin dashboard (Tier-1 real stats).
+ *  `storeId` (set from the active `[storeId]` scope) filters the transactional
+ *  aggregates to one store; `null`/undefined = aggregate across all stores
+ *  (legacy NULL-store rows included only in the aggregate view). Org-level
+ *  aggregates (tiers, cohorts, liability, retention…) ignore it. */
 export class DashboardRepository {
-  constructor(private readonly db: typeof Db) {}
+  constructor(
+    private readonly db: typeof Db,
+    private readonly storeId?: string | null,
+  ) {}
+
+  /** Extra WHERE conds scoping purchase-based queries to the active store.
+   *  Redemptions + member counts stay org-level (wallet is org-wide). */
+  private get purchaseStoreCond() {
+    return this.storeId ? [eq(purchase.storeId, this.storeId)] : [];
+  }
 
   async overview(orgId: string, period: Period, now = new Date()): Promise<DashboardOverview> {
     const days = PERIOD_DAYS[period];
@@ -99,6 +112,7 @@ export class DashboardRepository {
           and(
             eq(purchase.organizationId, orgId),
             isNull(purchase.voidedAt),
+            ...this.purchaseStoreCond,
             gte(purchase.createdAt, curStart),
           ),
         ),
@@ -109,6 +123,7 @@ export class DashboardRepository {
           and(
             eq(purchase.organizationId, orgId),
             isNull(purchase.voidedAt),
+            ...this.purchaseStoreCond,
             gte(purchase.createdAt, prevStart),
             lt(purchase.createdAt, curStart),
           ),
@@ -120,6 +135,7 @@ export class DashboardRepository {
           and(
             eq(purchase.organizationId, orgId),
             isNull(purchase.voidedAt),
+            ...this.purchaseStoreCond,
             gte(purchase.createdAt, curStart),
           ),
         ),
@@ -130,6 +146,7 @@ export class DashboardRepository {
           and(
             eq(purchase.organizationId, orgId),
             isNull(purchase.voidedAt),
+            ...this.purchaseStoreCond,
             gte(purchase.createdAt, prevStart),
             lt(purchase.createdAt, curStart),
           ),
@@ -173,6 +190,7 @@ export class DashboardRepository {
         and(
           eq(purchase.organizationId, orgId),
           isNull(purchase.voidedAt),
+            ...this.purchaseStoreCond,
           gte(purchase.createdAt, start),
         ),
       ),
@@ -212,7 +230,7 @@ export class DashboardRepository {
       .from(purchase)
       .innerJoin(customer, eq(customer.id, purchase.customerId))
       .leftJoin(store, eq(store.id, purchase.storeId))
-      .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt)))
+      .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt), ...this.purchaseStoreCond))
       .orderBy(desc(purchase.createdAt))
       .limit(limit);
     return rows.map((r) => ({
@@ -272,6 +290,7 @@ export class DashboardRepository {
         and(
           eq(purchase.organizationId, orgId),
           isNull(purchase.voidedAt),
+            ...this.purchaseStoreCond,
           gte(purchase.createdAt, start),
         ),
       )
@@ -291,7 +310,7 @@ export class DashboardRepository {
     const rows = await this.db
       .select({ customerId: purchase.customerId, createdAt: purchase.createdAt })
       .from(purchase)
-      .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt)));
+      .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt), ...this.purchaseStoreCond));
     // Last purchase per customer (drizzle returns Date; avoids sql max() ambiguity).
     const last = new Map<string, Date>();
     for (const p of rows) {
@@ -328,6 +347,7 @@ export class DashboardRepository {
         and(
           eq(purchase.organizationId, orgId),
           isNull(purchase.voidedAt),
+            ...this.purchaseStoreCond,
           gte(purchase.createdAt, start),
         ),
       )
@@ -468,6 +488,7 @@ export class DashboardRepository {
         and(
           eq(purchase.organizationId, orgId),
           isNull(purchase.voidedAt),
+            ...this.purchaseStoreCond,
           gte(purchase.createdAt, start),
         ),
       );
@@ -534,7 +555,7 @@ export class DashboardRepository {
     const rows = await this.db
       .select({ customerId: purchase.customerId, createdAt: purchase.createdAt })
       .from(purchase)
-      .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt)));
+      .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt), ...this.purchaseStoreCond));
 
     const active = new Map<string, Set<number>>();
     for (const p of rows) {
@@ -589,6 +610,7 @@ export class DashboardRepository {
         and(
           eq(purchase.organizationId, orgId),
           isNull(purchase.voidedAt),
+            ...this.purchaseStoreCond,
           gte(purchase.createdAt, start),
         ),
       ),
@@ -622,6 +644,7 @@ export class DashboardRepository {
         and(
           eq(purchase.organizationId, orgId),
           isNull(purchase.voidedAt),
+            ...this.purchaseStoreCond,
           gte(purchase.createdAt, start),
         ),
       )

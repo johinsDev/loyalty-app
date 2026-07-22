@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 /** Per-link analytics: total clicks, clicks-by-day bars, top countries. */

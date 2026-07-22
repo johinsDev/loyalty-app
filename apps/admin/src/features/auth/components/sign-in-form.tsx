@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { getAppUrl } from "@/lib/app-url";
 
 type Props = {

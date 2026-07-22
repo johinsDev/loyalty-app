@@ -9,7 +9,8 @@ import {
 } from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Store as StoreIcon } from "lucide-react";
-import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -24,6 +25,18 @@ export function StoreSwitcher() {
   const trpc = useTRPC();
   const { data: stores } = useQuery(trpc.employees.myStores.queryOptions());
   const active = useActiveStoreId();
+
+  // Cashier mode opened from a store-scoped admin passes ?storeId=<id> — adopt it
+  // once (if the cashier is assigned there), overriding the device default.
+  const inherited = useSearchParams().get("storeId");
+  const adopted = useRef(false);
+  useEffect(() => {
+    if (adopted.current || !stores || !inherited) return;
+    if (stores.some((s) => s.id === inherited)) {
+      adopted.current = true;
+      setActiveStoreId(inherited);
+    }
+  }, [stores, inherited]);
 
   useEffect(() => {
     if (!stores || stores.length === 0) return;

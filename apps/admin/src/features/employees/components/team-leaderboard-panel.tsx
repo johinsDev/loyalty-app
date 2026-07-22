@@ -6,7 +6,7 @@ import { ArrowRight, Medal } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { initialsFor } from "../lib";

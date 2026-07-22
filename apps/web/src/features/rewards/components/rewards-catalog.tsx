@@ -28,6 +28,7 @@ import {
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 import { useQrDrawer } from "@/features/qr/hooks/use-qr-drawer";
+import { useActiveCustomerStoreId } from "@/features/store/use-active-customer-store";
 import { useFadeUp } from "@/lib/animate";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -63,10 +64,11 @@ export function RewardsCatalog() {
     if (debounced !== q.search) void setQ({ search: debounced || null });
   }, [debounced, q.search, setQ]);
 
+  const storeId = useActiveCustomerStoreId() ?? undefined;
   const search = q.search.trim();
   const listQuery = useInfiniteQuery(
     trpc.rewards.list.infiniteQueryOptions(
-      { filter: q.f, search: search || undefined, limit: 20 },
+      { filter: q.f, search: search || undefined, limit: 20, storeId },
       { getNextPageParam: (last) => last.nextCursor ?? undefined },
     ),
   );

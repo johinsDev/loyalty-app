@@ -22,7 +22,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 /** Per-row ⋯ menu: edit · make primary · delete (type-the-exact-name). */
@@ -101,6 +101,9 @@ export function StoreRowActions({ store }: { store: { id: string; name: string; 
             <div className="space-y-2 px-4 pb-2">
               <p className="text-muted-foreground text-sm">
                 {t("deleteTypeHint", { name: store.name })}
+              </p>
+              <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs font-semibold text-amber-700">
+                {t("deleteImpact")}
               </p>
               <Input className="h-10" placeholder={store.name} autoFocus {...register("confirm")} />
             </div>

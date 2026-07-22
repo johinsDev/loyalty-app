@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./trpc": "./src/trpc.ts",
     "./root": "./src/routers/_app.ts",
+    "./features/_shared/store-scope": "./src/features/_shared/store-scope.ts",
     "./features/whatsapp-outbox": "./src/features/whatsapp-outbox/index.ts",
     "./features/sms-outbox": "./src/features/sms-outbox/index.ts",
     "./features/email-outbox": "./src/features/email-outbox/index.ts",

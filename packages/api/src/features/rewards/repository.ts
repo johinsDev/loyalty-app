@@ -18,6 +18,7 @@ import {
   pageOffset,
   type ListResult,
 } from "../_shared/list";
+import { availableAtStore } from "../_shared/store-availability";
 import { WINDOW_DAYS } from "../points/config";
 import { currentTierKey } from "../points/tier-calc";
 import { DRAFT_NAME } from "./steps";
@@ -29,7 +30,7 @@ export type RewardPatch = Partial<
     RewardInsert,
     | "name" | "type" | "benefit" | "description" | "imageUrl" | "backgroundCss"
     | "icon" | "fulfillmentNote" | "stampsRequired" | "pointsCost" | "costMode"
-    | "allowedTiers" | "limitPerCustomer" | "sections" | "sortOrder"
+    | "allowedTiers" | "limitPerCustomer" | "sections" | "sortOrder" | "storeIds"
   >
 >;
 
@@ -138,6 +139,7 @@ export class RewardsRepository {
     if (input.q) conds.push(like(reward.name, `%${input.q}%`));
     if (input.status?.length) conds.push(inArray(reward.status, input.status));
     if (input.type?.length) conds.push(inArray(reward.type, input.type));
+    if (input.storeId) conds.push(availableAtStore(reward.storeIds, input.storeId));
     const where = and(...conds.filter((c): c is SQL => Boolean(c)));
 
     const orderBy = buildOrderBy(
@@ -176,12 +178,18 @@ export class RewardsRepository {
    *  cursor is the last item's `id` (stable within the deterministic order). */
   async listCatalog(
     orgId: string,
-    opts: { search?: string; cursor?: string; limit: number },
+    opts: { search?: string; cursor?: string; storeId?: string; limit: number },
   ): Promise<{ rows: RewardRow[]; nextCursor: string | null }> {
     const all = await this.db
       .select()
       .from(reward)
-      .where(and(eq(reward.organizationId, orgId), eq(reward.status, "published")))
+      .where(
+        and(
+          eq(reward.organizationId, orgId),
+          eq(reward.status, "published"),
+          opts.storeId ? availableAtStore(reward.storeIds, opts.storeId) : undefined,
+        ),
+      )
       .orderBy(asc(reward.sortOrder), asc(reward.createdAt), asc(reward.id));
 
     const search = opts.search?.toLowerCase();

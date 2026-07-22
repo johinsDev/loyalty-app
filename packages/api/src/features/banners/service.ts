@@ -52,10 +52,10 @@ export class BannersService {
   ) {}
 
   // ── Public (cached; banners have no price → keyed by locale only) ─────────
-  homeBanners(orgId: string, lc: LocaleContext): Promise<BannerCard[]> {
+  homeBanners(orgId: string, lc: LocaleContext, storeId?: string): Promise<BannerCard[]> {
     return cache.getOrSet(
-      `banners:${orgId}:home:${lc.locale}`,
-      () => this.repo.listHomeBanners(orgId, lc),
+      `banners:${orgId}:home:${storeId ?? ""}:${lc.locale}`,
+      () => this.repo.listHomeBanners(orgId, lc, storeId),
       TTL_SECONDS,
     );
   }

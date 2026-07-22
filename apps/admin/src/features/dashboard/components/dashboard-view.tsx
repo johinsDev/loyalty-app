@@ -17,6 +17,7 @@ import { CampaignsKpiStrip } from "@/features/campaigns/components/campaigns-kpi
 import { DashboardPromoCard } from "@/features/promotions/components/dashboard-promo-card";
 import { PromoKpiStrip } from "@/features/promotions/components/promo-kpi-strip";
 import { useFadeUp } from "@/lib/animate";
+import { useStoreScope } from "@/lib/store-scope";
 
 import { useTRPC } from "@/lib/trpc/client";
 import { useQuery } from "@tanstack/react-query";
@@ -69,32 +70,40 @@ export function DashboardView({
   const t = useTranslations("Dashboard");
   const fade = useFadeUp({ step: 40 });
   const trpc = useTRPC();
+  const { storeId } = useStoreScope();
   const [period, setPeriod] = useState<Period>("30d");
   let i = 0;
 
   // Above-the-fold stats hydrate from the server prefetch for the default 30d
-  // window (no initial flash); other periods fetch client-side.
+  // window (no initial flash); other periods fetch client-side. `storeId`
+  // scopes the purchase-based aggregates to the active store (null = all).
   const overview = useQuery(
     trpc.dashboard.overview.queryOptions(
-      { period },
+      { period, storeId },
       { initialData: period === "30d" ? initialOverview : undefined },
     ),
   );
   const seriesQ = useQuery(
     trpc.dashboard.series.queryOptions(
-      { period },
+      { period, storeId },
       { initialData: period === "30d" ? initialSeries : undefined },
     ),
   );
-  const recentPurchasesQ = useQuery(trpc.dashboard.recentPurchases.queryOptions({ limit: 6 }));
+  const recentPurchasesQ = useQuery(
+    trpc.dashboard.recentPurchases.queryOptions({ limit: 6, storeId }),
+  );
   const recentRedemptionsQ = useQuery(trpc.dashboard.recentRedemptions.queryOptions({ limit: 6 }));
-  const topCustomersQ = useQuery(trpc.dashboard.topCustomers.queryOptions({ period, limit: 6 }));
-  const atRiskQ = useQuery(trpc.dashboard.atRisk.queryOptions({ days: 30, limit: 5 }));
+  const topCustomersQ = useQuery(
+    trpc.dashboard.topCustomers.queryOptions({ period, limit: 6, storeId }),
+  );
+  const atRiskQ = useQuery(trpc.dashboard.atRisk.queryOptions({ days: 30, limit: 5, storeId }));
   const retentionQ = useQuery(trpc.dashboard.retention.queryOptions({ period }));
   const engagementQ = useQuery(trpc.dashboard.redemptionEngagement.queryOptions({ period }));
   const tiersQ = useQuery(trpc.dashboard.tiers.queryOptions());
   const liabilityQ = useQuery(trpc.dashboard.liability.queryOptions({ period }));
-  const topProductsQ = useQuery(trpc.dashboard.topProducts.queryOptions({ period, limit: 6 }));
+  const topProductsQ = useQuery(
+    trpc.dashboard.topProducts.queryOptions({ period, limit: 6, storeId }),
+  );
   const salesByStoreQ = useQuery(trpc.dashboard.salesByStore.queryOptions({ period }));
   const cohortsQ = useQuery(trpc.dashboard.cohorts.queryOptions());
   const now = Date.now();

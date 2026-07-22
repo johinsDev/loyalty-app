@@ -6,7 +6,14 @@ import { TRPCError } from "@trpc/server";
 import { getBranding } from "../_shared/localize";
 import type { ListResult } from "../_shared/list";
 import type { StoresRepository } from "./repository";
-import type { StoreListItem, StoresListInput, StoreView, UpdateStoreInput } from "./schemas";
+import { slugify, uniqueSlug } from "./slug";
+import type {
+  StoreListItem,
+  StoresListInput,
+  StoreSwitcherItem,
+  StoreView,
+  UpdateStoreInput,
+} from "./schemas";
 import { directionsUrl, generateStoreMap } from "./static-map";
 
 /** Expand the structured address input into the persisted store columns:
@@ -61,6 +68,13 @@ export class StoresService {
     return this.repo.listByIds(orgId, ids);
   }
 
+  /** Lean active-store list powering the admin store switcher. Backfills any
+   *  missing slugs first so the `/[store]` URLs are always slug-based. */
+  async switcherList(orgId: string): Promise<StoreSwitcherItem[]> {
+    await this.repo.ensureSlugs(orgId);
+    return this.repo.switcherList(orgId);
+  }
+
   /** The primary store row (admin editing — e.g. the Settings location block). */
   primaryRow(orgId: string): Promise<StoreRow | null> {
     return this.repo.findPrimary(orgId, false);
@@ -86,9 +100,14 @@ export class StoresService {
     return this.repo.get(orgId, id);
   }
 
-  /** Start an empty draft; the wizard fills it step by step, then publishes. */
-  create(orgId: string): Promise<StoreRow> {
-    return this.repo.create(orgId, { name: "", status: "draft" });
+  /** Start a draft (optionally named from quick-create); the wizard fills the
+   *  rest step by step, then publishes. Assigns a unique slug up front so the
+   *  store has a clean `/[store]` URL from creation. */
+  async create(orgId: string, name?: string): Promise<StoreRow> {
+    const trimmed = name?.trim() ?? "";
+    const taken = new Set(await this.repo.existingSlugs(orgId));
+    const slug = uniqueSlug(slugify(trimmed), taken);
+    return this.repo.create(orgId, { name: trimmed, slug, status: "draft" });
   }
 
   async update(orgId: string, input: UpdateStoreInput, deps: MapDeps): Promise<StoreRow> {
@@ -133,6 +152,7 @@ export class StoresService {
     }
     if (row.isPrimary) await this.repo.promoteAnotherPrimary(orgId, id);
     await this.repo.softDelete(orgId, id);
+    await this.repo.stripStoreFromCatalog(orgId, id);
     return { ok: true };
   }
 
@@ -147,6 +167,7 @@ export class StoresService {
     }
     await this.repo.bulkSoftDelete(orgId, ids);
     await this.repo.ensurePrimary(orgId);
+    for (const id of ids) await this.repo.stripStoreFromCatalog(orgId, id);
     return { ok: true, deleted: ids.length };
   }
 

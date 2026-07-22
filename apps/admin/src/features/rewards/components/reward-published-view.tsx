@@ -24,7 +24,7 @@ import { toast } from "sonner";
 
 import { FileUpload } from "@/features/storage/components/file-upload";
 import { useUploadImage } from "@/features/storage/hooks/use-upload-image";
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { RewardPreview } from "./reward-wizard";

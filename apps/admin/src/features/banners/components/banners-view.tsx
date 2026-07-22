@@ -35,8 +35,10 @@ import {
 } from "@/components/data-table";
 import { useDataTable } from "@/components/data-table/use-data-table";
 import { ViewToggle } from "@/components/view-toggle";
+import { StoreAvailabilityBadge } from "@/features/stores/components/store-availability-badge";
 import { downloadCsv, rowsToCsv } from "@/lib/csv";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
+import { useStoreScope } from "@/lib/store-scope";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { buildBannersInput } from "../list-params";
@@ -61,6 +63,7 @@ export function BannersView({ initialData }: { initialData?: BannersListResult }
   const trpc = useTRPC();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { storeId, stores } = useStoreScope();
 
   const [q, setQ] = useQueryState("q", tableParsers.q);
   const [state, setState] = useQueryState("state", parseAsArrayOf(parseAsString).withDefault([]));
@@ -100,8 +103,11 @@ export function BannersView({ initialData }: { initialData?: BannersListResult }
   };
 
   const input: BannersListInput = useMemo(
-    () => buildBannersInput({ q, page, perPage, sort, state, from, to }),
-    [q, page, perPage, sort, state, from, to],
+    () => ({
+      ...buildBannersInput({ q, page, perPage, sort, state, from, to }),
+      storeId: storeId ?? undefined,
+    }),
+    [q, page, perPage, sort, state, from, to, storeId],
   );
 
   const initialKey = useRef(JSON.stringify(input));
@@ -183,6 +189,19 @@ export function BannersView({ initialData }: { initialData?: BannersListResult }
           </Badge>
         ),
       },
+      ...(stores.length >= 2
+        ? [
+            {
+              id: "stores",
+              enableSorting: false,
+              meta: { label: t("colStores") },
+              header: () => (
+                <span className="text-muted-foreground text-xs font-bold">{t("colStores")}</span>
+              ),
+              cell: ({ row }) => <StoreAvailabilityBadge storeIds={row.original.storeIds} />,
+            } satisfies ColumnDef<BannerListItem, unknown>,
+          ]
+        : []),
       {
         accessorKey: "displayFrom",
         enableSorting: false,
@@ -212,7 +231,7 @@ export function BannersView({ initialData }: { initialData?: BannersListResult }
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, locale, setDetailId],
+    [t, locale, setDetailId, stores.length],
   );
 
   const { table, selectedIds, resetSelection } = useDataTable<BannerListItem>({
@@ -379,8 +398,9 @@ export function BannersView({ initialData }: { initialData?: BannersListResult }
                   <div className="flex flex-1 flex-col p-4">
                     <p className="font-semibold">{b.name || t("namePlaceholder")}</p>
                     <p className="text-muted-foreground mt-0.5 font-mono text-xs">/{b.slug}</p>
-                    <div className="text-muted-foreground mt-3 flex items-center gap-3 text-xs font-semibold">
+                    <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold">
                       <span>{scheduleLabel(b)}</span>
+                      <StoreAvailabilityBadge storeIds={b.storeIds} />
                     </div>
                   </div>
                 </div>

@@ -113,7 +113,7 @@ export const menuRouter = router({
     .query(async ({ ctx, input }) => {
       const id = await orgId();
       const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
-      return buildMenuService(ctx).sections(id, input.placement, lc);
+      return buildMenuService(ctx).sections(id, input.placement, lc, input.storeId);
     }),
 
   categories: publicProcedure.query(async ({ ctx }) => {

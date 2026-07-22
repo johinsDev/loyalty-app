@@ -21,7 +21,7 @@ import { useMemo, useState } from "react";
 
 import { DataTableFilters, FilterSection } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 const AUTH_TYPES: ActivityType[] = [

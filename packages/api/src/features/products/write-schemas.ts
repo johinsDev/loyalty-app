@@ -116,6 +116,9 @@ export const productUpsertInputSchema = z.object({
   seoDescription: z.string().max(320).nullish(),
   ogImageUrl: z.string().url().nullish().or(z.literal("")),
   categoryIds: z.array(z.string().min(1)).default([]),
+  // Stores this product is available at (null/empty = every store). Only
+  // persisted when present in the input.
+  storeIds: z.array(z.string()).nullable().optional(),
   options: z.array(optionInput).default([]),
   variants: z.array(variantInput).default([]),
   modifierGroups: z.array(modifierGroupInput).default([]),
@@ -128,6 +131,8 @@ export const productAdminListInputSchema = z.object({
   search: z.string().trim().max(100).optional(),
   status: z.array(productStatusSchema).optional(),
   categoryId: z.array(z.string()).optional(),
+  // Active store scope — restrict to products available at this store.
+  storeId: z.string().optional(),
   sort: z.enum(["name", "price", "updated"]).default("updated"),
   dir: z.enum(["asc", "desc"]).default("desc"),
   page: z.number().int().min(1).default(1),
@@ -146,6 +151,7 @@ export interface ProductAdminRow {
   imageUrl: string | null;
   variantCount: number;
   categoryNames: string[];
+  storeIds: string[] | null;
   updatedAt: Date;
 }
 
@@ -177,6 +183,7 @@ export interface ProductAdminDetail {
   seoDescription: string | null;
   ogImageUrl: string | null;
   categoryIds: string[];
+  storeIds: string[] | null;
   options: { id: string; name: string; sortOrder: number; values: { id: string; label: string; sortOrder: number }[] }[];
   variants: {
     id: string;

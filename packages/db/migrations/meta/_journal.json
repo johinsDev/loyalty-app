@@ -351,6 +351,13 @@
       "when": 1784222347962,
       "tag": "0049_petite_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "6",
+      "when": 1784671960174,
+      "tag": "0050_loud_toxin",
+      "breakpoints": true
     }
   ]
 }

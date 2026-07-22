@@ -243,6 +243,7 @@
   },
   "Store": {
     "title": "Nuestra tienda",
+    "switcherTitle": "Elegí tu tienda",
     "subtitle": "Dirección, horarios y cómo llegar",
     "open": "Abierto",
     "closed": "Cerrado",

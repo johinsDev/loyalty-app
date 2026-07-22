@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { useRef } from "react";
 import { toast } from "sonner";
 
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 /**

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { useHasRole } from "@/lib/role-context";
 import { useTRPC } from "@/lib/trpc/client";
 

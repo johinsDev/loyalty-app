@@ -8,6 +8,7 @@ import { PromoRepository } from "./repository";
 import {
   adminListInputSchema,
   applicableInputSchema,
+  homePromosInputSchema,
   idInputSchema,
   itemRefSchema,
   patchContentSchema,
@@ -36,10 +37,10 @@ async function requireOrg(): Promise<string> {
  */
 export const promocionesRouter = router({
   // ── Public (cacheable, localized) ──────────────────────────────────────────
-  homePromos: publicProcedure.query(async ({ ctx }) => {
+  homePromos: publicProcedure.input(homePromosInputSchema).query(async ({ ctx, input }) => {
     const id = await orgId();
     const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
-    return makeService(ctx.db).homePromos(id, lc);
+    return makeService(ctx.db).homePromos(id, lc, input.storeId);
   }),
   listPublic: publicProcedure.input(publicListInputSchema).query(async ({ ctx, input }) => {
     const id = await orgId();

@@ -84,6 +84,7 @@ const conditionsInputSchema = z
     audienceType: audienceTypeSchema,
     tierKey: tierKeySchema.nullish(),
     audienceCustomerIds: z.array(z.string().min(1)).nullish(),
+    storeIds: z.array(z.string()).nullable().optional(),
     startsAt: z.coerce.date().nullish(),
     endsAt: z.coerce.date().nullish(),
     schedule: scheduleSchema.nullish(),
@@ -127,6 +128,8 @@ export class ConditionsStep extends WizardStep<PromoRow, ConditionsInput, PromoS
       tierKey: input.audienceType === "tier" ? (input.tierKey ?? null) : null,
       audienceCustomerIds:
         input.audienceType === "specific" ? (input.audienceCustomerIds ?? null) : null,
+      // Empty array = "every store"; normalize it to null so the predicate is simple.
+      storeIds: input.storeIds && input.storeIds.length > 0 ? input.storeIds : null,
       startsAt: input.startsAt ?? null,
       endsAt: input.endsAt ?? null,
       schedule: input.schedule ?? null,

@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useActiveCustomerStoreId } from "@/features/store/use-active-customer-store";
 import { Link } from "@/i18n/navigation";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -18,7 +19,10 @@ import { PromoCard } from "./promo-card";
 export function PromoRail() {
   const t = useTranslations("Promos");
   const trpc = useTRPC();
-  const { data, isLoading } = useQuery(trpc.promociones.homePromos.queryOptions());
+  const storeId = useActiveCustomerStoreId() ?? undefined;
+  const { data, isLoading } = useQuery(
+    trpc.promociones.homePromos.queryOptions({ storeId }),
+  );
   const rowRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);

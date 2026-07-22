@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useActiveCustomerStoreId } from "@/features/store/use-active-customer-store";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { BannerCard } from "./banner-card";
@@ -16,7 +17,10 @@ import { BannerCard } from "./banner-card";
  */
 export function BannerRail() {
   const trpc = useTRPC();
-  const { data, isLoading } = useQuery(trpc.banners.homeBanners.queryOptions());
+  const storeId = useActiveCustomerStoreId() ?? undefined;
+  const { data, isLoading } = useQuery(
+    trpc.banners.homeBanners.queryOptions({ storeId }),
+  );
   const rowRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);

@@ -24,6 +24,8 @@ export const banner = sqliteTable(
     name: text("name").notNull(),
     status: text("status").notNull().default("draft"), // draft | published
     sortOrder: integer("sort_order").notNull().default(0),
+    // JSON array of store ids this banner shows at (null/empty = every store).
+    storeIds: text("store_ids", { mode: "json" }).$type<string[] | null>(),
 
     // Content
     shortDescription: text("short_description"),

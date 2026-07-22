@@ -23,7 +23,7 @@ import { useMemo, useState } from "react";
 
 import { DataTableFilters, FilterSection } from "@/components/data-table";
 import { Donut } from "@/features/dashboard/components/charts";
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { initialsFor } from "../lib";

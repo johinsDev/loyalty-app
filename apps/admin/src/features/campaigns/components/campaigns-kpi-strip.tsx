@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Send } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;

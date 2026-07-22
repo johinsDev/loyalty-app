@@ -31,7 +31,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { WizardShell } from "@/components/wizard-shell";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { compactNumber } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
 

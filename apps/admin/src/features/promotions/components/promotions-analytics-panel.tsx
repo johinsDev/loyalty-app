@@ -4,7 +4,7 @@ import { Skeleton } from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { ExpandableCard } from "./expandable-card";

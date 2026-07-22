@@ -23,6 +23,7 @@ import { and, asc, eq, gt, inArray, like, or, sql } from "drizzle-orm";
 
 import type { LocaleContext } from "../_shared/localize";
 import { getLoyaltyConfig, pickPrice } from "../_shared/localize";
+import { availableAtStore } from "../_shared/store-availability";
 import { earnFor } from "./earn";
 import type {
   MenuCard,
@@ -72,6 +73,7 @@ export class ProductsRepository {
     categorySlug?: string | null;
     sectionSlug?: string | null;
     search?: string | null;
+    storeId?: string | null;
     ctx: LocaleContext;
   }): Promise<MenuList> {
     const { orgId, pageSize } = input;
@@ -81,6 +83,9 @@ export class ProductsRepository {
       eq(product.organizationId, orgId),
       eq(product.status, "active"),
     ];
+    if (input.storeId) {
+      conds.push(availableAtStore(product.storeIds, input.storeId));
+    }
     if (cur) {
       // keyset: (sortOrder, id) strictly after the cursor
       conds.push(
@@ -134,16 +139,23 @@ export class ProductsRepository {
     return { items: cards, nextCursor };
   }
 
-  /** Compact cards for a set of product ids, preserving sortOrder,id order. */
+  /** Compact cards for a set of product ids, preserving sortOrder,id order.
+   *  When `storeId` is set, drops products not available at that store. */
   private async cardsByIds(
     productIds: string[],
     ctx: LocaleContext,
+    storeId?: string | null,
   ): Promise<MenuCard[]> {
     if (productIds.length === 0) return [];
     const rows = await this.db
       .select()
       .from(product)
-      .where(inArray(product.id, productIds))
+      .where(
+        and(
+          inArray(product.id, productIds),
+          storeId ? availableAtStore(product.storeIds, storeId) : undefined,
+        ),
+      )
       .orderBy(asc(product.sortOrder), asc(product.id));
     // Org loyalty config (cached) — drives the earn preview on every card.
     const loyalty =
@@ -391,6 +403,7 @@ export class ProductsRepository {
     orgId: string,
     placement: string,
     ctx: LocaleContext,
+    storeId?: string | null,
   ): Promise<SectionView[]> {
     const placements =
       placement === "both" ? ["both"] : [placement, "both"];
@@ -408,7 +421,7 @@ export class ProductsRepository {
     });
 
     const allProductIds = rows.flatMap((s) => s.products.map((sp) => sp.productId));
-    const cards = await this.cardsByIds([...new Set(allProductIds)], ctx);
+    const cards = await this.cardsByIds([...new Set(allProductIds)], ctx, storeId);
     const cardById = new Map(cards.map((c) => [c.id, c]));
 
     return rows.map((s) => ({

@@ -23,7 +23,9 @@ import {
 } from "@/components/data-table";
 import { useDataTable } from "@/components/data-table/use-data-table";
 import { ViewToggle } from "@/components/view-toggle";
-import { useRouter } from "@/i18n/navigation";
+import { StoreAvailabilityBadge } from "@/features/stores/components/store-availability-badge";
+import { useRouter } from "@/i18n/nav";
+import { useStoreScope } from "@/lib/store-scope";
 import { useTRPC } from "@/lib/trpc/client";
 
 import {
@@ -59,6 +61,7 @@ export function PromotionsView({ initialData }: { initialData?: PromoListResult 
   const locale = useLocale();
   const trpc = useTRPC();
   const router = useRouter();
+  const { storeId } = useStoreScope();
 
   // ── Feature-specific URL state (facets + q). page/perPage/sort/view/cols live
   //    in useDataTable. ───────────────────────────────────────────────────────
@@ -119,9 +122,11 @@ export function PromotionsView({ initialData }: { initialData?: PromoListResult 
   const toggleAudience = toggle(audience, (next) => void setAudience(next));
 
   const input: AdminListInput = useMemo(
-    () =>
-      buildPromotionsInput({ q, page, perPage, sort, status, vigency, type, audience, startsFrom, startsTo }),
-    [q, page, perPage, sort, status, vigency, type, audience, startsFrom, startsTo],
+    () => ({
+      ...buildPromotionsInput({ q, page, perPage, sort, status, vigency, type, audience, startsFrom, startsTo }),
+      storeId: storeId ?? undefined,
+    }),
+    [q, page, perPage, sort, status, vigency, type, audience, startsFrom, startsTo, storeId],
   );
 
   const initialKey = useRef(JSON.stringify(input));
@@ -193,6 +198,15 @@ export function PromotionsView({ initialData }: { initialData?: PromoListResult 
         meta: { label: t("list.colStatus") },
         header: () => <span className="text-muted-foreground text-xs font-bold">{t("list.colStatus")}</span>,
         cell: ({ row }) => statusBadge(row.original.status),
+      },
+      {
+        id: "availability",
+        enableSorting: false,
+        meta: { label: t("list.colAvailability") },
+        header: () => (
+          <span className="text-muted-foreground text-xs font-bold">{t("list.colAvailability")}</span>
+        ),
+        cell: ({ row }) => <StoreAvailabilityBadge storeIds={row.original.storeIds} />,
       },
       {
         id: "vigency",
@@ -410,6 +424,9 @@ export function PromotionsView({ initialData }: { initialData?: PromoListResult 
                           {vigencyCell(p)}
                         </>
                       ) : null}
+                    </div>
+                    <div className="mt-2">
+                      <StoreAvailabilityBadge storeIds={p.storeIds} />
                     </div>
                   </div>
                 </div>

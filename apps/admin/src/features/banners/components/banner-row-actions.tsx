@@ -20,7 +20,7 @@ import { parseAsString, useQueryState } from "nuqs";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 /** Per-row ⋯ menu for a banner: view detail · edit · delete. */

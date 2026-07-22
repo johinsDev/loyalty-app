@@ -19,6 +19,7 @@ import { and, asc, desc, eq, inArray, like, sql } from "drizzle-orm";
    (values before variant-values, variants before their images). */
 import { partitionById } from "./diff";
 import { slugify, slugSuffix } from "../_shared/slugify";
+import { availableAtStore } from "../_shared/store-availability";
 import type {
   ProductAdminDetail,
   ProductAdminList,
@@ -127,6 +128,7 @@ export class ProductsAdminRepository {
       seoDescription: p.seoDescription,
       ogImageUrl: p.ogImageUrl,
       categoryIds: p.categories.map((c) => c.categoryId),
+      storeIds: p.storeIds ?? null,
       options: p.options.map((o) => ({
         id: o.id,
         name: o.name,
@@ -227,6 +229,10 @@ export class ProductsAdminRepository {
           seoTitle: input.seoTitle ?? null,
           seoDescription: input.seoDescription ?? null,
           ogImageUrl: input.ogImageUrl ? input.ogImageUrl : null,
+          // Only write store scope when the field is present; empty = every store.
+          ...(input.storeIds !== undefined
+            ? { storeIds: input.storeIds && input.storeIds.length > 0 ? input.storeIds : null }
+            : {}),
           updatedAt: new Date(),
         })
         .where(eq(product.id, input.id));
@@ -443,6 +449,9 @@ export class ProductsAdminRepository {
     if (input.search) {
       conds.push(like(product.name, `%${input.search}%`));
     }
+    if (input.storeId) {
+      conds.push(availableAtStore(product.storeIds, input.storeId));
+    }
     // Category facet → restrict to products linked to any of the given categories.
     let idFilter: string[] | null = null;
     if (input.categoryId && input.categoryId.length > 0) {
@@ -528,6 +537,7 @@ export class ProductsAdminRepository {
       imageUrl: firstImage.get(p.id) ?? null,
       variantCount: variantCountBy.get(p.id) ?? 0,
       categoryNames: catsBy.get(p.id) ?? [],
+      storeIds: p.storeIds ?? null,
       updatedAt: p.updatedAt,
     }));
     return { rows: out, total: Number(count) };

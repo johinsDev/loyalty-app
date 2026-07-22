@@ -16,7 +16,7 @@ import {
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 
 import { useCursorPages } from "@/features/customers/hooks/use-cursor-pages";
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/i18n/nav";
 import { money } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
 

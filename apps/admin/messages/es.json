@@ -833,6 +833,7 @@
       "colType": "Tipo",
       "colStatus": "Estado",
       "colVigency": "Vigencia",
+      "colAvailability": "Disponibilidad",
       "colWindow": "Ventana",
       "colUses": "Usos",
       "colCreated": "Creada",
@@ -1310,8 +1311,7 @@
     "comingSoon": "Esta sección está en camino. La estamos construyendo.",
     "store": {
       "allStores": "Todas las tiendas",
-      "t4Centro": "T4 Centro",
-      "t4Norte": "T4 Norte"
+      "unnamed": "Tienda sin nombre"
     },
     "settingsLink": "Ajustes",
     "help": "Ayuda",
@@ -1320,7 +1320,21 @@
     "allNormal": "Todo normal",
     "storeSearch": "Buscar tienda…",
     "storeEmpty": "Sin tiendas.",
-    "createStore": "Crear tienda"
+    "createStore": "Crear tienda",
+    "createStoreTitle": "Nueva tienda",
+    "createStoreDesc": "Ponele un nombre para empezar. Después completás la dirección, horarios y marca.",
+    "createStorePlaceholder": "Nombre de la tienda",
+    "createStoreSubmit": "Crear y continuar",
+    "createStoreError": "No se pudo crear la tienda."
+  },
+  "StoreAvailability": {
+    "title": "Disponible en",
+    "hint": "Elegí en qué tiendas aparece. Por defecto, en todas.",
+    "allStores": "Todas las tiendas",
+    "unnamed": "Tienda sin nombre",
+    "badgeAll": "Todas las tiendas",
+    "badgeOne": "1 tienda",
+    "badgeCount": "{n} tiendas"
   },
   "Roles": {
     "customer": "Cliente",
@@ -1965,6 +1979,7 @@
     "colSlug": "Slug",
     "colState": "Estado",
     "colSchedule": "Vigencia",
+    "colStores": "Tiendas",
     "colNotifications": "Notif.",
     "colCreated": "Creado",
     "namePlaceholder": "Sin nombre",
@@ -2594,6 +2609,7 @@
     "leaveConfirm": "Salir",
     "draft": "Borrador",
     "deleteTypeHint": "Escribí el nombre exacto de la tienda (\"{name}\") para confirmar.",
+    "deleteImpact": "Las compras históricas se conservan. La tienda se quita de la disponibilidad de productos, premios, promos y banners.",
     "deleteLastError": "No se puede eliminar la última tienda.",
     "fixErrors": "Revisá los campos marcados.",
     "errorName": "Ingresá un nombre.",

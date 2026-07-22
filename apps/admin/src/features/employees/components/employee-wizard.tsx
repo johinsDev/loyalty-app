@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { WizardShell } from "@/components/wizard-shell";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { ASSIGNABLE_ROLES, initialsFor } from "../lib";

@@ -23,7 +23,7 @@ import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/i18n/nav";
 import { money } from "@/lib/money";
 import { useHasRole } from "@/lib/role-context";
 import { useTRPC } from "@/lib/trpc/client";
