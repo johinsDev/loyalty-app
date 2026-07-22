@@ -93,7 +93,7 @@ jobs:
         run: >
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
           --recursive --token="$INFISICAL_TOKEN" --
-          bash -c 'cd packages/jobs && bunx trigger.dev@4.4.6 deploy'
+          bash -c 'cd packages/jobs && bunx trigger.dev@4.5.6 deploy'
 
       # Post a release summary to the deploys Slack channel. always() so it also
       # reports a failed deploy. Inert (no-op) until SLACK_DEPLOY_WEBHOOK_URL is in
