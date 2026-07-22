@@ -197,6 +197,9 @@ export function AuditLogView() {
       {/* Timeline histogram */}
       <div className="border-border mt-4 flex h-12 items-end gap-0.5 rounded-xl border px-2 py-1.5">
         {timeline.buckets.map((n, i) => (
+          // Fixed-length, time-ordered histogram — buckets never reorder, so the
+          // index is a stable key.
+          // oxlint-disable-next-line no-array-index-key
           <span
             key={i}
             title={String(n)}
