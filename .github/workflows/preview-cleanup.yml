@@ -97,7 +97,7 @@ jobs:
         run: >
           infisical run --projectId "$INFISICAL_PROJECT_ID" --env=prod
           --path=/ci --token="$INFISICAL_TOKEN" --
-          bash -c 'cd packages/jobs && bunx trigger.dev@4.4.6 preview archive --branch "$GIT_BRANCH"'
+          bash -c 'cd packages/jobs && bunx trigger.dev@4.5.6 preview archive --branch "$GIT_BRANCH"'
 
       # Delete this PR's API Worker (script + api.pr-<n> custom domain) and the
       # admin./app. FE subdomains (CF DNS + Vercel project domains). The

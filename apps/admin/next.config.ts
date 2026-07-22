@@ -72,6 +72,6 @@ export default withSentryConfig(withNextIntl(config), {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: !process.env.CI,
   tunnelRoute: "/monitoring",
-  disableLogger: true,
+  webpack: { treeshake: { removeDebugLogging: true } },
   widenClientFileUpload: true,
 });
