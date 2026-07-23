@@ -18,7 +18,6 @@ const variantId = (optionValueIds: string[]) => `var::${[...optionValueIds].sort
  *  through a save so an edit never wipes them. */
 export interface ProductPassthrough {
   modifierGroups: ProductUpsertInput["modifierGroups"];
-  addonGroups: ProductUpsertInput["addonGroups"];
   images: ProductUpsertInput["images"];
 }
 
@@ -95,6 +94,14 @@ export function detailToDraft(d: AdminDetail): {
     recipeNotes: d.recipeNotes ?? "",
     options: d.options.map((o) => ({ id: o.id, name: o.name, values: o.values.map((v) => v.label) })),
     variants,
+    addonGroups: d.addonGroups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      selectionType: g.selectionType as "single" | "multi",
+      required: g.required,
+      sortOrder: g.sortOrder,
+      addonIds: g.items.map((it) => it.addonId),
+    })),
   };
 
   return {
@@ -115,20 +122,6 @@ export function detailToDraft(d: AdminDetail): {
           priceDeltaCents: mo.priceDeltaCents,
           pointsDelta: mo.pointsDelta,
           sortOrder: mo.sortOrder,
-        })),
-      })),
-      addonGroups: d.addonGroups.map((g) => ({
-        id: g.id,
-        name: g.name,
-        selectionType: g.selectionType as "single" | "multi",
-        minSelect: g.minSelect,
-        maxSelect: g.maxSelect,
-        required: g.required,
-        sortOrder: g.sortOrder,
-        items: g.items.map((it) => ({
-          id: it.id,
-          addonId: it.addonId,
-          sortOrder: it.sortOrder,
         })),
       })),
       // Only variant-scoped images round-trip here; product-level photos live in
@@ -215,7 +208,20 @@ export function draftToUpsert(
     options,
     variants,
     modifierGroups: passthrough.modifierGroups,
-    addonGroups: passthrough.addonGroups,
+    addonGroups: draft.addonGroups.map((g, i) => ({
+      id: g.id,
+      name: g.name.trim(),
+      selectionType: g.selectionType,
+      minSelect: g.required ? 1 : 0,
+      maxSelect: null,
+      required: g.required,
+      sortOrder: i,
+      items: g.addonIds.map((addonId, j) => ({
+        id: `${g.id}::${addonId}`,
+        addonId,
+        sortOrder: j,
+      })),
+    })),
     // Product photos from the media UI (only uploaded ones have a url) + the
     // preserved variant-scoped images.
     images: [

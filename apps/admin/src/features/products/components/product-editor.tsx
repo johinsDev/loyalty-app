@@ -71,6 +71,7 @@ import {
 } from "../data";
 import { CategoriesManager } from "./categories-view";
 import { detailToDraft, draftToUpsert, type ProductPassthrough } from "./map";
+import { AddonGroupsEditor } from "./addon-groups-editor";
 import { RecipeEditor } from "./recipe-editor";
 
 const slugify = (s: string) =>
@@ -109,7 +110,6 @@ export function ProductEditor({ id }: { id?: string }) {
   const [status, setStatus] = useState<ProductStatus>("active");
   const [passthrough, setPassthrough] = useState<ProductPassthrough>({
     modifierGroups: [],
-    addonGroups: [],
     images: [],
   });
   const [stepIndex, setStepIndex] = useState(0);
@@ -698,6 +698,13 @@ export function ProductEditor({ id }: { id?: string }) {
             </Field>
           </Block>
         ) : null}
+        <Block title={t("secAddons")} divided>
+          <p className="text-muted-foreground text-sm font-semibold">{t("addonsHint")}</p>
+          <AddonGroupsEditor
+            groups={draft.addonGroups}
+            onChange={(next) => set("addonGroups", next)}
+          />
+        </Block>
         </div>
       ) : step === "inventory" ? (
         <div className="space-y-6">

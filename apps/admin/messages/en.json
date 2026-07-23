@@ -1668,6 +1668,16 @@
     "mediaUploadError": "Couldn't upload the image",
     "secRecipe": "Recipe",
     "recipeHint": "Ingredients and quantities per variant; check the ones the customer sees.",
+    "secAddons": "Add-ons",
+    "addonsHint": "Catalog add-on groups the customer can add to this product.",
+    "addonGroups": {
+      "namePlaceholder": "Group name (e.g. Toppings)",
+      "single": "One",
+      "multi": "Many",
+      "required": "Required",
+      "addGroup": "Add group",
+      "emptyCatalog": "No add-ons in the catalog yet. Create some in"
+    },
     "recipe": {
       "created": "“{name}” created",
       "noVariants": "Add variants first.",
