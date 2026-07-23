@@ -11,6 +11,7 @@ import {
   staffProcedure,
 } from "../../trpc";
 import { loadLocaleContext } from "../_shared/localize";
+import { rewardBenefitSummary } from "./format";
 import { RewardsRepository } from "./repository";
 import { RewardsService } from "./service";
 import { REWARD_TEMPLATES } from "./templates";
@@ -59,6 +60,24 @@ export const rewardsRouter = router({
       );
       return rows.map((r) => ({ id: r.id, name: r.name }));
     }),
+
+  /** Cashier catalog — published rewards with cost, type, store scope and a
+   *  human benefit summary (what it gives / requires). Staff-safe reference. */
+  staffCatalog: staffProcedure.query(async ({ ctx }) => {
+    const { rows } = await new RewardsRepository(ctx.db).listCatalog(await orgId(), {
+      limit: 100,
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      type: r.type,
+      stampsRequired: r.stampsRequired,
+      pointsCost: r.pointsCost,
+      costMode: r.costMode,
+      storeIds: r.storeIds,
+      benefitSummary: rewardBenefitSummary(r.benefit, "es"),
+    }));
+  }),
 
   // ---- Admin wizard / data-table -------------------------------------
   templates: managerProcedure.query(async ({ ctx }) => {

@@ -53,6 +53,13 @@ export const promocionesRouter = router({
     return makeService(ctx.db).promoBySlug(id, input.slug, lc);
   }),
 
+  // Cashier catalog — active promos with store scope + exclusivity (staff).
+  staffCatalog: staffProcedure.query(async ({ ctx }) => {
+    const id = await orgId();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    return makeService(ctx.db).staffCatalog(id, lc);
+  }),
+
   // ── Admin wizard (managers + owners) ───────────────────────────────────────
   templates: managerProcedure.query(async ({ ctx }) => {
     const id = await requireOrg();
