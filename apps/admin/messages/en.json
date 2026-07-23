@@ -2589,7 +2589,8 @@
       "discount": "Discount",
       "amount": "Total",
       "stamps": "Stamps",
-      "points": "Points"
+      "points": "Points",
+      "reverted": "Reverted on void"
     },
     "eff": {
       "promo": "With promo",

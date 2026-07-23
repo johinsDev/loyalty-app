@@ -226,20 +226,28 @@ export function RegisterBoard({
   );
 
   const addLine = (line: PickedLine) => {
-    setCart((c) => [
-      ...c,
-      {
-        key: crypto.randomUUID(),
-        productId: line.productId,
-        variantId: line.variantId,
-        addonIds: line.addonIds,
-        removedIngredientIds: line.removedIngredientIds,
-        name: line.name,
-        unitAmountCents: line.unitAmountCents,
-        qty: line.qty,
-        note: line.note,
-      },
-    ]);
+    setCart((c) => {
+      // Merge into an existing line when the configuration is identical (same
+      // variant, add-ons, removals and note) instead of stacking duplicates.
+      const idx = c.findIndex((i) => sameConfig(i, line));
+      if (idx >= 0) {
+        return c.map((i, n) => (n === idx ? { ...i, qty: i.qty + line.qty } : i));
+      }
+      return [
+        ...c,
+        {
+          key: crypto.randomUUID(),
+          productId: line.productId,
+          variantId: line.variantId,
+          addonIds: line.addonIds,
+          removedIngredientIds: line.removedIngredientIds,
+          name: line.name,
+          unitAmountCents: line.unitAmountCents,
+          qty: line.qty,
+          note: line.note,
+        },
+      ];
+    });
     setPicker(null);
   };
   const bump = (key: string, delta: number) =>
@@ -949,6 +957,26 @@ export function RegisterBoard({
         onConfirm={() => void submit()}
       />
     </div>
+  );
+}
+
+/** Same sorted set of ids. */
+function sameSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const x = [...a].sort();
+  const y = [...b].sort();
+  return x.every((v, i) => v === y[i]);
+}
+
+/** Whether a cart line has the identical configuration as a freshly picked one
+ *  (same variant, add-ons, removals and note) — so it merges instead of stacking. */
+function sameConfig(i: CartItem, line: PickedLine): boolean {
+  return (
+    i.productId === line.productId &&
+    i.variantId === line.variantId &&
+    i.note === line.note &&
+    sameSet(i.addonIds, line.addonIds) &&
+    sameSet(i.removedIngredientIds, line.removedIngredientIds)
   );
 }
 
