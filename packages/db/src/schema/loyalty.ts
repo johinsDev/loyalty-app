@@ -138,6 +138,8 @@ export const purchase = sqliteTable(
     entrySource: text("entry_source"),
     // Free-form attributes bag so business-model changes don't force a migration.
     metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+    // Cashier's order-level note (e.g. "para llevar", "mesa 4"). Free text.
+    orderNote: text("order_note"),
     // Void (anulación): set when the sale is reversed. A voided purchase keeps
     // its rows for audit but its loyalty (stamp/points/reward) is reversed and
     // it's excluded from revenue KPIs. Null = active.
@@ -174,6 +176,9 @@ export const purchaseItem = sqliteTable(
     qty: integer("qty").notNull().default(1),
     unitAmountCents: integer("unit_amount_cents").notNull(),
     currency: text("currency").notNull().default("COP"),
+    // Free-form line note (e.g. "más hielo", "sin azúcar", "sin maní"). Covers
+    // subtractive modifiers functionally until structured toggles land (v2).
+    note: text("note"),
   },
   (t) => ({
     byPurchase: index("purchase_item_purchase_idx").on(t.purchaseId),
