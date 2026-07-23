@@ -95,8 +95,12 @@ export interface PurchaseDetailItem {
   slug: string | null;
   /** The variant label (e.g. "Mediano"), composed from its option values. */
   variantLabel: string | null;
-  /** The chosen modifier labels (e.g. ["Extra shot"]). */
+  /** The chosen modifier labels (e.g. ["Extra shot"]) — legacy modifiers. */
   modifierLabels: string[];
+  /** Catalog add-ons applied to this line (e.g. ["Perlas", "Extra queso"]). */
+  addonLabels: string[];
+  /** Removed recipe ingredients ("sin X") — names only. */
+  removedLabels: string[];
   qty: number;
   unitAmountCents: number;
 }

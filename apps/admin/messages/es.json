@@ -2611,6 +2611,7 @@
     "promoLine": "Promo: {name}",
     "rewardLine": "Reward: {name}",
     "tierLine": "Beneficio de nivel",
+    "without": "sin {name}",
     "total": "Total pagado",
     "loyaltyImpact": "Impacto de lealtad",
     "stampsEarned": "Sellos ganados",

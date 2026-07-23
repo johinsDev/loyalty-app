@@ -1,6 +1,8 @@
 import type { db as Db } from "@loyalty/db";
 import {
+  addon,
   customer,
+  ingredient,
   loyaltyCard,
   modifierOption,
   pointsAccount,
@@ -987,6 +989,8 @@ export class PurchasesRepository {
         productId: purchaseItem.productId,
         variantId: purchaseItem.variantId,
         modifierOptionIds: purchaseItem.modifierOptionIds,
+        addonIds: purchaseItem.addonIds,
+        removedIngredientIds: purchaseItem.removedIngredientIds,
         qty: purchaseItem.qty,
         unitAmountCents: purchaseItem.unitAmountCents,
         name: product.name,
@@ -997,8 +1001,8 @@ export class PurchasesRepository {
       .where(eq(purchaseItem.purchaseId, purchaseId));
     if (rows.length === 0) return [];
 
-    // Batch-resolve variant labels (variant → its option-value labels) and
-    // modifier-option labels.
+    // Batch-resolve variant labels, legacy modifier labels, add-on names, and
+    // removed-ingredient names.
     const variantIds = [
       ...new Set(
         rows.map((r) => r.variantId).filter((v): v is string => v != null),
@@ -1007,10 +1011,16 @@ export class PurchasesRepository {
     const modifierIds = [
       ...new Set(rows.flatMap((r) => r.modifierOptionIds ?? [])),
     ];
+    const addonIds = [...new Set(rows.flatMap((r) => r.addonIds ?? []))];
+    const ingredientIds = [
+      ...new Set(rows.flatMap((r) => r.removedIngredientIds ?? [])),
+    ];
 
-    const [variantLabels, modifierLabels] = await Promise.all([
+    const [variantLabels, modifierLabels, addonLabels, ingredientLabels] = await Promise.all([
       this.variantLabels(variantIds),
       this.modifierLabels(modifierIds),
+      this.addonLabels(addonIds),
+      this.ingredientLabels(ingredientIds),
     ]);
 
     return rows.map((r) => ({
@@ -1021,6 +1031,12 @@ export class PurchasesRepository {
       variantLabel: r.variantId ? (variantLabels.get(r.variantId) ?? null) : null,
       modifierLabels: (r.modifierOptionIds ?? [])
         .map((mid) => modifierLabels.get(mid))
+        .filter((l): l is string => l != null),
+      addonLabels: (r.addonIds ?? [])
+        .map((aid) => addonLabels.get(aid))
+        .filter((l): l is string => l != null),
+      removedLabels: (r.removedIngredientIds ?? [])
+        .map((iid) => ingredientLabels.get(iid))
         .filter((l): l is string => l != null),
       qty: r.qty,
       unitAmountCents: r.unitAmountCents,
@@ -1063,6 +1079,30 @@ export class PurchasesRepository {
       .select({ id: modifierOption.id, name: modifierOption.name })
       .from(modifierOption)
       .where(inArray(modifierOption.id, modifierIds));
+    for (const r of rows) out.set(r.id, r.name);
+    return out;
+  }
+
+  /** addonId → catalog name (add-ons applied to a line). */
+  private async addonLabels(addonIds: string[]): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    if (addonIds.length === 0) return out;
+    const rows = await this.db
+      .select({ id: addon.id, name: addon.name })
+      .from(addon)
+      .where(inArray(addon.id, addonIds));
+    for (const r of rows) out.set(r.id, r.name);
+    return out;
+  }
+
+  /** ingredientId → name (the removed "sin X" ingredients). */
+  private async ingredientLabels(ingredientIds: string[]): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    if (ingredientIds.length === 0) return out;
+    const rows = await this.db
+      .select({ id: ingredient.id, name: ingredient.name })
+      .from(ingredient)
+      .where(inArray(ingredient.id, ingredientIds));
     for (const r of rows) out.set(r.id, r.name);
     return out;
   }

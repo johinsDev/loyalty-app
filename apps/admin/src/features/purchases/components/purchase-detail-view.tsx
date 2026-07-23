@@ -326,7 +326,12 @@ function ItemsBlock({ items }: { items: PurchaseAdminDetail["items"] }) {
     <Section icon={<Receipt className="size-3.5" />} label={t("items")}>
       <div className="bg-card border-border divide-border/60 divide-y rounded-2xl border">
         {items.map((item) => {
-          const parts = [item.variantLabel, ...item.modifierLabels].filter(Boolean);
+          const parts = [
+            item.variantLabel,
+            ...item.modifierLabels,
+            ...item.addonLabels,
+            ...item.removedLabels.map((r) => t("without", { name: r })),
+          ].filter(Boolean);
           const inner = (
             <>
               <span className="bg-muted text-muted-foreground grid h-7 min-w-7 flex-none place-items-center rounded-lg px-1.5 text-sm font-extrabold">
