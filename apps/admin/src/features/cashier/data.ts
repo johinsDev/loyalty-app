@@ -7,17 +7,7 @@
  * (sellos.add / redemptions.confirm) once the ledger lands.
  */
 
-export type Product = {
-  id: string;
-  emoji: string;
-  name: string;
-  earns: number;
-  category: string;
-  description: string;
-};
 
-/** Catalog categories the cashier can filter the menu by. */
-export const categories = ["Tés", "Matcha", "Frappés", "Otros"] as const;
 
 export type MemberPurchase = {
   id: string;
@@ -76,14 +66,6 @@ export const teaAvatars: readonly TeaAvatar[] = [
 export const AVATAR_ACCEPT = ["image/png", "image/jpeg", "image/webp"] as const;
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
-export const products: Product[] = [
-  { id: "p1", emoji: "🧋", name: "Milk Tea", earns: 1, category: "Tés", description: "Té negro con leche y perlas de tapioca." },
-  { id: "p2", emoji: "🍵", name: "Matcha Latte", earns: 1, category: "Matcha", description: "Matcha ceremonial batido con leche." },
-  { id: "p3", emoji: "🍓", name: "Strawberry Matcha", earns: 2, category: "Matcha", description: "Matcha con capa de fresa natural." },
-  { id: "p4", emoji: "🧊", name: "Frappé", earns: 1, category: "Frappés", description: "Bebida helada licuada, base a elección." },
-  { id: "p5", emoji: "⭐", name: "Premium del mes", earns: 2, category: "Otros", description: "Edición especial — rota cada mes." },
-  { id: "p6", emoji: "🥤", name: "Refresco", earns: 1, category: "Otros", description: "Gaseosa o agua saborizada." },
-];
 
 export const foundCustomer: CashierCustomer = {
   name: "Ariadna Pérez",
