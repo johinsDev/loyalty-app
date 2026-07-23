@@ -1,141 +1,102 @@
 "use client";
 
-import {
-  InputPhone,
-  isValidE164Phone,
-  ResponsiveModal,
-  ResponsiveModalClose,
-  ResponsiveModalContent,
-  ResponsiveModalDescription,
-  ResponsiveModalTitle,
-} from "@loyalty/ui";
-import { Receipt } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Receipt, Store } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
 
 import { useFadeUp } from "@/lib/animate";
+import { useTRPC } from "@/lib/trpc/client";
 
-import {
-  foundCustomer,
-  type MemberPurchase,
-  memberPurchases,
-} from "../data";
+import { useActiveStoreId } from "../use-active-store";
+
+const formatCop = (cents: number): string =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(Math.round(cents) / 100);
 
 /**
- * Compras tab — purchase history. Opens on the last identified socio; the
- * cashier can also look up a specific customer by phone. Tap a row for the
- * itemized receipt detail.
+ * Compras tab — the shift feed: today's purchases at the active store so the
+ * cashier can confirm what was rung up. Lean (customer, time, items, stamps) —
+ * not the full purchase detail. Live from `stamps.shiftPurchases`.
  */
 export function PurchasesView() {
   const t = useTranslations("Cashier");
   const fade = useFadeUp();
-  const [phone, setPhone] = useState("");
-  const [selected, setSelected] = useState<MemberPurchase | null>(null);
+  const trpc = useTRPC();
+  const activeStoreId = useActiveStoreId();
+
+  const feed = useQuery(
+    trpc.stamps.shiftPurchases.queryOptions(
+      { storeId: activeStoreId ?? "", limit: 50 },
+      { enabled: Boolean(activeStoreId), refetchInterval: 30_000 },
+    ),
+  );
+  const rows = feed.data ?? [];
 
   return (
     <div className="mx-auto w-full max-w-2xl px-5 py-5 lg:max-w-4xl">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">
-        {t("tabPurchases")}
-      </h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight">{t("tabPurchases")}</h1>
+      <p className="text-muted-foreground/70 mt-1 text-xs font-extrabold tracking-wider">
+        {t("shiftFeedToday")}
+      </p>
 
-      <div className="mt-4">
-        <div className="text-muted-foreground/70 mb-1.5 text-xs font-extrabold tracking-wider">
-          {t("lookupCustomer")}
-        </div>
-        <InputPhone
-          defaultCountry="CO"
-          value={phone}
-          onChange={(v) => setPhone(v.e164)}
-          placeholder={t("enterNumber")}
-        />
-        {isValidE164Phone(phone) ? (
-          <p className="text-muted-foreground mt-1.5 text-xs font-semibold">
-            {t("showingFor", { name: foundCustomer.name })}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="text-muted-foreground/70 mt-6 mb-2.5 text-xs font-extrabold tracking-wider">
-        {t("memberPurchasesOf", { name: foundCustomer.name })}
-      </div>
-      <div className="flex flex-col gap-2.5">
-        {memberPurchases.map((h, i) => (
-          <button
-            key={h.id}
-            type="button"
-            onClick={() => setSelected(h)}
-            style={fade(i)}
-            className="border-border bg-card flex items-center gap-3 rounded-2xl border p-3.5 text-left shadow-sm transition-transform active:scale-[0.99]"
-          >
-            <span className="bg-muted text-muted-foreground grid size-11 flex-none place-items-center rounded-xl">
-              <Receipt className="size-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-bold">{h.items}</div>
-              <div className="text-muted-foreground/70 text-xs font-semibold">
-                {h.date}
-              </div>
-            </div>
-            <span
-              className={`flex-none text-sm font-extrabold ${h.stamps.startsWith("−") ? "text-muted-foreground" : "text-primary"}`}
+      {!activeStoreId ? (
+        <Empty icon={<Store className="size-6" />} text={t("shiftFeedNoStore")} />
+      ) : feed.isPending ? (
+        <p className="text-muted-foreground py-16 text-center text-sm">{t("searching")}</p>
+      ) : rows.length === 0 ? (
+        <Empty icon={<Receipt className="size-6" />} text={t("shiftFeedEmpty")} />
+      ) : (
+        <div className="mt-4 flex flex-col gap-2.5">
+          {rows.map((r, i) => (
+            <div
+              key={r.id}
+              style={fade(i)}
+              className="border-border bg-card flex items-center gap-3 rounded-2xl border p-3.5 shadow-sm"
             >
-              {h.stamps}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <ResponsiveModal
-        open={selected !== null}
-        onOpenChange={(o) => !o && setSelected(null)}
-      >
-        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
-          {selected ? (
-            <div className="flex flex-col px-6 pt-2 pb-6">
-              <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
-                {t("receiptTitle")}
-              </ResponsiveModalTitle>
-              <ResponsiveModalDescription className="text-muted-foreground text-sm font-semibold">
-                {selected.date} · {selected.store}
-              </ResponsiveModalDescription>
-
-              <div className="bg-muted mt-4 flex flex-col gap-2 rounded-2xl p-4">
-                {selected.lines.map((line) => (
+              <span className="bg-muted text-muted-foreground grid size-11 flex-none place-items-center rounded-xl">
+                <Receipt className="size-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-bold">
+                  {r.items.length > 0 ? r.items.join(", ") : t("purchaseGeneric")}
+                </div>
+                <div className="text-muted-foreground/70 truncate text-xs font-semibold">
+                  {(r.customerName?.trim() || t("unknownCustomer")) +
+                    " · " +
+                    new Date(r.createdAt).toLocaleTimeString("es-CO", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                </div>
+              </div>
+              <div className="flex-none text-right">
+                {r.stampsDelta !== 0 ? (
                   <div
-                    key={line}
-                    className="text-foreground text-sm font-semibold"
+                    className={`text-sm font-extrabold ${r.stampsDelta < 0 ? "text-muted-foreground" : "text-primary"}`}
                   >
-                    {line}
+                    {r.stampsDelta > 0 ? `+${r.stampsDelta}` : r.stampsDelta}
                   </div>
-                ))}
+                ) : null}
+                <div className="text-muted-foreground/70 text-xs font-semibold">
+                  {formatCop(r.netCents)}
+                </div>
               </div>
-
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-muted-foreground/70 text-xs font-extrabold tracking-wider">
-                  {selected.stamps.startsWith("−")
-                    ? t("stampsSpent")
-                    : t("stampsEarned")}
-                </span>
-                <span
-                  className={`text-lg font-extrabold ${selected.stamps.startsWith("−") ? "text-muted-foreground" : "text-primary"}`}
-                >
-                  {selected.stamps} {t("stampMany")}
-                </span>
-              </div>
-              <div className="text-muted-foreground/70 mt-1 text-xs font-semibold">
-                {t("attendedBy", { name: selected.cashier })}
-              </div>
-
-              <ResponsiveModalClose
-                variant="secondary"
-                className="mt-6 h-14 w-full rounded-2xl text-base"
-              >
-                {t("close")}
-              </ResponsiveModalClose>
             </div>
-          ) : null}
-        </ResponsiveModalContent>
-      </ResponsiveModal>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Empty({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div className="text-muted-foreground/50 flex flex-col items-center gap-3 py-16 text-center">
+      <span className="bg-muted grid size-14 place-items-center rounded-2xl">{icon}</span>
+      <p className="text-muted-foreground text-sm font-semibold">{text}</p>
     </div>
   );
 }
