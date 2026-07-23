@@ -195,7 +195,16 @@ export function ProductPicker({
                         <div className={`text-sm font-extrabold ${active ? "text-primary" : ""}`}>
                           {variantLabel(v) || t("pickerDefaultVariant")}
                         </div>
-                        <div className="text-muted-foreground mt-0.5 text-xs font-bold">
+                        {/* Real price + struck regular when the variant is on promo. */}
+                        <div className="mt-0.5 text-sm font-bold">
+                          {formatCop(effective(v))}
+                          {v.promoPriceCents != null && v.promoPriceCents < v.priceCents ? (
+                            <span className="text-muted-foreground/50 ml-1 text-xs font-semibold line-through">
+                              {formatCop(v.priceCents)}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="text-muted-foreground/70 text-[0.625rem] font-bold">
                           {deltaLabel(delta)}
                         </div>
                       </button>
