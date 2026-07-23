@@ -29,8 +29,10 @@ import {
 } from "../features/_shared/register-pin";
 import { requireCache } from "../features/_shared/claim-code";
 import { DrizzleNotificationPreferences } from "../features/notifications/preferences-repository";
+import { WINDOW_DAYS } from "../features/points/config";
 import { PointsRepository } from "../features/points/repository";
 import { PointsService } from "../features/points/service";
+import { tierFor } from "../features/points/tier-calc";
 import { StampsRepository } from "../features/stamps/repository";
 import { StampsService } from "../features/stamps/service";
 import { managerProcedure, ownerProcedure, rateLimit, router, staffProcedure } from "../trpc";
@@ -100,8 +102,15 @@ export const customersRouter = router({
   registerContext: staffProcedure
     .input(customerIdInputSchema)
     .query(async ({ ctx, input }) => {
-      const raw = await repo(ctx.db).registerContext(await requireOrg(), input.customerId);
+      const org = await requireOrg();
+      const raw = await repo(ctx.db).registerContext(org, input.customerId);
       if (!raw) throw new TRPCError({ code: "NOT_FOUND", message: "CUSTOMER_NOT_FOUND" });
+      // Windowed tier standing (name / benefits / progress to next).
+      const windowStart = new Date(Date.now() - WINDOW_DAYS * 86_400_000);
+      const tierPoints = await new PointsRepository(ctx.db)
+        .tierPoints(org, input.customerId, windowStart)
+        .catch(() => 0);
+      const tv = tierFor(tierPoints);
       return {
         id: raw.id,
         name: raw.name,
@@ -112,6 +121,16 @@ export const customersRouter = router({
         memberSince: raw.memberSince,
         notes: raw.notes,
         tierKey: raw.tierKey,
+        tier: {
+          key: tv.current.key,
+          name: tv.current.name,
+          benefits: tv.current.benefits.map((b) => b.label),
+          nextName: tv.next?.name ?? null,
+          tierPoints,
+          nextThreshold: tv.next?.threshold ?? null,
+          remainingToNext: tv.remainingToNext,
+          progress: tv.progress,
+        },
         points: raw.points,
         visits: raw.visits,
         avgTicketCents: raw.avgTicketCents,
