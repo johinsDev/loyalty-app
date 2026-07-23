@@ -5,7 +5,7 @@ import { Button } from "@loyalty/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import { useDebounce } from "ahooks";
-import { Check, Gift, Minus, Plus, Search, Tag, Trash2 } from "lucide-react";
+import { ArrowUp, Check, Gift, Lightbulb, Minus, Plus, Search, Tag, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { useActiveStoreId } from "../use-active-store";
+
+import { StorelessConfirm } from "./storeless-confirm";
 
 type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
 
@@ -147,7 +149,7 @@ export function ItemizedPurchase({
     ),
   );
   const promos = preview.data?.applicable ?? [];
-  const hints = preview.data?.hints ?? [];
+  const upsell = preview.data?.upsell ?? [];
   const rewardPreview = preview.data?.reward ?? null;
 
   // Auto-apply the best promo whenever the applicable set changes, so the
@@ -166,6 +168,9 @@ export function ItemizedPurchase({
 
   const recordPurchase = useMutation(trpc.stamps.recordPurchase.mutationOptions());
   const activeStoreId = useActiveStoreId();
+  // "Facturar sin tienda" confirm: recording without an active store is allowed
+  // but must be explicit (see StorelessConfirm).
+  const [storelessOpen, setStorelessOpen] = useState(false);
 
   const addProduct = (p: { id: string; name: string; priceCents: number }) => {
     setCart((c) => {
@@ -188,8 +193,35 @@ export function ItemizedPurchase({
     setCart((c) => c.filter((i) => i.productId !== productId));
   };
 
-  const onRecord = async () => {
+  // Human copy for one upsell nudge (add-item / spend-to-threshold / swap).
+  const upsellText = (u: (typeof upsell)[number]): string => {
+    switch (u.kind) {
+      case "add-item":
+        return t("upsellAddItem", { promo: u.promo.name });
+      case "spend-to-threshold":
+        return t("upsellSpend", { amount: formatCop(u.addCents), promo: u.promo.name });
+      case "variant-swap":
+        return t("upsellSwap", {
+          extra: formatCop(u.extraCents),
+          discount: formatCop(u.discountCents),
+          promo: u.promo.name,
+        });
+    }
+  };
+
+  // Guard the sale on a missing store, then submit.
+  const onRecord = () => {
     if (cart.length === 0) return;
+    if (!activeStoreId) {
+      setStorelessOpen(true);
+      return;
+    }
+    void submit();
+  };
+
+  const submit = async () => {
+    if (cart.length === 0) return;
+    setStorelessOpen(false);
     try {
       const view = await recordPurchase.mutateAsync({
         customerId,
@@ -232,9 +264,12 @@ export function ItemizedPurchase({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Product search */}
-      <div>
+    <>
+      <div className="lg:grid lg:grid-cols-[1fr_minmax(320px,380px)] lg:items-start lg:gap-5">
+        {/* LEFT — catalog: search the menu, tap to add a line */}
+        <div className="space-y-4">
+          {/* Product search */}
+          <div>
         <div className="border-border bg-muted flex h-10 items-center gap-2 rounded-2xl border px-3.5">
           <Search className="text-muted-foreground/70 size-4" />
           <input
@@ -262,232 +297,255 @@ export function ItemizedPurchase({
             ))}
           </div>
         ) : null}
-      </div>
-
-      {/* Cart */}
-      {cart.length === 0 ? (
-        <p className="text-muted-foreground py-4 text-center text-sm font-semibold">
-          {t("cartEmpty")}
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {cart.map((i) => (
-            <div
-              key={i.productId}
-              className="border-border flex items-center gap-3 rounded-2xl border p-2.5"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold">{i.name}</div>
-                <div className="text-muted-foreground text-xs font-semibold">
-                  {formatCop(i.unitAmountCents)}
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => bump(i.productId, -1)}
-                  className="border-border grid size-7 place-items-center rounded-lg border"
-                  aria-label={t("decrease")}
-                >
-                  <Minus className="size-3.5" />
-                </button>
-                <span className="w-5 text-center text-sm font-bold">{i.qty}</span>
-                <button
-                  type="button"
-                  onClick={() => bump(i.productId, 1)}
-                  className="border-border grid size-7 place-items-center rounded-lg border"
-                  aria-label={t("increase")}
-                >
-                  <Plus className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => removeLine(i.productId)}
-                  className="text-muted-foreground hover:text-destructive grid size-7 place-items-center rounded-lg"
-                  aria-label={t("removeLine")}
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Applicable promos */}
-      {cart.length > 0 ? (
-        <div className="border-border rounded-2xl border p-3.5">
-          <div className="flex items-center gap-2">
-            <Tag className="text-muted-foreground size-4" />
-            <h3 className="text-sm font-bold">{t("applicablePromos")}</h3>
           </div>
-          {preview.isPending ? (
-            <p className="text-muted-foreground mt-2 text-xs">{t("searching")}</p>
-          ) : promos.length === 0 ? (
-            <p className="text-muted-foreground mt-2 text-xs">{t("noPromos")}</p>
+        </div>
+
+        {/* RIGHT — the live ticket, always visible on tablet/desktop */}
+        <div className="mt-4 space-y-4 lg:mt-0 lg:sticky lg:top-4">
+          {/* Cart */}
+          {cart.length === 0 ? (
+            <p className="text-muted-foreground py-4 text-center text-sm font-semibold">
+              {t("cartEmpty")}
+            </p>
           ) : (
-            <div className="mt-2 space-y-1.5">
-              {promos.map((ap) => {
-                const active = ap.promo.id === chosenPromoId;
-                return (
-                  <button
-                    key={ap.promo.id}
-                    type="button"
-                    onClick={() => setChosenPromoId(active ? null : ap.promo.id)}
-                    className={
-                      active
-                        ? "border-primary bg-primary/5 flex w-full items-center justify-between gap-3 rounded-xl border-2 p-2.5 text-left"
-                        : "border-border flex w-full items-center justify-between gap-3 rounded-xl border p-2.5 text-left"
-                    }
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate text-sm font-bold">{ap.promo.name}</span>
-                        {ap.applications > 1 ? (
-                          <span className="bg-primary/10 text-primary shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold">
-                            {t("promoApplications", { count: ap.applications })}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="text-muted-foreground text-xs font-semibold">
-                        {ap.discountCents > 0
-                          ? `− ${formatCop(ap.discountCents)}`
-                          : ap.pointsMultiplier > 1
-                            ? t("pointsMultiplier", { x: ap.pointsMultiplier })
-                            : ""}
-                      </div>
+            <div className="space-y-2">
+              {cart.map((i) => (
+                <div
+                  key={i.productId}
+                  className="border-border flex items-center gap-3 rounded-2xl border p-2.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold">{i.name}</div>
+                    <div className="text-muted-foreground text-xs font-semibold">
+                      {formatCop(i.unitAmountCents)}
                     </div>
-                    {active ? <Check className="text-primary size-5 shrink-0" /> : null}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {hints.length > 0 ? (
-            <div className="bg-muted mt-2 space-y-1 rounded-xl p-2.5">
-              {hints.map((h) => (
-                <p key={h.promo.id} className="text-muted-foreground text-xs font-semibold">
-                  {t("promoHint", { name: h.promo.name })}
-                </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => bump(i.productId, -1)}
+                      className="border-border grid size-7 place-items-center rounded-lg border"
+                      aria-label={t("decrease")}
+                    >
+                      <Minus className="size-3.5" />
+                    </button>
+                    <span className="w-5 text-center text-sm font-bold">{i.qty}</span>
+                    <button
+                      type="button"
+                      onClick={() => bump(i.productId, 1)}
+                      className="border-border grid size-7 place-items-center rounded-lg border"
+                      aria-label={t("increase")}
+                    >
+                      <Plus className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeLine(i.productId)}
+                      className="text-muted-foreground hover:text-destructive grid size-7 place-items-center rounded-lg"
+                      aria-label={t("removeLine")}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* Inline reward redeem — optional, folded into this same sale */}
-      {cart.length > 0 ? (
-        <div className="border-border rounded-2xl border p-3.5">
-          <div className="flex items-center gap-2">
-            <Gift className="text-muted-foreground size-4" />
-            <h3 className="text-sm font-bold">{t("inlineRewardHeading")}</h3>
-          </div>
-          {/* Experience reward instructions — what the cashier must hand over. */}
-          {preselect?.note && inlineRewardId === preselect.rewardId ? (
-            <div className="border-primary/30 bg-primary/5 mt-2 rounded-xl border p-2.5">
-              <div className="text-primary text-[0.6875rem] font-extrabold tracking-wider">
-                {t("rewardFulfillmentLabel")}
-              </div>
-              <p className="text-foreground mt-0.5 text-sm font-semibold">
-                {preselect.note}
-              </p>
-            </div>
-          ) : null}
-          {availableRewards.isPending ? (
-            <p className="text-muted-foreground mt-2 text-xs">{t("searching")}</p>
-          ) : rewards.length === 0 && !preselect ? (
-            <p className="text-muted-foreground mt-2 text-xs">{t("inlineRewardNone")}</p>
-          ) : (
-            <div className="mt-2 space-y-1.5">
-              {/* Claimed reward resolved from a scan/code but not in the
-                  available list (edge) — still selectable so it can be redeemed. */}
-              {preselect && !rewards.some((r) => r.rewardId === preselect.rewardId) ? (
-                <RewardRow
-                  name={preselect.name}
-                  active={inlineRewardId === preselect.rewardId}
-                  claimed
-                  discountCents={
-                    inlineRewardId === preselect.rewardId && rewardPreview?.ok
-                      ? rewardPreview.discountCents
-                      : null
-                  }
-                  claimedLabel={t("rewardClaimedBadge")}
-                  onToggle={() =>
-                    setInlineRewardId(
-                      inlineRewardId === preselect.rewardId ? null : preselect.rewardId,
-                    )
-                  }
-                />
-              ) : null}
-              {rewards.map((rw) => {
-                const active = rw.rewardId === inlineRewardId;
-                return (
-                  <RewardRow
-                    key={rw.rewardId}
-                    name={rw.name}
-                    active={active}
-                    claimed={preselect?.rewardId === rw.rewardId}
-                    claimedLabel={t("rewardClaimedBadge")}
-                    discountCents={active && rewardPreview?.ok ? rewardPreview.discountCents : null}
-                    onToggle={() => setInlineRewardId(active ? null : rw.rewardId)}
-                  />
-                );
-              })}
-            </div>
           )}
-          {/* The claimed/selected reward doesn't apply to the current cart
-              (e.g. a free-product reward whose item isn't in the ticket yet). */}
-          {inlineRewardId && rewardPreview && !rewardPreview.ok ? (
-            <div className="bg-muted mt-2 rounded-xl p-2.5">
-              <p className="text-muted-foreground text-xs font-semibold">
-                {rewardPreview.reason === "reward-item-not-in-cart"
-                  ? t("rewardAddItemHint")
-                  : t("inlineRewardError")}
-              </p>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
 
-      {/* Totals */}
-      {cart.length > 0 ? (
-        <div className="bg-muted space-y-1.5 rounded-2xl p-3.5 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground font-semibold">{t("subtotal")}</span>
-            <span className="font-bold">{formatCop(subtotal)}</span>
-          </div>
-          {promoDiscount > 0 ? (
-            <div className="text-primary flex items-center justify-between">
-              <span className="font-semibold">{t("promoDiscount")}</span>
-              <span className="font-bold">− {formatCop(promoDiscount)}</span>
+          {/* Applicable promos */}
+          {cart.length > 0 ? (
+            <div className="border-border rounded-2xl border p-3.5">
+              <div className="flex items-center gap-2">
+                <Tag className="text-muted-foreground size-4" />
+                <h3 className="text-sm font-bold">{t("applicablePromos")}</h3>
+              </div>
+              {preview.isPending ? (
+                <p className="text-muted-foreground mt-2 text-xs">{t("searching")}</p>
+              ) : promos.length === 0 ? (
+                <p className="text-muted-foreground mt-2 text-xs">{t("noPromos")}</p>
+              ) : (
+                <div className="mt-2 space-y-1.5">
+                  {promos.map((ap) => {
+                    const active = ap.promo.id === chosenPromoId;
+                    return (
+                      <button
+                        key={ap.promo.id}
+                        type="button"
+                        onClick={() => setChosenPromoId(active ? null : ap.promo.id)}
+                        className={
+                          active
+                            ? "border-primary bg-primary/5 flex w-full items-center justify-between gap-3 rounded-xl border-2 p-2.5 text-left"
+                            : "border-border flex w-full items-center justify-between gap-3 rounded-xl border p-2.5 text-left"
+                        }
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate text-sm font-bold">{ap.promo.name}</span>
+                            {ap.applications > 1 ? (
+                              <span className="bg-primary/10 text-primary shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold">
+                                {t("promoApplications", { count: ap.applications })}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="text-muted-foreground text-xs font-semibold">
+                            {ap.discountCents > 0
+                              ? `− ${formatCop(ap.discountCents)}`
+                              : ap.pointsMultiplier > 1
+                                ? t("pointsMultiplier", { x: ap.pointsMultiplier })
+                                : ""}
+                          </div>
+                        </div>
+                        {active ? <Check className="text-primary size-5 shrink-0" /> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ) : null}
-          {rewardDiscount > 0 ? (
-            <div className="text-primary flex items-center justify-between">
-              <span className="font-semibold">
-                {t("rewardDiscount", { name: activeRewardName ?? "" })}
-              </span>
-              <span className="font-bold">− {formatCop(rewardDiscount)}</span>
-            </div>
-          ) : null}
-          <div className="border-border flex items-center justify-between border-t pt-1.5">
-            <span className="font-bold">{t("net")}</span>
-            <span className="font-display text-lg font-semibold">{formatCop(net)}</span>
-          </div>
-        </div>
-      ) : null}
 
-      <Button
-        variant="gradient"
-        size="lg"
-        disabled={cart.length === 0 || recordPurchase.isPending}
-        onClick={() => void onRecord()}
-        className="h-10 w-full gap-2 rounded-2xl text-base font-extrabold"
-      >
-        <Check className="size-5" />
-        {t("recordPurchase")}
-      </Button>
-    </div>
+          {/* Upsell nudges — what the cashier can suggest to unlock a promo */}
+          {cart.length > 0 && upsell.length > 0 ? (
+            <div className="border-primary/30 bg-primary/5 rounded-2xl border p-3.5">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="text-primary size-4" />
+                <h3 className="text-sm font-bold">{t("upsellHeading")}</h3>
+              </div>
+              <div className="mt-2 space-y-1.5">
+                {upsell.map((u, i) => (
+                  <p
+                    key={`${u.kind}-${u.promo.id}-${i}`}
+                    className="text-foreground flex items-start gap-1.5 text-xs font-semibold"
+                  >
+                    <ArrowUp className="text-primary mt-0.5 size-3.5 flex-none" />
+                    <span>{upsellText(u)}</span>
+                  </p>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Inline reward redeem — optional, folded into this same sale */}
+          {cart.length > 0 ? (
+            <div className="border-border rounded-2xl border p-3.5">
+              <div className="flex items-center gap-2">
+                <Gift className="text-muted-foreground size-4" />
+                <h3 className="text-sm font-bold">{t("inlineRewardHeading")}</h3>
+              </div>
+              {/* Experience reward instructions — what the cashier must hand over. */}
+              {preselect?.note && inlineRewardId === preselect.rewardId ? (
+                <div className="border-primary/30 bg-primary/5 mt-2 rounded-xl border p-2.5">
+                  <div className="text-primary text-[0.6875rem] font-extrabold tracking-wider">
+                    {t("rewardFulfillmentLabel")}
+                  </div>
+                  <p className="text-foreground mt-0.5 text-sm font-semibold">
+                    {preselect.note}
+                  </p>
+                </div>
+              ) : null}
+              {availableRewards.isPending ? (
+                <p className="text-muted-foreground mt-2 text-xs">{t("searching")}</p>
+              ) : rewards.length === 0 && !preselect ? (
+                <p className="text-muted-foreground mt-2 text-xs">{t("inlineRewardNone")}</p>
+              ) : (
+                <div className="mt-2 space-y-1.5">
+                  {/* Claimed reward resolved from a scan/code but not in the
+                      available list (edge) — still selectable so it can be redeemed. */}
+                  {preselect && !rewards.some((r) => r.rewardId === preselect.rewardId) ? (
+                    <RewardRow
+                      name={preselect.name}
+                      active={inlineRewardId === preselect.rewardId}
+                      claimed
+                      discountCents={
+                        inlineRewardId === preselect.rewardId && rewardPreview?.ok
+                          ? rewardPreview.discountCents
+                          : null
+                      }
+                      claimedLabel={t("rewardClaimedBadge")}
+                      onToggle={() =>
+                        setInlineRewardId(
+                          inlineRewardId === preselect.rewardId ? null : preselect.rewardId,
+                        )
+                      }
+                    />
+                  ) : null}
+                  {rewards.map((rw) => {
+                    const active = rw.rewardId === inlineRewardId;
+                    return (
+                      <RewardRow
+                        key={rw.rewardId}
+                        name={rw.name}
+                        active={active}
+                        claimed={preselect?.rewardId === rw.rewardId}
+                        claimedLabel={t("rewardClaimedBadge")}
+                        discountCents={active && rewardPreview?.ok ? rewardPreview.discountCents : null}
+                        onToggle={() => setInlineRewardId(active ? null : rw.rewardId)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+              {/* The claimed/selected reward doesn't apply to the current cart
+                  (e.g. a free-product reward whose item isn't in the ticket yet). */}
+              {inlineRewardId && rewardPreview && !rewardPreview.ok ? (
+                <div className="bg-muted mt-2 rounded-xl p-2.5">
+                  <p className="text-muted-foreground text-xs font-semibold">
+                    {rewardPreview.reason === "reward-item-not-in-cart"
+                      ? t("rewardAddItemHint")
+                      : t("inlineRewardError")}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Totals */}
+          {cart.length > 0 ? (
+            <div className="bg-muted space-y-1.5 rounded-2xl p-3.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground font-semibold">{t("subtotal")}</span>
+                <span className="font-bold">{formatCop(subtotal)}</span>
+              </div>
+              {promoDiscount > 0 ? (
+                <div className="text-primary flex items-center justify-between">
+                  <span className="font-semibold">{t("promoDiscount")}</span>
+                  <span className="font-bold">− {formatCop(promoDiscount)}</span>
+                </div>
+              ) : null}
+              {rewardDiscount > 0 ? (
+                <div className="text-primary flex items-center justify-between">
+                  <span className="font-semibold">
+                    {t("rewardDiscount", { name: activeRewardName ?? "" })}
+                  </span>
+                  <span className="font-bold">− {formatCop(rewardDiscount)}</span>
+                </div>
+              ) : null}
+              <div className="border-border flex items-center justify-between border-t pt-1.5">
+                <span className="font-bold">{t("net")}</span>
+                <span className="font-display text-lg font-semibold">{formatCop(net)}</span>
+              </div>
+            </div>
+          ) : null}
+
+          <Button
+            variant="gradient"
+            size="lg"
+            disabled={cart.length === 0 || recordPurchase.isPending}
+            onClick={onRecord}
+            className="h-10 w-full gap-2 rounded-2xl text-base font-extrabold"
+          >
+            <Check className="size-5" />
+            {t("recordPurchase")}
+          </Button>
+        </div>
+      </div>
+
+      <StorelessConfirm
+        open={storelessOpen}
+        onOpenChange={setStorelessOpen}
+        onConfirm={() => void submit()}
+      />
+    </>
   );
 }
 
