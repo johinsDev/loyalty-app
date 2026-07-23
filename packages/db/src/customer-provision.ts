@@ -58,6 +58,9 @@ export async function provisionCustomerForUser(
       phone: input.phone,
       email: input.email ?? null,
       name: input.name ?? null,
+      // Signed up in the PWA (phone-OTP or Google→phone-link) — everything that
+      // isn't a cashier quick-register is self-service.
+      acquisitionChannel: "self-app",
     })
     .onConflictDoNothing();
   return result.rowsAffected > 0;

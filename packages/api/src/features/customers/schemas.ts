@@ -8,6 +8,24 @@ export const customerIdInputSchema = z.object({ customerId: z.string().min(1) })
 export const tierKeySchema = z.enum(["hoja", "flor", "oro"]);
 export const customerStatusSchema = z.enum(["active", "banned", "inactive"]);
 
+// ---- quick-register PIN (cashier) ------------------------------------------
+
+/** Start a quick-register: send a WhatsApp PIN to `phone` (E.164). The cashier
+ *  confirms the code before the account is created. */
+export const requestRegisterPinInputSchema = z.object({
+  phone: z.string().min(6).max(20),
+  name: z.string().trim().max(120).optional(),
+  /** The active register store, captured as the acquisition store. */
+  storeId: z.string().min(1).optional(),
+});
+export type RequestRegisterPinInput = z.infer<typeof requestRegisterPinInputSchema>;
+
+export const confirmRegisterPinInputSchema = z.object({
+  pendingId: z.string().min(1),
+  code: z.string().regex(/^\d{6}$/),
+});
+export type ConfirmRegisterPinInput = z.infer<typeof confirmRegisterPinInputSchema>;
+
 // ---- admin list ------------------------------------------------------------
 
 /** Server-driven list for the admin data-table (URL-driven via nuqs). */
@@ -62,6 +80,27 @@ export interface CustomerDetail {
   banReason: string | null;
   lastVisitAt: Date | null;
   daysSinceLastVisit: number | null;
+}
+
+// ---- register context (staff-safe, cashier pane) ---------------------------
+
+/** Lean, PII-masked customer detail for the cashier register. Complements the
+ *  wallet (stamps) fetched separately; carries the CRM context a cashier uses
+ *  to serve a customer personally — masked contact, tier/points, visit stats,
+ *  acquisition, ban. Phone/email are masked; never expose raw PII to staff. */
+export interface RegisterContext {
+  id: string;
+  name: string | null;
+  phoneMasked: string;
+  emailMasked: string | null;
+  tierKey: string | null;
+  points: number;
+  visits: number;
+  avgTicketCents: number;
+  lastVisitAt: Date | null;
+  topProduct: string | null;
+  acquisition: { channel: string | null; storeId: string | null; storeName: string | null };
+  banned: boolean;
 }
 
 // ---- stats (overview tab) --------------------------------------------------

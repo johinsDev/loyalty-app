@@ -23,6 +23,8 @@ export interface Localization {
   enabledLocales: string[];
   defaultCurrency: string;
   enabledCurrencies: string[];
+  /** ISO 3166-1 alpha-2 default country for the phone-number picker (null → CO). */
+  defaultPhoneCountry: string | null;
 }
 
 export const DEFAULT_LOCALIZATION: Localization = {
@@ -30,6 +32,7 @@ export const DEFAULT_LOCALIZATION: Localization = {
   enabledLocales: ["es"],
   defaultCurrency: "COP",
   enabledCurrencies: ["COP"],
+  defaultPhoneCountry: null,
 };
 
 /** Active locale + currency for a request, plus the org defaults (for fallback). */
@@ -64,6 +67,7 @@ export function getLocalization(db: typeof Db, orgId: string): Promise<Localizat
         enabledLocales: row.enabledLocales,
         defaultCurrency: row.defaultCurrency,
         enabledCurrencies: row.enabledCurrencies,
+        defaultPhoneCountry: row.defaultPhoneCountry ?? null,
       };
     },
     TTL_SECONDS,

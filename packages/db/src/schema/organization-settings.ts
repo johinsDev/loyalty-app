@@ -108,6 +108,9 @@ export const organizationSettings = sqliteTable("organization_settings", {
     .$type<string[]>()
     .notNull()
     .$defaultFn(() => ["COP"]),
+  // ISO 3166-1 alpha-2 country for the phone-number picker default (register
+  // lookup + quick-register). Null → the app falls back to "CO".
+  defaultPhoneCountry: text("default_phone_country"),
 
   // ── Branding (drives the customer app theme + store profile) ──────────────
   description: text("description"),

@@ -14,6 +14,7 @@ const loc = {
   enabledLocales: ["es", "en"],
   defaultCurrency: "COP",
   enabledCurrencies: ["COP", "USD"],
+  defaultPhoneCountry: null,
 };
 const h = (o: Record<string, string>) => new Headers(o);
 
