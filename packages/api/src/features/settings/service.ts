@@ -125,6 +125,7 @@ export class SettingsService {
       enabledLocales: row.enabledLocales,
       defaultCurrency: row.defaultCurrency,
       enabledCurrencies: row.enabledCurrencies,
+      defaultPhoneCountry: row.defaultPhoneCountry ?? null,
     };
   }
 

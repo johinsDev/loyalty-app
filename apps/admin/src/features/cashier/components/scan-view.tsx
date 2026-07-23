@@ -4,37 +4,34 @@ import type { AppRouter } from "@loyalty/api";
 import { Button, CurrencyInput } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
-import { useDebounce } from "ahooks";
 import {
   ArrowLeft,
+  Ban,
   Check,
   Flame,
   Gift,
   KeyRound,
   QrCode,
-  Search,
+  ShoppingBag,
+  Sparkles,
+  Store,
   User,
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { toast } from "sonner";
 
-import { useFadeUp } from "@/lib/animate";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { useActiveStoreId } from "../use-active-store";
 
+import { IdentifyPane, type IdentifiedCustomer } from "./identify-pane";
 import { ItemizedPurchase, type PreselectReward } from "./itemized-purchase";
 import { QrScanner } from "./qr-scanner";
 import { StorelessConfirm } from "./storeless-confirm";
 
-type CustomerHit = {
-  id: string;
-  name: string | null;
-  phone: string;
-  email: string | null;
-};
+type CustomerHit = IdentifiedCustomer;
 
 type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
 /** A resolved reward claim (scan/code): identifies the customer + reward so the
@@ -61,6 +58,36 @@ type Step =
 const REWARD_PREFIX = "T4P|"; // stamps/points reward
 const STREAK_PREFIX = "T4S|"; // streak reward
 
+const formatCop = (cents: number): string =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(Math.round(cents) / 100);
+
+/** One labelled figure in the customer detail grid. `full` spans both columns. */
+function Stat({
+  label,
+  value,
+  icon,
+  full,
+}: {
+  label: string;
+  value: string;
+  icon?: ReactNode;
+  full?: boolean;
+}) {
+  return (
+    <div className={`bg-muted rounded-2xl p-3 ${full ? "col-span-2" : ""}`}>
+      <div className="text-muted-foreground/70 flex items-center gap-1 text-[0.6875rem] font-extrabold tracking-wider">
+        {icon}
+        {label}
+      </div>
+      <div className="mt-0.5 truncate text-sm font-bold">{value}</div>
+    </div>
+  );
+}
+
 /**
  * Escanear tab — wired to the real ledger backend. Search a socio
  * (`customers.search`), load their wallet (`stamps.walletForCustomer`), record a
@@ -70,12 +97,10 @@ const STREAK_PREFIX = "T4S|"; // streak reward
  */
 export function ScanView() {
   const t = useTranslations("Cashier");
-  const fade = useFadeUp();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
   const [step, setStep] = useState<Step>("identify");
-  const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<CustomerHit | null>(null);
   const [wallet, setWallet] = useState<WalletView | null>(null);
   const [priceCop, setPriceCop] = useState<number | undefined>(undefined);
@@ -91,11 +116,12 @@ export function ScanView() {
   // "Facturar sin tienda" confirm for the total-price path.
   const [storelessOpen, setStorelessOpen] = useState(false);
 
-  const debouncedQuery = useDebounce(query.trim(), { wait: 250 });
-  const search = useQuery(
-    trpc.customers.search.queryOptions(
-      { query: debouncedQuery, limit: 10 },
-      { enabled: debouncedQuery.length >= 1 },
+  // Staff-safe CRM detail for the selected customer (masked contact, tier,
+  // points, visit stats, acquisition, ban) — powers the rich found card.
+  const registerCtx = useQuery(
+    trpc.customers.registerContext.queryOptions(
+      { customerId: selected?.id ?? "" },
+      { enabled: step === "found" && Boolean(selected) },
     ),
   );
 
@@ -144,7 +170,6 @@ export function ScanView() {
 
   const reset = () => {
     setStep("identify");
-    setQuery("");
     setSelected(null);
     setWallet(null);
     setPriceCop(undefined);
@@ -324,6 +349,12 @@ export function ScanView() {
   const customerName = (hit: CustomerHit | null) =>
     hit?.name?.trim() || hit?.phone || t("unknownCustomer");
 
+  const acqLabel = (channel: string) => {
+    if (channel === "staff-register") return t("acqStaffRegister");
+    if (channel === "google") return t("acqGoogle");
+    return t("acqSelfApp");
+  };
+
   // In itemized mode the register becomes a split-pane on tablet/desktop, so it
   // needs a wider canvas; the linear steps stay narrow and centered.
   const wide = step === "found" && purchaseMode === "items";
@@ -333,63 +364,7 @@ export function ScanView() {
       className={`mx-auto w-full px-5 py-5 ${wide ? "max-w-2xl lg:max-w-6xl" : "max-w-2xl lg:max-w-4xl"}`}
     >
       {step === "identify" && (
-        <div className="flex flex-col gap-5">
-          <div className="bg-card border-border rounded-3xl border p-6 shadow-sm">
-            <h1 className="font-display text-2xl font-semibold tracking-tight">
-              {t("identifyTitle")}
-            </h1>
-            <p className="text-muted-foreground mt-1 mb-4 text-sm">
-              {t("searchHint")}
-            </p>
-            <div className="border-border bg-muted flex h-10 items-center gap-2 rounded-2xl border px-3.5">
-              <Search className="text-muted-foreground/70 size-4" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="placeholder:text-muted-foreground/70 w-full bg-transparent text-sm font-semibold outline-none"
-              />
-            </div>
-
-            {debouncedQuery.length >= 1 ? (
-              <div className="mt-4">
-                {search.isPending ? (
-                  <div className="text-muted-foreground py-6 text-center text-sm font-semibold">
-                    {t("searching")}
-                  </div>
-                ) : search.data && search.data.length > 0 ? (
-                  <div className="flex flex-col">
-                    {search.data.map((hit, i) => (
-                      <button
-                        key={hit.id}
-                        type="button"
-                        style={fade(i)}
-                        onClick={() => void selectCustomer(hit)}
-                        className="border-border hover:bg-muted flex items-center gap-3 border-b py-3 text-left last:border-0"
-                      >
-                        <span className="bg-muted text-muted-foreground grid size-10 flex-none place-items-center rounded-xl">
-                          <User className="size-4" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-bold">
-                            {customerName(hit)}
-                          </div>
-                          <div className="text-muted-foreground/70 truncate text-xs font-semibold">
-                            {hit.phone}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-muted-foreground py-6 text-center text-sm font-semibold">
-                    {t("noResults")}
-                  </div>
-                )}
-              </div>
-            ) : null}
-          </div>
-        </div>
+        <IdentifyPane onSelect={(hit) => void selectCustomer(hit)} />
       )}
 
       {step === "found" && selected && wallet && (
@@ -404,10 +379,74 @@ export function ScanView() {
                   {customerName(selected)}
                 </div>
                 <div className="text-muted-foreground text-sm font-semibold">
-                  {selected.phone}
+                  {registerCtx.data?.phoneMasked ?? selected.phone}
+                  {registerCtx.data?.emailMasked ? ` · ${registerCtx.data.emailMasked}` : ""}
                 </div>
               </div>
+              {registerCtx.data?.tierKey ? (
+                <span className="bg-primary/10 text-primary flex-none rounded-full px-2.5 py-1 text-xs font-extrabold capitalize">
+                  {registerCtx.data.tierKey}
+                </span>
+              ) : null}
             </div>
+
+            {/* Banned socios can't earn/redeem — warn the cashier up front. */}
+            {registerCtx.data?.banned ? (
+              <div className="border-destructive/40 bg-destructive/10 text-destructive mt-4 flex items-center gap-2 rounded-2xl border p-3 text-sm font-bold">
+                <Ban className="size-4 flex-none" />
+                {t("customerBanned")}
+              </div>
+            ) : null}
+
+            {/* CRM context — helps the cashier serve personally (decision #8). */}
+            {registerCtx.data ? (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <Stat label={t("detailPoints")} value={String(registerCtx.data.points)} />
+                <Stat label={t("detailVisits")} value={String(registerCtx.data.visits)} />
+                <Stat
+                  label={t("detailAvgTicket")}
+                  value={formatCop(registerCtx.data.avgTicketCents)}
+                />
+                <Stat
+                  label={t("detailLastVisit")}
+                  value={
+                    registerCtx.data.lastVisitAt
+                      ? new Date(registerCtx.data.lastVisitAt).toLocaleDateString("es-CO", {
+                          day: "numeric",
+                          month: "short",
+                        })
+                      : t("detailNever")
+                  }
+                />
+                {registerCtx.data.topProduct ? (
+                  <Stat
+                    label={t("detailTopProduct")}
+                    value={registerCtx.data.topProduct}
+                    icon={<ShoppingBag className="size-3.5" />}
+                    full
+                  />
+                ) : null}
+                {registerCtx.data.acquisition.channel ? (
+                  <Stat
+                    label={t("detailAcquisition")}
+                    value={
+                      registerCtx.data.acquisition.storeName
+                        ? `${acqLabel(registerCtx.data.acquisition.channel)} · ${registerCtx.data.acquisition.storeName}`
+                        : acqLabel(registerCtx.data.acquisition.channel)
+                    }
+                    icon={
+                      registerCtx.data.acquisition.channel === "staff-register" ? (
+                        <Store className="size-3.5" />
+                      ) : (
+                        <Sparkles className="size-3.5" />
+                      )
+                    }
+                    full
+                  />
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="bg-muted mt-4 rounded-2xl p-3.5">
               <div className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
                 {t("stamps")}
