@@ -58,6 +58,17 @@ export function evaluateRewardForCart(
     return { ok: true, discountCents: Math.min(...deltas), exclusions: [] };
   }
 
+  if (benefit.type === "variantUpgrade") {
+    // Per-line upgrade deltas are pre-resolved by the service (needs the variant
+    // graph). Eligible = a line is at the target variant with a cheaper sibling;
+    // the cashier picks the size, this covers the smallest delta. No exclusions.
+    const deltas = cart.lines
+      .map((l) => l.upgradeDeltaCents)
+      .filter((d): d is number => d != null && d > 0);
+    if (deltas.length === 0) return { ok: false, reason: "reward-item-not-in-cart" };
+    return { ok: true, discountCents: Math.min(...deltas), exclusions: [] };
+  }
+
   const rule = compileRewardRule(benefit);
   if (!rule) return { ok: true, discountCents: 0, exclusions: [] };
   const scoped = benefit.refs.length > 0;

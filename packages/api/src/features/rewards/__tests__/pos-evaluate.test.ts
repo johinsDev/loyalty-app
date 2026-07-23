@@ -122,4 +122,43 @@ describe("evaluateRewardForCart", () => {
     );
     expect(res).toEqual({ ok: false, reason: "reward-item-not-in-cart" });
   });
+
+  const upgrade = {
+    type: "variantUpgrade" as const,
+    refs: [],
+    optionName: "Tamaño",
+    fromValueLabel: "Mediano",
+    toValueLabel: "Grande",
+  };
+
+  it("variantUpgrade covers the smallest eligible line delta", () => {
+    const c = cart(
+      line({ productId: "milk", unitAmountCents: 19000, upgradeDeltaCents: 2000 }),
+      line({ productId: "tea", unitAmountCents: 21000, upgradeDeltaCents: 3000 }),
+    );
+    expect(evaluateRewardForCart(rw(upgrade), c)).toEqual({
+      ok: true,
+      discountCents: 2000,
+      exclusions: [],
+    });
+  });
+
+  it("variantUpgrade with no eligible line (none at target) → reward-item-not-in-cart", () => {
+    const c = cart(
+      line({ productId: "milk", unitAmountCents: 16500, upgradeDeltaCents: null }),
+      line({ productId: "tea", unitAmountCents: 16500 }),
+    );
+    expect(evaluateRewardForCart(rw(upgrade), c)).toEqual({
+      ok: false,
+      reason: "reward-item-not-in-cart",
+    });
+  });
+
+  it("variantUpgrade ignores non-positive deltas (already largest)", () => {
+    const c = cart(line({ productId: "milk", unitAmountCents: 21000, upgradeDeltaCents: 0 }));
+    expect(evaluateRewardForCart(rw(upgrade), c)).toEqual({
+      ok: false,
+      reason: "reward-item-not-in-cart",
+    });
+  });
 });

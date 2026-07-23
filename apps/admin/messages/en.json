@@ -585,6 +585,7 @@
       "amountOff": "Amount off",
       "percentOff": "% off",
       "freeAddon": "Free add-on",
+      "variantUpgrade": "Size upgrade",
       "experience": "Experience"
     },
     "typeHints": {
@@ -592,6 +593,7 @@
       "amountOff": "$5,000 flat discount",
       "percentOff": "10% off a category, product or the whole order",
       "freeAddon": "A courtesy add-on (pearls, topping…); the cashier applies it at the register",
+      "variantUpgrade": "Free upsize (Medium → Large); the cashier picks the size at the register",
       "experience": "A non-monetary perk (skip the line, premium packaging…)"
     },
     "step": {
@@ -606,6 +608,11 @@
       "freeAddonPick": "Add-on",
       "freeAddonHint": "The cashier applies it on a product at the register",
       "freeAddonAny": "Any add-on on the ticket",
+      "upgradeOption": "Option",
+      "upgradeFrom": "From",
+      "upgradeTo": "To",
+      "upgradeScopeHint": "Empty = any product",
+      "upgradeAnyProduct": "Any product",
       "freeProductItems": "Free product",
       "freeProductHint": "Pick at least one product or category",
       "pickAtLeastOne": "Pick at least one product",

@@ -268,6 +268,16 @@ export type RewardBenefitConfig =
   // Waives a catalog add-on on a cart line (cashier adds it, this zeroes its
   // price). `addonId` null = any add-on present on the ticket.
   | { type: "freeAddon"; addonId: string | null }
+  // Covers the price delta to upgrade a line's variant one step on `optionName`
+  // (e.g. Tamaño: Mediano → Grande). The cashier picks the target size; the
+  // reward discounts the difference. `refs` scopes which products qualify.
+  | {
+      type: "variantUpgrade";
+      refs: PromoItemRef[];
+      optionName: string;
+      fromValueLabel: string;
+      toValueLabel: string;
+    }
   | { type: "experience" };
 
 export const reward = sqliteTable(

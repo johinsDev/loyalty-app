@@ -585,6 +585,7 @@
       "amountOff": "Descuento en pesos",
       "percentOff": "% de descuento",
       "freeAddon": "Adición gratis",
+      "variantUpgrade": "Subir tamaño",
       "experience": "Experiencia"
     },
     "typeHints": {
@@ -592,6 +593,7 @@
       "amountOff": "$5.000 de descuento directo",
       "percentOff": "10% en una categoría, producto o toda la compra",
       "freeAddon": "Una adición de cortesía (perlas, topping…); el cajero la aplica en caja",
+      "variantUpgrade": "Agranda gratis (Mediano → Grande); el cajero elige el tamaño en caja",
       "experience": "Un beneficio sin valor monetario (sáltate la fila, empaque premium…)"
     },
     "step": {
@@ -609,6 +611,11 @@
       "freeAddonPick": "Adición",
       "freeAddonHint": "El cajero la aplica sobre un producto en caja",
       "freeAddonAny": "Cualquier adición del ticket",
+      "upgradeOption": "Opción",
+      "upgradeFrom": "Desde",
+      "upgradeTo": "Hasta",
+      "upgradeScopeHint": "Vacío = cualquier producto",
+      "upgradeAnyProduct": "Cualquier producto",
       "amount": "Monto ($)",
       "appliesTo": "Aplica a",
       "appliesToHint": "Vacío = toda la compra",
