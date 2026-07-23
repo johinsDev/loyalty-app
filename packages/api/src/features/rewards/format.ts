@@ -63,6 +63,10 @@ export function rewardBenefitSummary(
     }
     case "freeAddon":
       return es ? "Adición gratis" : "Free add-on";
+    case "variantUpgrade":
+      return es
+        ? `Sube a ${benefit.toValueLabel} gratis`
+        : `Free upgrade to ${benefit.toValueLabel}`;
     case "experience":
       return es ? "Experiencia" : "Experience";
     default:

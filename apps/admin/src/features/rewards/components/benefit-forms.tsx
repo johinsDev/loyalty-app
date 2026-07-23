@@ -34,6 +34,8 @@ export function defaultConfigFor(type: RewardType): RewardBenefitConfigInput {
       return { type, refs: [], percent: 20 };
     case "freeAddon":
       return { type, addonId: null };
+    case "variantUpgrade":
+      return { type, refs: [], optionName: "Tamaño", fromValueLabel: "", toValueLabel: "" };
     case "experience":
       return { type };
     default:
@@ -113,6 +115,44 @@ export function RewardBenefitFields({
       );
     case "freeAddon":
       return <FreeAddonField value={value} onChange={onChange} />;
+    case "variantUpgrade":
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Field label={t("upgradeOption")}>
+              <input
+                value={value.optionName}
+                onChange={(e) => onChange({ ...value, optionName: e.target.value })}
+                placeholder="Tamaño"
+                className="border-input bg-background h-10 w-full rounded-lg border px-3 text-sm outline-none"
+              />
+            </Field>
+            <Field label={t("upgradeFrom")}>
+              <input
+                value={value.fromValueLabel}
+                onChange={(e) => onChange({ ...value, fromValueLabel: e.target.value })}
+                placeholder="Mediano"
+                className="border-input bg-background h-10 w-full rounded-lg border px-3 text-sm outline-none"
+              />
+            </Field>
+            <Field label={t("upgradeTo")}>
+              <input
+                value={value.toValueLabel}
+                onChange={(e) => onChange({ ...value, toValueLabel: e.target.value })}
+                placeholder="Grande"
+                className="border-input bg-background h-10 w-full rounded-lg border px-3 text-sm outline-none"
+              />
+            </Field>
+          </div>
+          <Field label={t("appliesTo")} hint={t("upgradeScopeHint")}>
+            <RefsField
+              value={value.refs}
+              onChange={(refs) => onChange({ ...value, refs })}
+              anyLabel={t("upgradeAnyProduct")}
+            />
+          </Field>
+        </div>
+      );
     case "experience":
       return (
         <div className="border-primary/20 bg-primary/5 rounded-2xl border px-4 py-3">

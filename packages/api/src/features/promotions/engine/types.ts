@@ -15,6 +15,9 @@ export interface CartLine {
   modifierOptions?: { id: string; priceDeltaCents: number }[];
   /** Catalog add-ons on this line + their deltas (stitched for reward waiving). */
   addons?: { id: string; priceDeltaCents: number }[];
+  /** Cost to upgrade this line to a reward's target variant (>0 when eligible;
+   *  null/absent otherwise). Resolved per-reward by the service, not generic. */
+  upgradeDeltaCents?: number | null;
   qty: number;
   unitAmountCents: number;
 }
