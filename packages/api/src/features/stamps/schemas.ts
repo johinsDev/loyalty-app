@@ -20,6 +20,8 @@ export const purchaseLineSchema = z.object({
   modifierOptionIds: z.array(z.string()).optional(),
   qty: z.number().int().min(1),
   unitAmountCents: z.number().int().nonnegative(),
+  /** Free-form line note (e.g. "más hielo", "sin maní"). */
+  note: z.string().max(200).nullish(),
 });
 
 export const recordPurchaseInputSchema = z.object({
@@ -38,6 +40,8 @@ export const recordPurchaseInputSchema = z.object({
   items: z.array(purchaseLineSchema).optional(),
   appliedPromoId: z.string().uuid().optional(),
   currency: z.string().optional(),
+  /** Cashier's order-level note (e.g. "para llevar", "mesa 4"). */
+  orderNote: z.string().max(500).nullish(),
   // Optional inline reward redeem (POS): the cashier redeems a reward as part of
   // this same sale. Deducted inside the purchase tx (after the stamp is granted,
   // so it's spendable); a not-redeemable reward rolls back the whole sale.

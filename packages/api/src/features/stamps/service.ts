@@ -85,6 +85,7 @@ export class StampsService {
       appliedPromoId: input.appliedPromoId ?? null,
       entrySource: input.entrySource ?? null,
       metadata: input.metadata ?? null,
+      orderNote: input.orderNote ?? null,
       items: input.items,
       inlineReward: input.inlineReward
         ? {

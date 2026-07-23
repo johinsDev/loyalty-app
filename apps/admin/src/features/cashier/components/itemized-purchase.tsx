@@ -14,6 +14,7 @@ import { useTRPC } from "@/lib/trpc/client";
 
 import { useActiveStoreId } from "../use-active-store";
 
+import { ProductPicker, type PickedLine } from "./product-picker";
 import { StorelessConfirm } from "./storeless-confirm";
 
 type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
@@ -32,10 +33,15 @@ function inlineRewardCurrency(rw: AvailableReward): "stamps" | "points" | "both"
 }
 
 type CartItem = {
+  /** Stable per-line id — same product/variant can appear twice with different
+   *  notes, so lines are keyed individually, not merged by product. */
+  key: string;
   productId: string;
+  variantId: string | null;
   name: string;
   unitAmountCents: number;
   qty: number;
+  note: string;
 };
 
 const CURRENCY = "COP";
@@ -90,6 +96,11 @@ export function ItemizedPurchase({
 
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [orderNote, setOrderNote] = useState("");
+  // The product tapped in search, pending variant/note selection in the picker.
+  const [picker, setPicker] = useState<{ slug: string; name: string; priceCents: number } | null>(
+    null,
+  );
   const [chosenPromoId, setChosenPromoId] = useState<string | null>(null);
   const [inlineRewardId, setInlineRewardId] = useState<string | null>(
     preselect?.rewardId ?? null,
@@ -140,6 +151,7 @@ export function ItemizedPurchase({
         currency: CURRENCY,
         items: cart.map((i) => ({
           productId: i.productId,
+          variantId: i.variantId ?? undefined,
           qty: i.qty,
           unitAmountCents: i.unitAmountCents,
         })),
@@ -172,25 +184,34 @@ export function ItemizedPurchase({
   // but must be explicit (see StorelessConfirm).
   const [storelessOpen, setStorelessOpen] = useState(false);
 
-  const addProduct = (p: { id: string; name: string; priceCents: number }) => {
-    setCart((c) => {
-      const existing = c.find((i) => i.productId === p.id);
-      if (existing)
-        return c.map((i) => (i.productId === p.id ? { ...i, qty: i.qty + 1 } : i));
-      return [...c, { productId: p.id, name: p.name, unitAmountCents: p.priceCents, qty: 1 }];
-    });
+  const addLine = (line: PickedLine) => {
+    setCart((c) => [
+      ...c,
+      {
+        key: crypto.randomUUID(),
+        productId: line.productId,
+        variantId: line.variantId,
+        name: line.name,
+        unitAmountCents: line.unitAmountCents,
+        qty: 1,
+        note: line.note,
+      },
+    ]);
+    setPicker(null);
   };
 
-  const bump = (productId: string, delta: number) => {
+  const bump = (key: string, delta: number) => {
     setCart((c) =>
-      c
-        .map((i) => (i.productId === productId ? { ...i, qty: i.qty + delta } : i))
-        .filter((i) => i.qty > 0),
+      c.map((i) => (i.key === key ? { ...i, qty: i.qty + delta } : i)).filter((i) => i.qty > 0),
     );
   };
 
-  const removeLine = (productId: string) => {
-    setCart((c) => c.filter((i) => i.productId !== productId));
+  const removeLine = (key: string) => {
+    setCart((c) => c.filter((i) => i.key !== key));
+  };
+
+  const setLineNote = (key: string, note: string) => {
+    setCart((c) => c.map((i) => (i.key === key ? { ...i, note } : i)));
   };
 
   // Human copy for one upsell nudge (add-item / spend-to-threshold / swap).
@@ -230,9 +251,12 @@ export function ItemizedPurchase({
         idempotencyKey: crypto.randomUUID(),
         items: cart.map((i) => ({
           productId: i.productId,
+          variantId: i.variantId ?? undefined,
           qty: i.qty,
           unitAmountCents: i.unitAmountCents,
+          note: i.note || undefined,
         })),
+        orderNote: orderNote.trim() || undefined,
         appliedPromoId: chosenPromoId ?? undefined,
         inlineReward,
         currency: CURRENCY,
@@ -285,7 +309,7 @@ export function ItemizedPurchase({
               <button
                 key={p.id}
                 type="button"
-                onClick={() => addProduct({ id: p.id, name: p.name, priceCents: p.priceCents })}
+                onClick={() => setPicker({ slug: p.slug, name: p.name, priceCents: p.priceCents })}
                 className="hover:bg-muted flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left"
               >
                 <span className="truncate text-sm font-semibold">{p.name}</span>
@@ -310,43 +334,49 @@ export function ItemizedPurchase({
           ) : (
             <div className="space-y-2">
               {cart.map((i) => (
-                <div
-                  key={i.productId}
-                  className="border-border flex items-center gap-3 rounded-2xl border p-2.5"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-bold">{i.name}</div>
-                    <div className="text-muted-foreground text-xs font-semibold">
-                      {formatCop(i.unitAmountCents)}
+                <div key={i.key} className="border-border rounded-2xl border p-2.5">
+                  <div className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-bold">{i.name}</div>
+                      <div className="text-muted-foreground text-xs font-semibold">
+                        {formatCop(i.unitAmountCents)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => bump(i.key, -1)}
+                        className="border-border grid size-7 place-items-center rounded-lg border"
+                        aria-label={t("decrease")}
+                      >
+                        <Minus className="size-3.5" />
+                      </button>
+                      <span className="w-5 text-center text-sm font-bold">{i.qty}</span>
+                      <button
+                        type="button"
+                        onClick={() => bump(i.key, 1)}
+                        className="border-border grid size-7 place-items-center rounded-lg border"
+                        aria-label={t("increase")}
+                      >
+                        <Plus className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeLine(i.key)}
+                        className="text-muted-foreground hover:text-destructive grid size-7 place-items-center rounded-lg"
+                        aria-label={t("removeLine")}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => bump(i.productId, -1)}
-                      className="border-border grid size-7 place-items-center rounded-lg border"
-                      aria-label={t("decrease")}
-                    >
-                      <Minus className="size-3.5" />
-                    </button>
-                    <span className="w-5 text-center text-sm font-bold">{i.qty}</span>
-                    <button
-                      type="button"
-                      onClick={() => bump(i.productId, 1)}
-                      className="border-border grid size-7 place-items-center rounded-lg border"
-                      aria-label={t("increase")}
-                    >
-                      <Plus className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeLine(i.productId)}
-                      className="text-muted-foreground hover:text-destructive grid size-7 place-items-center rounded-lg"
-                      aria-label={t("removeLine")}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </div>
+                  {/* Per-line note — "más hielo", "sin maní", etc. */}
+                  <input
+                    value={i.note}
+                    onChange={(e) => setLineNote(i.key, e.target.value)}
+                    placeholder={t("lineNotePlaceholder")}
+                    className="border-border/60 bg-muted/40 placeholder:text-muted-foreground/60 mt-2 h-8 w-full rounded-lg border px-2.5 text-xs font-semibold outline-none"
+                  />
                 </div>
               ))}
             </div>
@@ -499,6 +529,16 @@ export function ItemizedPurchase({
             </div>
           ) : null}
 
+          {/* Order-level note — "para llevar", "mesa 4", etc. */}
+          {cart.length > 0 ? (
+            <input
+              value={orderNote}
+              onChange={(e) => setOrderNote(e.target.value)}
+              placeholder={t("orderNotePlaceholder")}
+              className="border-border bg-muted placeholder:text-muted-foreground/70 h-10 w-full rounded-2xl border px-3.5 text-sm font-semibold outline-none"
+            />
+          ) : null}
+
           {/* Totals */}
           {cart.length > 0 ? (
             <div className="bg-muted space-y-1.5 rounded-2xl p-3.5 text-sm">
@@ -539,6 +579,16 @@ export function ItemizedPurchase({
           </Button>
         </div>
       </div>
+
+      {picker ? (
+        <ProductPicker
+          slug={picker.slug}
+          fallbackName={picker.name}
+          fallbackPriceCents={picker.priceCents}
+          onAdd={addLine}
+          onClose={() => setPicker(null)}
+        />
+      ) : null}
 
       <StorelessConfirm
         open={storelessOpen}

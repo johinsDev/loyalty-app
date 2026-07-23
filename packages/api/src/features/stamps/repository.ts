@@ -165,6 +165,7 @@ export class StampsRepository {
     /** Marketing attribution resolved at record time (best-effort context). */
     entrySource?: string | null;
     metadata?: Record<string, unknown> | null;
+    orderNote?: string | null;
     items?: {
       productId: string;
       variantId?: string | null;
@@ -172,6 +173,7 @@ export class StampsRepository {
       qty: number;
       unitAmountCents: number;
       currency?: string;
+      note?: string | null;
     }[];
     // Optional inline reward redeem within this sale (deducted after the stamp
     // is granted, so the just-earned stamp is spendable).
@@ -251,6 +253,7 @@ export class StampsRepository {
           appliedPromoId: input.appliedPromoId ?? null,
           entrySource: input.entrySource ?? null,
           metadata: input.metadata ?? null,
+          orderNote: input.orderNote ?? null,
           idempotencyKey: input.idempotencyKey,
         })
         .returning();
@@ -267,6 +270,7 @@ export class StampsRepository {
             qty: it.qty,
             unitAmountCents: it.unitAmountCents,
             currency: it.currency ?? currency,
+            note: it.note ?? null,
           })),
         );
       }
