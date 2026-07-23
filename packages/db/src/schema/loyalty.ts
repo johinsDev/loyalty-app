@@ -40,6 +40,13 @@ export const customer = sqliteTable(
     // Free-form staff note (preferences, allergies, …). Admin-only; a single
     // overwritable value, not a threaded/authored history.
     notes: text("notes"),
+    // How this customer was first captured. "self-app" (signed up in the PWA),
+    // "staff-register" (a cashier quick-registered them at the POS) or "google".
+    // Null = unknown (legacy rows before capture existed). `acquisitionStoreId`
+    // is the store where a staff registration happened (soft attribution, no FK
+    // so a deleted store doesn't cascade the customer).
+    acquisitionChannel: text("acquisition_channel"),
+    acquisitionStoreId: text("acquisition_store_id"),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),

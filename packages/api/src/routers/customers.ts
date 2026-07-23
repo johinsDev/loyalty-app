@@ -1,5 +1,6 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { type db as Db, getPrimaryOrganizationId, phoneNumberInUse } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
+import { tasks } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 
 import { CustomersRepository } from "../features/customers/repository";
@@ -7,23 +8,32 @@ import {
   banCustomerInputSchema,
   bulkIdsSchema,
   checkAvailabilityInputSchema,
+  confirmRegisterPinInputSchema,
   createCustomerInputSchema,
   customerIdInputSchema,
   customersListInputSchema,
   ledgerInputSchema,
   MARKETING_CHANNELS,
   type MarketingChannel,
+  requestRegisterPinInputSchema,
   timelineInputSchema,
   updateCustomerInputSchema,
 } from "../features/customers/schemas";
 import { type Actor, CustomersService } from "../features/customers/service";
 import { getLoyaltyConfig } from "../features/_shared/localize";
+import { maskEmail, maskPhone } from "../features/_shared/mask";
+import {
+  clearPendingRegister,
+  storePendingRegister,
+  verifyRegisterPin,
+} from "../features/_shared/register-pin";
+import { requireCache } from "../features/_shared/claim-code";
 import { DrizzleNotificationPreferences } from "../features/notifications/preferences-repository";
 import { PointsRepository } from "../features/points/repository";
 import { PointsService } from "../features/points/service";
 import { StampsRepository } from "../features/stamps/repository";
 import { StampsService } from "../features/stamps/service";
-import { managerProcedure, ownerProcedure, router, staffProcedure } from "../trpc";
+import { managerProcedure, ownerProcedure, rateLimit, router, staffProcedure } from "../trpc";
 
 const orgId = async (): Promise<string> => (await getPrimaryOrganizationId()) ?? "";
 async function requireOrg(): Promise<string> {
@@ -72,6 +82,83 @@ export const customersRouter = router({
   search: staffProcedure
     .input(z.object({ query: z.string().default(""), limit: z.number().int().min(1).max(50).default(20) }))
     .query(async ({ ctx, input }) => repo(ctx.db).search(await orgId(), input.query, input.limit)),
+
+  /** Cashier register: lean, PII-masked customer detail (complements the wallet).
+   *  Staff-safe — masked phone/email, no raw contact ever leaves the server. */
+  registerContext: staffProcedure
+    .input(customerIdInputSchema)
+    .query(async ({ ctx, input }) => {
+      const raw = await repo(ctx.db).registerContext(await requireOrg(), input.customerId);
+      if (!raw) throw new TRPCError({ code: "NOT_FOUND", message: "CUSTOMER_NOT_FOUND" });
+      return {
+        id: raw.id,
+        name: raw.name,
+        phoneMasked: maskPhone(raw.phone),
+        emailMasked: maskEmail(raw.email),
+        tierKey: raw.tierKey,
+        points: raw.points,
+        visits: raw.visits,
+        avgTicketCents: raw.avgTicketCents,
+        lastVisitAt: raw.lastVisitAt,
+        topProduct: raw.topProduct,
+        acquisition: raw.acquisition,
+        banned: raw.banned,
+      };
+    }),
+
+  /** Quick-register step 1: send a 6-digit PIN to the phone over WhatsApp and
+   *  hold the pending registration. The account is only created once the cashier
+   *  confirms the code (step 2) — a blocking check the phone is reachable. */
+  requestRegisterPin: staffProcedure
+    .use(rateLimit({ name: "customers.requestRegisterPin", limit: 10, window: "10m", by: "user" }))
+    .input(requestRegisterPinInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const org = await requireOrg();
+      // The phone must be free before we bother sending a PIN.
+      const available = await repo(ctx.db).checkAvailability(org, {
+        field: "phone",
+        value: input.phone,
+      });
+      if (!available || (await phoneNumberInUse(input.phone))) {
+        throw new TRPCError({ code: "CONFLICT", message: "PHONE_IN_USE" });
+      }
+      const cache = requireCache(ctx.cache);
+      const { pendingId, code } = await storePendingRegister(cache, {
+        phone: input.phone,
+        name: input.name?.trim() || null,
+        organizationId: org,
+        staffId: ctx.session.user.id,
+        acquisitionStoreId: input.storeId ?? null,
+      });
+      // Reuse the login OTP WhatsApp task (phoneNumber + code) — best-effort; a
+      // failed send just means the cashier retries.
+      await tasks
+        .trigger("send-otp-whatsapp", { phoneNumber: input.phone, code })
+        .catch(() => {});
+      return { pendingId };
+    }),
+
+  /** Quick-register step 2: verify the PIN, then mint the customer. Returns the
+   *  new customer so the register can select them and continue the sale. */
+  confirmRegisterPin: staffProcedure
+    .input(confirmRegisterPinInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const org = await requireOrg();
+      const cache = requireCache(ctx.cache);
+      const pending = await verifyRegisterPin(
+        cache,
+        input.pendingId,
+        input.code,
+        ctx.session.user.id,
+      );
+      const id = await readSvc(ctx.db).quickCreate(org, actorOf(ctx, org), {
+        phone: pending.phone,
+        name: pending.name,
+        acquisitionStoreId: pending.acquisitionStoreId,
+      });
+      await clearPendingRegister(cache, input.pendingId);
+      return { id, name: pending.name, phone: pending.phone };
+    }),
 
   // ── Admin CRM (managers) ─────────────────────────────────────────────────
   adminList: managerProcedure

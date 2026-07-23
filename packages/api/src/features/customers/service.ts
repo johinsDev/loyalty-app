@@ -262,4 +262,45 @@ export class CustomersService extends CustomersReadService {
     });
     return id;
   }
+
+  /**
+   * Cashier quick-register (post-PIN): mint a phone-first user + customer row,
+   * tagged with the acquisition channel/store. No initial loyalty or marketing —
+   * a lean create for the POS. Phone availability is re-checked (the PIN window
+   * could have raced another registration). Returns the new customer id.
+   */
+  async quickCreate(
+    orgId: string,
+    actor: Actor,
+    input: { phone: string; name: string | null; acquisitionStoreId: string | null },
+  ): Promise<string> {
+    const ok = await this.repo.checkAvailability(orgId, { field: "phone", value: input.phone });
+    if (!ok || (await phoneNumberInUse(input.phone))) {
+      throw new TRPCError({ code: "CONFLICT", message: "PHONE_IN_USE" });
+    }
+    const id = await this.repo.mintPhoneUser({
+      phone: input.phone,
+      name: input.name,
+      email: null,
+    });
+    await this.repo.insert({
+      id,
+      orgId,
+      phone: input.phone,
+      name: input.name,
+      email: null,
+      nickname: null,
+      birthday: null,
+      notes: null,
+      acquisitionChannel: "staff-register",
+      acquisitionStoreId: input.acquisitionStoreId,
+    });
+    await recordAudit({
+      organizationId: orgId,
+      actorUserId: actor.userId,
+      targetUserId: id,
+      type: "customer_create",
+    });
+    return id;
+  }
 }

@@ -304,6 +304,98 @@ export class CustomersRepository {
     return secToDate(at ?? null);
   }
 
+  /** Lean staff-safe detail for the cashier register (raw PII — the router
+   *  masks). A handful of targeted queries (identity+tier+ban, points balance,
+   *  visit aggregate, top product) — fast enough to load on customer select. */
+  async registerContext(
+    orgId: string,
+    customerId: string,
+  ): Promise<{
+    id: string;
+    name: string | null;
+    phone: string;
+    email: string | null;
+    tierKey: string | null;
+    points: number;
+    visits: number;
+    avgTicketCents: number;
+    lastVisitAt: Date | null;
+    topProduct: string | null;
+    acquisition: { channel: string | null; storeId: string | null; storeName: string | null };
+    banned: boolean;
+  } | null> {
+    const rows = await this.db
+      .select({
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        email: customer.email,
+        acquisitionChannel: customer.acquisitionChannel,
+        acquisitionStoreId: customer.acquisitionStoreId,
+        acquisitionStoreName: store.name,
+        tierKey: pointsAccount.currentTierKey,
+        banned: user.banned,
+      })
+      .from(customer)
+      .leftJoin(user, eq(user.id, customer.id))
+      .leftJoin(pointsAccount, eq(pointsAccount.customerId, customer.id))
+      .leftJoin(store, eq(store.id, customer.acquisitionStoreId))
+      .where(and(eq(customer.organizationId, orgId), eq(customer.id, customerId)))
+      .limit(1);
+    const c = rows[0];
+    if (!c) return null;
+
+    const [pointsRows, aggRows, topRows] = await Promise.all([
+      this.db
+        .select({ total: sql<number>`coalesce(sum(${pointsTransaction.points}), 0)` })
+        .from(pointsTransaction)
+        .where(
+          and(
+            eq(pointsTransaction.organizationId, orgId),
+            eq(pointsTransaction.customerId, customerId),
+          ),
+        ),
+      this.db
+        .select({
+          visits: sql<number>`count(*)`,
+          ltv: sql<number>`coalesce(sum(${purchase.priceCents}), 0)`,
+          lastAt: sql<number | null>`max(${purchase.createdAt})`,
+        })
+        .from(purchase)
+        .where(scope(orgId, customerId)),
+      this.db
+        .select({ name: product.name })
+        .from(purchaseItem)
+        .innerJoin(purchase, eq(purchase.id, purchaseItem.purchaseId))
+        .leftJoin(product, eq(product.id, purchaseItem.productId))
+        .where(scope(orgId, customerId))
+        .groupBy(purchaseItem.productId)
+        .orderBy(desc(sql`sum(${purchaseItem.qty})`))
+        .limit(1),
+    ]);
+
+    const visits = Number(aggRows[0]?.visits ?? 0);
+    const ltv = Number(aggRows[0]?.ltv ?? 0);
+    return {
+      id: c.id,
+      name: c.name,
+      phone: c.phone,
+      email: c.email,
+      tierKey: c.tierKey ?? null,
+      points: Number(pointsRows[0]?.total ?? 0),
+      visits,
+      avgTicketCents: visits > 0 ? Math.round(ltv / visits) : 0,
+      lastVisitAt: secToDate(aggRows[0]?.lastAt ?? null),
+      topProduct: topRows[0]?.name ?? null,
+      acquisition: {
+        channel: c.acquisitionChannel ?? null,
+        storeId: c.acquisitionStoreId ?? null,
+        storeName: c.acquisitionStoreName ?? null,
+      },
+      banned: c.banned === true,
+    };
+  }
+
   // ── stats (overview tab) ────────────────────────────────────────────────────
   async stats(orgId: string, customerId: string, now = new Date()): Promise<CustomerStats> {
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
@@ -674,6 +766,8 @@ export class CustomersRepository {
     nickname: string | null;
     birthday: Date | null;
     notes: string | null;
+    acquisitionChannel?: string | null;
+    acquisitionStoreId?: string | null;
   }): Promise<void> {
     await this.db.insert(customer).values({
       id: input.id,
@@ -684,6 +778,8 @@ export class CustomersRepository {
       nickname: input.nickname,
       birthday: input.birthday,
       notes: input.notes,
+      acquisitionChannel: input.acquisitionChannel ?? null,
+      acquisitionStoreId: input.acquisitionStoreId ?? null,
     });
   }
 
