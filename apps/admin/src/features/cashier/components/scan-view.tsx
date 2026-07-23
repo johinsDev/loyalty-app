@@ -33,6 +33,7 @@ import { useActiveStoreId } from "../use-active-store";
 import { IdentifyPane, type IdentifiedCustomer } from "./identify-pane";
 import { ItemizedPurchase, type PreselectReward } from "./itemized-purchase";
 import { QrScanner } from "./qr-scanner";
+import { RecentMovements } from "./recent-movements";
 import { StorelessConfirm } from "./storeless-confirm";
 
 type CustomerHit = IdentifiedCustomer;
@@ -382,19 +383,26 @@ export function ScanView() {
     return t("acqSelfApp");
   };
 
-  // In itemized mode the register becomes a split-pane on tablet/desktop, so it
-  // needs a wider canvas; the linear steps stay narrow and centered.
-  const wide = step === "found" && purchaseMode === "items";
+  // The identify (two-pane) and itemized register need a wider canvas on
+  // tablet/desktop; the other linear steps stay narrow and centered.
+  const wide = step === "identify" || (step === "found" && purchaseMode === "items");
 
   return (
     <div
       className={`mx-auto w-full px-5 py-5 ${wide ? "max-w-2xl lg:max-w-6xl" : "max-w-2xl lg:max-w-4xl"}`}
     >
+      {/* Identify — the principal register view: identify pane + a live
+          recent-movements panel side by side on tablet/desktop (T4 Caja). */}
       {step === "identify" && (
-        <IdentifyPane
-          onSelect={(hit) => void selectCustomer(hit)}
-          onScan={() => setStep("scan")}
-        />
+        <div className="lg:grid lg:grid-cols-[1fr_minmax(300px,360px)] lg:items-start lg:gap-5">
+          <IdentifyPane
+            onSelect={(hit) => void selectCustomer(hit)}
+            onScan={() => setStep("scan")}
+          />
+          <div className="mt-5 lg:mt-0">
+            <RecentMovements />
+          </div>
+        </div>
       )}
 
       {step === "found" && selected && wallet && (
