@@ -67,6 +67,38 @@ export interface IngredientRow {
   costPerUnitCents: number;
 }
 
+// ---- Add-on catalog (org-level) --------------------------------------------
+export const addonCreateSchema = z.object({
+  name: z.string().min(1).max(80),
+  description: z.string().max(500).nullish(),
+  priceDeltaCents: z.number().int().min(0).default(0),
+  costCents: z.number().int().min(0).default(0),
+  // Optional link to a stocked ingredient (inherits cost/stock/recipe).
+  ingredientId: z.string().min(1).nullish(),
+  sku: z.string().max(80).nullish(),
+  active: z.boolean().default(true),
+});
+export const addonUpdateSchema = addonCreateSchema.extend({
+  id: z.string().min(1),
+});
+export const addonListInputSchema = z.object({
+  search: z.string().trim().max(80).optional(),
+});
+export type AddonCreateInput = z.infer<typeof addonCreateSchema>;
+export type AddonUpdateInput = z.infer<typeof addonUpdateSchema>;
+
+export interface AddonRow {
+  id: string;
+  name: string;
+  description: string | null;
+  priceDeltaCents: number;
+  costCents: number;
+  ingredientId: string | null;
+  ingredientName: string | null;
+  sku: string | null;
+  active: boolean;
+}
+
 const modifierOptionInput = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(80),

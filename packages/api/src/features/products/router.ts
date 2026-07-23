@@ -10,6 +10,7 @@ import {
   rateLimit,
   router,
 } from "../../trpc";
+import { AddonsRepository } from "./addons-repository";
 import { ProductsAdminRepository } from "./admin-repository";
 import { IngredientsRepository } from "./ingredients-repository";
 import { ProductsRepository } from "./repository";
@@ -21,6 +22,9 @@ import {
 } from "./schemas";
 import { MenuService } from "./service";
 import {
+  addonCreateSchema,
+  addonListInputSchema,
+  addonUpdateSchema,
   ingredientCreateSchema,
   ingredientListInputSchema,
   ingredientUpdateSchema,
@@ -89,6 +93,28 @@ export const menuRouter = router({
     .input(idInput)
     .mutation(async ({ ctx, input }) =>
       new IngredientsRepository(ctx.db).remove(await orgId(), input.id),
+    ),
+
+  // ---- Add-on catalog (manager) --------------------------------------------
+  addons: managerProcedure
+    .input(addonListInputSchema)
+    .query(async ({ ctx, input }) =>
+      new AddonsRepository(ctx.db).list(await orgId(), input.search),
+    ),
+  addonCreate: managerProcedure
+    .input(addonCreateSchema)
+    .mutation(async ({ ctx, input }) =>
+      new AddonsRepository(ctx.db).create(await orgId(), input),
+    ),
+  addonUpdate: managerProcedure
+    .input(addonUpdateSchema)
+    .mutation(async ({ ctx, input }) =>
+      new AddonsRepository(ctx.db).update(await orgId(), input),
+    ),
+  addonRemove: managerProcedure
+    .input(idInput)
+    .mutation(async ({ ctx, input }) =>
+      new AddonsRepository(ctx.db).remove(await orgId(), input.id),
     ),
 
   // ---- Public (cacheable) — gated by the page guard in v1, ready for public --
