@@ -101,6 +101,18 @@ export interface RegisterContext {
   /** Staff free-form note (allergies/preferences) — helps serve personally. */
   notes: string | null;
   tierKey: string | null;
+  /** Windowed tier standing — name, benefits and progress to the next tier
+   *  (drives the register's "Info del cliente" tier panel). */
+  tier: {
+    key: string;
+    name: string;
+    benefits: string[];
+    nextName: string | null;
+    tierPoints: number;
+    nextThreshold: number | null;
+    remainingToNext: number;
+    progress: number;
+  };
   points: number;
   visits: number;
   avgTicketCents: number;
