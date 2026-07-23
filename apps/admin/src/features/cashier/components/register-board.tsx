@@ -14,6 +14,7 @@ import { useDebounce } from "ahooks";
 import {
   Cake,
   Check,
+  ChevronRight,
   Gift,
   Lightbulb,
   Minus,
@@ -338,19 +339,21 @@ export function RegisterBoard({
         <button
           type="button"
           onClick={() => setInfoModalOpen(true)}
-          className="flex min-w-0 items-center gap-3 text-left"
+          className="flex min-w-0 items-center gap-3 rounded-2xl text-left hover:bg-white/5"
         >
           <span className="from-primary to-primary/70 grid size-11 flex-none place-items-center rounded-2xl bg-gradient-to-br font-display text-sm font-semibold">
             {(customerName[0] ?? "S").toUpperCase()}
           </span>
           <div className="min-w-0">
             <div className="truncate text-sm font-extrabold">{customerName}</div>
-            <div className="truncate text-xs font-semibold text-white/50">
-              {register?.phoneMasked
-                ? `${register.phoneMasked} · ${t("tapForFicha")}`
-                : t("tapForFicha")}
+            <div className="text-primary-foreground/90 flex items-center gap-0.5 truncate text-xs font-bold">
+              {register?.phoneMasked ? `${register.phoneMasked} · ` : ""}
+              <span className="text-primary underline decoration-white/30 underline-offset-2">
+                {t("viewFicha")}
+              </span>
             </div>
           </div>
+          <ChevronRight className="size-4 flex-none text-white/40" />
         </button>
         {register?.tier ? (
           <div className="flex flex-col">
@@ -369,7 +372,13 @@ export function RegisterBoard({
         <Balance label={t("detailPoints")} value={String(register?.points ?? 0)} />
         <div className="flex-1" />
         {register?.tier.benefits[0] ? (
-          <span className="hidden rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-[0.6875rem] font-bold text-white/80 sm:block">
+          <span
+            title={t("tierBenefitChipTitle", { tier: register.tier.name })}
+            className="hidden items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-[0.6875rem] font-bold text-white/80 sm:inline-flex"
+          >
+            <Sparkles className="text-primary size-3 flex-none" />
+            {t("tierBenefitChipLabel", { tier: register.tier.name })}
+            <span className="text-white/50">·</span>
             {register.tier.benefits[0]}
           </span>
         ) : null}
