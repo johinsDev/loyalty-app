@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronRight,
   Gift,
+  Info,
   Lightbulb,
   Minus,
   Plus,
@@ -160,6 +161,12 @@ export function RegisterBoard({
     [cart],
   );
   const rewards = availableRewards;
+  const rewardCostText = (rw: AvailableReward): string => {
+    const parts: string[] = [];
+    if (rw.stampsRequired != null) parts.push(`${rw.stampsRequired} ${t("stampMany")}`);
+    if (rw.pointsCost != null) parts.push(`${rw.pointsCost} ${t("earnPtsUnit")}`);
+    return parts.join(rw.costMode === "and" ? " + " : " / ") || t("rewardFree");
+  };
   const chosenReward = rewards.find((r) => r.rewardId === inlineRewardId) ?? null;
   const activeRewardCurrency: "stamps" | "points" | "both" | null =
     inlineRewardId == null
@@ -205,6 +212,7 @@ export function RegisterBoard({
     [preview.data],
   );
   const rewardsScrollRef = useRef<HTMLDivElement>(null);
+  const [detailView, setDetailView] = useState<{ title: string; lines: string[] } | null>(null);
 
   // Track the promo the server actually applied (best-of + exclusivity), so the
   // cart line and the promos panel agree with the total.
@@ -485,29 +493,45 @@ export function RegisterBoard({
                     {promos.slice(0, 6).map((a) => {
                       const active = a.promo.id === chosenPromoId;
                       return (
-                        <button
-                          key={a.promo.id}
-                          type="button"
-                          onClick={() => setChosenPromoId(active ? null : a.promo.id)}
-                          className={`flex w-full items-center gap-2 rounded-xl p-2 text-left transition ${
-                            active
-                              ? "border-primary bg-primary/5 border"
-                              : "bg-muted/50 hover:bg-muted"
-                          }`}
-                        >
-                          <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
-                            <Tag className="size-3" />
-                          </span>
-                          <span className="min-w-0 flex-1 truncate text-xs font-bold">
-                            {a.promo.name}
-                          </span>
-                          <span
-                            className={`flex-none text-xs font-extrabold ${active ? "text-primary" : "text-muted-foreground"}`}
+                        <div key={a.promo.id} className="flex items-stretch gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setChosenPromoId(active ? null : a.promo.id)}
+                            className={`flex flex-1 items-center gap-2 rounded-xl p-2 text-left transition ${
+                              active
+                                ? "border-primary bg-primary/5 border"
+                                : "bg-muted/50 hover:bg-muted"
+                            }`}
                           >
-                            − {formatCop(a.discountCents)}
-                          </span>
-                          {active ? <Check className="text-primary size-3.5 flex-none" /> : null}
-                        </button>
+                            <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
+                              <Tag className="size-3" />
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-xs font-bold">
+                              {a.promo.name}
+                            </span>
+                            <span
+                              className={`flex-none text-xs font-extrabold ${active ? "text-primary" : "text-muted-foreground"}`}
+                            >
+                              − {formatCop(a.discountCents)}
+                            </span>
+                            {active ? <Check className="text-primary size-3.5 flex-none" /> : null}
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={t("viewDetail")}
+                            onClick={() =>
+                              setDetailView({
+                                title: a.promo.name,
+                                lines: [a.promo.shortDescription || a.promo.benefitSummary || ""].filter(
+                                  Boolean,
+                                ) as string[],
+                              })
+                            }
+                            className="border-border text-muted-foreground hover:text-foreground grid w-8 flex-none place-items-center rounded-xl border"
+                          >
+                            <Info className="size-3.5" />
+                          </button>
+                        </div>
                       );
                     })}
                     {promos.length > 1 ? (
@@ -521,12 +545,25 @@ export function RegisterBoard({
                 <p className="text-muted-foreground text-xs font-semibold">{t("noPromos")}</p>
               ) : (
                 (promoCatalog.data ?? []).slice(0, 6).map((p) => (
-                  <div key={p.id} className="bg-muted/50 flex items-center gap-2 rounded-xl p-2">
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() =>
+                      setDetailView({
+                        title: p.name,
+                        lines: [p.shortDescription || p.benefitSummary || ""].filter(
+                          Boolean,
+                        ) as string[],
+                      })
+                    }
+                    className="bg-muted/50 hover:bg-muted flex w-full items-center gap-2 rounded-xl p-2 text-left"
+                  >
                     <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
                       <Tag className="size-3" />
                     </span>
-                    <span className="truncate text-xs font-bold">{p.name}</span>
-                  </div>
+                    <span className="min-w-0 flex-1 truncate text-xs font-bold">{p.name}</span>
+                    <Info className="text-muted-foreground/50 size-3.5 flex-none" />
+                  </button>
                 ))
               )}
             </div>
@@ -810,30 +847,44 @@ export function RegisterBoard({
                     // selected reward stays clickable so it can be deselected.
                     const ineligible = cart.length > 0 && elig != null && !elig.eligible;
                     const blocked = ineligible && !active;
+                    const rewardDetail = () => {
+                      const lines = [rewardCostText(rw)];
+                      if (ineligible) lines.push(reasonLabel(elig?.reason, t));
+                      setDetailView({ title: rw.name, lines });
+                    };
                     return (
-                      <button
-                        key={rw.rewardId}
-                        type="button"
-                        disabled={blocked}
-                        onClick={() => setInlineRewardId(active ? null : rw.rewardId)}
-                        className={`flex w-full items-center justify-between gap-2 rounded-2xl p-3.5 text-left ${
-                          active
-                            ? "border-primary bg-primary/5 border-2"
-                            : blocked
-                              ? "border-border cursor-not-allowed border opacity-45"
-                              : "border-border hover:border-primary/40 border"
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          <span className="block truncate text-sm font-bold">{rw.name}</span>
-                          {ineligible ? (
-                            <span className="text-muted-foreground/70 mt-0.5 block truncate text-xs font-semibold">
-                              {reasonLabel(elig?.reason, t)}
-                            </span>
-                          ) : null}
-                        </div>
-                        {active ? <Check className="text-primary size-5 flex-none" /> : null}
-                      </button>
+                      <div key={rw.rewardId} className="flex items-stretch gap-1">
+                        <button
+                          type="button"
+                          disabled={blocked}
+                          onClick={() => setInlineRewardId(active ? null : rw.rewardId)}
+                          className={`flex flex-1 items-center justify-between gap-2 rounded-2xl p-3.5 text-left ${
+                            active
+                              ? "border-primary bg-primary/5 border-2"
+                              : blocked
+                                ? "border-border cursor-not-allowed border opacity-45"
+                                : "border-border hover:border-primary/40 border"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <span className="block truncate text-sm font-bold">{rw.name}</span>
+                            {ineligible ? (
+                              <span className="text-muted-foreground/70 mt-0.5 block truncate text-xs font-semibold">
+                                {reasonLabel(elig?.reason, t)}
+                              </span>
+                            ) : null}
+                          </div>
+                          {active ? <Check className="text-primary size-5 flex-none" /> : null}
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={t("viewDetail")}
+                          onClick={rewardDetail}
+                          className="border-border text-muted-foreground hover:text-foreground grid w-10 flex-none place-items-center rounded-2xl border"
+                        >
+                          <Info className="size-4" />
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -973,6 +1024,28 @@ export function RegisterBoard({
         onOpenChange={setStorelessOpen}
         onConfirm={() => void submit()}
       />
+
+      {/* Promo / reward detail — what it is + the condition to meet. */}
+      <ResponsiveModal open={detailView !== null} onOpenChange={(o) => !o && setDetailView(null)}>
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-sm">
+          <div className="flex flex-col px-6 pt-2 pb-6">
+            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
+              {detailView?.title}
+            </ResponsiveModalTitle>
+            <div className="mt-3 space-y-2">
+              {(detailView?.lines ?? []).length > 0 ? (
+                detailView?.lines.map((l) => (
+                  <p key={l} className="text-foreground text-sm font-semibold">
+                    {l}
+                  </p>
+                ))
+              ) : (
+                <p className="text-muted-foreground text-sm">{t("noDetail")}</p>
+              )}
+            </div>
+          </div>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </div>
   );
 }

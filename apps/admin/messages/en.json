@@ -1376,6 +1376,8 @@
     "net": "Total",
     "willEarn": "Earns:",
     "earnPtsUnit": "pts",
+    "viewDetail": "View detail",
+    "noDetail": "No extra description.",
     "decrease": "Decrease",
     "increase": "Increase",
     "removeLine": "Remove",
