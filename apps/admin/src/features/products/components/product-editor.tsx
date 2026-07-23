@@ -585,6 +585,7 @@ export function ProductEditor({ id }: { id?: string }) {
                     <th className="px-3 py-2 text-left">{t("col.image")}</th>
                     <th className="px-3 py-2 text-left">{t("col.variant")}</th>
                     <th className="px-3 py-2 text-left">{t("col.vprice")}</th>
+                    <th className="px-3 py-2 text-left">{t("col.vpromo")}</th>
                     <th className="px-3 py-2 text-left">{t("col.sku")}</th>
                     <th className="px-3 py-2 text-left">{t("col.stock")}</th>
                   </tr>
@@ -645,6 +646,19 @@ export function ProductEditor({ id }: { id?: string }) {
                           }}
                           currency={draft.currency}
                           placeholder="0.00"
+                          className="h-9 w-28"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <CurrencyInput
+                          value={v.promoPrice ?? undefined}
+                          onValueChange={(val) => {
+                            const next = [...draft.variants];
+                            next[idx] = { ...v, promoPrice: val ?? null };
+                            set("variants", next);
+                          }}
+                          currency={draft.currency}
+                          placeholder="—"
                           className="h-9 w-28"
                         />
                       </td>

@@ -84,6 +84,8 @@ export interface DetailOption {
 export interface DetailVariant {
   id: string;
   priceCents: number;
+  /** Per-variant promo price (< priceCents) when set — the effective charge. */
+  promoPriceCents: number | null;
   isDefault: boolean;
   optionValueIds: string[];
   earn: EarnPreview;
