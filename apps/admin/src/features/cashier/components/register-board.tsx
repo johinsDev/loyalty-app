@@ -395,7 +395,7 @@ export function RegisterBoard({
       ) : null}
 
       {/* ── THREE COLUMNS — each scrolls independently, fills the height ── */}
-      <div className="flex flex-col gap-4 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[300px_minmax(0,1fr)_360px] lg:gap-4">
+      <div className="flex flex-col gap-4 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[360px_minmax(0,1fr)_360px] lg:gap-4">
         {/* LEFT — customer intelligence (this column scrolls on desktop) */}
         <div className="space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           {/* Ideas de upsell */}

@@ -1,6 +1,7 @@
 "use client";
 
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
+import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
 type Props = {
@@ -71,16 +72,19 @@ export function QrScanner({ caption, permissionError, onResult }: Props) {
 
   return (
     <div
-      className="relative my-5 flex h-64 items-center justify-center overflow-hidden rounded-3xl"
+      className="relative my-5 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-3xl"
       style={{ background: "#0a1626" }}
     >
-      <video
-        ref={videoRef}
-        muted
-        playsInline
-        className="absolute inset-0 size-full object-cover"
+      <video ref={videoRef} muted playsInline className="absolute inset-0 size-full object-cover" />
+      {/* Brand glow behind the frame. */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(120% 90% at 50% 40%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 60%)",
+        }}
       />
-      <div className="relative aspect-square w-1/2">
+      <div className="relative aspect-square w-[58%]">
         {[
           "top-0 left-0 rounded-tl-lg border-t-4 border-l-4",
           "top-0 right-0 rounded-tr-lg border-t-4 border-r-4",
@@ -89,9 +93,22 @@ export function QrScanner({ caption, permissionError, onResult }: Props) {
         ].map((c) => (
           <span key={c} className={`border-primary absolute size-8 ${c}`} />
         ))}
+        {/* Sweeping scan line. */}
+        <motion.div
+          aria-hidden
+          className="absolute inset-x-[8%] h-[3px] rounded-full"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, var(--primary), transparent)",
+            boxShadow: "0 0 12px 1px color-mix(in srgb, var(--primary) 60%, transparent)",
+          }}
+          initial={{ top: "10%" }}
+          animate={{ top: ["10%", "88%", "10%"] }}
+          transition={{ duration: 2.6, ease: "easeInOut", repeat: Infinity }}
+        />
       </div>
       {caption ? (
-        <div className="absolute inset-x-0 bottom-3.5 text-center text-xs font-semibold text-white/80">
+        <div className="absolute inset-x-0 bottom-4 text-center text-sm font-semibold text-white/80">
           {caption}
         </div>
       ) : null}
