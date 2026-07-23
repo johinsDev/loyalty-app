@@ -1359,6 +1359,8 @@
     "pickerHint": "Elegí la variante y agregá una nota si hace falta.",
     "pickerDefaultVariant": "Estándar",
     "pickerNoteLabel": "NOTA (OPCIONAL)",
+    "pickerContains": "Qué trae — cuéntaselo al cliente",
+    "pickerSize": "Tamaño",
     "pickerNotePlaceholder": "más hielo, sin maní…",
     "pickerAdd": "Agregar · {price}",
     "lineNotePlaceholder": "Nota de la línea…",

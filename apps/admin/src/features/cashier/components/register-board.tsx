@@ -53,6 +53,7 @@ type CartItem = {
   key: string;
   productId: string;
   variantId: string | null;
+  modifierOptionIds: string[];
   name: string;
   unitAmountCents: number;
   qty: number;
@@ -178,6 +179,7 @@ export function RegisterBoard({
         items: cart.map((i) => ({
           productId: i.productId,
           variantId: i.variantId ?? undefined,
+          modifierOptionIds: i.modifierOptionIds.length ? i.modifierOptionIds : undefined,
           qty: i.qty,
           unitAmountCents: i.unitAmountCents,
         })),
@@ -215,9 +217,10 @@ export function RegisterBoard({
         key: crypto.randomUUID(),
         productId: line.productId,
         variantId: line.variantId,
+        modifierOptionIds: line.modifierOptionIds,
         name: line.name,
         unitAmountCents: line.unitAmountCents,
-        qty: 1,
+        qty: line.qty,
         note: line.note,
       },
     ]);
@@ -257,6 +260,7 @@ export function RegisterBoard({
               items: cart.map((i) => ({
                 productId: i.productId,
                 variantId: i.variantId ?? undefined,
+                modifierOptionIds: i.modifierOptionIds.length ? i.modifierOptionIds : undefined,
                 qty: i.qty,
                 unitAmountCents: i.unitAmountCents,
                 note: i.note || undefined,
