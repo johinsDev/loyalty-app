@@ -122,6 +122,8 @@ describe("PurchasesService.purchaseDetail", () => {
           slug: "latte",
           variantLabel: "Mediano",
           modifierLabels: ["Extra shot"],
+          addonLabels: ["Perlas"],
+          removedLabels: ["Azúcar"],
           qty: 2,
           unitAmountCents: 500,
         },

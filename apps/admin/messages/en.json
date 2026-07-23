@@ -2611,6 +2611,7 @@
     "promoLine": "Promo: {name}",
     "rewardLine": "Reward: {name}",
     "tierLine": "Tier benefit",
+    "without": "no {name}",
     "total": "Total paid",
     "loyaltyImpact": "Loyalty impact",
     "stampsEarned": "Stamps earned",
