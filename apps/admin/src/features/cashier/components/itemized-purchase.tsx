@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import { useTRPC } from "@/lib/trpc/client";
 
+import { CATALOG_STALE_MS } from "../catalog-cache";
 import { useActiveStoreId } from "../use-active-store";
 
 import { ProductPicker, type PickedLine } from "./product-picker";
@@ -107,8 +108,13 @@ export function ItemizedPurchase({
   );
 
   const debouncedQuery = useDebounce(query.trim(), { wait: 250 });
+  // The catalog is shift-stable — cache it long so search stays instant on flaky
+  // wifi (the shift prefetch on register mount warms the base list).
   const menu = useQuery(
-    trpc.menu.list.queryOptions({ search: debouncedQuery || undefined, pageSize: 20 }),
+    trpc.menu.list.queryOptions(
+      { search: debouncedQuery || undefined, pageSize: 20 },
+      { staleTime: CATALOG_STALE_MS },
+    ),
   );
 
   const subtotal = useMemo(

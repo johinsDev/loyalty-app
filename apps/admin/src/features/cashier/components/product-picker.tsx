@@ -16,6 +16,8 @@ import { useMemo, useState } from "react";
 
 import { useTRPC } from "@/lib/trpc/client";
 
+import { CATALOG_STALE_MS } from "../catalog-cache";
+
 type ProductDetail = NonNullable<inferRouterOutputs<AppRouter>["menu"]["productBySlug"]>;
 type DetailVariant = ProductDetail["variants"][number];
 
@@ -55,7 +57,9 @@ export function ProductPicker({
 }) {
   const t = useTranslations("Cashier");
   const trpc = useTRPC();
-  const detail = useQuery(trpc.menu.productBySlug.queryOptions({ slug }));
+  const detail = useQuery(
+    trpc.menu.productBySlug.queryOptions({ slug }, { staleTime: CATALOG_STALE_MS }),
+  );
   const product = detail.data ?? null;
 
   const [variantId, setVariantId] = useState<string | null>(null);

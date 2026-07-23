@@ -19,11 +19,12 @@ import {
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useCallback, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { useTRPC } from "@/lib/trpc/client";
 
+import { CATALOG_STALE_MS } from "../catalog-cache";
 import { useActiveStoreId } from "../use-active-store";
 
 import { IdentifyPane, type IdentifiedCustomer } from "./identify-pane";
@@ -99,6 +100,14 @@ export function ScanView() {
   const t = useTranslations("Cashier");
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+
+  // Shift prefetch: warm the store catalog when the cashier enters the register
+  // so the first itemized search + variant picker are instant (long staleTime).
+  useEffect(() => {
+    void queryClient.prefetchQuery(
+      trpc.menu.list.queryOptions({ pageSize: 20 }, { staleTime: CATALOG_STALE_MS }),
+    );
+  }, [queryClient, trpc]);
 
   const [step, setStep] = useState<Step>("identify");
   const [selected, setSelected] = useState<CustomerHit | null>(null);
