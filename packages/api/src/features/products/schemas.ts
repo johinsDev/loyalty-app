@@ -34,6 +34,11 @@ export interface MenuCard {
   /** Plain-text snippet (stripped from the rich description) for the featured card. */
   description: string | null;
   priceCents: number;
+  /** Cheapest variant price when the product has variants — the real sellable
+   *  price the card should show (`basePriceCents` is a phantom for these). */
+  variantFromCents: number | null;
+  /** True when variants span more than one price, so the card prefixes "desde". */
+  priceFrom: boolean;
   /** Promotional price (< priceCents) when set; the card strikes through the
    *  regular price and charges this. */
   promoPriceCents: number | null;

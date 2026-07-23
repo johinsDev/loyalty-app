@@ -1352,6 +1352,7 @@
     "promoAddItems": "Add products to see which promos apply.",
     "promoEligible": "Eligible",
     "promoOnlyOne": "The best promo applies automatically. Only one per purchase.",
+    "priceFrom": "from {price}",
     "subtotal": "Subtotal",
     "net": "Total",
     "decrease": "Decrease",

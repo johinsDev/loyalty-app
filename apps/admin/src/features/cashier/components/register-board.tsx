@@ -579,7 +579,11 @@ export function RegisterBoard({
                       </span>
                     ) : null}
                     <span className="text-primary mt-auto pt-1 text-sm font-extrabold">
-                      {formatCop(p.promoPriceCents ?? p.priceCents)}
+                      {p.variantFromCents != null
+                        ? p.priceFrom
+                          ? t("priceFrom", { price: formatCop(p.variantFromCents) })
+                          : formatCop(p.variantFromCents)
+                        : formatCop(p.promoPriceCents ?? p.priceCents)}
                     </span>
                   </button>
                 ))}
