@@ -98,6 +98,9 @@ export function ItemizedPurchase({
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orderNote, setOrderNote] = useState("");
+  // Which line note inputs are revealed (kept collapsed until asked, so the
+  // ticket stays clean).
+  const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
   // The product tapped in search, pending variant/note selection in the picker.
   const [picker, setPicker] = useState<{ slug: string; name: string; priceCents: number } | null>(
     null,
@@ -220,6 +223,10 @@ export function ItemizedPurchase({
     setCart((c) => c.map((i) => (i.key === key ? { ...i, note } : i)));
   };
 
+  const openNote = (key: string) => setOpenNotes((s) => new Set(s).add(key));
+
+  const cartCount = cart.reduce((n, i) => n + i.qty, 0);
+
   // Human copy for one upsell nudge (add-item / spend-to-threshold / swap).
   const upsellText = (u: (typeof upsell)[number]): string => {
     switch (u.kind) {
@@ -334,57 +341,77 @@ export function ItemizedPurchase({
         <div className="mt-4 space-y-4 lg:mt-0 lg:sticky lg:top-4">
           {/* Cart */}
           {cart.length === 0 ? (
-            <p className="text-muted-foreground py-4 text-center text-sm font-semibold">
-              {t("cartEmpty")}
-            </p>
+            <div className="border-border rounded-2xl border border-dashed py-10 text-center">
+              <p className="text-muted-foreground text-sm font-semibold">{t("cartEmpty")}</p>
+            </div>
           ) : (
             <div className="space-y-2">
-              {cart.map((i) => (
-                <div key={i.key} className="border-border rounded-2xl border p-2.5">
-                  <div className="flex items-center gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-bold">{i.name}</div>
-                      <div className="text-muted-foreground text-xs font-semibold">
-                        {formatCop(i.unitAmountCents)}
+              <div className="text-muted-foreground px-1 text-[0.6875rem] font-extrabold tracking-wider">
+                {t("ticketHeading", { count: cartCount })}
+              </div>
+              {cart.map((i) => {
+                const noteShown = openNotes.has(i.key) || i.note.length > 0;
+                return (
+                  <div key={i.key} className="border-border rounded-2xl border p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1 truncate text-sm font-bold">{i.name}</div>
+                      <div className="flex-none text-sm font-extrabold">
+                        {formatCop(i.unitAmountCents * i.qty)}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground text-xs font-semibold">
+                        {i.qty} × {formatCop(i.unitAmountCents)}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => bump(i.key, -1)}
+                          className="border-border grid size-7 place-items-center rounded-lg border"
+                          aria-label={t("decrease")}
+                        >
+                          <Minus className="size-3.5" />
+                        </button>
+                        <span className="w-5 text-center text-sm font-bold">{i.qty}</span>
+                        <button
+                          type="button"
+                          onClick={() => bump(i.key, 1)}
+                          className="border-border grid size-7 place-items-center rounded-lg border"
+                          aria-label={t("increase")}
+                        >
+                          <Plus className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeLine(i.key)}
+                          className="text-muted-foreground hover:text-destructive grid size-7 place-items-center rounded-lg"
+                          aria-label={t("removeLine")}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    {/* Line note — collapsed until asked, so the ticket stays clean. */}
+                    {noteShown ? (
+                      <input
+                        value={i.note}
+                        onChange={(e) => setLineNote(i.key, e.target.value)}
+                        placeholder={t("lineNotePlaceholder")}
+                        className="border-border/60 bg-muted/40 placeholder:text-muted-foreground/60 mt-2.5 h-8 w-full rounded-lg border px-2.5 text-xs font-semibold outline-none"
+                      />
+                    ) : (
                       <button
                         type="button"
-                        onClick={() => bump(i.key, -1)}
-                        className="border-border grid size-7 place-items-center rounded-lg border"
-                        aria-label={t("decrease")}
-                      >
-                        <Minus className="size-3.5" />
-                      </button>
-                      <span className="w-5 text-center text-sm font-bold">{i.qty}</span>
-                      <button
-                        type="button"
-                        onClick={() => bump(i.key, 1)}
-                        className="border-border grid size-7 place-items-center rounded-lg border"
-                        aria-label={t("increase")}
+                        onClick={() => openNote(i.key)}
+                        className="text-muted-foreground hover:text-foreground mt-2 inline-flex items-center gap-1 text-xs font-bold"
                       >
                         <Plus className="size-3.5" />
+                        {t("addNote")}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => removeLine(i.key)}
-                        className="text-muted-foreground hover:text-destructive grid size-7 place-items-center rounded-lg"
-                        aria-label={t("removeLine")}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </div>
+                    )}
                   </div>
-                  {/* Per-line note — "más hielo", "sin maní", etc. */}
-                  <input
-                    value={i.note}
-                    onChange={(e) => setLineNote(i.key, e.target.value)}
-                    placeholder={t("lineNotePlaceholder")}
-                    className="border-border/60 bg-muted/40 placeholder:text-muted-foreground/60 mt-2 h-8 w-full rounded-lg border px-2.5 text-xs font-semibold outline-none"
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -574,7 +601,7 @@ export function ItemizedPurchase({
           ) : null}
 
           <Button
-            variant="gradient"
+            variant="default"
             size="lg"
             disabled={cart.length === 0 || recordPurchase.isPending}
             onClick={onRecord}

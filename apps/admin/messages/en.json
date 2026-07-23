@@ -1318,6 +1318,8 @@
     "pickerAdd": "Add · {price}",
     "lineNotePlaceholder": "Line note…",
     "orderNotePlaceholder": "Order note (takeout, table 4…)",
+    "ticketHeading": "Ticket · {count, plural, one {# item} other {# items}}",
+    "addNote": "Note",
     "upsellHeading": "Suggestions for the customer",
     "upsellAddItem": "Add the missing product to unlock {promo}",
     "upsellSpend": "Add {amount} more to the cart to unlock {promo}",
