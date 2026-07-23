@@ -34,6 +34,7 @@ import {
   type StampsConfigAdminView,
   type UpdateBrandingInput,
   type UpdateLocalizationInput,
+  type StackingPolicyInput,
   type UpdateLoyaltyConfigInput,
   type UpdateOnboardingInput,
   type UpdateSeoInput,
@@ -300,7 +301,18 @@ export class SettingsService {
       pointsCardTemplate: cfg.pointsCardTemplate,
       pointsRates,
       tierGraceUntil: cfg.tierGraceUntil,
+      stacking: cfg.stacking,
     };
+  }
+
+  /** Save the register discount-stacking policy (reward · promo · tier + cap). */
+  async updateStackingPolicy(orgId: string, input: StackingPolicyInput): Promise<void> {
+    await this.repo.upsertSettings(orgId, {
+      tierStacksWithPromo: input.tierStacksWithPromo,
+      rewardStacksWithPromo: input.rewardStacksWithPromo,
+      maxTotalDiscountPct: input.maxTotalDiscountPct,
+    });
+    await invalidateLoyaltyConfig(orgId);
   }
 
   /**

@@ -85,6 +85,8 @@ const conditionsInputSchema = z
     tierKey: tierKeySchema.nullish(),
     audienceCustomerIds: z.array(z.string().min(1)).nullish(),
     storeIds: z.array(z.string()).nullable().optional(),
+    /** Exclusive: doesn't stack with the tier benefit or a reward at checkout. */
+    exclusive: z.boolean().optional(),
     startsAt: z.coerce.date().nullish(),
     endsAt: z.coerce.date().nullish(),
     schedule: scheduleSchema.nullish(),
@@ -130,6 +132,7 @@ export class ConditionsStep extends WizardStep<PromoRow, ConditionsInput, PromoS
         input.audienceType === "specific" ? (input.audienceCustomerIds ?? null) : null,
       // Empty array = "every store"; normalize it to null so the predicate is simple.
       storeIds: input.storeIds && input.storeIds.length > 0 ? input.storeIds : null,
+      exclusive: input.exclusive ?? false,
       startsAt: input.startsAt ?? null,
       endsAt: input.endsAt ?? null,
       schedule: input.schedule ?? null,
