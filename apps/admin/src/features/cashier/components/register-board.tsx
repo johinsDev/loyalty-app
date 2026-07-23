@@ -1,15 +1,19 @@
 "use client";
 
 import type { AppRouter } from "@loyalty/api";
-import { Button, CurrencyInput } from "@loyalty/ui";
+import {
+  Button,
+  CurrencyInput,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalTitle,
+} from "@loyalty/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import { useDebounce } from "ahooks";
 import {
   Cake,
   Check,
-  ChevronDown,
-  ChevronRight,
   Gift,
   Lightbulb,
   Minus,
@@ -124,7 +128,7 @@ export function RegisterBoard({
   const [inlineRewardId, setInlineRewardId] = useState<string | null>(
     preselect?.rewardId ?? null,
   );
-  const [infoOpen, setInfoOpen] = useState(true);
+  const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [promoFilter, setPromoFilter] = useState<"customer" | "all">("customer");
   const [storelessOpen, setStorelessOpen] = useState(false);
 
@@ -321,18 +325,26 @@ export function RegisterBoard({
     recordPurchase.isPending || (mode === "total" ? priceCop === undefined : cart.length === 0);
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3 p-3 sm:p-4 lg:h-full lg:min-h-0">
       {/* ── IDENTITY BAR ─────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3 rounded-3xl bg-[#161b22] p-4 text-white">
-        <span className="from-primary to-primary/70 grid size-11 flex-none place-items-center rounded-2xl bg-gradient-to-br font-display text-sm font-semibold">
-          {(customerName[0] ?? "S").toUpperCase()}
-        </span>
-        <div className="min-w-0">
-          <div className="truncate text-sm font-extrabold">{customerName}</div>
-          <div className="truncate text-xs font-semibold text-white/50">
-            {register?.phoneMasked ?? ""}
+      <div className="flex flex-none flex-wrap items-center gap-3 rounded-3xl bg-[#161b22] p-4 text-white">
+        <button
+          type="button"
+          onClick={() => setInfoModalOpen(true)}
+          className="flex min-w-0 items-center gap-3 text-left"
+        >
+          <span className="from-primary to-primary/70 grid size-11 flex-none place-items-center rounded-2xl bg-gradient-to-br font-display text-sm font-semibold">
+            {(customerName[0] ?? "S").toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-extrabold">{customerName}</div>
+            <div className="truncate text-xs font-semibold text-white/50">
+              {register?.phoneMasked
+                ? `${register.phoneMasked} · ${t("tapForFicha")}`
+                : t("tapForFicha")}
+            </div>
           </div>
-        </div>
+        </button>
         {register?.tier ? (
           <div className="flex flex-col">
             <span className="bg-primary/20 text-primary-foreground inline-flex items-center gap-1 self-start rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white capitalize">
@@ -372,113 +384,16 @@ export function RegisterBoard({
       </div>
 
       {register?.banned ? (
-        <div className="border-destructive/40 bg-destructive/10 text-destructive flex items-center gap-2 rounded-2xl border p-3 text-sm font-bold">
+        <div className="border-destructive/40 bg-destructive/10 text-destructive flex flex-none items-center gap-2 rounded-2xl border p-3 text-sm font-bold">
           <X className="size-4 flex-none" />
           {t("customerBanned")}
         </div>
       ) : null}
 
-      {/* ── THREE COLUMNS ────────────────────────────────────────────────── */}
-      <div className="space-y-4 lg:grid lg:grid-cols-[300px_minmax(0,1fr)_360px] lg:items-start lg:gap-4 lg:space-y-0">
-        {/* LEFT — customer intelligence */}
-        <div className="space-y-4">
-          {/* Info del cliente (collapsible) */}
-          <div className="bg-card border-border overflow-hidden rounded-3xl border shadow-sm">
-            <button
-              type="button"
-              onClick={() => setInfoOpen((o) => !o)}
-              className="flex w-full items-center justify-between p-4"
-            >
-              <span className="font-display text-sm font-bold">{t("infoTitle")}</span>
-              {infoOpen ? (
-                <ChevronDown className="text-muted-foreground size-4" />
-              ) : (
-                <ChevronRight className="text-muted-foreground size-4" />
-              )}
-            </button>
-            {infoOpen && register ? (
-              <div className="px-4 pb-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <InfoTile
-                    label={t("detailBirthday")}
-                    value={
-                      register.birthday
-                        ? new Date(register.birthday).toLocaleDateString("es-CO", {
-                            day: "numeric",
-                            month: "short",
-                          })
-                        : "—"
-                    }
-                    sub={
-                      register.birthdayInDays != null
-                        ? t("birthdayInDays", { days: register.birthdayInDays })
-                        : undefined
-                    }
-                  />
-                  <InfoTile label={t("detailVisits")} value={String(register.visits)} />
-                  <InfoTile
-                    label={t("detailLastVisit")}
-                    value={
-                      register.lastVisitAt
-                        ? new Date(register.lastVisitAt).toLocaleDateString("es-CO", {
-                            day: "numeric",
-                            month: "short",
-                          })
-                        : t("detailNever")
-                    }
-                  />
-                  <InfoTile
-                    label={t("detailAvgTicket")}
-                    value={formatCop(register.avgTicketCents)}
-                  />
-                  {register.topProduct ? (
-                    <InfoTile label={t("detailTopProduct")} value={register.topProduct} full />
-                  ) : null}
-                </div>
-                {register.tier.benefits.length > 0 ? (
-                  <>
-                    <div className="border-border my-3 border-t" />
-                    <div className="text-primary mb-2 text-xs font-extrabold">
-                      {t("tierBenefitsTitle", { tier: register.tier.name })}
-                    </div>
-                    {register.tier.nextName ? (
-                      <>
-                        <div className="bg-muted h-1.5 overflow-hidden rounded-full">
-                          <div
-                            className="bg-primary h-full rounded-full"
-                            style={{ width: `${Math.round(register.tier.progress * 100)}%` }}
-                          />
-                        </div>
-                        <div className="text-muted-foreground mt-1 mb-2 text-[0.6875rem] font-bold">
-                          {t("ptsToNext", {
-                            pts: register.tier.remainingToNext,
-                            tier: register.tier.nextName,
-                          })}
-                        </div>
-                      </>
-                    ) : null}
-                    <div className="space-y-1.5">
-                      {register.tier.benefits.map((b) => (
-                        <div
-                          key={b}
-                          className="text-foreground flex items-center gap-2 text-xs font-semibold"
-                        >
-                          <Check className="text-primary size-3.5 flex-none" />
-                          {b}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : null}
-                {register.notes ? (
-                  <div className="bg-muted/40 mt-3 rounded-xl p-2.5 text-xs font-semibold italic">
-                    ✎ {register.notes}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-
+      {/* ── THREE COLUMNS — each scrolls independently, fills the height ── */}
+      <div className="flex flex-col gap-4 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[300px_minmax(0,1fr)_360px] lg:gap-4">
+        {/* LEFT — customer intelligence (this column scrolls on desktop) */}
+        <div className="space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           {/* Ideas de upsell */}
           {upsell.length > 0 ? (
             <div className="bg-card border-border rounded-3xl border p-4 shadow-sm">
@@ -558,8 +473,8 @@ export function RegisterBoard({
           ) : null}
         </div>
 
-        {/* MIDDLE — catalog */}
-        <div className="bg-card border-border flex flex-col rounded-3xl border p-4 shadow-sm">
+        {/* MIDDLE — catalog (products scroll internally) */}
+        <div className="bg-card border-border flex flex-col rounded-3xl border p-4 shadow-sm lg:min-h-0">
           <div className="flex items-center justify-between">
             <span className="font-display text-lg font-bold">{t("recordPurchaseTitle")}</span>
           </div>
@@ -601,7 +516,7 @@ export function RegisterBoard({
                   </Chip>
                 ))}
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2.5 xl:grid-cols-3">
+              <div className="scrollbar-hide mt-3 grid grid-cols-2 content-start gap-2.5 xl:grid-cols-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
                 {products.map((p) => (
                   <button
                     key={p.id}
@@ -648,9 +563,9 @@ export function RegisterBoard({
           )}
         </div>
 
-        {/* RIGHT — dark cart */}
-        <div className="space-y-4 lg:sticky lg:top-4">
-          <div className="flex max-h-[70vh] flex-col rounded-3xl bg-[#161b22] p-4 text-white">
+        {/* RIGHT — dark cart (fills the column; lines scroll internally) */}
+        <div className="flex flex-col gap-4 lg:min-h-0">
+          <div className="flex flex-col rounded-3xl bg-[#161b22] p-4 text-white lg:min-h-0 lg:flex-1">
             <div className="flex flex-none items-center justify-between">
               <span className="font-display text-base font-bold">{t("cartTitle")}</span>
               <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold">
@@ -763,12 +678,12 @@ export function RegisterBoard({
 
           {/* Listos para canjear */}
           {mode === "items" && rewards.length > 0 ? (
-            <div className="bg-card border-border rounded-3xl border p-4 shadow-sm">
+            <div className="bg-card border-border flex-none rounded-3xl border p-4 shadow-sm">
               <div className="text-primary mb-2 flex items-center gap-1.5 text-xs font-extrabold">
                 <Gift className="size-4" />
                 {t("readyToRedeem")}
               </div>
-              <div className="space-y-1.5">
+              <div className="scrollbar-hide max-h-44 space-y-1.5 overflow-y-auto">
                 {rewards.map((rw) => {
                   const active = rw.rewardId === inlineRewardId;
                   return (
@@ -799,6 +714,97 @@ export function RegisterBoard({
           ) : null}
         </div>
       </div>
+
+      {/* Info del cliente — the ficha, from the identity bar (declutters the
+          left column so upsell/promos/tips lead). */}
+      <ResponsiveModal open={infoModalOpen} onOpenChange={setInfoModalOpen}>
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
+          <div className="flex flex-col px-6 pt-2 pb-6">
+            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
+              {t("infoTitle")}
+            </ResponsiveModalTitle>
+            {register ? (
+              <>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <InfoTile
+                    label={t("detailBirthday")}
+                    value={
+                      register.birthday
+                        ? new Date(register.birthday).toLocaleDateString("es-CO", {
+                            day: "numeric",
+                            month: "short",
+                          })
+                        : "—"
+                    }
+                    sub={
+                      register.birthdayInDays != null
+                        ? t("birthdayInDays", { days: register.birthdayInDays })
+                        : undefined
+                    }
+                  />
+                  <InfoTile label={t("detailVisits")} value={String(register.visits)} />
+                  <InfoTile
+                    label={t("detailLastVisit")}
+                    value={
+                      register.lastVisitAt
+                        ? new Date(register.lastVisitAt).toLocaleDateString("es-CO", {
+                            day: "numeric",
+                            month: "short",
+                          })
+                        : t("detailNever")
+                    }
+                  />
+                  <InfoTile label={t("detailAvgTicket")} value={formatCop(register.avgTicketCents)} />
+                  {register.topProduct ? (
+                    <InfoTile label={t("detailTopProduct")} value={register.topProduct} full />
+                  ) : null}
+                </div>
+                {register.tier.benefits.length > 0 ? (
+                  <div className="mt-4">
+                    <div className="text-primary mb-2 text-xs font-extrabold">
+                      {t("tierBenefitsTitle", { tier: register.tier.name })}
+                    </div>
+                    {register.tier.nextName ? (
+                      <>
+                        <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+                          <div
+                            className="bg-primary h-full rounded-full"
+                            style={{ width: `${Math.round(register.tier.progress * 100)}%` }}
+                          />
+                        </div>
+                        <div className="text-muted-foreground mt-1 mb-2 text-[0.6875rem] font-bold">
+                          {t("ptsToNext", {
+                            pts: register.tier.remainingToNext,
+                            tier: register.tier.nextName,
+                          })}
+                        </div>
+                      </>
+                    ) : null}
+                    <div className="space-y-1.5">
+                      {register.tier.benefits.map((b) => (
+                        <div
+                          key={b}
+                          className="text-foreground flex items-center gap-2 text-sm font-semibold"
+                        >
+                          <Check className="text-primary size-4 flex-none" />
+                          {b}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {register.notes ? (
+                  <div className="bg-muted/40 mt-4 rounded-xl p-3 text-sm font-semibold italic">
+                    ✎ {register.notes}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-muted-foreground mt-4 text-sm">{t("searching")}</p>
+            )}
+          </div>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
       {picker ? (
         <ProductPicker
