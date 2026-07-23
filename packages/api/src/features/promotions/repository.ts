@@ -576,6 +576,27 @@ export class PromoRepository {
     return map;
   }
 
+  /** Every variant (id + base price) of each product, for the register upsell
+   *  engine to price a hypothetical variant swap. Keyed by productId. */
+  async variantPrices(
+    productIds: string[],
+  ): Promise<Record<string, { variantId: string; priceCents: number }[]>> {
+    const out: Record<string, { variantId: string; priceCents: number }[]> = {};
+    if (productIds.length === 0) return out;
+    const rows = await this.db
+      .select({
+        productId: productVariant.productId,
+        variantId: productVariant.id,
+        priceCents: productVariant.priceCents,
+      })
+      .from(productVariant)
+      .where(inArray(productVariant.productId, productIds));
+    for (const r of rows) {
+      (out[r.productId] ??= []).push({ variantId: r.variantId, priceCents: r.priceCents });
+    }
+    return out;
+  }
+
   /** price delta per modifier option (so the engine can discount modifiers). */
   async modifierOptionDeltas(ids: string[]): Promise<Map<string, number>> {
     const map = new Map<string, number>();

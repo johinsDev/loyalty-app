@@ -11,6 +11,8 @@ export {
 export { expandUnits, matchRule, unitsMatching } from "./match";
 export { isScheduleActiveAt, ORG_UTC_OFFSET_MINUTES, toOrgLocalParts } from "./schedule";
 export { evaluatePromo, pickBest } from "./evaluate";
+export { detectPromoUpsell } from "./upsell";
+export type { PromoUpsell, VariantCatalog, VariantOption } from "./upsell";
 export type {
   Cart,
   CartLine,

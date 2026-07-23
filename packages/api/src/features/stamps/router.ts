@@ -111,16 +111,14 @@ export const stampsRouter = router({
       }
 
       const lc = await loadLocaleContext(ctx.db, org, ctx.headers);
-      const { applicable, hints } = await new PromoService(
-        ctx.db,
-        promoRepo,
-      ).applicable(
-        org,
-        input.customerId,
-        { currency: input.currency ?? "COP", lines: input.items },
-        lc,
-        { exclusions, enriched },
-      );
+      const promoSvc = new PromoService(ctx.db, promoRepo);
+      const cart = { currency: input.currency ?? "COP", lines: input.items };
+      const [{ applicable, hints }, upsell] = await Promise.all([
+        promoSvc.applicable(org, input.customerId, cart, lc, { exclusions, enriched }),
+        // Actionable nudges for promos that don't yet apply (add-item, spend-to-
+        // threshold, variant-swap) — same enriched cart + reward exclusions.
+        promoSvc.upsell(org, input.customerId, cart, lc, { exclusions, enriched }),
+      ]);
 
       // Combine layers with the org stacking policy so the shown total equals
       // the charged total. Preview the cashier-chosen promo, else the best.
@@ -154,6 +152,7 @@ export const stampsRouter = router({
         subtotalCents,
         applicable,
         hints,
+        upsell,
         reward,
         net: {
           ...net,

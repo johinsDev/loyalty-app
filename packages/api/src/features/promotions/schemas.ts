@@ -223,6 +223,23 @@ export interface ApplicableResult {
   hints: ApplicableHint[];
 }
 
+/**
+ * A register upsell nudge for a promo that doesn't yet apply — one action the
+ * cashier can suggest to unlock it. See `engine/upsell.ts` for the detection.
+ */
+export type PromoUpsellHint =
+  | { kind: "add-item"; promo: PromoCard; missingGetSide: ItemRef[] }
+  | { kind: "spend-to-threshold"; promo: PromoCard; addCents: number }
+  | {
+      kind: "variant-swap";
+      promo: PromoCard;
+      lineIndex: number;
+      fromVariantId: string;
+      toVariantId: string;
+      extraCents: number;
+      discountCents: number;
+    };
+
 // ─── Analytics ───────────────────────────────────────────────────────────────
 export const promoAnalyticsInputSchema = z.object({ from: z.coerce.date().optional() });
 export type PromoAnalyticsInput = z.infer<typeof promoAnalyticsInputSchema>;

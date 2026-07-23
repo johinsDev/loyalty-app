@@ -58,6 +58,29 @@ export function pointsForPrice(priceCents: number, rate: EarnRate = CODE_RATE): 
 }
 
 /**
+ * Register upsell: the minimum extra spend (cents) that would earn enough more
+ * points to afford a reward — "spend $10.000 more and you unlock the free
+ * topping by points". Given the balance the customer will hold AFTER this
+ * ticket (`balanceAfter`) and the reward's `pointsCost`, invert the floor-based
+ * earn rate to the next whole `per` block that closes the gap.
+ *
+ * Returns `null` when already affordable, when the reward isn't point-priced,
+ * or when the rate can't earn points — i.e. there's no honest nudge. Pure.
+ */
+export function spendToEarnPoints(
+  balanceAfter: number,
+  pointsCost: number | null,
+  rate: EarnRate = CODE_RATE,
+): number | null {
+  if (pointsCost == null || pointsCost <= 0) return null;
+  const deficit = pointsCost - balanceAfter;
+  if (deficit <= 0) return null; // already there
+  if (rate.points <= 0 || rate.per <= 0) return null;
+  const blocks = Math.ceil(deficit / rate.points);
+  return blocks * rate.per * 100;
+}
+
+/**
  * Points business logic: earn on purchase, recompute the tier from the rolling
  * window, and fire tier transition / near-threshold notifications. Balance +
  * tier-points are derived from the ledger; the cached `points_account` lets us
