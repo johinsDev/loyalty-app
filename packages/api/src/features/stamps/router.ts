@@ -29,7 +29,7 @@ import { resolveAttribution } from "../_shared/attribution";
 import { resolveNet } from "../_shared/checkout-math";
 import { resolveActiveStoreId } from "../_shared/store-context";
 import { ORG_UTC_OFFSET_MINUTES } from "../promotions/engine";
-import { buildPointsService } from "../points";
+import { buildPointsService, pointsForPrice } from "../points";
 import { tierDiscountPct } from "../points/tier-calc";
 import { type Cart, type CartLine } from "../promotions/engine";
 import { PromoRepository, PromoService, type UnitExclusion } from "../promotions";
@@ -224,6 +224,17 @@ export const stampsRouter = router({
         }),
       );
 
+      // Earn preview: what the sale will grant (points on the net + a stamp when
+      // the ticket clears the minimum). A hint — recordPurchase is authoritative.
+      const previewCurrency = input.currency ?? "COP";
+      const pointsMult = chosen?.pointsMultiplier ?? 1;
+      const earnPoints = earnsPoints(loyalty.mode)
+        ? Math.round(pointsForPrice(net.netPriceCents, rateForCurrency(loyalty, previewCurrency)) * pointsMult)
+        : 0;
+      const minStamp = loyalty.stamps.minAmount?.[previewCurrency] ?? 0;
+      const earnStamps =
+        earnsStamps(loyalty.mode) && net.netPriceCents >= minStamp ? 1 : 0;
+
       return {
         subtotalCents,
         applicable,
@@ -231,6 +242,7 @@ export const stampsRouter = router({
         upsell,
         reward,
         rewardEligibility,
+        earn: { points: earnPoints, stamps: earnStamps },
         net: {
           ...net,
           tierDiscountPct: tierPct,
