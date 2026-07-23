@@ -897,11 +897,13 @@ export class PurchasesRepository {
 
     for (const [pid, list] of grouped) {
       const count = list.length;
-      const first = list[0];
-      const firstName = first?.name ?? "—";
-      const firstQty = first?.qty ?? 1;
-      const head = firstQty > 1 ? `${firstQty}× ${firstName}` : firstName;
-      const label = count > 1 ? `${head} +${count - 1}` : head;
+      // Name the first two lines (with qty), then "+N" for the rest.
+      const parts = list.map((it) =>
+        it.qty > 1 ? `${it.qty}× ${it.name ?? "—"}` : (it.name ?? "—"),
+      );
+      const shown = parts.slice(0, 2).join(", ");
+      const rest = parts.length - 2;
+      const label = rest > 0 ? `${shown} +${rest}` : shown;
       out.set(pid, { label, count });
     }
     return out;

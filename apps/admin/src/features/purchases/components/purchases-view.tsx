@@ -343,7 +343,9 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
           <span className="text-muted-foreground block text-right text-xs font-bold">{t("col.points")}</span>
         ),
         cell: ({ row }) => (
-          <div className="text-right text-sm font-semibold text-emerald-600">
+          <div
+            className={`text-right text-sm font-semibold ${row.original.voidedAt ? "text-muted-foreground line-through" : "text-emerald-600"}`}
+          >
             {row.original.pointsEarned > 0 ? `+${row.original.pointsEarned}` : "—"}
           </div>
         ),

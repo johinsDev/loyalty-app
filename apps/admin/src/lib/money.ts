@@ -1,5 +1,9 @@
 import type { useFormatter } from "next-intl";
 
+/** Currencies with no minor unit — pinned so SSR and client agree (Node's ICU
+ *  may not carry a currency's fraction digits, causing hydration mismatches). */
+const ZERO_DECIMAL = new Set(["COP", "CLP", "JPY", "KRW", "VND", "PYG"]);
+
 /** Format integer cents as a localized currency string (COP → 0 fraction
  *  digits, USD → 2). Mirrors the web `money` helper; admin had none. */
 export function money(
@@ -7,10 +11,13 @@ export function money(
   cents: number,
   currency = "COP",
 ): string {
+  const digits = ZERO_DECIMAL.has(currency) ? 0 : 2;
   return format.number(cents / 100, {
     style: "currency",
     currency,
     useGrouping: "always",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   });
 }
 
