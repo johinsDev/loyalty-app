@@ -61,6 +61,8 @@ export function rewardBenefitSummary(
       const scope = what ?? (es ? "productos seleccionados" : "selected items");
       return es ? `${pct(benefit.percent)} en ${scope}` : `${pct(benefit.percent)} off ${scope}`;
     }
+    case "freeAddon":
+      return es ? "Adición gratis" : "Free add-on";
     case "experience":
       return es ? "Experiencia" : "Experience";
     default:

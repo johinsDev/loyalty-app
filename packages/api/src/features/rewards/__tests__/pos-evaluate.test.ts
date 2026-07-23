@@ -82,4 +82,44 @@ describe("evaluateRewardForCart", () => {
     );
     expect(res).toEqual({ ok: false, reason: "reward-item-not-in-cart" });
   });
+
+  it("freeAddon waives the named add-on's delta, no exclusions", () => {
+    const c = cart(
+      line({
+        productId: "milk",
+        unitAmountCents: 20500,
+        addons: [
+          { id: "pearls", priceDeltaCents: 4000 },
+          { id: "cheese", priceDeltaCents: 3000 },
+        ],
+      }),
+    );
+    const res = evaluateRewardForCart(rw({ type: "freeAddon", addonId: "pearls" }), c);
+    expect(res).toEqual({ ok: true, discountCents: 4000, exclusions: [] });
+  });
+
+  it("freeAddon 'any' frees the CHEAPEST add-on present across lines", () => {
+    const c = cart(
+      line({ productId: "milk", unitAmountCents: 20500, addons: [{ id: "pearls", priceDeltaCents: 4000 }] }),
+      line({ productId: "tea", unitAmountCents: 18000, addons: [{ id: "jelly", priceDeltaCents: 2500 }] }),
+    );
+    const res = evaluateRewardForCart(rw({ type: "freeAddon", addonId: null }), c);
+    expect(res).toEqual({ ok: true, discountCents: 2500, exclusions: [] });
+  });
+
+  it("freeAddon with the add-on not on any line → reward-item-not-in-cart", () => {
+    const c = cart(
+      line({ productId: "milk", unitAmountCents: 20500, addons: [{ id: "jelly", priceDeltaCents: 2500 }] }),
+    );
+    const res = evaluateRewardForCart(rw({ type: "freeAddon", addonId: "pearls" }), c);
+    expect(res).toEqual({ ok: false, reason: "reward-item-not-in-cart" });
+  });
+
+  it("freeAddon with no add-ons anywhere → reward-item-not-in-cart", () => {
+    const res = evaluateRewardForCart(
+      rw({ type: "freeAddon", addonId: null }),
+      cart(line({ productId: "milk", unitAmountCents: 16500 })),
+    );
+    expect(res).toEqual({ ok: false, reason: "reward-item-not-in-cart" });
+  });
 });

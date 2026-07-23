@@ -1,10 +1,22 @@
 "use client";
 
 import type { RewardBenefitConfigInput, RewardType } from "@loyalty/api/features/rewards/schemas";
-import { Label, NumberInput } from "@loyalty/ui";
+import {
+  Label,
+  NumberInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@loyalty/ui";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
 import { RefsField } from "@/components/refs-field";
+import { useTRPC } from "@/lib/trpc/client";
+
+type FreeAddonConfig = Extract<RewardBenefitConfigInput, { type: "freeAddon" }>;
 
 const centsToUnits = (c: number | undefined): number | undefined =>
   c == null ? undefined : Math.round(c) / 100;
@@ -20,6 +32,8 @@ export function defaultConfigFor(type: RewardType): RewardBenefitConfigInput {
       return { type, refs: [], amountCents: 500000 };
     case "percentOff":
       return { type, refs: [], percent: 20 };
+    case "freeAddon":
+      return { type, addonId: null };
     case "experience":
       return { type };
     default:
@@ -97,6 +111,8 @@ export function RewardBenefitFields({
           </Field>
         </div>
       );
+    case "freeAddon":
+      return <FreeAddonField value={value} onChange={onChange} />;
     case "experience":
       return (
         <div className="border-primary/20 bg-primary/5 rounded-2xl border px-4 py-3">
@@ -107,6 +123,42 @@ export function RewardBenefitFields({
     default:
       return null;
   }
+}
+
+/** Pick which catalog add-on the reward waives — or "any add-on on the ticket". */
+function FreeAddonField({
+  value,
+  onChange,
+}: {
+  value: FreeAddonConfig;
+  onChange: (next: RewardBenefitConfigInput) => void;
+}) {
+  const t = useTranslations("Rewards.benefit");
+  const trpc = useTRPC();
+  const addons = useQuery(trpc.menu.addons.queryOptions({}));
+  const ANY = "__any__";
+  return (
+    <Field label={t("freeAddonPick")} hint={t("freeAddonHint")}>
+      <Select
+        value={value.addonId ?? ANY}
+        onValueChange={(v) =>
+          onChange({ type: "freeAddon", addonId: !v || v === ANY ? null : v })
+        }
+      >
+        <SelectTrigger size="lg" className="h-10 w-full text-sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ANY}>{t("freeAddonAny")}</SelectItem>
+          {(addons.data ?? []).map((a) => (
+            <SelectItem key={a.id} value={a.id}>
+              {a.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Field>
+  );
 }
 
 function Field({
