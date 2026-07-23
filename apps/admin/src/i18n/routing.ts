@@ -72,6 +72,10 @@ export const routing = defineRouting({
       es: "/[storeId]/productos/categorias",
       en: "/[storeId]/products/categories",
     },
+    "/[storeId]/products/add-ons": {
+      es: "/[storeId]/productos/adiciones",
+      en: "/[storeId]/products/add-ons",
+    },
     "/[storeId]/products/[id]": { es: "/[storeId]/productos/[id]", en: "/[storeId]/products/[id]" },
     "/[storeId]/stores": { es: "/[storeId]/tiendas", en: "/[storeId]/stores" },
     "/[storeId]/stores/new": { es: "/[storeId]/tiendas/nueva", en: "/[storeId]/stores/new" },
