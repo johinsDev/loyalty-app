@@ -223,6 +223,13 @@ export interface ApplicableResult {
   hints: ApplicableHint[];
 }
 
+/** A promo in the cashier catalog: the display card + store scope + exclusivity
+ *  (for a "toda la tienda vs específica" badge). */
+export interface StaffPromoCard extends PromoCard {
+  storeIds: string[] | null;
+  exclusive: boolean;
+}
+
 /**
  * A register upsell nudge for a promo that doesn't yet apply — one action the
  * cashier can suggest to unlock it. See `engine/upsell.ts` for the detection.

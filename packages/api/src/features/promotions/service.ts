@@ -28,6 +28,7 @@ import type {
   PromoStats,
   PromoUpsellHint,
   PublicListInput,
+  StaffPromoCard,
 } from "./schemas";
 import type { ListResult } from "../_shared/list";
 import { promoTemplate } from "./templates";
@@ -300,6 +301,18 @@ export class PromoService {
       (a, b) => b.discountCents - a.discountCents || b.pointsMultiplier - a.pointsMultiplier,
     );
     return { applicable, hints };
+  }
+
+  /** Staff catalog: every published promo (cart-independent) with its card plus
+   *  `storeIds` + `exclusive` — so the cashier can browse active promos and see
+   *  whether each is org-wide or store-specific. */
+  async staffCatalog(orgId: string, lc: LocaleContext): Promise<StaffPromoCard[]> {
+    const promos = await this.repo.publishedPromos(orgId);
+    return promos.map((p) => ({
+      ...this.repo.cardOf(p, lc),
+      storeIds: p.storeIds,
+      exclusive: p.exclusive,
+    }));
   }
 
   /**

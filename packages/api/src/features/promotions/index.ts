@@ -41,6 +41,7 @@ export {
   type PromoStats,
   type PromoType,
   type PromoUpsellHint,
+  type StaffPromoCard,
   type PromoWeekdayPoint,
   type PublicListInput,
   type RuleInput,
