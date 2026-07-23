@@ -1,5 +1,6 @@
 import type { db as Db } from "@loyalty/db";
 import {
+  addon,
   category,
   customer,
   modifierGroup,
@@ -605,6 +606,18 @@ export class PromoRepository {
       .select({ id: modifierOption.id, delta: modifierOption.priceDeltaCents })
       .from(modifierOption)
       .where(inArray(modifierOption.id, ids));
+    for (const r of rows) map.set(r.id, r.delta);
+    return map;
+  }
+
+  /** addonId → its catalog price delta (for reward add-on waiving at POS). */
+  async addonDeltas(ids: string[]): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (ids.length === 0) return map;
+    const rows = await this.db
+      .select({ id: addon.id, delta: addon.priceDeltaCents })
+      .from(addon)
+      .where(inArray(addon.id, ids));
     for (const r of rows) map.set(r.id, r.delta);
     return map;
   }

@@ -45,6 +45,19 @@ export function evaluateRewardForCart(
     return { ok: true, discountCents: cheapest.amountCents, exclusions: toExclusions([cheapest]) };
   }
 
+  if (benefit.type === "freeAddon") {
+    // The cashier adds the add-on to a line; this waives its price. `addonId`
+    // null = any add-on present. Cheapest matching add-on goes free. Add-ons are
+    // not promo-matchable units, so no exclusions are needed (no double-count).
+    const deltas = cart.lines.flatMap((l) =>
+      (l.addons ?? [])
+        .filter((a) => benefit.addonId == null || a.id === benefit.addonId)
+        .map((a) => a.priceDeltaCents),
+    );
+    if (deltas.length === 0) return { ok: false, reason: "reward-item-not-in-cart" };
+    return { ok: true, discountCents: Math.min(...deltas), exclusions: [] };
+  }
+
   const rule = compileRewardRule(benefit);
   if (!rule) return { ok: true, discountCents: 0, exclusions: [] };
   const scoped = benefit.refs.length > 0;

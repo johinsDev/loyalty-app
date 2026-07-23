@@ -10,8 +10,11 @@ export interface CartLine {
   productId: string;
   variantId?: string | null;
   modifierOptionIds?: string[];
+  addonIds?: string[];
   categoryIds?: string[];
   modifierOptions?: { id: string; priceDeltaCents: number }[];
+  /** Catalog add-ons on this line + their deltas (stitched for reward waiving). */
+  addons?: { id: string; priceDeltaCents: number }[];
   qty: number;
   unitAmountCents: number;
 }

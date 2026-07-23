@@ -584,12 +584,14 @@
       "freeProduct": "Producto gratis",
       "amountOff": "Descuento en pesos",
       "percentOff": "% de descuento",
+      "freeAddon": "Adición gratis",
       "experience": "Experiencia"
     },
     "typeHints": {
       "freeProduct": "Una bebida, topping o agrandado de cortesía",
       "amountOff": "$5.000 de descuento directo",
       "percentOff": "10% en una categoría, producto o toda la compra",
+      "freeAddon": "Una adición de cortesía (perlas, topping…); el cajero la aplica en caja",
       "experience": "Un beneficio sin valor monetario (sáltate la fila, empaque premium…)"
     },
     "step": {
@@ -604,6 +606,9 @@
       "freeProductItems": "Producto gratis",
       "freeProductHint": "Elige al menos un producto o categoría",
       "pickAtLeastOne": "Elige al menos un producto",
+      "freeAddonPick": "Adición",
+      "freeAddonHint": "El cajero la aplica sobre un producto en caja",
+      "freeAddonAny": "Cualquier adición del ticket",
       "amount": "Monto ($)",
       "appliesTo": "Aplica a",
       "appliesToHint": "Vacío = toda la compra",

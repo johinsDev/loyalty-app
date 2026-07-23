@@ -265,6 +265,9 @@ export type RewardBenefitConfig =
   | { type: "freeProduct"; refs: PromoItemRef[] }
   | { type: "amountOff"; amountCents: number; refs: PromoItemRef[] }
   | { type: "percentOff"; percent: number; refs: PromoItemRef[]; maxDiscountCents?: number }
+  // Waives a catalog add-on on a cart line (cashier adds it, this zeroes its
+  // price). `addonId` null = any add-on present on the ticket.
+  | { type: "freeAddon"; addonId: string | null }
   | { type: "experience" };
 
 export const reward = sqliteTable(

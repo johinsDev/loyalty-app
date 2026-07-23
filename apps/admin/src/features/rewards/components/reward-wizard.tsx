@@ -53,7 +53,7 @@ import { CostStepFields, type CostForm, type TierKey } from "./cost-step";
 const STEPS = ["essence", "benefit", "cost", "design", "broadcast", "review"] as const;
 type Step = (typeof STEPS)[number];
 
-const TYPES: RewardType[] = ["freeProduct", "amountOff", "percentOff", "experience"];
+const TYPES: RewardType[] = ["freeProduct", "amountOff", "percentOff", "freeAddon", "experience"];
 const REWARD_EMOJIS = ["🎁", "🧋", "🍮", "⬆️", "✨", "⚡", "🎂", "⭐"];
 
 type Form = {

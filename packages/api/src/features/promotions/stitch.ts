@@ -8,13 +8,18 @@ import type { PromoRepository } from "./repository";
  * enriched cart (no drift).
  */
 export async function enrichCart(
-  repo: Pick<PromoRepository, "productCategories" | "modifierOptionDeltas">,
+  repo: Pick<
+    PromoRepository,
+    "productCategories" | "modifierOptionDeltas" | "addonDeltas"
+  >,
   cart: Cart,
 ): Promise<Cart> {
   const modifierIds = [...new Set(cart.lines.flatMap((l) => l.modifierOptionIds ?? []))];
-  const [cats, deltas] = await Promise.all([
+  const addonIds = [...new Set(cart.lines.flatMap((l) => l.addonIds ?? []))];
+  const [cats, deltas, addonDeltas] = await Promise.all([
     repo.productCategories(cart.lines.map((l) => l.productId)),
     repo.modifierOptionDeltas(modifierIds),
+    repo.addonDeltas(addonIds),
   ]);
   return {
     currency: cart.currency,
@@ -24,6 +29,10 @@ export async function enrichCart(
       modifierOptions: (l.modifierOptionIds ?? []).map((id) => ({
         id,
         priceDeltaCents: deltas.get(id) ?? 0,
+      })),
+      addons: (l.addonIds ?? []).map((id) => ({
+        id,
+        priceDeltaCents: addonDeltas.get(id) ?? 0,
       })),
     })),
   };

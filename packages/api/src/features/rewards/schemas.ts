@@ -10,6 +10,7 @@ export const rewardTypeSchema = z.enum([
   "freeProduct",
   "amountOff",
   "percentOff",
+  "freeAddon",
   "experience",
 ]);
 export type RewardType = z.infer<typeof rewardTypeSchema>;
@@ -29,6 +30,8 @@ export const rewardBenefitConfigSchema = z.discriminatedUnion("type", [
     refs: z.array(itemRefSchema), // [] = order-wide
     maxDiscountCents: z.number().int().min(1).optional(),
   }),
+  // addonId null = any add-on present on the ticket.
+  z.object({ type: z.literal("freeAddon"), addonId: z.string().nullable() }),
   z.object({ type: z.literal("experience") }),
 ]);
 export type RewardBenefitConfigInput = z.infer<typeof rewardBenefitConfigSchema>;
