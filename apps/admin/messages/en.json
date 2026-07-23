@@ -1706,6 +1706,9 @@
       "single": "One",
       "multi": "Many",
       "required": "Required",
+      "singleHint": "The customer picks only ONE of these add-ons (e.g. size).",
+      "multiHint": "The customer can pick SEVERAL of these add-ons (e.g. toppings).",
+      "requiredHint": "must pick at least one",
       "addGroup": "Add group",
       "emptyCatalog": "No add-ons in the catalog yet. Create some in"
     },
