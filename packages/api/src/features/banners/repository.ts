@@ -23,6 +23,7 @@ import type {
   BannersListInput,
   BannerStatPoint,
   ListInput,
+  StaffBannerItem,
 } from "./schemas";
 
 /** Localized text for a banner: per-field override from the translation row,
@@ -149,6 +150,32 @@ export class BannersRepository {
       .orderBy(asc(banner.sortOrder), asc(banner.id));
     const trByBanner = await this.#translations(rows.map((r) => r.id), ctx);
     return rows.map((r) => toCard(r, trByBanner.get(r.id), ctx));
+  }
+
+  /** Cashier catalog: every published banner with its store scope + display
+   *  state (active/scheduled/expired) so the cashier can confirm what's live. */
+  async staffCatalog(
+    orgId: string,
+    ctx: LocaleContext,
+    now = new Date(),
+  ): Promise<StaffBannerItem[]> {
+    const rows = await this.db
+      .select()
+      .from(banner)
+      .where(and(eq(banner.organizationId, orgId), eq(banner.status, "published")))
+      .orderBy(asc(banner.sortOrder), asc(banner.id));
+    const trByBanner = await this.#translations(rows.map((r) => r.id), ctx);
+    return rows.map((r) => {
+      const card = toCard(r, trByBanner.get(r.id), ctx);
+      return {
+        id: r.id,
+        name: card.name,
+        shortDescription: card.shortDescription,
+        mainImageUrl: r.mainImageUrl,
+        storeIds: r.storeIds,
+        displayState: displayState(r, now),
+      };
+    });
   }
 
   async bannerBySlug(

@@ -64,6 +64,11 @@ export function MenuView() {
   );
   const items = menu.data?.items ?? [];
 
+  // Active banners — so the cashier can confirm what's live and where.
+  const banners = useQuery(
+    trpc.banners.staffCatalog.queryOptions(undefined, { staleTime: CATALOG_STALE_MS }),
+  );
+
   return (
     <div className="mx-auto w-full max-w-2xl px-5 py-5 lg:max-w-4xl">
       <h1 className="font-display text-2xl font-semibold tracking-tight">{t("menuTitle")}</h1>
@@ -121,6 +126,37 @@ export function MenuView() {
           ))}
         </div>
       )}
+
+      {(banners.data?.length ?? 0) > 0 ? (
+        <div className="mt-8">
+          <div className="text-muted-foreground/70 mb-2.5 text-xs font-extrabold tracking-wider">
+            {t("bannersHeading")}
+          </div>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {banners.data?.map((b, i) => (
+              <div
+                key={b.id}
+                style={fade(i)}
+                className="border-border bg-card flex items-center gap-3 rounded-2xl border p-3 shadow-sm"
+              >
+                <Thumb url={b.mainImageUrl} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-bold">{b.name}</div>
+                  {b.shortDescription ? (
+                    <div className="text-muted-foreground/70 truncate text-xs font-semibold">
+                      {b.shortDescription}
+                    </div>
+                  ) : null}
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <StateBadge state={b.displayState} t={t} />
+                    <ScopeBadge specific={(b.storeIds?.length ?? 0) > 0} t={t} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <ResponsiveModal
         open={p !== ""}
@@ -310,6 +346,44 @@ function EarnBadge({
     <span className="bg-primary/10 text-primary flex-none rounded-full px-2 py-1 text-[0.6875rem] font-extrabold">
       {label}
     </span>
+  );
+}
+
+function ScopeBadge({
+  specific,
+  t,
+}: {
+  specific: boolean;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  return (
+    <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold">
+      {specific ? t("scopeStoreSpecific") : t("scopeAllStores")}
+    </span>
+  );
+}
+
+function StateBadge({
+  state,
+  t,
+}: {
+  state: "draft" | "scheduled" | "active" | "expired";
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const cls =
+    state === "active"
+      ? "bg-primary/10 text-primary"
+      : state === "scheduled"
+        ? "bg-amber-500/15 text-amber-600"
+        : "bg-muted text-muted-foreground/70";
+  const label =
+    state === "active"
+      ? t("bannerActive")
+      : state === "scheduled"
+        ? t("bannerScheduled")
+        : t("bannerExpired");
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${cls}`}>{label}</span>
   );
 }
 
