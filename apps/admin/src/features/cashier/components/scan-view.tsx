@@ -193,7 +193,22 @@ export function ScanView() {
 
   // A resolved reward (scan or code) routes into the itemized register with the
   // reward preselected — redemption is folded into the sale, not standalone.
-  const openRegisterWithReward = (resolved: ResolveClaim) => {
+  // Scanned before identifying (from the identify pane), we adopt the customer
+  // from the claim + load their wallet; the rich card fills name/phone from
+  // registerContext.
+  const openRegisterWithReward = async (resolved: ResolveClaim) => {
+    if (!selected || !wallet) {
+      try {
+        const view = await queryClient.fetchQuery(
+          trpc.stamps.walletForCustomer.queryOptions({ customerId: resolved.customerId }),
+        );
+        setSelected({ id: resolved.customerId, name: null, phone: "" });
+        setWallet(view ?? null);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : t("walletError"));
+        return;
+      }
+    }
     setPreselectReward({
       rewardId: resolved.reward.id,
       currency: resolved.currency,
@@ -257,7 +272,7 @@ export function ScanView() {
           pendingId: pendingClaim.pendingId,
           code,
         });
-        openRegisterWithReward(resolved);
+        await openRegisterWithReward(resolved);
         return;
       }
       await confirmStreakClaim.mutateAsync({
@@ -340,7 +355,7 @@ export function ScanView() {
           // Resolve only (no redemption) → open the register with the reward
           // preselected; the sale's recordPurchase does the deduction.
           const resolved = await resolveClaim.mutateAsync({ token });
-          openRegisterWithReward(resolved);
+          await openRegisterWithReward(resolved);
         }
       } catch (err) {
         if (err instanceof Error && err.message === "ALREADY_CLAIMED") {
@@ -376,7 +391,10 @@ export function ScanView() {
       className={`mx-auto w-full px-5 py-5 ${wide ? "max-w-2xl lg:max-w-6xl" : "max-w-2xl lg:max-w-4xl"}`}
     >
       {step === "identify" && (
-        <IdentifyPane onSelect={(hit) => void selectCustomer(hit)} />
+        <IdentifyPane
+          onSelect={(hit) => void selectCustomer(hit)}
+          onScan={() => setStep("scan")}
+        />
       )}
 
       {step === "found" && selected && wallet && (
@@ -388,10 +406,13 @@ export function ScanView() {
               </span>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-lg font-extrabold">
-                  {customerName(selected)}
+                  {selected.name?.trim() ||
+                    registerCtx.data?.name?.trim() ||
+                    registerCtx.data?.phoneMasked ||
+                    t("unknownCustomer")}
                 </div>
                 <div className="text-muted-foreground text-sm font-semibold">
-                  {registerCtx.data?.phoneMasked ?? selected.phone}
+                  {registerCtx.data?.phoneMasked || selected.phone || ""}
                   {registerCtx.data?.emailMasked ? ` · ${registerCtx.data.emailMasked}` : ""}
                 </div>
               </div>

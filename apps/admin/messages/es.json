@@ -1102,6 +1102,8 @@
     "quickRegisterHint": "No encontramos ese teléfono. Registralo rápido y le mandamos un PIN por WhatsApp para confirmar.",
     "quickRegisterName": "Nombre (opcional)",
     "quickRegisterSend": "Enviar PIN por WhatsApp",
+    "orLabel": "O",
+    "scanCustomerQr": "Escanear código QR del cliente",
     "pinSent": "PIN enviado por WhatsApp.",
     "pinRequestError": "No pudimos enviar el PIN. Intentá de nuevo.",
     "phoneInUse": "Ese teléfono ya está registrado.",

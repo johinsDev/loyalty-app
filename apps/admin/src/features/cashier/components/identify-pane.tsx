@@ -8,7 +8,7 @@ import {
 } from "@loyalty/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useDebounce } from "ahooks";
-import { ArrowLeft, Check, KeyRound, User, UserPlus } from "lucide-react";
+import { ArrowLeft, Check, KeyRound, QrCode, User, UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -27,7 +27,14 @@ export type IdentifiedCustomer = { id: string; name: string | null; phone: strin
  * customer reads back before the account is created. Resolves to
  * `onSelect(customer)` either way.
  */
-export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) => void }) {
+export function IdentifyPane({
+  onSelect,
+  onScan,
+}: {
+  onSelect: (c: IdentifiedCustomer) => void;
+  /** Jump to the QR scanner — resolves a reward QR straight into the register. */
+  onScan: () => void;
+}) {
   const t = useTranslations("Cashier");
   const trpc = useTRPC();
   const fade = useFadeUp();
@@ -209,6 +216,23 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
           </Button>
         </div>
       ) : null}
+
+      {/* Alternative entry: scan the customer's reward QR to jump straight in. */}
+      <div className="mt-5 flex items-center gap-3">
+        <span className="bg-border h-px flex-1" />
+        <span className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
+          {t("orLabel")}
+        </span>
+        <span className="bg-border h-px flex-1" />
+      </div>
+      <button
+        type="button"
+        onClick={onScan}
+        className="border-border bg-card text-foreground hover:bg-muted mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-bold"
+      >
+        <QrCode className="size-4" />
+        {t("scanCustomerQr")}
+      </button>
     </div>
   );
 }
