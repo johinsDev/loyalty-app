@@ -221,11 +221,34 @@ export function RecipeEditor({
                       <Checkbox
                         checked={line.visibleToCustomer}
                         onCheckedChange={(ch) =>
-                          setLines(idx, v.ingredients.map((l, i) => (i === li ? { ...l, visibleToCustomer: ch === true } : l)))
+                          setLines(
+                            idx,
+                            v.ingredients.map((l, i) =>
+                              i === li
+                                ? {
+                                    ...l,
+                                    visibleToCustomer: ch === true,
+                                    // Only a visible ingredient can be "sin X".
+                                    removable: ch === true ? l.removable : false,
+                                  }
+                                : l,
+                            ),
+                          )
                         }
                       />
                       {t("recipe.visible")}
                     </label>
+                    {line.visibleToCustomer ? (
+                      <label className="flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap">
+                        <Checkbox
+                          checked={line.removable}
+                          onCheckedChange={(ch) =>
+                            setLines(idx, v.ingredients.map((l, i) => (i === li ? { ...l, removable: ch === true } : l)))
+                          }
+                        />
+                        {t("recipe.removable")}
+                      </label>
+                    ) : null}
                     <button
                       type="button"
                       aria-label={t("delete")}

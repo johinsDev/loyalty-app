@@ -1651,6 +1651,7 @@
       "cost": "Cost",
       "margin": "Margin",
       "visible": "Visible",
+      "removable": "Removable",
       "addIngredient": "Add ingredient",
       "name": "Name",
       "unit": "Unit",
