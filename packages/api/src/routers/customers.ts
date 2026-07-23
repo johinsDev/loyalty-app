@@ -45,6 +45,18 @@ async function requireOrg(): Promise<string> {
 const repo = (db: typeof Db) => new CustomersRepository(db);
 const readSvc = (db: typeof Db) => new CustomersService(repo(db));
 
+/** Days until the customer's next birthday, but only within the coming week
+ *  (0 = today) — otherwise null. Drives the register's "🎂" nudge. */
+function daysUntilBirthday(birthday: Date | null): number | null {
+  if (!birthday) return null;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let next = new Date(now.getFullYear(), birthday.getMonth(), birthday.getDate());
+  if (next < today) next = new Date(now.getFullYear() + 1, birthday.getMonth(), birthday.getDate());
+  const days = Math.round((next.getTime() - today.getTime()) / 86_400_000);
+  return days <= 7 ? days : null;
+}
+
 interface ActorCtx {
   db: typeof Db;
   session: { user: { id: string } };
@@ -95,6 +107,10 @@ export const customersRouter = router({
         name: raw.name,
         phoneMasked: maskPhone(raw.phone),
         emailMasked: maskEmail(raw.email),
+        birthday: raw.birthday,
+        birthdayInDays: daysUntilBirthday(raw.birthday),
+        memberSince: raw.memberSince,
+        notes: raw.notes,
         tierKey: raw.tierKey,
         points: raw.points,
         visits: raw.visits,

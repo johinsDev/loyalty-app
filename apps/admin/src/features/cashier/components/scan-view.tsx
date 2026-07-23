@@ -7,6 +7,8 @@ import type { inferRouterOutputs } from "@trpc/server";
 import {
   ArrowLeft,
   Ban,
+  Cake,
+  CalendarDays,
   Check,
   Flame,
   Gift,
@@ -14,6 +16,7 @@ import {
   QrCode,
   ShoppingBag,
   Sparkles,
+  StickyNote,
   Store,
   User,
   X,
@@ -407,6 +410,29 @@ export function ScanView() {
               </div>
             ) : null}
 
+            {/* Birthday nudge — the personal touch: greet / offer something. */}
+            {registerCtx.data?.birthdayInDays != null ? (
+              <div className="border-primary/30 bg-primary/10 text-primary mt-4 flex items-center gap-2 rounded-2xl border p-3 text-sm font-bold">
+                <Cake className="size-4 flex-none" />
+                {registerCtx.data.birthdayInDays === 0
+                  ? t("birthdayToday")
+                  : t("birthdaySoon", { days: registerCtx.data.birthdayInDays })}
+              </div>
+            ) : null}
+
+            {/* Staff note (allergies / preferences) — serve them personally. */}
+            {registerCtx.data?.notes ? (
+              <div className="border-border bg-muted/40 mt-4 rounded-2xl border p-3">
+                <div className="text-muted-foreground/70 flex items-center gap-1 text-[0.6875rem] font-extrabold tracking-wider">
+                  <StickyNote className="size-3.5" />
+                  {t("detailNotes")}
+                </div>
+                <p className="text-foreground mt-0.5 text-sm font-semibold">
+                  {registerCtx.data.notes}
+                </p>
+              </div>
+            ) : null}
+
             {/* CRM context — helps the cashier serve personally (decision #8). */}
             {registerCtx.data ? (
               <div className="mt-4 grid grid-cols-2 gap-2">
@@ -427,6 +453,24 @@ export function ScanView() {
                       : t("detailNever")
                   }
                 />
+                <Stat
+                  label={t("detailMemberSince")}
+                  value={new Date(registerCtx.data.memberSince).toLocaleDateString("es-CO", {
+                    month: "short",
+                    year: "numeric",
+                  })}
+                  icon={<CalendarDays className="size-3.5" />}
+                />
+                {registerCtx.data.birthday ? (
+                  <Stat
+                    label={t("detailBirthday")}
+                    value={new Date(registerCtx.data.birthday).toLocaleDateString("es-CO", {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                    icon={<Cake className="size-3.5" />}
+                  />
+                ) : null}
                 {registerCtx.data.topProduct ? (
                   <Stat
                     label={t("detailTopProduct")}
