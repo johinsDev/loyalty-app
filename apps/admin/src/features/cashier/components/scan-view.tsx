@@ -27,6 +27,7 @@ import { useActiveStoreId } from "../use-active-store";
 
 import { ItemizedPurchase, type PreselectReward } from "./itemized-purchase";
 import { QrScanner } from "./qr-scanner";
+import { StorelessConfirm } from "./storeless-confirm";
 
 type CustomerHit = {
   id: string;
@@ -87,6 +88,8 @@ export function ScanView() {
   // No-scanner code path: the pending claim + the 6-digit code the cashier types.
   const [pendingClaim, setPendingClaim] = useState<PendingClaim | null>(null);
   const [codeInput, setCodeInput] = useState("");
+  // "Facturar sin tienda" confirm for the total-price path.
+  const [storelessOpen, setStorelessOpen] = useState(false);
 
   const debouncedQuery = useDebounce(query.trim(), { wait: 250 });
   const search = useQuery(
@@ -255,8 +258,18 @@ export function ScanView() {
     }
   };
 
-  const onRecordPurchase = async () => {
+  const onRecordPurchase = () => {
     if (!selected || priceCop === undefined) return;
+    if (!activeStoreId) {
+      setStorelessOpen(true);
+      return;
+    }
+    void submitPurchase();
+  };
+
+  const submitPurchase = async () => {
+    if (!selected || priceCop === undefined) return;
+    setStorelessOpen(false);
     try {
       const view = await recordPurchase.mutateAsync({
         customerId: selected.id,
@@ -311,8 +324,14 @@ export function ScanView() {
   const customerName = (hit: CustomerHit | null) =>
     hit?.name?.trim() || hit?.phone || t("unknownCustomer");
 
+  // In itemized mode the register becomes a split-pane on tablet/desktop, so it
+  // needs a wider canvas; the linear steps stay narrow and centered.
+  const wide = step === "found" && purchaseMode === "items";
+
   return (
-    <div className="mx-auto w-full max-w-2xl px-5 py-5 lg:max-w-4xl">
+    <div
+      className={`mx-auto w-full px-5 py-5 ${wide ? "max-w-2xl lg:max-w-6xl" : "max-w-2xl lg:max-w-4xl"}`}
+    >
       {step === "identify" && (
         <div className="flex flex-col gap-5">
           <div className="bg-card border-border rounded-3xl border p-6 shadow-sm">
@@ -517,7 +536,7 @@ export function ScanView() {
                   variant="gradient"
                   size="lg"
                   disabled={priceCop === undefined || recordPurchase.isPending}
-                  onClick={() => void onRecordPurchase()}
+                  onClick={onRecordPurchase}
                   className="mt-4 h-10 w-full gap-2 rounded-2xl text-base font-extrabold"
                 >
                   <Check className="size-5" />
@@ -697,6 +716,12 @@ export function ScanView() {
           </Button>
         </div>
       )}
+
+      <StorelessConfirm
+        open={storelessOpen}
+        onOpenChange={setStorelessOpen}
+        onConfirm={() => void submitPurchase()}
+      />
     </div>
   );
 }
