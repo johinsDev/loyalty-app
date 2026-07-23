@@ -281,7 +281,13 @@ export function RecipeEditor({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-2">
               <Label className="text-xs">{t("recipe.name")}</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} className="h-10" autoFocus />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t("recipe.namePlaceholder")}
+                className="h-10"
+                autoFocus
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-xs">{t("recipe.unit")}</Label>

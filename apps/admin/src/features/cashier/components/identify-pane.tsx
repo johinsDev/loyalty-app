@@ -11,7 +11,7 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Check, ChevronRight, KeyRound, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { useFadeUp } from "@/lib/animate";
@@ -73,6 +73,15 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
   );
   const results = search.data ?? [];
   const notFound = searched && valid && !search.isFetching && results.length === 0;
+
+  // A single match goes straight to the register — no extra tap.
+  useEffect(() => {
+    if (searched && valid && !search.isFetching && results.length === 1) {
+      const hit = results[0]!;
+      onSelect({ id: hit.id, name: hit.name, phone: hit.phone });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searched, valid, search.isFetching, results]);
 
   const requestPin = useMutation(trpc.customers.requestRegisterPin.mutationOptions());
   const confirmPin = useMutation(trpc.customers.confirmRegisterPin.mutationOptions());

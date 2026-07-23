@@ -238,6 +238,7 @@ export function AddonsView() {
                   <Input
                     value={editing.name}
                     onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                    placeholder={t("addon.namePlaceholder")}
                     className="h-10"
                     autoFocus
                   />
@@ -247,6 +248,7 @@ export function AddonsView() {
                   <Input
                     value={editing.description}
                     onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                    placeholder={t("addon.descriptionPlaceholder")}
                     className="h-10"
                   />
                 </div>

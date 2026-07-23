@@ -211,20 +211,24 @@ export function draftToUpsert(
     options,
     variants,
     modifierGroups: passthrough.modifierGroups,
-    addonGroups: draft.addonGroups.map((g, i) => ({
-      id: g.id,
-      name: g.name.trim(),
-      selectionType: g.selectionType,
-      minSelect: g.required ? 1 : 0,
-      maxSelect: null,
-      required: g.required,
-      sortOrder: i,
-      items: g.addonIds.map((addonId, j) => ({
-        id: `${g.id}::${addonId}`,
-        addonId,
-        sortOrder: j,
+    // Only persist complete groups (named + at least one add-on) — an in-progress
+    // empty group must not fail the whole save.
+    addonGroups: draft.addonGroups
+      .filter((g) => g.name.trim().length > 0 && g.addonIds.length > 0)
+      .map((g, i) => ({
+        id: g.id,
+        name: g.name.trim(),
+        selectionType: g.selectionType,
+        minSelect: g.required ? 1 : 0,
+        maxSelect: null,
+        required: g.required,
+        sortOrder: i,
+        items: g.addonIds.map((addonId, j) => ({
+          id: `${g.id}::${addonId}`,
+          addonId,
+          sortOrder: j,
+        })),
       })),
-    })),
     // Product photos from the media UI (only uploaded ones have a url) + the
     // preserved variant-scoped images.
     images: [

@@ -397,11 +397,11 @@ export function RegisterBoard({
         {register?.tier.benefits[0] ? (
           <span
             title={t("tierBenefitChipTitle", { tier: register.tier.name })}
-            className="hidden items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-[0.6875rem] font-bold text-white/80 sm:inline-flex"
+            className="hidden items-center gap-1.5 rounded-xl border border-amber-300/40 bg-amber-300/15 px-3 py-1.5 text-[0.6875rem] font-bold text-amber-100 sm:inline-flex"
           >
-            <Sparkles className="text-primary size-3 flex-none" />
+            <Sparkles className="size-3 flex-none text-amber-300" />
             {t("tierBenefitChipLabel", { tier: register.tier.name })}
-            <span className="text-white/50">·</span>
+            <span className="text-amber-200/60">·</span>
             {register.tier.benefits[0]}
           </span>
         ) : null}
