@@ -18,7 +18,9 @@ import {
   TableHeader,
   TableRow,
 } from "@loyalty/ui";
+import type { AppRouter } from "@loyalty/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { inferRouterOutputs } from "@trpc/server";
 import { FolderTree, Package, Pencil, Plus, PlusCircle, Search, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -58,7 +60,9 @@ interface Row {
  * wizard; "edit categories" jumps to the category manager; delete confirms via
  * an AlertDialog then offers undo. Design-first / hardcoded (../data).
  */
-export function ProductsView() {
+type MenuAdminList = inferRouterOutputs<AppRouter>["menu"]["adminList"];
+
+export function ProductsView({ initialData }: { initialData?: MenuAdminList }) {
   const t = useTranslations("Products");
   const tCommon = useTranslations("Common");
   const router = useRouter();
@@ -75,12 +79,16 @@ export function ProductsView() {
   const [toDelete, setToDelete] = useState<Row | null>(null);
 
   const listQuery = useQuery(
-    trpc.menu.adminList.queryOptions({
-      perPage: 100,
-      sort: "updated",
-      dir: "desc",
-      storeId: storeId ?? undefined,
-    }),
+    trpc.menu.adminList.queryOptions(
+      {
+        perPage: 100,
+        sort: "updated",
+        dir: "desc",
+        storeId: storeId ?? undefined,
+      },
+      // Server-prefetched first paint (RSC) — input is static, so it always seeds.
+      initialData ? { initialData } : {},
+    ),
   );
   const categoriesQuery = useQuery(trpc.menu.categories.queryOptions());
   const remove = useMutation(trpc.menu.remove.mutationOptions());
