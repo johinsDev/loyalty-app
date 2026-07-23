@@ -198,6 +198,7 @@ export function RegisterBoard({
   const upsell = preview.data?.upsell ?? [];
   const rewardPreview = preview.data?.reward ?? null;
   const net = preview.data?.net ?? null;
+  const earn = preview.data?.earn ?? null;
   // Per-reward line eligibility (only meaningful once the cart has items).
   const eligByReward = useMemo(
     () => new Map((preview.data?.rewardEligibility ?? []).map((e) => [e.rewardId, e])),
@@ -759,6 +760,22 @@ export function RegisterBoard({
                     : formatCop(total)}
                 </span>
               </div>
+              {/* What the socio will earn on this sale. */}
+              {mode === "items" && earn && (earn.points > 0 || earn.stamps > 0) ? (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs font-bold">
+                  <span className="text-white/50">{t("willEarn")}</span>
+                  {earn.stamps > 0 ? (
+                    <span className="rounded-full bg-amber-300/15 px-2 py-0.5 text-amber-200">
+                      +{earn.stamps} {t("stampMany")}
+                    </span>
+                  ) : null}
+                  {earn.points > 0 ? (
+                    <span className="bg-primary/20 rounded-full px-2 py-0.5 text-white">
+                      +{earn.points} {t("earnPtsUnit")}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               <Button
                 size="lg"
                 disabled={recordDisabled}

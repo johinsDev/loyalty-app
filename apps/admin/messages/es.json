@@ -1374,6 +1374,8 @@
     "priceFrom": "desde {price}",
     "subtotal": "Subtotal",
     "net": "Total",
+    "willEarn": "Ganará:",
+    "earnPtsUnit": "pts",
     "decrease": "Quitar",
     "increase": "Agregar",
     "removeLine": "Eliminar",
