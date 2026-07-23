@@ -223,6 +223,27 @@ export class ProductsRepository {
       catSlugs.set(c.productId, arr);
     }
 
+    // Per-product variant price range. A product with variants is always sold as
+    // one, so `basePriceCents` is a phantom for those — the card shows the real
+    // sellable price (the cheapest variant, "from" when they differ).
+    const variantRows = await this.db
+      .select({
+        productId: productVariant.productId,
+        priceCents: productVariant.priceCents,
+      })
+      .from(productVariant)
+      .where(inArray(productVariant.productId, productIds));
+    const variantAgg = new Map<string, { min: number; max: number }>();
+    for (const v of variantRows) {
+      const cur = variantAgg.get(v.productId);
+      if (!cur) {
+        variantAgg.set(v.productId, { min: v.priceCents, max: v.priceCents });
+      } else {
+        if (v.priceCents < cur.min) cur.min = v.priceCents;
+        if (v.priceCents > cur.max) cur.max = v.priceCents;
+      }
+    }
+
     return rows.map((p) => {
       const tr = trByProduct.get(p.id);
       const name = tr?.name ?? p.name;
@@ -231,12 +252,17 @@ export class ProductsRepository {
         ? [{ currency: ctx.currency, amountCents: priceByProduct.get(p.id)! }]
         : [];
       const price = pickPrice(p.basePriceCents, p.currency, priceRow, ctx);
+      const variants = variantAgg.get(p.id);
       return {
         id: p.id,
         slug: p.slug,
         name,
         description: snippet(description),
         priceCents: price.priceCents,
+        // Cheapest variant price + whether variants differ, so the card shows the
+        // real sellable price ("desde $X") instead of the phantom base price.
+        variantFromCents: variants ? variants.min : null,
+        priceFrom: variants ? variants.min !== variants.max : false,
         // Promo only applies in the product's own currency (no FX for it in v1).
         promoPriceCents:
           price.currency === p.currency ? p.promoPriceCents : null,
