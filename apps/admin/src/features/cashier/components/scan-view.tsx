@@ -160,13 +160,32 @@ export function ScanView() {
   const customerName = (hit: CustomerHit | null) =>
     hit?.name?.trim() || hit?.phone || t("unknownCustomer");
 
-  // Identify (two-pane) and the register board need the wide canvas; the linear
-  // success/scan steps stay narrow and centered.
-  const wide = step === "identify" || step === "found";
+  // The register board is full-bleed + full-height (fills the main); the linear
+  // identify / success / scan steps stay centered.
+  if (step === "found" && selected && wallet) {
+    return (
+      <RegisterBoard
+        customerId={selected.id}
+        customerName={customerName(selected)}
+        register={registerCtx.data}
+        wallet={wallet}
+        availableRewards={available.data ?? []}
+        preselect={preselectReward ?? undefined}
+        onSuccess={(view) => {
+          setWallet(view);
+          setPreselectReward(null);
+          setStep("purchase-success");
+        }}
+        onRewardPending={() => setStep("scan")}
+        onCancel={reset}
+        onScan={() => setStep("scan")}
+      />
+    );
+  }
 
   return (
     <div
-      className={`mx-auto w-full px-5 py-5 ${wide ? "max-w-2xl lg:max-w-6xl" : "max-w-2xl lg:max-w-4xl"}`}
+      className={`mx-auto w-full px-5 py-5 ${step === "identify" ? "max-w-2xl lg:max-w-6xl" : "max-w-2xl lg:max-w-4xl"}`}
     >
       {/* Identify — identify pane + live recent-movements panel (T4 Caja). */}
       {step === "identify" && (
@@ -179,25 +198,6 @@ export function ScanView() {
             <RecentMovements />
           </div>
         </div>
-      )}
-
-      {step === "found" && selected && wallet && (
-        <RegisterBoard
-          customerId={selected.id}
-          customerName={customerName(selected)}
-          register={registerCtx.data}
-          wallet={wallet}
-          availableRewards={available.data ?? []}
-          preselect={preselectReward ?? undefined}
-          onSuccess={(view) => {
-            setWallet(view);
-            setPreselectReward(null);
-            setStep("purchase-success");
-          }}
-          onRewardPending={() => setStep("scan")}
-          onCancel={reset}
-          onScan={() => setStep("scan")}
-        />
       )}
 
       {step === "purchase-success" && selected && wallet && (
