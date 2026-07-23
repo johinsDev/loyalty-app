@@ -91,7 +91,7 @@ export function RecipeEditor({
     }
     setLines(idx, [
       ...variants[idx]!.ingredients,
-      { ingredientId: first.id, quantity: 0, visibleToCustomer: false, sortOrder: variants[idx]!.ingredients.length },
+      { ingredientId: first.id, quantity: 0, visibleToCustomer: false, removable: false, sortOrder: variants[idx]!.ingredients.length },
     ]);
   };
 

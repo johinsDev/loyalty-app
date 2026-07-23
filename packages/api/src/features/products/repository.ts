@@ -1,5 +1,7 @@
 import type { db as Db } from "@loyalty/db";
 import {
+  addonGroup,
+  addonGroupItem,
   category,
   categoryTranslation,
   modifierGroup,
@@ -302,6 +304,15 @@ export class ProductsRepository {
           orderBy: asc(modifierGroup.sortOrder),
           with: { options: { orderBy: asc(modifierOption.sortOrder) } },
         },
+        addonGroups: {
+          orderBy: asc(addonGroup.sortOrder),
+          with: {
+            items: {
+              orderBy: asc(addonGroupItem.sortOrder),
+              with: { addon: true },
+            },
+          },
+        },
         categories: { with: { category: true } },
       },
     });
@@ -411,11 +422,33 @@ export class ProductsRepository {
           priceDeltaCents: amountFor(mo.priceDeltaCents, optionPriceById.get(mo.id)),
         })),
       })),
+      addonGroups: p.addonGroups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        selectionType: g.selectionType as "single" | "multi",
+        minSelect: g.minSelect,
+        maxSelect: g.maxSelect,
+        required: g.required,
+        items: g.items.map((it) => ({
+          addonId: it.addonId,
+          name: it.addon.name,
+          priceDeltaCents: it.addon.priceDeltaCents,
+        })),
+      })),
       ingredients: [
         ...new Set(
           p.variants.flatMap((v) => v.ingredients.map((vi) => vi.ingredient.name)),
         ),
       ],
+      // Deduped visible + removable ingredients → the register "sin X" toggles.
+      removableIngredients: [
+        ...new Map(
+          p.variants
+            .flatMap((v) => v.ingredients)
+            .filter((vi) => vi.removable)
+            .map((vi) => [vi.ingredientId, vi.ingredient.name] as const),
+        ).entries(),
+      ].map(([ingredientId, name]) => ({ ingredientId, name })),
       categorySlugs: p.categories.map((pc) => pc.category.slug),
       seo: {
         title: p.seoTitle,

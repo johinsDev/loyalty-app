@@ -1,5 +1,7 @@
 import type { db as Db } from "@loyalty/db";
 import {
+  addonGroup,
+  addonGroupItem,
   category,
   modifierGroup,
   modifierOption,
@@ -102,6 +104,15 @@ export class ProductsAdminRepository {
           orderBy: asc(modifierGroup.sortOrder),
           with: { options: { orderBy: asc(modifierOption.sortOrder) } },
         },
+        addonGroups: {
+          orderBy: asc(addonGroup.sortOrder),
+          with: {
+            items: {
+              orderBy: asc(addonGroupItem.sortOrder),
+              with: { addon: true },
+            },
+          },
+        },
         categories: true,
       },
     });
@@ -142,6 +153,7 @@ export class ProductsAdminRepository {
           unit: vi.ingredient.unit,
           quantity: vi.quantity,
           visibleToCustomer: vi.visibleToCustomer,
+          removable: vi.removable,
           costPerUnitCents: vi.ingredient.costPerUnitCents,
           sortOrder: vi.sortOrder,
         }));
@@ -178,6 +190,22 @@ export class ProductsAdminRepository {
           priceDeltaCents: mo.priceDeltaCents,
           pointsDelta: mo.pointsDelta,
           sortOrder: mo.sortOrder,
+        })),
+      })),
+      addonGroups: p.addonGroups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        selectionType: g.selectionType,
+        minSelect: g.minSelect,
+        maxSelect: g.maxSelect,
+        required: g.required,
+        sortOrder: g.sortOrder,
+        items: g.items.map((it) => ({
+          id: it.id,
+          addonId: it.addonId,
+          name: it.addon.name,
+          priceDeltaCents: it.addon.priceDeltaCents,
+          sortOrder: it.sortOrder,
         })),
       })),
       images: p.images.map((img) => ({
@@ -322,6 +350,7 @@ export class ProductsAdminRepository {
               ingredientId: ing.ingredientId,
               quantity: ing.quantity,
               visibleToCustomer: ing.visibleToCustomer,
+              removable: ing.removable,
               sortOrder: ing.sortOrder,
             })),
           );
@@ -360,6 +389,40 @@ export class ProductsAdminRepository {
             priceDeltaCents: mo.priceDeltaCents,
             pointsDelta: mo.pointsDelta ?? null,
             sortOrder: mo.sortOrder,
+          })),
+        );
+      }
+
+      // --- add-on groups + their catalog items ---
+      await this.#syncChildren(
+        tx,
+        addonGroup,
+        addonGroup.id,
+        addonGroup.productId,
+        "productId",
+        input.id,
+        input.addonGroups.map((g) => ({
+          id: g.id,
+          name: g.name,
+          selectionType: g.selectionType,
+          minSelect: g.minSelect,
+          maxSelect: g.maxSelect ?? null,
+          required: g.required,
+          sortOrder: g.sortOrder,
+        })),
+      );
+      for (const g of input.addonGroups) {
+        await this.#syncChildren(
+          tx,
+          addonGroupItem,
+          addonGroupItem.id,
+          addonGroupItem.groupId,
+          "groupId",
+          g.id,
+          g.items.map((it) => ({
+            id: it.id,
+            addonId: it.addonId,
+            sortOrder: it.sortOrder,
           })),
         );
       }
