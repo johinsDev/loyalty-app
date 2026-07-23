@@ -210,7 +210,7 @@ function ProductDetailBody({ slug, onClose }: { slug: string; onClose: () => voi
       {/* A product with variants is always sold as one, so show the real variant
           price ("desde $X"); the product-level promo only applies to simple ones. */}
       {(() => {
-        const variantPrices = product.variants.map((v) => v.priceCents);
+        const variantPrices = product.variants.map((v) => v.promoPriceCents ?? v.priceCents);
         const minVariant = variantPrices.length > 0 ? Math.min(...variantPrices) : null;
         const variantRange = minVariant != null && Math.max(...variantPrices) !== minVariant;
         return (
@@ -280,7 +280,18 @@ function ProductDetailBody({ slug, onClose }: { slug: string; onClose: () => voi
                 <span className="truncate text-sm font-semibold">
                   {variantLabel(v) || t("pickerDefaultVariant")}
                 </span>
-                <span className="text-sm font-bold">{formatCop(v.priceCents)}</span>
+                <span className="text-sm font-bold">
+                  {v.promoPriceCents != null ? (
+                    <>
+                      <span className="text-primary">{formatCop(v.promoPriceCents)}</span>{" "}
+                      <span className="text-muted-foreground/60 font-semibold line-through">
+                        {formatCop(v.priceCents)}
+                      </span>
+                    </>
+                  ) : (
+                    formatCop(v.priceCents)
+                  )}
+                </span>
               </div>
             ))}
           </div>

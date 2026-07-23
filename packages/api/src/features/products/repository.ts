@@ -232,17 +232,20 @@ export class ProductsRepository {
       .select({
         productId: productVariant.productId,
         priceCents: productVariant.priceCents,
+        promoPriceCents: productVariant.promoPriceCents,
       })
       .from(productVariant)
       .where(inArray(productVariant.productId, productIds));
     const variantAgg = new Map<string, { min: number; max: number }>();
     for (const v of variantRows) {
+      // The "from" reflects the effective charge (variant promo when set).
+      const eff = v.promoPriceCents ?? v.priceCents;
       const cur = variantAgg.get(v.productId);
       if (!cur) {
-        variantAgg.set(v.productId, { min: v.priceCents, max: v.priceCents });
+        variantAgg.set(v.productId, { min: eff, max: eff });
       } else {
-        if (v.priceCents < cur.min) cur.min = v.priceCents;
-        if (v.priceCents > cur.max) cur.max = v.priceCents;
+        if (eff < cur.min) cur.min = eff;
+        if (eff > cur.max) cur.max = eff;
       }
     }
 
@@ -404,6 +407,8 @@ export class ProductsRepository {
       variants: p.variants.map((v) => ({
         id: v.id,
         priceCents: amountFor(v.priceCents, variantPriceById.get(v.id)),
+        // Per-variant promo (default-currency only in v1; no FX for it yet).
+        promoPriceCents: detailCurrency === p.currency ? v.promoPriceCents : null,
         isDefault: v.isDefault,
         optionValueIds: v.values.map((vv) => vv.optionValueId),
         earn: earnFor(v.priceCents, loyalty, ctx.defaultCurrency),

@@ -393,6 +393,13 @@
       "when": 1784835263985,
       "tag": "0055_overjoyed_amphibian",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "6",
+      "when": 1784846217818,
+      "tag": "0056_futuristic_vulcan",
+      "breakpoints": true
     }
   ]
 }

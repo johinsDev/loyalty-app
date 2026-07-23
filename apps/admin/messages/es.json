@@ -1508,6 +1508,7 @@
       "status": "Estado",
       "variant": "Variante",
       "vprice": "Precio",
+      "vpromo": "Promo",
       "sku": "SKU",
       "stock": "Stock",
       "image": "Imagen"

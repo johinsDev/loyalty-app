@@ -102,7 +102,9 @@ export function ProductPicker({
     variants.find((v) => v.isDefault) ??
     variants[0] ??
     null;
-  const basePrice = selectedVariant?.priceCents ?? fallbackPriceCents;
+  // A per-variant promo price is the effective charge when set.
+  const effective = (v: DetailVariant): number => v.promoPriceCents ?? v.priceCents;
+  const basePrice = selectedVariant ? effective(selectedVariant) : fallbackPriceCents;
 
   const groups = product?.addonGroups ?? [];
   const removable = product?.removableIngredients ?? [];
@@ -182,7 +184,7 @@ export function ProductPicker({
                 <div className="grid grid-cols-3 gap-2">
                   {variants.map((v) => {
                     const active = v.id === selectedVariant?.id;
-                    const delta = v.priceCents - basePriceRef(variants);
+                    const delta = effective(v) - basePriceRef(variants);
                     return (
                       <button
                         key={v.id}
@@ -299,8 +301,8 @@ export function ProductPicker({
   );
 }
 
-/** The default variant's price — the baseline the size deltas display against. */
+/** The default variant's effective price — the baseline size deltas show against. */
 function basePriceRef(variants: DetailVariant[]): number {
   const def = variants.find((v) => v.isDefault) ?? variants[0];
-  return def?.priceCents ?? 0;
+  return def ? (def.promoPriceCents ?? def.priceCents) : 0;
 }

@@ -38,6 +38,7 @@ const variantInput = z.object({
   id: z.string().min(1),
   sku: z.string().max(80).nullish(),
   priceCents: z.number().int().min(0),
+  promoPriceCents: z.number().int().min(0).nullish(),
   isDefault: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
   // The option-value combo this variant represents (client-side value ids that
@@ -242,6 +243,7 @@ export interface ProductAdminDetail {
     id: string;
     sku: string | null;
     priceCents: number;
+    promoPriceCents: number | null;
     isDefault: boolean;
     sortOrder: number;
     optionValueIds: string[];

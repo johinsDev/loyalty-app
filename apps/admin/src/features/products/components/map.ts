@@ -44,6 +44,7 @@ export function detailToDraft(d: AdminDetail): {
       id: v.id,
       combo,
       price: v.priceCents / 100,
+      promoPrice: v.promoPriceCents == null ? null : v.promoPriceCents / 100,
       sku: v.sku ?? "",
       stock: null as number | null,
       image: null as string | null,
@@ -167,6 +168,8 @@ export function draftToUpsert(
       id: variantId(optionValueIds),
       sku: v.sku.trim() || null,
       priceCents: Math.round(v.price * 100),
+      promoPriceCents:
+        v.promoPrice != null && v.promoPrice > 0 ? Math.round(v.promoPrice * 100) : null,
       isDefault: i === 0,
       sortOrder: i,
       optionValueIds,

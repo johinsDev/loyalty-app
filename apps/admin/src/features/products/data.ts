@@ -68,6 +68,8 @@ export type Variant = {
   id: string;
   combo: string[]; // one value per option, in option order
   price: number;
+  /** Optional per-variant promo price (< price); null = none. */
+  promoPrice: number | null;
   sku: string;
   stock: number | null; // null = infinite
   image: string | null; // media id, or null = use the main image
@@ -193,6 +195,7 @@ export function buildVariants(
         id: `v_${key}`,
         combo,
         price: defaultPrice,
+        promoPrice: null,
         sku: "",
         stock: null,
         image: null,

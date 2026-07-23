@@ -144,6 +144,9 @@ export const productVariant = sqliteTable("product_variant", {
     .references(() => product.id, { onDelete: "cascade" }),
   sku: text("sku"),
   priceCents: integer("price_cents").notNull(),
+  // Optional per-variant promotional price (< priceCents). A variant product is
+  // always sold as one variant, so the promo lives here, not on the product.
+  promoPriceCents: integer("promo_price_cents"),
   isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
 });
