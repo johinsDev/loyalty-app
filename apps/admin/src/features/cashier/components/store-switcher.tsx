@@ -49,8 +49,8 @@ export function StoreSwitcher() {
   return (
     <Select value={active ?? undefined} onValueChange={(v) => v && setActiveStoreId(v)}>
       <SelectTrigger size="sm" className="h-9 gap-1.5 rounded-xl text-sm">
-        <StoreIcon className="size-4" />
-        <SelectValue />
+        <StoreIcon className="size-4 flex-none" />
+        <SelectValue>{(v) => stores.find((s) => s.id === (v as string))?.name ?? ""}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         {stores.map((s) => (
