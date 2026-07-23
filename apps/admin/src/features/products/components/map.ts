@@ -211,10 +211,10 @@ export function draftToUpsert(
     options,
     variants,
     modifierGroups: passthrough.modifierGroups,
-    // Only persist complete groups (named + at least one add-on) — an in-progress
-    // empty group must not fail the whole save.
+    // Persist groups with at least one add-on (name optional); an in-progress
+    // group with no add-ons is dropped so it can't fail the save.
     addonGroups: draft.addonGroups
-      .filter((g) => g.name.trim().length > 0 && g.addonIds.length > 0)
+      .filter((g) => g.addonIds.length > 0)
       .map((g, i) => ({
         id: g.id,
         name: g.name.trim(),

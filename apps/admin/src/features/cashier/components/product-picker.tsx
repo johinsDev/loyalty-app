@@ -217,7 +217,7 @@ export function ProductPicker({
             {/* Add-on groups */}
             {groups.map((g) => (
               <div key={g.id}>
-                <div className="mb-2 text-sm font-extrabold">{g.name}</div>
+                <div className="mb-2 text-sm font-extrabold">{g.name || t("pickerAddons")}</div>
                 <div className="flex flex-wrap gap-2">
                   {g.items.map((it) => {
                     const active = selectedAddons.has(it.addonId);
