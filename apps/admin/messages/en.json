@@ -1359,6 +1359,8 @@
     "pickerHint": "Pick the variant and add a note if needed.",
     "pickerDefaultVariant": "Standard",
     "pickerNoteLabel": "NOTE (OPTIONAL)",
+    "pickerContains": "What it has — tell the customer",
+    "pickerSize": "Size",
     "pickerNotePlaceholder": "extra ice, no peanuts…",
     "pickerAdd": "Add · {price}",
     "lineNotePlaceholder": "Line note…",
