@@ -193,14 +193,17 @@ export function RegisterBoard({
   const rewardPreview = preview.data?.reward ?? null;
   const net = preview.data?.net ?? null;
 
+  // Track the promo the server actually applied (best-of + exclusivity), so the
+  // cart line and the promos panel agree with the total.
   useEffect(() => {
-    setChosenPromoId(preview.data?.applicable[0]?.promo.id ?? null);
+    setChosenPromoId(preview.data?.net?.appliedPromoId ?? null);
   }, [preview.data]);
 
-  const promoDiscount =
-    promos.find((p) => p.promo.id === chosenPromoId)?.discountCents ?? 0;
+  const appliedPromo = promos.find((p) => p.promo.id === chosenPromoId) ?? null;
+  const promoDiscount = appliedPromo?.discountCents ?? 0;
   const rewardDiscount = rewardPreview?.ok ? rewardPreview.discountCents : 0;
   const tierDiscount = net?.tierDiscountCents ?? 0;
+  const tierPct = net?.tierDiscountPct ?? 0;
   const total = net ? net.netPriceCents : Math.max(0, subtotal - promoDiscount - rewardDiscount);
 
   const recordPurchase = useMutation(trpc.stamps.recordPurchase.mutationOptions());
@@ -439,20 +442,61 @@ export function RegisterBoard({
               </div>
             </div>
             <div className="space-y-1.5">
-              {(promoFilter === "customer" ? promos.map((p) => p.promo) : (promoCatalog.data ?? []))
-                .slice(0, 6)
-                .map((p) => (
+              {promoFilter === "customer" ? (
+                promos.length === 0 ? (
+                  <p className="text-muted-foreground text-xs font-semibold">
+                    {cart.length === 0 ? t("promoAddItems") : t("noPromos")}
+                  </p>
+                ) : (
+                  <>
+                    {promos.slice(0, 6).map((a) => {
+                      const active = a.promo.id === chosenPromoId;
+                      return (
+                        <div
+                          key={a.promo.id}
+                          className={
+                            active
+                              ? "border-primary bg-primary/5 flex items-center gap-2 rounded-xl border p-2"
+                              : "bg-muted/50 flex items-center gap-2 rounded-xl p-2 opacity-70"
+                          }
+                        >
+                          <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
+                            <Tag className="size-3" />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-xs font-bold">
+                            {a.promo.name}
+                          </span>
+                          {active ? (
+                            <span className="text-primary flex-none text-xs font-extrabold">
+                              − {formatCop(a.discountCents)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground/70 flex-none text-[0.625rem] font-bold">
+                              {t("promoEligible")}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {promos.length > 1 ? (
+                      <p className="text-muted-foreground/70 pt-0.5 text-[0.6875rem] font-semibold">
+                        {t("promoOnlyOne")}
+                      </p>
+                    ) : null}
+                  </>
+                )
+              ) : (promoCatalog.data ?? []).length === 0 ? (
+                <p className="text-muted-foreground text-xs font-semibold">{t("noPromos")}</p>
+              ) : (
+                (promoCatalog.data ?? []).slice(0, 6).map((p) => (
                   <div key={p.id} className="bg-muted/50 flex items-center gap-2 rounded-xl p-2">
                     <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
                       <Tag className="size-3" />
                     </span>
                     <span className="truncate text-xs font-bold">{p.name}</span>
                   </div>
-                ))}
-              {(promoFilter === "customer" ? promos.length : (promoCatalog.data?.length ?? 0)) ===
-              0 ? (
-                <p className="text-muted-foreground text-xs font-semibold">{t("noPromos")}</p>
-              ) : null}
+                ))
+              )}
             </div>
           </div>
 
@@ -650,13 +694,25 @@ export function RegisterBoard({
                 <>
                   <Row label={t("subtotal")} value={formatCop(subtotal)} muted />
                   {promoDiscount > 0 ? (
-                    <Row label={t("promoDiscount")} value={`− ${formatCop(promoDiscount)}`} good />
+                    <Row
+                      label={appliedPromo?.promo.name ?? t("promoDiscount")}
+                      value={`− ${formatCop(promoDiscount)}`}
+                      good
+                    />
                   ) : null}
                   {rewardDiscount > 0 ? (
                     <Row label={t("rewardDiscountShort")} value={`− ${formatCop(rewardDiscount)}`} good />
                   ) : null}
                   {tierDiscount > 0 ? (
-                    <Row label={t("tierDiscountShort")} value={`− ${formatCop(tierDiscount)}`} good />
+                    <Row
+                      label={
+                        register?.tier && tierPct > 0
+                          ? t("tierDiscountPct", { tier: register.tier.name, pct: tierPct })
+                          : t("tierDiscountShort")
+                      }
+                      value={`− ${formatCop(tierDiscount)}`}
+                      good
+                    />
                   ) : null}
                 </>
               ) : null}
@@ -686,26 +742,35 @@ export function RegisterBoard({
               <div className="text-primary mb-2 flex items-center gap-1.5 text-xs font-extrabold">
                 <Gift className="size-4" />
                 {t("readyToRedeem")}
+                <span className="bg-primary/10 text-primary ml-auto rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold">
+                  {rewards.length}
+                </span>
               </div>
-              <div className="scrollbar-hide max-h-44 space-y-1.5 overflow-y-auto">
-                {rewards.map((rw) => {
-                  const active = rw.rewardId === inlineRewardId;
-                  return (
-                    <button
-                      key={rw.rewardId}
-                      type="button"
-                      onClick={() => setInlineRewardId(active ? null : rw.rewardId)}
-                      className={
-                        active
-                          ? "border-primary bg-primary/5 flex w-full items-center justify-between gap-2 rounded-xl border-2 p-2.5 text-left"
-                          : "border-border flex w-full items-center justify-between gap-2 rounded-xl border p-2.5 text-left"
-                      }
-                    >
-                      <span className="truncate text-xs font-bold">{rw.name}</span>
-                      {active ? <Check className="text-primary size-4 flex-none" /> : null}
-                    </button>
-                  );
-                })}
+              <div className="relative">
+                <div className="scrollbar-hide max-h-44 space-y-1.5 overflow-y-auto pb-1">
+                  {rewards.map((rw) => {
+                    const active = rw.rewardId === inlineRewardId;
+                    return (
+                      <button
+                        key={rw.rewardId}
+                        type="button"
+                        onClick={() => setInlineRewardId(active ? null : rw.rewardId)}
+                        className={
+                          active
+                            ? "border-primary bg-primary/5 flex w-full items-center justify-between gap-2 rounded-xl border-2 p-2.5 text-left"
+                            : "border-border flex w-full items-center justify-between gap-2 rounded-xl border p-2.5 text-left"
+                        }
+                      >
+                        <span className="truncate text-xs font-bold">{rw.name}</span>
+                        {active ? <Check className="text-primary size-4 flex-none" /> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Fade hint that the list scrolls when it overflows the max height. */}
+                {rewards.length > 3 ? (
+                  <div className="from-card pointer-events-none absolute inset-x-0 bottom-0 h-6 rounded-b-3xl bg-gradient-to-t to-transparent" />
+                ) : null}
               </div>
               {inlineRewardId && rewardPreview && !rewardPreview.ok ? (
                 <p className="text-muted-foreground mt-2 text-xs font-semibold">

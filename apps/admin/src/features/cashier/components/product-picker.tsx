@@ -42,6 +42,14 @@ const formatCop = (cents: number): string =>
 const deltaLabel = (cents: number): string =>
   cents === 0 ? "base" : `${cents > 0 ? "+" : ""}${formatCop(cents)}`;
 
+/** The product's rich-text description arrives as HTML; the cashier box shows it
+ *  as plain text (the customer app is the surface that renders the markup). */
+const plainText = (html: string): string =>
+  html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 /**
  * Add-a-line picker (Caja design): pick the variant (size), toggle
  * toppings/modifications from the product's modifier groups (single-select acts
@@ -144,7 +152,7 @@ export function ProductPicker({
                 <span className="text-muted-foreground/70 mb-1 block text-[0.625rem] font-extrabold tracking-wider uppercase">
                   {t("pickerContains")}
                 </span>
-                {product.description}
+                {plainText(product.description)}
               </ResponsiveModalDescription>
             ) : null}
           </div>
