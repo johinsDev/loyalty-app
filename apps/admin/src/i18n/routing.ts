@@ -16,6 +16,10 @@ export const routing = defineRouting({
   pathnames: {
     "/": "/",
     "/register": { es: "/caja", en: "/register" },
+    "/register/customer/[customerId]": {
+      es: "/caja/cliente/[customerId]",
+      en: "/register/customer/[customerId]",
+    },
     "/register/menu": { es: "/caja/menu", en: "/register/menu" },
     "/register/rewards": { es: "/caja/premios", en: "/register/rewards" },
     "/register/purchases": { es: "/caja/compras", en: "/register/purchases" },
