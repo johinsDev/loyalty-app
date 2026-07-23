@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { LoyaltySection, type Mode } from "./loyalty-section";
+import { StackingSection } from "./stacking-section";
 import { StampsSection } from "./stamps-section";
 
 /**
@@ -32,6 +33,9 @@ export function LoyaltyView() {
           <StampsSection />
         </div>
       ) : null}
+      <div className="bg-card border-border rounded-3xl border p-6 shadow-sm">
+        <StackingSection />
+      </div>
     </div>
   );
 }

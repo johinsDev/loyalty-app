@@ -1009,6 +1009,8 @@
     "purchaseCountMaxHint": "0 = solo primera compra",
     "fieldRecency": "Días sin comprar (mín.)",
     "recencyHint": "Para reactivar clientes dormidos",
+    "exclusive": "Promo exclusiva",
+    "exclusiveHint": "No se acumula con el beneficio de nivel ni con un premio en caja (aplica solo la promo).",
     "scheduleTitle": "Vigencia y recurrencia",
     "recurrence": "Recurrencia",
     "recurrenceHint": "Cuándo está activa dentro de la vigencia",
@@ -2076,6 +2078,17 @@
   "Settings": {
     "title": "Ajustes",
     "subtitle": "Configura tu marca, lealtad y equipo.",
+    "stacking": {
+      "title": "Acumulación de descuentos",
+      "desc": "Cómo se combinan en caja las tres capas: premio, promo y beneficio de nivel. El orden siempre es premio → promo → nivel.",
+      "tierWithPromo": "El beneficio de nivel acumula con promos",
+      "tierWithPromoHint": "Si está apagado, cuando hay una promo el % del nivel no aplica.",
+      "rewardWithPromo": "Los premios acumulan con promos",
+      "rewardWithPromoHint": "Si está apagado, un premio y una promo no aplican juntos (gana el premio).",
+      "maxCap": "Tope de descuento total",
+      "maxCapHint": "Máximo % del subtotal que puede descontarse sumando todas las capas (100 = sin tope). El premio nunca se recorta.",
+      "error": "No se pudo guardar la política."
+    },
     "save": "Guardar cambios",
     "saved": "Cambios guardados",
     "soon": "Pronto",

@@ -101,6 +101,7 @@ type Form = {
   tierKey: TierKey;
   audienceCustomerIds: string[];
   storeIds: string[] | null;
+  exclusive: boolean;
   startsAt: Date | null;
   endsAt: Date | null;
   // schedule
@@ -131,6 +132,7 @@ const EMPTY: Form = {
   tierKey: "oro",
   audienceCustomerIds: [],
   storeIds: null,
+  exclusive: false,
   startsAt: null,
   endsAt: null,
   recurrenceMode: "always",
@@ -226,6 +228,7 @@ export function PromoWizard({ id }: { id: string }) {
       purchaseCountMin: c.purchaseCount?.min,
       purchaseCountMax: c.purchaseCount?.max,
       lastPurchaseOlderThanDays: c.lastPurchaseOlderThanDays,
+      exclusive: p.exclusive ?? false,
       audienceType: (p.audienceType as AudienceType) ?? "all",
       tierKey: (p.tierKey as TierKey) ?? "oro",
       audienceCustomerIds: p.audienceCustomerIds ?? [],
@@ -370,6 +373,7 @@ export function PromoWizard({ id }: { id: string }) {
               ? { audienceCustomerIds: form.audienceCustomerIds }
               : {}),
             storeIds: form.storeIds,
+            exclusive: form.exclusive,
             startsAt: form.startsAt,
             endsAt: form.endsAt,
             schedule: buildSchedule(),
@@ -640,6 +644,18 @@ export function PromoWizard({ id }: { id: string }) {
               value={form.storeIds}
               onChange={(v) => set("storeIds", v)}
             />
+
+            <div className="border-border flex items-center justify-between gap-4 rounded-2xl border p-4">
+              <div>
+                <span className="text-sm font-bold">{t("exclusive")}</span>
+                <p className="text-muted-foreground mt-0.5 text-xs">{t("exclusiveHint")}</p>
+              </div>
+              <Switch
+                checked={form.exclusive}
+                onCheckedChange={(v) => set("exclusive", v)}
+                aria-label={t("exclusive")}
+              />
+            </div>
 
             <div className="border-border space-y-4 rounded-2xl border p-4">
               <p className="text-sm font-semibold">{t("scheduleTitle")}</p>

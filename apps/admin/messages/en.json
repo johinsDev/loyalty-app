@@ -1009,6 +1009,8 @@
     "purchaseCountMaxHint": "0 = first purchase only",
     "fieldRecency": "Days without buying (min.)",
     "recencyHint": "To win back dormant customers",
+    "exclusive": "Exclusive promo",
+    "exclusiveHint": "Doesn't stack with the tier benefit or a reward at checkout (only the promo applies).",
     "scheduleTitle": "Validity & recurrence",
     "recurrence": "Recurrence",
     "recurrenceHint": "When it's active inside the validity window",
@@ -2076,6 +2078,17 @@
   "Settings": {
     "title": "Settings",
     "subtitle": "Configure your brand, loyalty and team.",
+    "stacking": {
+      "title": "Discount stacking",
+      "desc": "How the register combines the three layers: reward, promo and tier benefit. The order is always reward → promo → tier.",
+      "tierWithPromo": "Tier benefit stacks with promos",
+      "tierWithPromoHint": "When off, the tier % doesn't apply if a promo is active.",
+      "rewardWithPromo": "Rewards stack with promos",
+      "rewardWithPromoHint": "When off, a reward and a promo won't apply together (the reward wins).",
+      "maxCap": "Max total discount",
+      "maxCapHint": "Max % of the subtotal all layers combined can discount (100 = no cap). The reward is never trimmed.",
+      "error": "Couldn't save the policy."
+    },
     "save": "Save changes",
     "saved": "Changes saved",
     "soon": "Soon",
