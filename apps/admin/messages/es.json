@@ -2589,7 +2589,8 @@
       "discount": "Descuento",
       "amount": "Total",
       "stamps": "Sellos",
-      "points": "Puntos"
+      "points": "Puntos",
+      "reverted": "Revertidos por anulación"
     },
     "eff": {
       "promo": "Con promo",

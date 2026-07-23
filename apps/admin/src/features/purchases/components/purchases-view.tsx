@@ -329,11 +329,19 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
         header: () => (
           <span className="text-muted-foreground block text-right text-xs font-bold">{t("col.stamps")}</span>
         ),
-        cell: ({ row }) => (
-          <div className="text-right text-sm font-semibold">
-            {row.original.stampsEarned > 0 ? `+${row.original.stampsEarned}` : "—"}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const voided = row.original.voidedAt != null;
+          const st = row.original.stampsEarned;
+          if (st <= 0) return <div className="text-muted-foreground text-right text-sm">—</div>;
+          return (
+            <div
+              title={voided ? t("col.reverted") : undefined}
+              className={`text-right text-sm font-semibold ${voided ? "text-muted-foreground" : ""}`}
+            >
+              {voided ? `↩ ${st}` : `+${st}`}
+            </div>
+          );
+        },
       },
       {
         accessorKey: "pointsEarned",
@@ -342,13 +350,19 @@ export function PurchasesView({ initialData }: { initialData?: PurchaseListResul
         header: () => (
           <span className="text-muted-foreground block text-right text-xs font-bold">{t("col.points")}</span>
         ),
-        cell: ({ row }) => (
-          <div
-            className={`text-right text-sm font-semibold ${row.original.voidedAt ? "text-muted-foreground line-through" : "text-emerald-600"}`}
-          >
-            {row.original.pointsEarned > 0 ? `+${row.original.pointsEarned}` : "—"}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const voided = row.original.voidedAt != null;
+          const pts = row.original.pointsEarned;
+          if (pts <= 0) return <div className="text-muted-foreground text-right text-sm">—</div>;
+          return (
+            <div
+              title={voided ? t("col.reverted") : undefined}
+              className={`text-right text-sm font-semibold ${voided ? "text-muted-foreground" : "text-emerald-600"}`}
+            >
+              {voided ? `↩ ${pts}` : `+${pts}`}
+            </div>
+          );
+        },
       },
       {
         id: "actions",
