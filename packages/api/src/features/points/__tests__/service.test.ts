@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PointsAccountRow } from "@loyalty/db/schema";
 
 import type { PointsRepository } from "../repository";
-import { PointsService, pointsForPrice } from "../service";
+import { PointsService, pointsForPrice, spendToEarnPoints } from "../service";
 
 const ORG = "org_1";
 const STORE = "store_1";
@@ -40,6 +40,36 @@ describe("pointsForPrice", () => {
     expect(pointsForPrice(1_500_000)).toBe(600); // 15.000 COP
     expect(pointsForPrice(100_000)).toBe(40); // 1.000 COP
     expect(pointsForPrice(5_000)).toBe(0); // 50 COP < rate floor
+  });
+});
+
+describe("spendToEarnPoints", () => {
+  const RATE = { per: 100, points: 4 }; // 100 COP → 4 pts
+
+  it("returns the extra spend whose earn closes the points gap", () => {
+    // Need 400 more pts → 100 blocks of 4 pts → 100 * 100 COP = 10.000 COP.
+    // 10.000 COP = 1.000.000 cents earns exactly 400 pts.
+    expect(spendToEarnPoints(200, 600, RATE)).toBe(1_000_000);
+    expect(pointsForPrice(1_000_000, RATE)).toBe(400);
+  });
+
+  it("rounds up to the next whole earn block", () => {
+    // Need 1 more pt but a block earns 4 → still one block = 100 COP.
+    expect(spendToEarnPoints(599, 600, RATE)).toBe(10_000);
+  });
+
+  it("returns null when already affordable", () => {
+    expect(spendToEarnPoints(600, 600, RATE)).toBeNull();
+    expect(spendToEarnPoints(700, 600, RATE)).toBeNull();
+  });
+
+  it("returns null when the reward isn't point-priced", () => {
+    expect(spendToEarnPoints(0, null, RATE)).toBeNull();
+    expect(spendToEarnPoints(0, 0, RATE)).toBeNull();
+  });
+
+  it("returns null when the rate can't earn points", () => {
+    expect(spendToEarnPoints(0, 600, { per: 0, points: 0 })).toBeNull();
   });
 });
 

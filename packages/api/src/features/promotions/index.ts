@@ -40,6 +40,7 @@ export {
   type PromoStatPoint,
   type PromoStats,
   type PromoType,
+  type PromoUpsellHint,
   type PromoWeekdayPoint,
   type PublicListInput,
   type RuleInput,

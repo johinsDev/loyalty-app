@@ -5,7 +5,14 @@ import { TRPCError } from "@trpc/server";
 
 import { SUPPORTED_LOCALES, type LocaleContext } from "../_shared/localize";
 import type { WizardState } from "../_shared/wizard";
-import { evaluatePromo, type Cart, type CustomerFacts, type UnitExclusion } from "./engine";
+import {
+  detectPromoUpsell,
+  evaluatePromo,
+  type Cart,
+  type CustomerFacts,
+  type PromoView,
+  type UnitExclusion,
+} from "./engine";
 import { enrichCart } from "./stitch";
 import type { AdminPromoRow, PromoPatch, PromoRepository } from "./repository";
 import { ruleSchema, scheduleSchema, conditionsSchema } from "./schemas";
@@ -19,6 +26,7 @@ import type {
   PromoCard,
   PromoDetail,
   PromoStats,
+  PromoUpsellHint,
   PublicListInput,
 } from "./schemas";
 import type { ListResult } from "../_shared/list";
@@ -34,6 +42,21 @@ const cache = new CacheManager({
 export interface PromoWizardResult {
   promo: PromoRow;
   state: WizardState;
+}
+
+/** Projection of a promo row into the pure engine's `PromoView`. */
+function promoView(p: PromoRow): PromoView {
+  return {
+    status: p.status,
+    startsAt: p.startsAt,
+    endsAt: p.endsAt,
+    rule: p.rule,
+    schedule: p.schedule,
+    conditions: p.conditions,
+    audienceType: p.audienceType,
+    tierKey: p.tierKey,
+    audienceCustomerIds: p.audienceCustomerIds,
+  };
 }
 
 /**
@@ -260,23 +283,7 @@ export class PromoService {
         redemptionsTotal: c.total,
         redemptionsByCustomer: c.byCustomer,
       };
-      const result = evaluatePromo(
-        enriched,
-        {
-          status: p.status,
-          startsAt: p.startsAt,
-          endsAt: p.endsAt,
-          rule: p.rule,
-          schedule: p.schedule,
-          conditions: p.conditions,
-          audienceType: p.audienceType,
-          tierKey: p.tierKey,
-          audienceCustomerIds: p.audienceCustomerIds,
-        },
-        customerFacts,
-        now,
-        exclusions,
-      );
+      const result = evaluatePromo(enriched, promoView(p), customerFacts, now, exclusions);
       if (result.eligible && (result.discountCents > 0 || result.pointsMultiplier > 1)) {
         applicable.push({
           promo: this.repo.cardOf(p, lc),
@@ -293,6 +300,55 @@ export class PromoService {
       (a, b) => b.discountCents - a.discountCents || b.pointsMultiplier - a.pointsMultiplier,
     );
     return { applicable, hints };
+  }
+
+  /**
+   * Register upsell nudges: for every published promo that does NOT apply to the
+   * cart, the single action that would unlock it (add an item, spend to a
+   * threshold, or swap a line to a pricier variant). Powers the ticket's
+   * "suggest this" prompts. Shares the same customer facts + enriched cart as
+   * `applicable` so the two are consistent.
+   */
+  async upsell(
+    orgId: string,
+    customerId: string,
+    cart: Cart,
+    lc: LocaleContext,
+    opts: { exclusions?: UnitExclusion[]; enriched?: Cart } = {},
+  ): Promise<PromoUpsellHint[]> {
+    const promos = await this.repo.publishedPromos(orgId);
+    if (promos.length === 0) return [];
+
+    const productIds = [...new Set(cart.lines.map((l) => l.productId))];
+    const [facts, counts, enriched, variants] = await Promise.all([
+      this.repo.customerFacts(orgId, customerId),
+      this.repo.redemptionCounts(
+        promos.map((p) => p.id),
+        customerId,
+      ),
+      opts.enriched ?? enrichCart(this.repo, cart),
+      this.repo.variantPrices(productIds),
+    ]);
+    const exclusions = opts.exclusions ?? [];
+
+    const now = new Date();
+    const hints: PromoUpsellHint[] = [];
+    for (const p of promos) {
+      const c = counts.get(p.id) ?? { total: 0, byCustomer: 0 };
+      const customerFacts: CustomerFacts = {
+        customerId,
+        customerTierKey: facts.tierKey,
+        customerPurchaseCount: facts.purchaseCount,
+        customerLastPurchaseAt: facts.lastPurchaseAt,
+        redemptionsTotal: c.total,
+        redemptionsByCustomer: c.byCustomer,
+      };
+      const up = detectPromoUpsell(enriched, promoView(p), customerFacts, now, exclusions, variants);
+      if (!up) continue;
+      const card = this.repo.cardOf(p, lc);
+      hints.push({ ...up, promo: card });
+    }
+    return hints;
   }
 
   private async load(orgId: string, id: string): Promise<PromoRow> {
