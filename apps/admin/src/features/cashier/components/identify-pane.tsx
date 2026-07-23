@@ -1,9 +1,15 @@
 "use client";
 
-import { Button, type CountryCode, toPhoneValue } from "@loyalty/ui";
+import {
+  Button,
+  type CountryCode,
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalTitle,
+  toPhoneValue,
+} from "@loyalty/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useDebounce } from "ahooks";
-import { ArrowLeft, Check, ChevronRight, KeyRound, UserPlus } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, KeyRound, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -37,6 +43,9 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
   const [countryOverride, setCountryOverride] = useState<CountryCode | null>(null);
   const country = countryOverride ?? defaultCountry;
   const [digits, setDigits] = useState("");
+  // Search runs only when the cashier taps "Buscar" — so a mistyped number never
+  // silently jumps to a wrong socio; editing the number resets the search.
+  const [searched, setSearched] = useState(false);
 
   const [step, setStep] = useState<"lookup" | "pin">("lookup");
   const [regName, setRegName] = useState("");
@@ -47,14 +56,23 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
   const phone = pv.e164;
   const valid = pv.isValid;
 
-  const debounced = useDebounce(phone, { wait: 300 });
+  const editDigits = (d: string) => {
+    setDigits(d);
+    setSearched(false);
+  };
+  const editCountry = (c: CountryCode) => {
+    setCountryOverride(c);
+    setSearched(false);
+  };
+
   const search = useQuery(
     trpc.customers.search.queryOptions(
-      { query: debounced, limit: 8 },
-      { enabled: valid && debounced.length > 0 },
+      { query: phone, limit: 8 },
+      { enabled: searched && valid },
     ),
   );
   const results = search.data ?? [];
+  const notFound = searched && valid && !search.isFetching && results.length === 0;
 
   const requestPin = useMutation(trpc.customers.requestRegisterPin.mutationOptions());
   const confirmPin = useMutation(trpc.customers.confirmRegisterPin.mutationOptions());
@@ -149,28 +167,27 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
     <div>
       <NumpadPhone
         country={country}
-        onCountryChange={setCountryOverride}
+        onCountryChange={editCountry}
         digits={digits}
-        onDigitsChange={setDigits}
+        onDigitsChange={editDigits}
         placeholder={t("phonePlaceholder")}
         countryLabel={t("countryLabel")}
         backspaceLabel={t("backspaceLabel")}
       />
 
-      {/* Status-driven: guide → typing → searching → results → register. */}
-      {digits.length === 0 ? (
-        <p className="text-muted-foreground/70 mt-4 text-center text-xs font-semibold">
-          {t("numpadHint")}
-        </p>
-      ) : !valid ? (
-        <p className="text-muted-foreground/70 mt-4 text-center text-xs font-semibold">
-          {t("numpadKeepTyping")}
-        </p>
-      ) : search.isFetching ? (
-        <p className="text-muted-foreground mt-4 text-center text-xs font-semibold">
-          {t("searching")}
-        </p>
-      ) : results.length > 0 ? (
+      <Button
+        size="lg"
+        disabled={!valid || search.isFetching}
+        onClick={() => setSearched(true)}
+        className="mt-4 h-12 w-full gap-2 rounded-2xl text-base font-extrabold"
+      >
+        <Search className="size-5" />
+        {search.isFetching ? t("searching") : t("searchCta")}
+      </Button>
+
+      {/* Matches (tap to open the register). Not-found → a modal that shows the
+          typed number so the cashier can verify before creating a new socio. */}
+      {searched && valid && results.length > 0 ? (
         <div className="mt-4 flex flex-col gap-2">
           {results.map((hit, i) => (
             <button
@@ -195,31 +212,53 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
             </button>
           ))}
         </div>
-      ) : (
-        <div className="border-border bg-muted/40 mt-4 rounded-2xl border p-4">
-          <div className="text-foreground inline-flex items-center gap-1.5 text-sm font-extrabold">
-            <UserPlus className="text-primary size-4" />
-            {t("quickRegisterNotFound")}
+      ) : null}
+
+      {/* Not-found modal — shows the number to confirm, then quick-register. */}
+      <ResponsiveModal open={notFound} onOpenChange={(o) => !o && setSearched(false)}>
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-sm">
+          <div className="flex flex-col px-6 pt-2 pb-6">
+            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
+              {t("quickRegisterNotFound")}
+            </ResponsiveModalTitle>
+            <div className="border-border bg-muted mt-3 rounded-2xl border p-3 text-center">
+              <div className="text-muted-foreground/70 text-[0.625rem] font-extrabold tracking-wider uppercase">
+                {t("numberSearched")}
+              </div>
+              <div className="font-display mt-0.5 text-xl font-semibold tabular-nums">
+                {pv.formatted || phone}
+              </div>
+            </div>
+            <p className="text-muted-foreground mt-3 text-xs font-semibold">
+              {t("quickRegisterHint")}
+            </p>
+            <input
+              value={regName}
+              onChange={(e) => setRegName(e.target.value)}
+              placeholder={t("quickRegisterName")}
+              className="border-border bg-card placeholder:text-muted-foreground/70 mt-3 h-10 w-full rounded-2xl border px-3.5 text-sm font-semibold outline-none"
+            />
+            <Button
+              variant="default"
+              size="lg"
+              disabled={requestPin.isPending}
+              onClick={() => void startRegister()}
+              className="mt-3 h-11 w-full gap-2 rounded-2xl text-base font-extrabold"
+            >
+              <KeyRound className="size-4" />
+              {t("quickRegisterSend")}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setSearched(false)}
+              className="text-muted-foreground hover:text-foreground mt-3 inline-flex items-center justify-center gap-1 text-xs font-bold"
+            >
+              <ArrowLeft className="size-3.5" />
+              {t("numberCorrect")}
+            </button>
           </div>
-          <p className="text-muted-foreground mt-1 text-xs font-semibold">{t("quickRegisterHint")}</p>
-          <input
-            value={regName}
-            onChange={(e) => setRegName(e.target.value)}
-            placeholder={t("quickRegisterName")}
-            className="border-border bg-card placeholder:text-muted-foreground/70 mt-3 h-10 w-full rounded-2xl border px-3.5 text-sm font-semibold outline-none"
-          />
-          <Button
-            variant="default"
-            size="lg"
-            disabled={requestPin.isPending}
-            onClick={() => void startRegister()}
-            className="mt-3 h-10 w-full gap-2 rounded-2xl text-base font-extrabold"
-          >
-            <KeyRound className="size-4" />
-            {t("quickRegisterSend")}
-          </Button>
-        </div>
-      )}
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </div>
   );
 }

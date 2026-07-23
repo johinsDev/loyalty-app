@@ -115,6 +115,10 @@ export function ProductEditor({ id }: { id?: string }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [library, setLibrary] = useState<OptionPreset[]>(optionLibrary);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Minor-unit-less currencies (COP, …) show no decimals; USD/EUR show 2.
+  const priceDecimals = ["COP", "CLP", "JPY", "KRW", "VND", "PYG"].includes(draft.currency)
+    ? 0
+    : 2;
   const [mediaDrag, setMediaDrag] = useState<number | null>(null);
   const [mediaOver, setMediaOver] = useState<number | null>(null);
   const uploadImage = useUploadImage();
@@ -485,6 +489,7 @@ export function ProductEditor({ id }: { id?: string }) {
                 value={draft.price ?? undefined}
                 onValueChange={(v) => set("price", v ?? null)}
                 currency={draft.currency}
+                          decimalScale={priceDecimals}
                 placeholder="0.00"
                 className="h-10"
               />
@@ -494,6 +499,7 @@ export function ProductEditor({ id }: { id?: string }) {
                 value={draft.promoPrice ?? undefined}
                 onValueChange={(v) => set("promoPrice", v ?? null)}
                 currency={draft.currency}
+                          decimalScale={priceDecimals}
                 placeholder="0.00"
                 className="h-10"
               />
@@ -512,6 +518,7 @@ export function ProductEditor({ id }: { id?: string }) {
                 value={draft.cost ?? undefined}
                 onValueChange={(v) => set("cost", v ?? null)}
                 currency={draft.currency}
+                          decimalScale={priceDecimals}
                 placeholder="0.00"
                 className="h-10"
               />
@@ -645,6 +652,7 @@ export function ProductEditor({ id }: { id?: string }) {
                             set("variants", next);
                           }}
                           currency={draft.currency}
+                          decimalScale={priceDecimals}
                           placeholder="0.00"
                           className="h-9 w-28"
                         />
@@ -658,6 +666,7 @@ export function ProductEditor({ id }: { id?: string }) {
                             set("variants", next);
                           }}
                           currency={draft.currency}
+                          decimalScale={priceDecimals}
                           placeholder="—"
                           className="h-9 w-28"
                         />
