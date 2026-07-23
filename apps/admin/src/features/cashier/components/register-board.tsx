@@ -398,7 +398,7 @@ export function RegisterBoard({
       ) : null}
 
       {/* ── THREE COLUMNS — each scrolls independently, fills the height ── */}
-      <div className="flex flex-col gap-4 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[360px_minmax(0,1fr)_360px] lg:gap-4">
+      <div className="flex flex-col gap-4 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[340px_minmax(0,1fr)_420px] lg:gap-4">
         {/* LEFT — customer intelligence (this column scrolls on desktop) */}
         <div className="space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           {/* Ideas de upsell */}
@@ -635,7 +635,7 @@ export function RegisterBoard({
                   <div key={i.key} className="rounded-2xl bg-white/5 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-bold">{i.name}</div>
+                        <div className="line-clamp-2 text-sm font-bold">{i.name}</div>
                         {i.note ? (
                           <div className="mt-0.5 truncate text-xs font-semibold text-amber-300 italic">
                             ✎ {i.note}
