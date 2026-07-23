@@ -433,6 +433,18 @@ function BreakdownBlock({
             <span>−{money(format, rewardShare, cur)}</span>
           </div>
         ) : null}
+        {/* Tier benefit = the discount not attributed to a promo or reward (it's
+            folded into the total discount, not persisted separately). */}
+        {(() => {
+          if (amountOnly) return null;
+          const tierShare = detail.discountCents - promoShare - rewardShare;
+          return tierShare > 0 ? (
+            <div className="text-primary flex items-center justify-between font-semibold">
+              <span className="truncate">{t("tierLine")}</span>
+              <span>−{money(format, tierShare, cur)}</span>
+            </div>
+          ) : null;
+        })()}
         <div className="border-border flex items-center justify-between border-t pt-2">
           <span className="text-foreground font-extrabold">{t("total")}</span>
           <span className="font-display text-foreground text-lg font-semibold">
