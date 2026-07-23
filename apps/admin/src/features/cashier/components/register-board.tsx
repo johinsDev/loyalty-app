@@ -187,6 +187,7 @@ export function RegisterBoard({
           unitAmountCents: i.unitAmountCents,
         })),
         inlineReward,
+        rewardIds: rewards.map((r) => r.rewardId),
       },
       { enabled: cart.length > 0 },
     ),
@@ -195,6 +196,11 @@ export function RegisterBoard({
   const upsell = preview.data?.upsell ?? [];
   const rewardPreview = preview.data?.reward ?? null;
   const net = preview.data?.net ?? null;
+  // Per-reward line eligibility (only meaningful once the cart has items).
+  const eligByReward = useMemo(
+    () => new Map((preview.data?.rewardEligibility ?? []).map((e) => [e.rewardId, e])),
+    [preview.data],
+  );
 
   // Track the promo the server actually applied (best-of + exclusivity), so the
   // cart line and the promos panel agree with the total.
@@ -769,18 +775,33 @@ export function RegisterBoard({
                 <div className="scrollbar-hide max-h-44 space-y-1.5 overflow-y-auto pb-1">
                   {rewards.map((rw) => {
                     const active = rw.rewardId === inlineRewardId;
+                    const elig = eligByReward.get(rw.rewardId);
+                    // Ineligible only once we've evaluated a non-empty cart; the
+                    // selected reward stays clickable so it can be deselected.
+                    const ineligible = cart.length > 0 && elig != null && !elig.eligible;
+                    const blocked = ineligible && !active;
                     return (
                       <button
                         key={rw.rewardId}
                         type="button"
+                        disabled={blocked}
                         onClick={() => setInlineRewardId(active ? null : rw.rewardId)}
-                        className={
+                        className={`flex w-full items-center justify-between gap-2 rounded-xl p-2.5 text-left ${
                           active
-                            ? "border-primary bg-primary/5 flex w-full items-center justify-between gap-2 rounded-xl border-2 p-2.5 text-left"
-                            : "border-border flex w-full items-center justify-between gap-2 rounded-xl border p-2.5 text-left"
-                        }
+                            ? "border-primary bg-primary/5 border-2"
+                            : blocked
+                              ? "border-border cursor-not-allowed border opacity-45"
+                              : "border-border border"
+                        }`}
                       >
-                        <span className="truncate text-xs font-bold">{rw.name}</span>
+                        <div className="min-w-0">
+                          <span className="block truncate text-xs font-bold">{rw.name}</span>
+                          {ineligible ? (
+                            <span className="text-muted-foreground/70 block truncate text-[0.625rem] font-semibold">
+                              {reasonLabel(elig?.reason, t)}
+                            </span>
+                          ) : null}
+                        </div>
                         {active ? <Check className="text-primary size-4 flex-none" /> : null}
                       </button>
                     );
@@ -911,6 +932,14 @@ export function RegisterBoard({
       />
     </div>
   );
+}
+
+/** Short reason a reward doesn't apply to the current cart. */
+function reasonLabel(
+  reason: string | null | undefined,
+  t: ReturnType<typeof useTranslations>,
+): string {
+  return reason === "reward-item-not-in-cart" ? t("rewardAddItemHint") : t("rewardNotApplicable");
 }
 
 function Balance({ label, value }: { label: string; value: string }) {

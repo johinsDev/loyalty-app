@@ -76,6 +76,9 @@ export const previewPurchaseInputSchema = z.object({
     .optional(),
   /** The promo the cashier selected; omit to preview the best applicable one. */
   appliedPromoId: z.string().uuid().optional(),
+  /** Available reward ids to check line eligibility for (the "ready to redeem"
+   *  list) — the preview returns which apply to the current cart. */
+  rewardIds: z.array(z.string()).optional(),
 });
 
 export const historyInputSchema = z.object({
