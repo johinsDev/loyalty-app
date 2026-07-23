@@ -100,7 +100,8 @@ export type PromoPatch = Partial<
     PromoInsert,
     | "name" | "slug" | "shortDescription" | "longDescription" | "badgeLabel" | "icon"
     | "backgroundCss" | "mainImageUrl" | "type" | "rule" | "schedule" | "conditions"
-    | "audienceType" | "tierKey" | "audienceCustomerIds" | "storeIds" | "category" | "featured"
+    | "audienceType" | "tierKey" | "audienceCustomerIds" | "storeIds" | "exclusive"
+    | "category" | "featured"
     | "sortOrder" | "startsAt" | "endsAt" | "seoTitle" | "seoDescription" | "ogImageUrl"
   >
 >;

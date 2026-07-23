@@ -6,6 +6,7 @@ import { managerProcedure, publicProcedure, router } from "../../trpc";
 import { SettingsRepository } from "./repository";
 import {
   setLoyaltyScopeInputSchema,
+  stackingPolicySchema,
   updateBrandingInputSchema,
   updateLocalizationInputSchema,
   updateLoyaltyConfigInputSchema,
@@ -105,6 +106,11 @@ export const settingsRouter = router({
     .input(updateLoyaltyConfigInputSchema)
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).updateLoyaltyConfig(await requireOrg(), input),
+    ),
+  updateStackingPolicy: managerProcedure
+    .input(stackingPolicySchema)
+    .mutation(async ({ ctx, input }) =>
+      makeService(ctx.db).updateStackingPolicy(await requireOrg(), input),
     ),
   /** Static inputs for the equivalence panel (avg ticket, rewards, promos). */
   loyaltyInsights: managerProcedure.query(async ({ ctx }) =>

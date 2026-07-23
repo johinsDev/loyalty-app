@@ -199,7 +199,16 @@ export interface LoyaltyConfigAdminView {
   pointsCardTemplate: string;
   pointsRates: Record<string, { per: number; points: number }>;
   tierGraceUntil: Date | null;
+  stacking: StackingPolicyInput;
 }
+
+/** Register discount-stacking policy (reward · promo · tier). */
+export const stackingPolicySchema = z.object({
+  tierStacksWithPromo: z.boolean(),
+  rewardStacksWithPromo: z.boolean(),
+  maxTotalDiscountPct: z.number().int().min(0).max(100),
+});
+export type StackingPolicyInput = z.infer<typeof stackingPolicySchema>;
 
 // ─── Stamps config ───────────────────────────────────────────────────────────
 
