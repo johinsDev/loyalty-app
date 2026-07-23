@@ -119,6 +119,13 @@ export function ProductEditor({ id }: { id?: string }) {
   const priceDecimals = ["COP", "CLP", "JPY", "KRW", "VND", "PYG"].includes(draft.currency)
     ? 0
     : 2;
+  const fmtPrice = (units: number) =>
+    new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: draft.currency,
+      minimumFractionDigits: priceDecimals,
+      maximumFractionDigits: priceDecimals,
+    }).format(units);
   const [mediaDrag, setMediaDrag] = useState<number | null>(null);
   const [mediaOver, setMediaOver] = useState<number | null>(null);
   const uploadImage = useUploadImage();
@@ -227,6 +234,33 @@ export function ProductEditor({ id }: { id?: string }) {
   const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     void uploadFiles(Array.from(e.target.files ?? []));
     e.target.value = "";
+  };
+
+  // ── Variant image picker (modal): pick from the product's images, upload a
+  //    custom one, or clear it. `image` references a media id. ────────────────
+  const [variantImgIdx, setVariantImgIdx] = useState<number | null>(null);
+  const setVariantImage = (idx: number, mediaId: string | null) =>
+    setDraft((d) => ({
+      ...d,
+      variants: d.variants.map((v, n) => (n === idx ? { ...v, image: mediaId } : v)),
+    }));
+  const uploadVariantImage = async (idx: number, file: File) => {
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      if (!url) {
+        toast.error(t("mediaUploadError"));
+        return;
+      }
+      const mid = crypto.randomUUID();
+      setDraft((d) => ({
+        ...d,
+        media: [...d.media, { id: mid, emoji: "", url }],
+        variants: d.variants.map((v, n) => (n === idx ? { ...v, image: mid } : v)),
+      }));
+    } finally {
+      setUploading(false);
+    }
   };
 
   // ── Reusable options ──────────────────────────────────────────────────────
@@ -601,46 +635,21 @@ export function ProductEditor({ id }: { id?: string }) {
                   {draft.variants.map((v, idx) => (
                     <tr key={v.id}>
                       <td className="px-3 py-2">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <Button
-                                variant="outline"
-                                aria-label={t("col.image")}
-                                className="grid size-9 place-items-center rounded-lg p-0 text-lg"
-                              >
-                                {v.image ? (
-                                  (draft.media.find((m) => m.id === v.image)?.emoji ?? "🖼️")
-                                ) : (
-                                  <ImagePlus className="text-muted-foreground size-4" />
-                                )}
-                              </Button>
-                            }
-                          />
-                          <DropdownMenuContent align="start" className="rounded-xl">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                const next = [...draft.variants];
-                                next[idx] = { ...v, image: null };
-                                set("variants", next);
-                              }}
-                            >
-                              {t("noImage")}
-                            </DropdownMenuItem>
-                            {draft.media.map((m) => (
-                              <DropdownMenuItem
-                                key={m.id}
-                                onClick={() => {
-                                  const next = [...draft.variants];
-                                  next[idx] = { ...v, image: m.id };
-                                  set("variants", next);
-                                }}
-                              >
-                                <span className="text-lg">{m.emoji}</span>
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <button
+                          type="button"
+                          aria-label={t("col.image")}
+                          onClick={() => setVariantImgIdx(idx)}
+                          className="border-input hover:border-primary/50 grid size-9 place-items-center overflow-hidden rounded-lg border text-lg"
+                        >
+                          {(() => {
+                            const m = draft.media.find((mm) => mm.id === v.image);
+                            if (m?.url)
+                              // eslint-disable-next-line @next/next/no-img-element
+                              return <img src={m.url} alt="" className="size-full object-cover" />;
+                            if (m?.emoji) return <span>{m.emoji}</span>;
+                            return <ImagePlus className="text-muted-foreground size-4" />;
+                          })()}
+                        </button>
                       </td>
                       <td className="px-3 py-2 font-bold">{v.combo.join(" / ")}</td>
                       <td className="px-3 py-2">
@@ -1028,17 +1037,18 @@ export function ProductEditor({ id }: { id?: string }) {
         <Block title={t("reviewTitle")}>
           <dl className="divide-border divide-y text-sm">
             <ReviewRow label={t("fieldName")} value={draft.name || "—"} />
-            <ReviewRow
-              label={t("col.price")}
-              value={priceLabel(draft, locale)}
-            />
-            <ReviewRow
-              label={t("col.variants")}
-              value={`${draft.variants.length}`}
-            />
+            <ReviewRow label={t("col.price")} value={priceLabel(draft, locale)} />
             <ReviewRow
               label={t("secCategories")}
-              value={t("categoriesN", { n: draft.categoryIds.length })}
+              value={
+                draft.categoryIds
+                  .map((id) => realCategories.find((c) => c.id === id)?.label ?? id)
+                  .join(", ") || "—"
+              }
+            />
+            <ReviewRow
+              label={t("secAddons")}
+              value={draft.addonGroups.map((g) => g.name.trim() || "—").join(", ") || "—"}
             />
             <ReviewRow
               label={t("secFeatured")}
@@ -1049,6 +1059,45 @@ export function ProductEditor({ id }: { id?: string }) {
               }
             />
           </dl>
+
+          {/* Variants at a glance: price (+ promo), stock. */}
+          {draft.variants.length > 0 ? (
+            <div className="border-border mt-4 overflow-hidden rounded-2xl border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-muted-foreground text-xs font-bold">
+                  <tr>
+                    <th className="px-3 py-2 text-left">{t("col.variant")}</th>
+                    <th className="px-3 py-2 text-right">{t("col.vprice")}</th>
+                    <th className="px-3 py-2 text-right">{t("col.stock")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-border divide-y">
+                  {draft.variants.map((v) => (
+                    <tr key={v.id}>
+                      <td className="px-3 py-2 font-semibold">
+                        {v.combo.join(" / ") || t("recipe.baseVariant")}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {v.promoPrice != null && v.promoPrice > 0 ? (
+                          <>
+                            <span className="font-bold">{fmtPrice(v.promoPrice)}</span>{" "}
+                            <span className="text-muted-foreground/60 line-through">
+                              {fmtPrice(v.price)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="font-bold">{fmtPrice(v.price)}</span>
+                        )}
+                      </td>
+                      <td className="text-muted-foreground px-3 py-2 text-right">
+                        {v.stock == null ? "∞" : v.stock}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </Block>
       )}
 
@@ -1069,6 +1118,77 @@ export function ProductEditor({ id }: { id?: string }) {
             >
               {t("done")}
             </Button>
+          </div>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
+
+      {/* Variant image picker — pick a product image, upload a custom one, or clear */}
+      <ResponsiveModal
+        open={variantImgIdx !== null}
+        onOpenChange={(o) => !o && setVariantImgIdx(null)}
+      >
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
+          <div className="flex flex-col px-6 pt-2 pb-6">
+            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
+              {t("variantImageTitle")}
+            </ResponsiveModalTitle>
+            <div className="mt-4 grid grid-cols-4 gap-2.5">
+              {/* Upload */}
+              <label className="border-primary/40 text-primary hover:bg-primary/5 flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed text-[0.625rem] font-bold">
+                <ImagePlus className="size-5" />
+                {uploading ? t("uploading") : t("variantImageUpload")}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f != null && variantImgIdx !== null) void uploadVariantImage(variantImgIdx, f);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {/* No image */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (variantImgIdx !== null) setVariantImage(variantImgIdx, null);
+                  setVariantImgIdx(null);
+                }}
+                className="border-border text-muted-foreground hover:bg-muted flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border text-[0.625rem] font-bold"
+              >
+                <X className="size-5" />
+                {t("noImage")}
+              </button>
+              {/* Existing product images */}
+              {draft.media.map((m) => {
+                const active =
+                  variantImgIdx !== null && draft.variants[variantImgIdx]?.image === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      if (variantImgIdx !== null) setVariantImage(variantImgIdx, m.id);
+                      setVariantImgIdx(null);
+                    }}
+                    className={`grid aspect-square place-items-center overflow-hidden rounded-xl border text-2xl ${active ? "border-primary border-2" : "border-border"}`}
+                  >
+                    {m.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.url} alt="" className="size-full object-cover" />
+                    ) : (
+                      <span>{m.emoji || "🖼️"}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {draft.media.length === 0 ? (
+              <p className="text-muted-foreground mt-3 text-xs font-semibold">
+                {t("variantImageEmpty")}
+              </p>
+            ) : null}
           </div>
         </ResponsiveModalContent>
       </ResponsiveModal>
