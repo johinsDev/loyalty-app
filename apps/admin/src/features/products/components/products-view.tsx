@@ -207,7 +207,19 @@ export function ProductsView() {
         />
       </div>
 
-      {filtered.length === 0 ? (
+      {listQuery.isPending ? (
+        // Loading skeleton — the list is fetched client-side, so show placeholders
+        // instead of the empty state while the query resolves.
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {["a", "b", "c", "d", "e", "f", "g", "h"].map((k) => (
+            <div key={k} className="bg-card border-border animate-pulse rounded-3xl border p-4">
+              <div className="bg-muted/60 aspect-square rounded-2xl" />
+              <div className="bg-muted/60 mt-3 h-4 w-2/3 rounded" />
+              <div className="bg-muted/40 mt-2 h-3 w-1/3 rounded" />
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon={Package}
           title={t("empty")}
