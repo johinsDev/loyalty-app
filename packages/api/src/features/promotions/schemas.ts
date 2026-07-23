@@ -210,6 +210,8 @@ export interface ApplicablePromo {
   pointsMultiplier: number;
   /** How many times the rule applied to the cart. */
   applications: number;
+  /** This promo doesn't stack with the tier benefit or a reward (register). */
+  exclusive: boolean;
 }
 export interface ApplicableHint {
   promo: PromoCard;

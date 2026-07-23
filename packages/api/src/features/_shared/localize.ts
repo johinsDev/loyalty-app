@@ -12,6 +12,8 @@ import {
 } from "@loyalty/db/schema";
 import { eq } from "drizzle-orm";
 
+import type { StackingPolicy } from "./checkout-math";
+
 // v1 supported sets. Enabled values are clamped to these in the settings service.
 export const SUPPORTED_LOCALES = ["es", "en"] as const;
 export const SUPPORTED_CURRENCIES = ["COP", "USD"] as const;
@@ -150,6 +152,8 @@ export interface LoyaltyConfig {
   pointsCardTemplate: string;
   tierGraceUntil: Date | null;
   stamps: StampsConfig;
+  /** Discount stacking policy for the register checkout money engine. */
+  stacking: StackingPolicy;
 }
 
 /**
@@ -225,6 +229,11 @@ export function getLoyaltyConfig(db: typeof Db, orgId: string): Promise<LoyaltyC
           cardTemplate: s?.stampsCardTemplate ?? "classic",
           style: s?.stampStyle ?? null,
           copy: s?.stampsCardCopy ?? null,
+        },
+        stacking: {
+          tierStacksWithPromo: s?.tierStacksWithPromo ?? true,
+          rewardStacksWithPromo: s?.rewardStacksWithPromo ?? true,
+          maxTotalDiscountPct: s?.maxTotalDiscountPct ?? 100,
         },
       };
     },

@@ -51,3 +51,13 @@ export function tierRank(key: string): number {
 export function currentTierKey(tierPoints: number): string {
   return tierFor(tierPoints).current.key;
 }
+
+/** The tier's benefit discount %, 0–100 (0 when the tier has no discount
+ *  benefit or the key is unknown). Enforced at the register by the checkout
+ *  money engine. */
+export function tierDiscountPct(tierKey: string | null | undefined): number {
+  if (!tierKey) return 0;
+  const tier = ASC.find((t) => t.key === tierKey);
+  const benefit = tier?.benefits.find((b) => b.type === "discount");
+  return benefit?.value ?? 0;
+}

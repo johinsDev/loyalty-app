@@ -1,5 +1,7 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { pointsAccount } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
+import { and, eq } from "drizzle-orm";
 
 import {
   ownerProcedure,
@@ -19,8 +21,10 @@ import {
   rateForCurrency,
 } from "../_shared/localize";
 import { resolveAttribution } from "../_shared/attribution";
+import { resolveNet } from "../_shared/checkout-math";
 import { resolveActiveStoreId } from "../_shared/store-context";
 import { buildPointsService } from "../points";
+import { tierDiscountPct } from "../points/tier-calc";
 import { PromoRepository, PromoService, type UnitExclusion } from "../promotions";
 import { enrichCart } from "../promotions/stitch";
 import { evaluateRewardForCart } from "../rewards/pos-evaluate";
@@ -118,7 +122,45 @@ export const stampsRouter = router({
         { exclusions, enriched },
       );
 
-      return { subtotalCents, applicable, hints, reward };
+      // Combine layers with the org stacking policy so the shown total equals
+      // the charged total. Preview the cashier-chosen promo, else the best.
+      const chosen = input.appliedPromoId
+        ? applicable.find((a) => a.promo.id === input.appliedPromoId)
+        : applicable[0];
+      const loyalty = await getLoyaltyConfig(ctx.db, org);
+      const [tierRow] = await ctx.db
+        .select({ key: pointsAccount.currentTierKey })
+        .from(pointsAccount)
+        .where(
+          and(
+            eq(pointsAccount.organizationId, org),
+            eq(pointsAccount.customerId, input.customerId),
+          ),
+        )
+        .limit(1);
+      const tierPct = tierDiscountPct(tierRow?.key);
+      const net = resolveNet(
+        {
+          subtotalCents,
+          rewardDiscountCents: reward?.ok ? reward.discountCents : 0,
+          promoDiscountCents: chosen?.discountCents ?? 0,
+          promoExclusive: chosen?.exclusive ?? false,
+          tierDiscountPct: tierPct,
+        },
+        loyalty.stacking,
+      );
+
+      return {
+        subtotalCents,
+        applicable,
+        hints,
+        reward,
+        net: {
+          ...net,
+          tierDiscountPct: tierPct,
+          appliedPromoId: net.suppressed.promo ? null : (chosen?.promo.id ?? null),
+        },
+      };
     }),
 
   recordPurchase: staffProcedure
@@ -140,6 +182,22 @@ export const stampsRouter = router({
         ctx.session.user.id,
         input.storeId,
       );
+
+      // Org loyalty config (cached) + the customer's persisted tier discount %
+      // (pre-purchase) — both feed the register stacking engine below and the
+      // earn logic further down.
+      const loyalty = await getLoyaltyConfig(ctx.db, org);
+      const [tierRow] = await ctx.db
+        .select({ key: pointsAccount.currentTierKey })
+        .from(pointsAccount)
+        .where(
+          and(
+            eq(pointsAccount.organizationId, org),
+            eq(pointsAccount.customerId, input.customerId),
+          ),
+        )
+        .limit(1);
+      const tierPct = tierDiscountPct(tierRow?.key);
 
       // Itemized sale → resolve the net price server-side (never trust a
       // client-sent discount). Rewards first (the reward consumes its units),
@@ -187,6 +245,7 @@ export const stampsRouter = router({
         // Promo on the remainder (reward-consumed units excluded).
         let promoDiscount = 0;
         let appliedPromoId: string | undefined;
+        let promoExclusive = false;
         if (input.appliedPromoId) {
           const lc = await loadLocaleContext(ctx.db, org, ctx.headers);
           const promoSvc = new PromoService(ctx.db, promoRepo);
@@ -204,10 +263,35 @@ export const stampsRouter = router({
           promoDiscount = chosen.discountCents;
           pointsMultiplier = chosen.pointsMultiplier;
           appliedPromoId = input.appliedPromoId;
+          promoExclusive = chosen.exclusive;
         }
 
-        const discountTotal = rewardDiscount + promoDiscount;
-        netPrice = Math.max(0, subtotal - discountTotal);
+        // Combine the three layers per the org stacking policy: reward → promo →
+        // tier %, exclusive-promo suppression, and the max-total-discount cap.
+        // Server-authoritative — the previewed total equals the charged total.
+        const net = resolveNet(
+          {
+            subtotalCents: subtotal,
+            rewardDiscountCents: rewardDiscount,
+            promoDiscountCents: promoDiscount,
+            promoExclusive,
+            tierDiscountPct: tierPct,
+          },
+          loyalty.stacking,
+        );
+        // A reward the customer chose to redeem can't be silently dropped by an
+        // exclusive / no-stack promo — reject so the cashier resolves it (the
+        // preview already surfaces the suppression).
+        if (input.inlineReward && net.suppressed.reward) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "reward-not-combinable" });
+        }
+        // The promo is auto-applied — if the policy suppressed it, drop it (and
+        // its points multiplier) silently.
+        if (net.suppressed.promo) {
+          appliedPromoId = undefined;
+          pointsMultiplier = 1;
+        }
+        netPrice = net.netPriceCents;
         // A redemption-only ticket (net $0 with a reward) is a claim, not a
         // purchase — no stamp, no streak advance.
         isRedemptionOnly = netPrice === 0 && Boolean(input.inlineReward);
@@ -215,17 +299,15 @@ export const stampsRouter = router({
           ...input,
           priceCents: netPrice,
           subtotalCents: subtotal,
-          discountCents: discountTotal,
-          promoDiscountCents: promoDiscount,
-          rewardDiscountCents: rewardDiscount,
+          discountCents: net.totalDiscountCents,
+          promoDiscountCents: net.promoDiscountCents,
+          rewardDiscountCents: net.rewardDiscountCents,
           appliedPromoId,
         };
       }
 
-      // Org loyalty config (cached): which tracks earn + the purchase
-      // currency's points rate + the stamp accrual rules. Redemption paths are
-      // never gated — a paused track's balances stay spendable.
-      const loyalty = await getLoyaltyConfig(ctx.db, org);
+      // Which tracks earn (loyalty loaded above). Redemption paths are never
+      // gated — a paused track's balances stay spendable.
       const stampsOn = earnsStamps(loyalty.mode);
       const pointsOn = earnsPoints(loyalty.mode);
 

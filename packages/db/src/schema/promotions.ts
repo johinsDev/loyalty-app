@@ -116,6 +116,9 @@ export const promo = sqliteTable(
     audienceCustomerIds: text("audience_customer_ids", { mode: "json" }).$type<string[]>(),
     // JSON array of store ids this promo runs at (null/empty = every store).
     storeIds: text("store_ids", { mode: "json" }).$type<string[] | null>(),
+    // Exclusive: this promo doesn't stack with the tier benefit or a reward at
+    // the register (only the promo applies). See the checkout money engine.
+    exclusive: integer("exclusive", { mode: "boolean" }).notNull().default(false),
 
     // Visual / content
     shortDescription: text("short_description"),
