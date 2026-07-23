@@ -1668,6 +1668,16 @@
     "mediaUploadError": "No se pudo subir la imagen",
     "secRecipe": "Receta",
     "recipeHint": "Ingredientes y cantidades por variante; marca los que ve el cliente.",
+    "secAddons": "Adiciones",
+    "addonsHint": "Grupos de adiciones del catálogo que el cliente puede sumar a este producto.",
+    "addonGroups": {
+      "namePlaceholder": "Nombre del grupo (ej. Toppings)",
+      "single": "Una",
+      "multi": "Varias",
+      "required": "Obligatorio",
+      "addGroup": "Agregar grupo",
+      "emptyCatalog": "Todavía no hay adiciones en el catálogo. Creá algunas en"
+    },
     "recipe": {
       "created": "“{name}” creado",
       "noVariants": "Agrega variantes primero.",

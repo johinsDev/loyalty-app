@@ -114,6 +114,18 @@ export type ProductDraft = {
   recipeNotes: string;
   options: ProductOption[];
   variants: Variant[];
+  addonGroups: AddonGroupDraft[];
+};
+
+/** A group attaching reusable catalog add-ons to this product. */
+export type AddonGroupDraft = {
+  id: string;
+  name: string;
+  selectionType: "single" | "multi";
+  required: boolean;
+  sortOrder: number;
+  /** Catalog add-on ids this group offers. */
+  addonIds: string[];
 };
 
 export const FEATURED_SECTIONS = ["featured", "new", "deals"] as const;
@@ -156,6 +168,7 @@ export const emptyProductDraft: ProductDraft = {
   recipeNotes: "",
   options: [],
   variants: [],
+  addonGroups: [],
 };
 
 /** Cartesian product of an option list → variant rows (preserving existing
