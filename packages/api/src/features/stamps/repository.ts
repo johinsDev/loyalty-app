@@ -1,8 +1,10 @@
 import type { db as Db } from "@loyalty/db";
 import {
+  customer,
   loyaltyCard,
   type LoyaltyCardRow,
   pointsTransaction,
+  product,
   productCategory,
   promoRedemption,
   purchase,
@@ -11,7 +13,7 @@ import {
   stamp,
 } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 
 import { redeemWithinTx } from "../rewards/redeem-tx";
 import { applyStampProgress } from "./eligibility";
@@ -80,6 +82,76 @@ export class StampsRepository {
       .from(productCategory)
       .where(inArray(productCategory.productId, productIds));
     return rows.map((r) => r.categoryId);
+  }
+
+  /** The shift feed: recent (non-void) purchases at a store since `since`, lean
+   *  — customer, time, a product-name summary and the stamps granted. For the
+   *  cashier to confirm what was rung up, not the full purchase detail. */
+  async shiftPurchases(
+    storeId: string,
+    since: Date,
+    limit = 30,
+  ): Promise<
+    {
+      id: string;
+      createdAt: Date;
+      customerName: string | null;
+      items: string[];
+      stampsDelta: number;
+      netCents: number;
+    }[]
+  > {
+    const rows = await this.db
+      .select({
+        id: purchase.id,
+        createdAt: purchase.createdAt,
+        customerName: customer.name,
+        netCents: purchase.priceCents,
+      })
+      .from(purchase)
+      .leftJoin(customer, eq(customer.id, purchase.customerId))
+      .where(
+        and(
+          eq(purchase.storeId, storeId),
+          gte(purchase.createdAt, since),
+          isNull(purchase.voidedAt),
+        ),
+      )
+      .orderBy(desc(purchase.createdAt))
+      .limit(limit);
+    if (rows.length === 0) return [];
+
+    const ids = rows.map((r) => r.id);
+    const [itemRows, stampRows] = await Promise.all([
+      this.db
+        .select({ purchaseId: purchaseItem.purchaseId, name: product.name })
+        .from(purchaseItem)
+        .leftJoin(product, eq(product.id, purchaseItem.productId))
+        .where(inArray(purchaseItem.purchaseId, ids)),
+      this.db
+        .select({ purchaseId: stamp.purchaseId, total: sql<number>`sum(${stamp.amount})` })
+        .from(stamp)
+        .where(inArray(stamp.purchaseId, ids))
+        .groupBy(stamp.purchaseId),
+    ]);
+    const itemsBy = new Map<string, string[]>();
+    for (const it of itemRows) {
+      if (!it.purchaseId) continue;
+      const arr = itemsBy.get(it.purchaseId) ?? [];
+      if (it.name) arr.push(it.name);
+      itemsBy.set(it.purchaseId, arr);
+    }
+    const stampsBy = new Map<string, number>();
+    for (const s of stampRows) if (s.purchaseId) stampsBy.set(s.purchaseId, Number(s.total));
+
+    return rows.map((r) => ({
+      id: r.id,
+      createdAt: r.createdAt,
+      customerName: r.customerName,
+      items: itemsBy.get(r.id) ?? [],
+      stampsDelta: stampsBy.get(r.id) ?? 0,
+      netCents: r.netCents,
+    }));
   }
 
   /** Register header KPI: stamps + points GRANTED at a store since `since`

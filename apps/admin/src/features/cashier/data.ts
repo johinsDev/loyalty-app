@@ -7,41 +7,6 @@
  * (sellos.add / redemptions.confirm) once the ledger lands.
  */
 
-
-
-export type MemberPurchase = {
-  id: string;
-  date: string;
-  items: string;
-  stamps: string;
-  /** Line items for the detail receipt. */
-  lines: string[];
-  cashier: string;
-  store: string;
-};
-
-/** The identified socio's recent purchases (also pulled for any customer). */
-export const memberPurchases: MemberPurchase[] = [
-  { id: "h1", date: "Hoy · 14:32", items: "Milk Tea, Matcha Latte", stamps: "+2", lines: ["1× Milk Tea", "1× Matcha Latte"], cashier: "Lucía F.", store: "T4 Centro" },
-  { id: "h2", date: "Ayer · 18:10", items: "Strawberry Matcha", stamps: "+2", lines: ["1× Strawberry Matcha"], cashier: "Bruno T.", store: "T4 Centro" },
-  { id: "h3", date: "12 jun · 09:48", items: "Frappé", stamps: "+1", lines: ["1× Frappé"], cashier: "Lucía F.", store: "T4 Norte" },
-  { id: "h4", date: "8 jun · 16:22", items: "Canje · Topping gratis", stamps: "−4", lines: ["Canje · Topping gratis"], cashier: "Lucía F.", store: "T4 Centro" },
-  { id: "h5", date: "3 jun · 11:05", items: "Premium del mes, Refresco", stamps: "+3", lines: ["1× Premium del mes", "1× Refresco"], cashier: "Mateo R.", store: "T4 Centro" },
-];
-
-export type CashierCustomer = {
-  name: string;
-  initials: string;
-  /** Masked phone shown at the register — never full PII. */
-  phone: string;
-  tier: string;
-  tierEmoji: string;
-  stamps: number;
-  stampGoal: number;
-  points: number;
-  toNext: string;
-};
-
 export const cashier = { name: "Lucía Fernández", initials: "LF" };
 
 export type TeaAvatar = {
@@ -65,19 +30,6 @@ export const teaAvatars: readonly TeaAvatar[] = [
 
 export const AVATAR_ACCEPT = ["image/png", "image/jpeg", "image/webp"] as const;
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
-
-
-export const foundCustomer: CashierCustomer = {
-  name: "Ariadna Pérez",
-  initials: "AP",
-  phone: "T4 ·· 4821",
-  tier: "Nivel Hoja",
-  tierEmoji: "🌿",
-  stamps: 7,
-  stampGoal: 10,
-  points: 312,
-  toNext: "Faltan 288 pts para 🌸 Flor",
-};
 
 export type CashierPromo = {
   emoji: string;

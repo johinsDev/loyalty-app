@@ -47,6 +47,15 @@ import { StampsService } from "./service";
 const orgId = async (): Promise<string> =>
   (await getPrimaryOrganizationId()) ?? "";
 
+/** The UTC instant of org-local midnight today — the "today" boundary for the
+ *  register shift reads. */
+function orgLocalMidnight(): Date {
+  const offsetMs = ORG_UTC_OFFSET_MINUTES * 60_000;
+  const local = new Date(Date.now() + offsetMs);
+  const midnight = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
+  return new Date(midnight - offsetMs);
+}
+
 /** The accrual numbers a `WalletView` needs, from the cached loyalty config. */
 const accOf = (loyalty: {
   stamps: { goal: number; purchasesPerStamp: number };
@@ -428,17 +437,17 @@ export const stampsRouter = router({
   // (org-local). Powers the "sellos/puntos hoy" counter.
   shiftSummary: staffProcedure
     .input(z.object({ storeId: z.string().min(1) }))
-    .query(async ({ ctx, input }) => {
-      const offsetMs = ORG_UTC_OFFSET_MINUTES * 60_000;
-      const local = new Date(Date.now() + offsetMs);
-      const localMidnight = Date.UTC(
-        local.getUTCFullYear(),
-        local.getUTCMonth(),
-        local.getUTCDate(),
-      );
-      const since = new Date(localMidnight - offsetMs);
-      return new StampsRepository(ctx.db).shiftSummary(input.storeId, since);
-    }),
+    .query(async ({ ctx, input }) =>
+      new StampsRepository(ctx.db).shiftSummary(input.storeId, orgLocalMidnight()),
+    ),
+
+  // The shift feed: today's non-void purchases at the active store (lean) so the
+  // cashier can confirm what was rung up.
+  shiftPurchases: staffProcedure
+    .input(z.object({ storeId: z.string().min(1), limit: z.number().int().min(1).max(100).default(30) }))
+    .query(async ({ ctx, input }) =>
+      new StampsRepository(ctx.db).shiftPurchases(input.storeId, orgLocalMidnight(), input.limit),
+    ),
 
   // CRM: adjust a customer's stamps directly (no purchase). Owner-only.
   adjustForCustomer: ownerProcedure
