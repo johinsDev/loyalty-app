@@ -54,7 +54,8 @@ type CartItem = {
   key: string;
   productId: string;
   variantId: string | null;
-  modifierOptionIds: string[];
+  addonIds: string[];
+  removedIngredientIds: string[];
   name: string;
   unitAmountCents: number;
   qty: number;
@@ -180,7 +181,8 @@ export function RegisterBoard({
         items: cart.map((i) => ({
           productId: i.productId,
           variantId: i.variantId ?? undefined,
-          modifierOptionIds: i.modifierOptionIds.length ? i.modifierOptionIds : undefined,
+          addonIds: i.addonIds.length ? i.addonIds : undefined,
+          removedIngredientIds: i.removedIngredientIds.length ? i.removedIngredientIds : undefined,
           qty: i.qty,
           unitAmountCents: i.unitAmountCents,
         })),
@@ -221,7 +223,8 @@ export function RegisterBoard({
         key: crypto.randomUUID(),
         productId: line.productId,
         variantId: line.variantId,
-        modifierOptionIds: line.modifierOptionIds,
+        addonIds: line.addonIds,
+        removedIngredientIds: line.removedIngredientIds,
         name: line.name,
         unitAmountCents: line.unitAmountCents,
         qty: line.qty,
@@ -264,7 +267,10 @@ export function RegisterBoard({
               items: cart.map((i) => ({
                 productId: i.productId,
                 variantId: i.variantId ?? undefined,
-                modifierOptionIds: i.modifierOptionIds.length ? i.modifierOptionIds : undefined,
+                addonIds: i.addonIds.length ? i.addonIds : undefined,
+                removedIngredientIds: i.removedIngredientIds.length
+                  ? i.removedIngredientIds
+                  : undefined,
                 qty: i.qty,
                 unitAmountCents: i.unitAmountCents,
                 note: i.note || undefined,

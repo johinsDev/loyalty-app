@@ -265,6 +265,8 @@ export class StampsRepository {
       productId: string;
       variantId?: string | null;
       modifierOptionIds?: string[];
+      addonIds?: string[];
+      removedIngredientIds?: string[];
       qty: number;
       unitAmountCents: number;
       currency?: string;
@@ -362,6 +364,11 @@ export class StampsRepository {
             productId: it.productId,
             variantId: it.variantId ?? null,
             modifierOptionIds: it.modifierOptionIds ?? null,
+            addonIds: it.addonIds && it.addonIds.length > 0 ? it.addonIds : null,
+            removedIngredientIds:
+              it.removedIngredientIds && it.removedIngredientIds.length > 0
+                ? it.removedIngredientIds
+                : null,
             qty: it.qty,
             unitAmountCents: it.unitAmountCents,
             currency: it.currency ?? currency,
