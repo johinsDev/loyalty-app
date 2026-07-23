@@ -20,12 +20,13 @@ import { CATALOG_STALE_MS } from "../catalog-cache";
 
 type ProductDetail = NonNullable<inferRouterOutputs<AppRouter>["menu"]["productBySlug"]>;
 type DetailVariant = ProductDetail["variants"][number];
-type DetailModifierGroup = ProductDetail["modifierGroups"][number];
+type DetailAddonGroup = ProductDetail["addonGroups"][number];
 
 export type PickedLine = {
   productId: string;
   variantId: string | null;
-  modifierOptionIds: string[];
+  addonIds: string[];
+  removedIngredientIds: string[];
   name: string;
   unitAmountCents: number;
   qty: number;
@@ -51,11 +52,11 @@ const plainText = (html: string): string =>
     .trim();
 
 /**
- * Add-a-line picker (Caja design): pick the variant (size), toggle
- * toppings/modifications from the product's modifier groups (single-select acts
- * as radio, multi as chips), add a free-form kitchen note and a quantity. The
- * unit price = variant price + selected modifier deltas; the line carries the
- * chosen variantId + modifierOptionIds so the sale records them.
+ * Add-a-line picker (Caja design): pick the variant (size), add catalog add-ons
+ * (single-select acts as radio, multi as chips), toggle "sin X" for removable
+ * recipe ingredients, add a free note + quantity. The unit price = variant price
+ * + selected add-on deltas; the line carries the chosen variantId + addonIds +
+ * removedIngredientIds so the sale records them.
  */
 export function ProductPicker({
   slug,
@@ -78,7 +79,8 @@ export function ProductPicker({
   const product = detail.data ?? null;
 
   const [variantId, setVariantId] = useState<string | null>(null);
-  const [selectedMods, setSelectedMods] = useState<Set<string>>(new Set());
+  const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set());
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [note, setNote] = useState("");
   const [qty, setQty] = useState(1);
 
@@ -100,38 +102,53 @@ export function ProductPicker({
     variants.find((v) => v.isDefault) ??
     variants[0] ??
     null;
-  const basePrice = selectedVariant?.priceCents ?? product?.basePriceCents ?? fallbackPriceCents;
+  const basePrice = selectedVariant?.priceCents ?? fallbackPriceCents;
 
-  const groups = product?.modifierGroups ?? [];
-  const allOptions = groups.flatMap((g) => g.options);
-  const modDelta = allOptions
-    .filter((o) => selectedMods.has(o.id))
-    .reduce((s, o) => s + o.priceDeltaCents, 0);
-  const unit = basePrice + modDelta;
+  const groups = product?.addonGroups ?? [];
+  const removable = product?.removableIngredients ?? [];
+  const allItems = groups.flatMap((g) => g.items);
+  const addonDelta = allItems
+    .filter((it) => selectedAddons.has(it.addonId))
+    .reduce((s, it) => s + it.priceDeltaCents, 0);
+  const unit = basePrice + addonDelta;
 
-  const toggleMod = (group: DetailModifierGroup, optId: string) => {
-    setSelectedMods((prev) => {
+  const toggleAddon = (group: DetailAddonGroup, addonId: string) => {
+    setSelectedAddons((prev) => {
       const next = new Set(prev);
-      if (next.has(optId)) {
-        next.delete(optId);
+      if (next.has(addonId)) {
+        next.delete(addonId);
       } else {
         if (group.selectionType === "single") {
-          for (const o of group.options) next.delete(o.id); // radio: clear the group
+          for (const it of group.items) next.delete(it.addonId); // radio: clear the group
         }
-        next.add(optId);
+        next.add(addonId);
       }
       return next;
     });
   };
 
+  const toggleRemoved = (ingredientId: string) =>
+    setRemoved((prev) => {
+      const next = new Set(prev);
+      if (next.has(ingredientId)) next.delete(ingredientId);
+      else next.add(ingredientId);
+      return next;
+    });
+
   const add = () => {
     const vLabel = selectedVariant ? variantLabel(selectedVariant) : "";
-    const modLabels = allOptions.filter((o) => selectedMods.has(o.id)).map((o) => o.name);
-    const parts = [product?.name ?? fallbackName, vLabel, ...modLabels].filter(Boolean);
+    const addonLabels = allItems.filter((it) => selectedAddons.has(it.addonId)).map((it) => it.name);
+    const removedLabels = removable
+      .filter((r) => removed.has(r.ingredientId))
+      .map((r) => t("pickerWithout", { name: r.name }));
+    const parts = [product?.name ?? fallbackName, vLabel, ...addonLabels, ...removedLabels].filter(
+      Boolean,
+    );
     onAdd({
       productId: product?.id ?? "",
       variantId: selectedVariant?.id ?? null,
-      modifierOptionIds: [...selectedMods],
+      addonIds: [...selectedAddons],
+      removedIngredientIds: [...removed],
       name: parts.join(" · "),
       unitAmountCents: unit,
       qty,
@@ -165,7 +182,7 @@ export function ProductPicker({
                 <div className="grid grid-cols-3 gap-2">
                   {variants.map((v) => {
                     const active = v.id === selectedVariant?.id;
-                    const delta = v.priceCents - basePriceRef(variants, product);
+                    const delta = v.priceCents - basePriceRef(variants);
                     return (
                       <button
                         key={v.id}
@@ -186,25 +203,25 @@ export function ProductPicker({
               </div>
             ) : null}
 
-            {/* Toppings / modifications (modifier groups) */}
+            {/* Add-on groups */}
             {groups.map((g) => (
               <div key={g.id}>
                 <div className="mb-2 text-sm font-extrabold">{g.name}</div>
                 <div className="flex flex-wrap gap-2">
-                  {g.options.map((o) => {
-                    const active = selectedMods.has(o.id);
+                  {g.items.map((it) => {
+                    const active = selectedAddons.has(it.addonId);
                     return (
                       <button
-                        key={o.id}
+                        key={it.addonId}
                         type="button"
-                        onClick={() => toggleMod(g, o.id)}
+                        onClick={() => toggleAddon(g, it.addonId)}
                         className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-bold ${active ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}
                       >
                         {active ? <Check className="size-3.5" /> : null}
-                        {o.name}
-                        {o.priceDeltaCents > 0 ? (
+                        {it.name}
+                        {it.priceDeltaCents > 0 ? (
                           <span className={active ? "opacity-80" : "text-muted-foreground"}>
-                            · +{formatCop(o.priceDeltaCents)}
+                            · +{formatCop(it.priceDeltaCents)}
                           </span>
                         ) : null}
                       </button>
@@ -213,6 +230,29 @@ export function ProductPicker({
                 </div>
               </div>
             ))}
+
+            {/* Sin X (removable recipe ingredients) */}
+            {removable.length > 0 ? (
+              <div>
+                <div className="mb-2 text-sm font-extrabold">{t("pickerRemove")}</div>
+                <div className="flex flex-wrap gap-2">
+                  {removable.map((r) => {
+                    const active = removed.has(r.ingredientId);
+                    return (
+                      <button
+                        key={r.ingredientId}
+                        type="button"
+                        onClick={() => toggleRemoved(r.ingredientId)}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-bold ${active ? "border-amber-500 bg-amber-500/10 text-amber-600" : "border-border text-muted-foreground"}`}
+                      >
+                        {active ? <Check className="size-3.5" /> : null}
+                        {t("pickerWithout", { name: r.name })}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
 
             {/* Nota */}
             <input
@@ -260,7 +300,7 @@ export function ProductPicker({
 }
 
 /** The default variant's price — the baseline the size deltas display against. */
-function basePriceRef(variants: DetailVariant[], product: ProductDetail | null): number {
+function basePriceRef(variants: DetailVariant[]): number {
   const def = variants.find((v) => v.isDefault) ?? variants[0];
-  return def?.priceCents ?? product?.basePriceCents ?? 0;
+  return def?.priceCents ?? 0;
 }

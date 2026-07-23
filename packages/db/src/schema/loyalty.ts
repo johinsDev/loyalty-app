@@ -173,11 +173,15 @@ export const purchaseItem = sqliteTable(
     productId: text("product_id").notNull(),
     variantId: text("variant_id"),
     modifierOptionIds: text("modifier_option_ids", { mode: "json" }).$type<string[]>(),
+    // Catalog add-ons applied to this line (sales attribution). Ids resolve to
+    // the reusable add-on catalog; a reward may have waived one at sale time.
+    addonIds: text("addon_ids", { mode: "json" }).$type<string[]>(),
+    // Recipe ingredients the customer removed ("sin X"), by ingredient id.
+    removedIngredientIds: text("removed_ingredient_ids", { mode: "json" }).$type<string[]>(),
     qty: integer("qty").notNull().default(1),
     unitAmountCents: integer("unit_amount_cents").notNull(),
     currency: text("currency").notNull().default("COP"),
-    // Free-form line note (e.g. "más hielo", "sin azúcar", "sin maní"). Covers
-    // subtractive modifiers functionally until structured toggles land (v2).
+    // Free-form line note (e.g. "más hielo", "sin azúcar", "sin maní").
     note: text("note"),
   },
   (t) => ({

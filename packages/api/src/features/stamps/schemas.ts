@@ -18,6 +18,10 @@ export const purchaseLineSchema = z.object({
   productId: z.string().min(1),
   variantId: z.string().nullish(),
   modifierOptionIds: z.array(z.string()).optional(),
+  /** Catalog add-ons applied to this line (unit price already includes them). */
+  addonIds: z.array(z.string()).optional(),
+  /** Recipe ingredients removed ("sin X"), by ingredient id. */
+  removedIngredientIds: z.array(z.string()).optional(),
   qty: z.number().int().min(1),
   unitAmountCents: z.number().int().nonnegative(),
   /** Free-form line note (e.g. "más hielo", "sin maní"). */
