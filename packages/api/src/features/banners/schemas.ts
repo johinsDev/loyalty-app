@@ -122,6 +122,17 @@ export interface BannerListItem {
   createdAt: Date;
 }
 
+/** Cashier catalog item — a published banner with store scope + display state,
+ *  so the cashier can confirm what's live (org-wide vs store-specific). */
+export interface StaffBannerItem {
+  id: string;
+  name: string;
+  shortDescription: string | null;
+  mainImageUrl: string | null;
+  storeIds: string[] | null;
+  displayState: BannerDisplayState;
+}
+
 export const bulkIdsSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(500),
 });

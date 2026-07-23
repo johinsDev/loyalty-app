@@ -2,7 +2,7 @@ import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
 import { loadLocaleContext } from "../_shared/localize";
-import { managerProcedure, publicProcedure, router } from "../../trpc";
+import { managerProcedure, publicProcedure, router, staffProcedure } from "../../trpc";
 import { BannersRepository } from "./repository";
 import {
   advanceInputSchema,
@@ -49,6 +49,12 @@ export const bannersRouter = router({
       const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
       return makeService(ctx.db).homeBanners(id, lc, input.storeId);
     }),
+  // Cashier catalog — published banners with store scope + display state (staff).
+  staffCatalog: staffProcedure.query(async ({ ctx }) => {
+    const id = await orgId();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    return new BannersRepository(ctx.db).staffCatalog(id, lc);
+  }),
   bySlug: publicProcedure
     .input(slugInputSchema)
     .query(async ({ ctx, input }) => {
