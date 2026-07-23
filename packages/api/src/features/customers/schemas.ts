@@ -93,6 +93,13 @@ export interface RegisterContext {
   name: string | null;
   phoneMasked: string;
   emailMasked: string | null;
+  /** Month/day only matter for the greeting; year kept for "X años". */
+  birthday: Date | null;
+  /** 0 = birthday today, 1-7 = within the coming week, null = not soon/unknown. */
+  birthdayInDays: number | null;
+  memberSince: Date;
+  /** Staff free-form note (allergies/preferences) — helps serve personally. */
+  notes: string | null;
   tierKey: string | null;
   points: number;
   visits: number;

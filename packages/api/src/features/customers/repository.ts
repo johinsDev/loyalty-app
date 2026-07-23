@@ -315,6 +315,9 @@ export class CustomersRepository {
     name: string | null;
     phone: string;
     email: string | null;
+    birthday: Date | null;
+    memberSince: Date;
+    notes: string | null;
     tierKey: string | null;
     points: number;
     visits: number;
@@ -330,6 +333,9 @@ export class CustomersRepository {
         name: customer.name,
         phone: customer.phone,
         email: customer.email,
+        birthday: customer.birthday,
+        memberSince: customer.createdAt,
+        notes: customer.notes,
         acquisitionChannel: customer.acquisitionChannel,
         acquisitionStoreId: customer.acquisitionStoreId,
         acquisitionStoreName: store.name,
@@ -381,6 +387,9 @@ export class CustomersRepository {
       name: c.name,
       phone: c.phone,
       email: c.email,
+      birthday: c.birthday ?? null,
+      memberSince: c.memberSince,
+      notes: c.notes ?? null,
       tierKey: c.tierKey ?? null,
       points: Number(pointsRows[0]?.total ?? 0),
       visits,
