@@ -35,6 +35,8 @@ export interface LocalizationView {
   enabledLocales: string[];
   defaultCurrency: string;
   enabledCurrencies: string[];
+  /** ISO-2 default for the phone picker (null → CO). */
+  defaultPhoneCountry: string | null;
 }
 
 // ─── Branding ────────────────────────────────────────────────────────────────
