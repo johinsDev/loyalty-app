@@ -109,6 +109,7 @@ export function ProductEditor({ id }: { id?: string }) {
   const [status, setStatus] = useState<ProductStatus>("active");
   const [passthrough, setPassthrough] = useState<ProductPassthrough>({
     modifierGroups: [],
+    addonGroups: [],
     images: [],
   });
   const [stepIndex, setStepIndex] = useState(0);

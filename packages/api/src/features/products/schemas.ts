@@ -100,6 +100,17 @@ export interface DetailModifierGroup {
   options: { id: string; name: string; priceDeltaCents: number }[];
 }
 
+/** An add-on group on a product — items resolve the reusable add-on catalog. */
+export interface DetailAddonGroup {
+  id: string;
+  name: string;
+  selectionType: "single" | "multi";
+  minSelect: number;
+  maxSelect: number | null;
+  required: boolean;
+  items: { addonId: string; name: string; priceDeltaCents: number }[];
+}
+
 /** Full product for the detail (modal + SEO page). */
 export interface ProductDetail {
   id: string;
@@ -114,8 +125,11 @@ export interface ProductDetail {
   options: DetailOption[];
   variants: DetailVariant[];
   modifierGroups: DetailModifierGroup[];
+  addonGroups: DetailAddonGroup[];
   /** Customer-visible ingredients ("Contiene …") — union across variants. */
   ingredients: string[];
+  /** Customer-visible ingredients marked removable — the register "sin X" toggles. */
+  removableIngredients: { ingredientId: string; name: string }[];
   categorySlugs: string[];
   seo: { title: string | null; description: string | null; ogImageUrl: string | null };
 }

@@ -59,6 +59,8 @@ export type RecipeLine = {
   ingredientId: string;
   quantity: number;
   visibleToCustomer: boolean;
+  /** Visible + removable → a "sin X" toggle at the register (subtractive). */
+  removable: boolean;
   sortOrder: number;
 };
 

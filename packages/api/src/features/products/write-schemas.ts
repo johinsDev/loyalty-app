@@ -29,6 +29,8 @@ const variantIngredientInput = z.object({
   ingredientId: z.string().min(1),
   quantity: z.number().min(0),
   visibleToCustomer: z.boolean().default(false),
+  // A visible-to-customer ingredient marked removable shows as a "sin X" toggle.
+  removable: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
 });
 
@@ -118,6 +120,24 @@ const modifierGroupInput = z.object({
   options: z.array(modifierOptionInput).default([]),
 });
 
+// An add-on group attaches catalog add-ons to a product; `items` reference the
+// reusable add-on catalog (price comes from the catalog, not per-product).
+const addonGroupItemInput = z.object({
+  id: z.string().min(1),
+  addonId: z.string().min(1),
+  sortOrder: z.number().int().default(0),
+});
+const addonGroupInput = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(60),
+  selectionType: z.enum(["single", "multi"]).default("multi"),
+  minSelect: z.number().int().min(0).default(0),
+  maxSelect: z.number().int().min(1).nullish(),
+  required: z.boolean().default(false),
+  sortOrder: z.number().int().default(0),
+  items: z.array(addonGroupItemInput).default([]),
+});
+
 const imageInput = z.object({
   id: z.string().min(1),
   url: z.string().min(1),
@@ -154,6 +174,7 @@ export const productUpsertInputSchema = z.object({
   options: z.array(optionInput).default([]),
   variants: z.array(variantInput).default([]),
   modifierGroups: z.array(modifierGroupInput).default([]),
+  addonGroups: z.array(addonGroupInput).default([]),
   images: z.array(imageInput).default([]),
 });
 
@@ -230,6 +251,7 @@ export interface ProductAdminDetail {
       unit: string;
       quantity: number;
       visibleToCustomer: boolean;
+      removable: boolean;
       costPerUnitCents: number;
       sortOrder: number;
     }[];
@@ -247,6 +269,16 @@ export interface ProductAdminDetail {
     required: boolean;
     sortOrder: number;
     options: { id: string; name: string; priceDeltaCents: number; pointsDelta: number | null; sortOrder: number }[];
+  }[];
+  addonGroups: {
+    id: string;
+    name: string;
+    selectionType: string;
+    minSelect: number;
+    maxSelect: number | null;
+    required: boolean;
+    sortOrder: number;
+    items: { id: string; addonId: string; name: string; priceDeltaCents: number; sortOrder: number }[];
   }[];
   images: { id: string; url: string; alt: string | null; variantId: string | null; sortOrder: number }[];
 }
