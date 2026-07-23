@@ -255,10 +255,108 @@ export const variantIngredient = sqliteTable(
     visibleToCustomer: integer("visible_to_customer", { mode: "boolean" })
       .notNull()
       .default(false),
+    // A customer-visible ingredient marked removable shows as a "sin X" toggle at
+    // the register (subtractive modifier). Removing it must not consume stock.
+    removable: integer("removable", { mode: "boolean" }).notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(0),
   },
   (t) => ({
     byVariant: index("variant_ingredient_variant_idx").on(t.variantId),
+  }),
+);
+
+// ---- Add-ons ---------------------------------------------------------------
+// Org-level catalog of reusable, sellable extras attached to products via groups
+// (a "topping" model that generalizes beyond food: sides, service extras, …). An
+// add-on optionally links to a stocked `ingredient` (perlas, jamón) to inherit
+// cost + future stock + recipe/COGS; standalone otherwise (car wax, nail trim).
+export const addon = sqliteTable(
+  "addon",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    priceDeltaCents: integer("price_delta_cents").notNull().default(0),
+    costCents: integer("cost_cents").notNull().default(0),
+    ingredientId: text("ingredient_id").references(() => ingredient.id, {
+      onDelete: "set null",
+    }),
+    sku: text("sku"),
+    // Inventory is dormant until the dedicated inventory feature; carried now so
+    // the model needs no further migration when stock lands.
+    stockMode: text("stock_mode").notNull().default("infinite"), // infinite | limited
+    stockQty: integer("stock_qty"),
+    currency: text("currency").notNull().default("COP"),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    namePerOrg: uniqueIndex("addon_name_per_org_uq").on(t.organizationId, t.name),
+  }),
+);
+
+// Per-currency price override for an add-on (mirrors modifierOptionPrice).
+export const addonPrice = sqliteTable(
+  "addon_price",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    addonId: text("addon_id")
+      .notNull()
+      .references(() => addon.id, { onDelete: "cascade" }),
+    currency: text("currency").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+  },
+  (t) => ({
+    uq: uniqueIndex("addon_price_uq").on(t.addonId, t.currency),
+  }),
+);
+
+// A group attaches a set of catalog add-ons to one product with selection rules.
+export const addonGroup = sqliteTable("addon_group", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  productId: text("product_id")
+    .notNull()
+    .references(() => product.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  selectionType: text("selection_type").notNull().default("multi"), // single | multi
+  minSelect: integer("min_select").notNull().default(0),
+  maxSelect: integer("max_select"),
+  required: integer("required", { mode: "boolean" }).notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+// Which catalog add-ons a group offers (price comes from the add-on catalog).
+export const addonGroupItem = sqliteTable(
+  "addon_group_item",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => addonGroup.id, { onDelete: "cascade" }),
+    addonId: text("addon_id")
+      .notNull()
+      .references(() => addon.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => ({
+    uq: uniqueIndex("addon_group_item_uq").on(t.groupId, t.addonId),
   }),
 );
 
@@ -348,6 +446,7 @@ export const productRelations = relations(product, ({ one, many }) => ({
   variants: many(productVariant),
   images: many(productImage),
   modifierGroups: many(modifierGroup),
+  addonGroups: many(addonGroup),
 }));
 
 export const productCategoryRelations = relations(productCategory, ({ one }) => ({
@@ -391,6 +490,46 @@ export const productVariantRelations = relations(productVariant, ({ one, many })
 
 export const ingredientRelations = relations(ingredient, ({ many }) => ({
   variantLines: many(variantIngredient),
+  addons: many(addon),
+}));
+
+export const addonRelations = relations(addon, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [addon.organizationId],
+    references: [organization.id],
+  }),
+  ingredient: one(ingredient, {
+    fields: [addon.ingredientId],
+    references: [ingredient.id],
+  }),
+  prices: many(addonPrice),
+  groupItems: many(addonGroupItem),
+}));
+
+export const addonPriceRelations = relations(addonPrice, ({ one }) => ({
+  addon: one(addon, {
+    fields: [addonPrice.addonId],
+    references: [addon.id],
+  }),
+}));
+
+export const addonGroupRelations = relations(addonGroup, ({ one, many }) => ({
+  product: one(product, {
+    fields: [addonGroup.productId],
+    references: [product.id],
+  }),
+  items: many(addonGroupItem),
+}));
+
+export const addonGroupItemRelations = relations(addonGroupItem, ({ one }) => ({
+  group: one(addonGroup, {
+    fields: [addonGroupItem.groupId],
+    references: [addonGroup.id],
+  }),
+  addon: one(addon, {
+    fields: [addonGroupItem.addonId],
+    references: [addon.id],
+  }),
 }));
 
 export const variantIngredientRelations = relations(variantIngredient, ({ one }) => ({
@@ -582,5 +721,10 @@ export type ProductVariantRow = typeof productVariant.$inferSelect;
 export type ProductImageRow = typeof productImage.$inferSelect;
 export type ModifierGroupRow = typeof modifierGroup.$inferSelect;
 export type ModifierOptionRow = typeof modifierOption.$inferSelect;
+export type AddonRow = typeof addon.$inferSelect;
+export type AddonInsert = typeof addon.$inferInsert;
+export type AddonPriceRow = typeof addonPrice.$inferSelect;
+export type AddonGroupRow = typeof addonGroup.$inferSelect;
+export type AddonGroupItemRow = typeof addonGroupItem.$inferSelect;
 export type SectionRow = typeof section.$inferSelect;
 export type ProductFavoriteRow = typeof productFavorite.$inferSelect;
