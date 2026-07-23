@@ -30,6 +30,13 @@ const formatCop = (cents: number): string =>
     maximumFractionDigits: 0,
   }).format(Math.round(cents) / 100);
 
+/** The rich-text description arrives as HTML; the cashier reads it as plain text. */
+const plainText = (html: string): string =>
+  html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 /**
  * Menú tab — the real product catalog the cashier can browse: search + category
  * filter (both in the URL via nuqs), and tap a product to see its recipe
@@ -116,9 +123,11 @@ export function MenuView() {
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-bold">{item.name}</div>
                 <div className="text-muted-foreground/70 truncate text-xs font-semibold">
-                  {item.promoPriceCents != null
-                    ? formatCop(item.promoPriceCents)
-                    : formatCop(item.priceCents)}
+                  {item.variantFromCents != null
+                    ? item.priceFrom
+                      ? t("priceFrom", { price: formatCop(item.variantFromCents) })
+                      : formatCop(item.variantFromCents)
+                    : formatCop(item.promoPriceCents ?? item.priceCents)}
                 </div>
               </div>
               <EarnBadge earn={item.earn} t={t} />
@@ -196,38 +205,50 @@ function ProductDetailBody({ slug, onClose }: { slug: string; onClose: () => voi
       .filter(Boolean)
       .join(" · ");
 
-  const price =
-    product.promoPriceCents != null ? product.promoPriceCents : product.basePriceCents;
-
   return (
     <div className="flex max-h-[80vh] flex-col overflow-y-auto px-6 pt-2 pb-6">
-      <div className="flex items-center gap-3">
-        <Thumb url={product.images[0]?.url ?? null} large />
-        <div className="min-w-0 flex-1">
-          <ResponsiveModalTitle className="font-display truncate text-xl font-semibold tracking-tight">
-            {product.name}
-          </ResponsiveModalTitle>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="text-sm font-extrabold">
-              {product.promoPriceCents != null ? (
-                <>
-                  <span className="text-primary">{formatCop(product.promoPriceCents)}</span>{" "}
-                  <span className="text-muted-foreground/60 font-semibold line-through">
-                    {formatCop(product.basePriceCents)}
-                  </span>
-                </>
-              ) : (
-                formatCop(price)
-              )}
-            </span>
-            <EarnBadge earn={product.earn} t={t} />
+      {/* A product with variants is always sold as one, so show the real variant
+          price ("desde $X"); the product-level promo only applies to simple ones. */}
+      {(() => {
+        const variantPrices = product.variants.map((v) => v.priceCents);
+        const minVariant = variantPrices.length > 0 ? Math.min(...variantPrices) : null;
+        const variantRange = minVariant != null && Math.max(...variantPrices) !== minVariant;
+        return (
+          <div className="flex items-center gap-3">
+            <Thumb url={product.images[0]?.url ?? null} large />
+            <div className="min-w-0 flex-1">
+              <ResponsiveModalTitle className="font-display truncate text-xl font-semibold tracking-tight">
+                {product.name}
+              </ResponsiveModalTitle>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="text-sm font-extrabold">
+                  {minVariant != null ? (
+                    <span className="text-primary">
+                      {variantRange
+                        ? t("priceFrom", { price: formatCop(minVariant) })
+                        : formatCop(minVariant)}
+                    </span>
+                  ) : product.promoPriceCents != null ? (
+                    <>
+                      <span className="text-primary">{formatCop(product.promoPriceCents)}</span>{" "}
+                      <span className="text-muted-foreground/60 font-semibold line-through">
+                        {formatCop(product.basePriceCents)}
+                      </span>
+                    </>
+                  ) : (
+                    formatCop(product.basePriceCents)
+                  )}
+                </span>
+                <EarnBadge earn={product.earn} t={t} />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {product.description ? (
         <ResponsiveModalDescription className="text-foreground mt-3 text-sm leading-relaxed">
-          {product.description}
+          {plainText(product.description)}
         </ResponsiveModalDescription>
       ) : null}
 
