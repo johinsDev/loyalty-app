@@ -1403,6 +1403,7 @@
     "promoDiscount": "Promo discount",
     "rewardDiscount": "Reward: {name}",
     "rewardAddItemHint": "Add the item to the cart to apply this reward.",
+    "rewardNotApplicable": "Doesn't apply to this cart",
     "rewardClaimedBadge": "Claimed",
     "rewardFulfillmentLabel": "Hand to customer",
     "rewardResolvedToast": "Reward ready — complete it in the sale"

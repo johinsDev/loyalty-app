@@ -1403,6 +1403,7 @@
     "promoDiscount": "Descuento promo",
     "rewardDiscount": "Recompensa: {name}",
     "rewardAddItemHint": "Agrega el producto al carrito para aplicar esta recompensa.",
+    "rewardNotApplicable": "No aplica a este carrito",
     "rewardClaimedBadge": "Reclamada",
     "rewardFulfillmentLabel": "Entregar al cliente",
     "rewardResolvedToast": "Recompensa lista — complétala en la venta"

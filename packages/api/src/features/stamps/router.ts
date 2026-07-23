@@ -206,12 +206,31 @@ export const stampsRouter = router({
         loyalty.stacking,
       );
 
+      // Per-reward line eligibility for the "ready to redeem" list: evaluate each
+      // available reward against this cart so the register can gate selection.
+      const rewardsRepo = new RewardsRepository(ctx.db);
+      const rewardEligibility = await Promise.all(
+        (input.rewardIds ?? []).map(async (rid) => {
+          const r = await rewardsRepo.getReward(org, rid);
+          if (!r || r.status !== "published") {
+            return { rewardId: rid, eligible: false, reason: "reward-not-redeemable" };
+          }
+          const cartForR =
+            r.benefit?.type === "variantUpgrade"
+              ? await stitchUpgradeDeltas(promoRepo, enriched, r.benefit)
+              : enriched;
+          const res = evaluateRewardForCart(r, cartForR);
+          return { rewardId: rid, eligible: res.ok, reason: res.ok ? null : res.reason };
+        }),
+      );
+
       return {
         subtotalCents,
         applicable,
         hints,
         upsell,
         reward,
+        rewardEligibility,
         net: {
           ...net,
           tierDiscountPct: tierPct,
