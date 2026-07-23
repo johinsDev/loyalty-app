@@ -2,6 +2,7 @@ import type { db as Db } from "@loyalty/db";
 import {
   loyaltyCard,
   type LoyaltyCardRow,
+  pointsTransaction,
   productCategory,
   promoRedemption,
   purchase,
@@ -10,7 +11,7 @@ import {
   stamp,
 } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 
 import { redeemWithinTx } from "../rewards/redeem-tx";
 import { applyStampProgress } from "./eligibility";
@@ -79,6 +80,28 @@ export class StampsRepository {
       .from(productCategory)
       .where(inArray(productCategory.productId, productIds));
     return rows.map((r) => r.categoryId);
+  }
+
+  /** Register header KPI: stamps + points GRANTED at a store since `since`
+   *  (org-local midnight → "today"). Positive movements only (redemptions/spends
+   *  excluded) — it's a "what this register handed out today" counter. */
+  async shiftSummary(
+    storeId: string,
+    since: Date,
+  ): Promise<{ stampsToday: number; pointsToday: number }> {
+    const [s] = await this.db
+      .select({
+        total: sql<number>`coalesce(sum(case when ${stamp.amount} > 0 then ${stamp.amount} else 0 end), 0)`,
+      })
+      .from(stamp)
+      .where(and(eq(stamp.storeId, storeId), gte(stamp.createdAt, since)));
+    const [p] = await this.db
+      .select({
+        total: sql<number>`coalesce(sum(case when ${pointsTransaction.points} > 0 then ${pointsTransaction.points} else 0 end), 0)`,
+      })
+      .from(pointsTransaction)
+      .where(and(eq(pointsTransaction.storeId, storeId), gte(pointsTransaction.createdAt, since)));
+    return { stampsToday: Number(s?.total ?? 0), pointsToday: Number(p?.total ?? 0) };
   }
 
   /** Manual admin stamp correction (CRM): a signed stamp row with no purchase +

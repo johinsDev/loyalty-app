@@ -52,10 +52,6 @@ export type CashierCustomer = {
   toNext: string;
 };
 
-/** Per-cashier daily stamp cap (anti-fraud). */
-export const DAILY_CAP = 150;
-export const STAMPS_TODAY = 84;
-
 export const cashier = { name: "Lucía Fernández", initials: "LF" };
 
 export type TeaAvatar = {
@@ -79,7 +75,6 @@ export const teaAvatars: readonly TeaAvatar[] = [
 
 export const AVATAR_ACCEPT = ["image/png", "image/jpeg", "image/webp"] as const;
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
-export const store = { name: "T4 Centro", shift: "Turno mañana · 08:00–16:00" };
 
 export const products: Product[] = [
   { id: "p1", emoji: "🧋", name: "Milk Tea", earns: 1, category: "Tés", description: "Té negro con leche y perlas de tapioca." },

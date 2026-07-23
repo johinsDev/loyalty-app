@@ -1086,6 +1086,7 @@
   "Cashier": {
     "registerAt": "Register · {store}",
     "stampsToday": "STAMPS TODAY",
+    "pointsToday": "POINTS TODAY",
     "switchCashier": "Switch cashier",
     "capBanner": "You've hit this cashier's daily stamp cap. Ask a supervisor to reset the counter.",
     "modeEarn": "Add stamps",

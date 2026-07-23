@@ -2,6 +2,7 @@ import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { pointsAccount } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
+import { z } from "zod";
 
 import {
   ownerProcedure,
@@ -23,6 +24,7 @@ import {
 import { resolveAttribution } from "../_shared/attribution";
 import { resolveNet } from "../_shared/checkout-math";
 import { resolveActiveStoreId } from "../_shared/store-context";
+import { ORG_UTC_OFFSET_MINUTES } from "../promotions/engine";
 import { buildPointsService } from "../points";
 import { tierDiscountPct } from "../points/tier-calc";
 import { PromoRepository, PromoService, type UnitExclusion } from "../promotions";
@@ -420,6 +422,22 @@ export const stampsRouter = router({
         input.customerId,
         accOf(await getLoyaltyConfig(ctx.db, org)),
       );
+    }),
+
+  // Register header KPI: stamps + points granted at the active store today
+  // (org-local). Powers the "sellos/puntos hoy" counter.
+  shiftSummary: staffProcedure
+    .input(z.object({ storeId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const offsetMs = ORG_UTC_OFFSET_MINUTES * 60_000;
+      const local = new Date(Date.now() + offsetMs);
+      const localMidnight = Date.UTC(
+        local.getUTCFullYear(),
+        local.getUTCMonth(),
+        local.getUTCDate(),
+      );
+      const since = new Date(localMidnight - offsetMs);
+      return new StampsRepository(ctx.db).shiftSummary(input.storeId, since);
     }),
 
   // CRM: adjust a customer's stamps directly (no purchase). Owner-only.
