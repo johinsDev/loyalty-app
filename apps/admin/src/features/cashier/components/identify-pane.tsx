@@ -120,7 +120,7 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
           className="border-border bg-muted placeholder:text-muted-foreground/50 font-display h-12 w-full rounded-2xl border px-3.5 text-center text-2xl font-semibold tracking-[0.4em] tabular-nums outline-none"
         />
         <Button
-          variant="gradient"
+          variant="default"
           size="lg"
           disabled={pin.trim().length !== 6 || confirmPin.isPending}
           onClick={() => void confirmRegister()}
@@ -198,7 +198,7 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
             className="border-border bg-card placeholder:text-muted-foreground/70 mt-3 h-10 w-full rounded-2xl border px-3.5 text-sm font-semibold outline-none"
           />
           <Button
-            variant="gradient"
+            variant="default"
             size="lg"
             disabled={requestPin.isPending}
             onClick={() => void startRegister()}

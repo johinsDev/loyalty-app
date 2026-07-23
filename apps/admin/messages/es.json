@@ -1318,6 +1318,8 @@
     "pickerAdd": "Agregar · {price}",
     "lineNotePlaceholder": "Nota de la línea…",
     "orderNotePlaceholder": "Nota de la orden (para llevar, mesa 4…)",
+    "ticketHeading": "Ticket · {count, plural, one {# ítem} other {# ítems}}",
+    "addNote": "Nota",
     "upsellHeading": "Sugerencias para el cliente",
     "upsellAddItem": "Agregá el producto que falta y se activa {promo}",
     "upsellSpend": "Agregá {amount} más al carrito y se activa {promo}",

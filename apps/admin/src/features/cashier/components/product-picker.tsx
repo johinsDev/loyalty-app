@@ -146,7 +146,7 @@ export function ProductPicker({
           />
 
           <Button
-            variant="gradient"
+            variant="default"
             size="lg"
             disabled={detail.isPending || !product}
             onClick={add}

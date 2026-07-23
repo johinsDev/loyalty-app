@@ -48,7 +48,7 @@ export function StorelessConfirm({
               {t("storelessCancel")}
             </Button>
             <Button
-              variant="gradient"
+              variant="default"
               onClick={onConfirm}
               className="h-10 flex-1 rounded-2xl font-extrabold"
             >

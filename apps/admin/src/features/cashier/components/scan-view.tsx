@@ -488,7 +488,7 @@ export function ScanView() {
                       </span>
                       <Button
                         size="sm"
-                        variant="gradient"
+                        variant="default"
                         disabled={isRequesting}
                         onClick={() => void startRewardClaim(reward)}
                         className="h-10 flex-none gap-1.5 rounded-xl px-3 text-xs font-extrabold"
@@ -506,7 +506,7 @@ export function ScanView() {
                       </span>
                       <Button
                         size="sm"
-                        variant="gradient"
+                        variant="default"
                         disabled={isRequesting}
                         onClick={() => void startStreakClaim()}
                         className="h-10 flex-none gap-1.5 rounded-xl px-3 text-xs font-extrabold"
@@ -581,7 +581,7 @@ export function ScanView() {
                   className="h-10"
                 />
                 <Button
-                  variant="gradient"
+                  variant="default"
                   size="lg"
                   disabled={priceCop === undefined || recordPurchase.isPending}
                   onClick={onRecordPurchase}
@@ -630,7 +630,7 @@ export function ScanView() {
             </div>
           </div>
           <Button
-            variant="gradient"
+            variant="default"
             size="lg"
             onClick={reset}
             className="mt-3 h-10 w-full max-w-xs rounded-2xl text-base font-extrabold"
@@ -726,7 +726,7 @@ export function ScanView() {
             className="border-border bg-muted placeholder:text-muted-foreground/50 font-display h-12 w-full rounded-2xl border px-3.5 text-center text-2xl font-semibold tracking-[0.4em] tabular-nums outline-none"
           />
           <Button
-            variant="gradient"
+            variant="default"
             size="lg"
             disabled={codeInput.trim().length !== 6 || isConfirming}
             onClick={() => void confirmCode()}
@@ -755,7 +755,7 @@ export function ScanView() {
             {t("handRewardToCustomer")}
           </div>
           <Button
-            variant="gradient"
+            variant="default"
             size="lg"
             onClick={reset}
             className="mt-3 h-10 w-full max-w-xs rounded-2xl text-base font-extrabold"
