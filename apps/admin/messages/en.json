@@ -1366,6 +1366,8 @@
     "promoAddItems": "Add products to see which promos apply.",
     "promoEligible": "Eligible",
     "promoOnlyOne": "The best promo applies automatically. Only one per purchase.",
+    "promoTapToSwitch": "Tap to choose which one applies · one per purchase",
+    "scrollMore": "See more",
     "priceFrom": "from {price}",
     "subtotal": "Subtotal",
     "net": "Total",

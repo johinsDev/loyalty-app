@@ -14,6 +14,7 @@ import { useDebounce } from "ahooks";
 import {
   Cake,
   Check,
+  ChevronDown,
   ChevronRight,
   Gift,
   Lightbulb,
@@ -27,7 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useTRPC } from "@/lib/trpc/client";
@@ -188,6 +189,7 @@ export function RegisterBoard({
         })),
         inlineReward,
         rewardIds: rewards.map((r) => r.rewardId),
+        appliedPromoId: chosenPromoId ?? undefined,
       },
       { enabled: cart.length > 0 },
     ),
@@ -201,6 +203,7 @@ export function RegisterBoard({
     () => new Map((preview.data?.rewardEligibility ?? []).map((e) => [e.rewardId, e])),
     [preview.data],
   );
+  const rewardsScrollRef = useRef<HTMLDivElement>(null);
 
   // Track the promo the server actually applied (best-of + exclusivity), so the
   // cart line and the promos panel agree with the total.
@@ -473,13 +476,15 @@ export function RegisterBoard({
                     {promos.slice(0, 6).map((a) => {
                       const active = a.promo.id === chosenPromoId;
                       return (
-                        <div
+                        <button
                           key={a.promo.id}
-                          className={
+                          type="button"
+                          onClick={() => setChosenPromoId(active ? null : a.promo.id)}
+                          className={`flex w-full items-center gap-2 rounded-xl p-2 text-left transition ${
                             active
-                              ? "border-primary bg-primary/5 flex items-center gap-2 rounded-xl border p-2"
-                              : "bg-muted/50 flex items-center gap-2 rounded-xl p-2 opacity-70"
-                          }
+                              ? "border-primary bg-primary/5 border"
+                              : "bg-muted/50 hover:bg-muted"
+                          }`}
                         >
                           <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
                             <Tag className="size-3" />
@@ -487,21 +492,18 @@ export function RegisterBoard({
                           <span className="min-w-0 flex-1 truncate text-xs font-bold">
                             {a.promo.name}
                           </span>
-                          {active ? (
-                            <span className="text-primary flex-none text-xs font-extrabold">
-                              − {formatCop(a.discountCents)}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground/70 flex-none text-[0.625rem] font-bold">
-                              {t("promoEligible")}
-                            </span>
-                          )}
-                        </div>
+                          <span
+                            className={`flex-none text-xs font-extrabold ${active ? "text-primary" : "text-muted-foreground"}`}
+                          >
+                            − {formatCop(a.discountCents)}
+                          </span>
+                          {active ? <Check className="text-primary size-3.5 flex-none" /> : null}
+                        </button>
                       );
                     })}
                     {promos.length > 1 ? (
                       <p className="text-muted-foreground/70 pt-0.5 text-[0.6875rem] font-semibold">
-                        {t("promoOnlyOne")}
+                        {t("promoTapToSwitch")}
                       </p>
                     ) : null}
                   </>
@@ -772,7 +774,10 @@ export function RegisterBoard({
                 </span>
               </div>
               <div className="relative">
-                <div className="scrollbar-hide max-h-44 space-y-1.5 overflow-y-auto pb-1">
+                <div
+                  ref={rewardsScrollRef}
+                  className="scrollbar-hide max-h-60 space-y-2 overflow-y-auto pb-1"
+                >
                   {rewards.map((rw) => {
                     const active = rw.rewardId === inlineRewardId;
                     const elig = eligByReward.get(rw.rewardId);
@@ -786,30 +791,43 @@ export function RegisterBoard({
                         type="button"
                         disabled={blocked}
                         onClick={() => setInlineRewardId(active ? null : rw.rewardId)}
-                        className={`flex w-full items-center justify-between gap-2 rounded-xl p-2.5 text-left ${
+                        className={`flex w-full items-center justify-between gap-2 rounded-2xl p-3.5 text-left ${
                           active
                             ? "border-primary bg-primary/5 border-2"
                             : blocked
                               ? "border-border cursor-not-allowed border opacity-45"
-                              : "border-border border"
+                              : "border-border hover:border-primary/40 border"
                         }`}
                       >
                         <div className="min-w-0">
-                          <span className="block truncate text-xs font-bold">{rw.name}</span>
+                          <span className="block truncate text-sm font-bold">{rw.name}</span>
                           {ineligible ? (
-                            <span className="text-muted-foreground/70 block truncate text-[0.625rem] font-semibold">
+                            <span className="text-muted-foreground/70 mt-0.5 block truncate text-xs font-semibold">
                               {reasonLabel(elig?.reason, t)}
                             </span>
                           ) : null}
                         </div>
-                        {active ? <Check className="text-primary size-4 flex-none" /> : null}
+                        {active ? <Check className="text-primary size-5 flex-none" /> : null}
                       </button>
                     );
                   })}
                 </div>
-                {/* Fade hint that the list scrolls when it overflows the max height. */}
+                {/* Scroll affordance: a fade + a tappable down-arrow when the list
+                    overflows (the hidden scrollbar didn't read as scrollable). */}
                 {rewards.length > 3 ? (
-                  <div className="from-card pointer-events-none absolute inset-x-0 bottom-0 h-6 rounded-b-3xl bg-gradient-to-t to-transparent" />
+                  <>
+                    <div className="from-card pointer-events-none absolute inset-x-0 bottom-0 h-8 rounded-b-3xl bg-gradient-to-t to-transparent" />
+                    <button
+                      type="button"
+                      aria-label={t("scrollMore")}
+                      onClick={() =>
+                        rewardsScrollRef.current?.scrollBy({ top: 140, behavior: "smooth" })
+                      }
+                      className="bg-card border-border text-primary absolute right-1.5 bottom-1.5 grid size-8 place-items-center rounded-full border shadow-md"
+                    >
+                      <ChevronDown className="size-4" />
+                    </button>
+                  </>
                 ) : null}
               </div>
               {inlineRewardId && rewardPreview && !rewardPreview.ok ? (
