@@ -3,7 +3,7 @@
 import { Button, type CountryCode, toPhoneValue } from "@loyalty/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useDebounce } from "ahooks";
-import { ArrowLeft, Check, KeyRound, User, UserPlus } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, KeyRound, UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -55,7 +55,6 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
     ),
   );
   const results = search.data ?? [];
-  const showRegister = valid && !search.isFetching && results.length === 0;
 
   const requestPin = useMutation(trpc.customers.requestRegisterPin.mutationOptions());
   const confirmPin = useMutation(trpc.customers.confirmRegisterPin.mutationOptions());
@@ -158,35 +157,49 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
         backspaceLabel={t("backspaceLabel")}
       />
 
-      {valid && results.length > 0 ? (
-        <div className="mt-4 flex flex-col">
+      {/* Status-driven: guide → typing → searching → results → register. */}
+      {digits.length === 0 ? (
+        <p className="text-muted-foreground/70 mt-4 text-center text-xs font-semibold">
+          {t("numpadHint")}
+        </p>
+      ) : !valid ? (
+        <p className="text-muted-foreground/70 mt-4 text-center text-xs font-semibold">
+          {t("numpadKeepTyping")}
+        </p>
+      ) : search.isFetching ? (
+        <p className="text-muted-foreground mt-4 text-center text-xs font-semibold">
+          {t("searching")}
+        </p>
+      ) : results.length > 0 ? (
+        <div className="mt-4 flex flex-col gap-2">
           {results.map((hit, i) => (
             <button
               key={hit.id}
               type="button"
               style={fade(i)}
               onClick={() => onSelect({ id: hit.id, name: hit.name, phone: hit.phone })}
-              className="border-border hover:bg-muted flex items-center gap-3 border-b py-3 text-left last:border-0"
+              className="border-border hover:border-primary/50 hover:bg-muted flex items-center gap-3 rounded-2xl border p-3 text-left"
             >
-              <span className="bg-muted text-muted-foreground grid size-10 flex-none place-items-center rounded-xl">
-                <User className="size-4" />
+              <span className="bg-primary/10 text-primary font-display grid size-11 flex-none place-items-center rounded-xl text-sm font-extrabold">
+                {(hit.name?.trim()?.[0] ?? "#").toUpperCase()}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold">{hit.name?.trim() || hit.phone}</div>
+                <div className="truncate text-sm font-extrabold">
+                  {hit.name?.trim() || hit.phone}
+                </div>
                 <div className="text-muted-foreground/70 truncate text-xs font-semibold">
-                  {hit.phone}
+                  {hit.name?.trim() ? hit.phone : t("tapToRegisterSale")}
                 </div>
               </div>
+              <ChevronRight className="text-muted-foreground/50 size-5 flex-none" />
             </button>
           ))}
         </div>
-      ) : null}
-
-      {showRegister ? (
+      ) : (
         <div className="border-border bg-muted/40 mt-4 rounded-2xl border p-4">
           <div className="text-foreground inline-flex items-center gap-1.5 text-sm font-extrabold">
             <UserPlus className="text-primary size-4" />
-            {t("quickRegisterTitle")}
+            {t("quickRegisterNotFound")}
           </div>
           <p className="text-muted-foreground mt-1 text-xs font-semibold">{t("quickRegisterHint")}</p>
           <input
@@ -206,7 +219,7 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
             {t("quickRegisterSend")}
           </Button>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
