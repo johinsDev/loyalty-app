@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@loyalty/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FolderTree, Package, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { FolderTree, Package, Pencil, Plus, PlusCircle, Search, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -150,6 +150,14 @@ export function ProductsView() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="h-10 gap-2 rounded-xl font-semibold"
+            onClick={() => router.push("/products/add-ons")}
+          >
+            <PlusCircle className="size-4" />
+            {t("addon.title")}
+          </Button>
           <Button
             variant="outline"
             className="h-10 gap-2 rounded-xl font-semibold"
