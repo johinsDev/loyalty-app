@@ -117,13 +117,20 @@ describe("resolveNet", () => {
     });
   });
 
-  it("cap can bite into the reward when it alone exceeds the cap", () => {
+  it("cap never reduces the reward (paid redemption) even if it alone exceeds the cap", () => {
     const r = resolveNet(
-      { ...base, rewardDiscountCents: 8000 },
+      { ...base, rewardDiscountCents: 8000, promoDiscountCents: 3000, tierDiscountPct: 10 },
       { ...OPEN, maxTotalDiscountPct: 30 },
     );
-    // cap 6000; reward 8000 → 6000
-    expect(r).toMatchObject({ rewardDiscountCents: 6000, totalDiscountCents: 6000, capApplied: true });
+    // cap 6000 < reward 8000 → extras (promo, tier) fully eaten, reward intact
+    expect(r).toMatchObject({
+      rewardDiscountCents: 8000,
+      promoDiscountCents: 0,
+      tierDiscountCents: 0,
+      totalDiscountCents: 8000,
+      netPriceCents: 12000,
+      capApplied: true,
+    });
   });
 
   it("discount can't exceed subtotal", () => {

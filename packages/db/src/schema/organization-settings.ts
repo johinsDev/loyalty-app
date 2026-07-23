@@ -139,6 +139,18 @@ export const organizationSettings = sqliteTable("organization_settings", {
   // so without this everyone would drop the day after points come back).
   tierGraceUntil: integer("tier_grace_until", { mode: "timestamp" }),
 
+  // ── Discount stacking policy (register checkout) ──────────────────────────
+  // How the three discount layers (reward · promo · tier %) combine at the
+  // register. Order is always reward → promo → tier; these gate which layers
+  // may co-apply, plus a max total-discount cap (% of subtotal; 100 = no cap).
+  tierStacksWithPromo: integer("tier_stacks_with_promo", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  rewardStacksWithPromo: integer("reward_stacks_with_promo", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  maxTotalDiscountPct: integer("max_total_discount_pct").notNull().default(100),
+
   // ── Stamps config (org-level) ─────────────────────────────────────────────
   // The catalog reward that IS the card prize; its `stampsRequired` is the
   // single source of truth for the stamps goal. Plain text (no FK) to avoid a

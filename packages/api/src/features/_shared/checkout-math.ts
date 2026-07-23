@@ -79,21 +79,19 @@ export function resolveNet(input: NetInput, policy: StackingPolicy): NetResult {
   let tierDisc = tier ? Math.floor((remainder * input.tierDiscountPct) / 100) : 0;
   remainder -= tierDisc;
 
-  // 3. Cap the total discount, eating tier → promo → reward.
+  // 3. Cap the total discount. The reward is a paid redemption (the customer
+  //    spent stamps/points) → it's never reduced; the cap eats only the extras,
+  //    the tier first then the promo. If the reward alone already exceeds the
+  //    cap, it still applies in full.
   let total = rewardDisc + promoDisc + tierDisc;
   const cap = Math.floor((sub * clampPct(policy.maxTotalDiscountPct)) / 100);
   let capApplied = false;
   if (total > cap) {
     capApplied = true;
-    let excess = total - cap;
-    const cut = (v: number) => {
-      const c = Math.min(v, excess);
-      excess -= c;
-      return v - c;
-    };
-    tierDisc = cut(tierDisc);
-    promoDisc = cut(promoDisc);
-    rewardDisc = cut(rewardDisc);
+    let extrasAllowance = Math.max(0, cap - rewardDisc);
+    promoDisc = Math.min(promoDisc, extrasAllowance);
+    extrasAllowance -= promoDisc;
+    tierDisc = Math.min(tierDisc, extrasAllowance);
     total = rewardDisc + promoDisc + tierDisc;
   }
 

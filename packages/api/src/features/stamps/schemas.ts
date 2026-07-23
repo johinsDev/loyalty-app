@@ -66,6 +66,8 @@ export const previewPurchaseInputSchema = z.object({
       currency: z.enum(["stamps", "points", "both"]),
     })
     .optional(),
+  /** The promo the cashier selected; omit to preview the best applicable one. */
+  appliedPromoId: z.string().uuid().optional(),
 });
 
 export const historyInputSchema = z.object({

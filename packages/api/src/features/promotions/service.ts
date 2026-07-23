@@ -283,6 +283,7 @@ export class PromoService {
           discountCents: result.discountCents,
           pointsMultiplier: result.pointsMultiplier,
           applications: result.applications,
+          exclusive: p.exclusive,
         });
       } else if (result.reason === "missing-get-side") {
         hints.push({ promo: this.repo.cardOf(p, lc), missingGetSide: result.missingGetSide });
