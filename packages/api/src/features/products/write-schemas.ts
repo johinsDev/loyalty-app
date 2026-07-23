@@ -130,7 +130,8 @@ const addonGroupItemInput = z.object({
 });
 const addonGroupInput = z.object({
   id: z.string().min(1),
-  name: z.string().min(1).max(60),
+  // Optional — an unnamed group falls back to a default header at the register.
+  name: z.string().max(60).default(""),
   selectionType: z.enum(["single", "multi"]).default("multi"),
   minSelect: z.number().int().min(0).default(0),
   maxSelect: z.number().int().min(1).nullish(),

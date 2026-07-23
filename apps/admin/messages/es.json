@@ -1390,6 +1390,7 @@
     "pickerNoteLabel": "NOTA (OPCIONAL)",
     "pickerContains": "Qué trae — cuéntaselo al cliente",
     "pickerSize": "Tamaño",
+    "pickerAddons": "Adiciones",
     "pickerRemove": "Quitar",
     "pickerWithout": "sin {name}",
     "pickerNotePlaceholder": "más hielo, sin maní…",

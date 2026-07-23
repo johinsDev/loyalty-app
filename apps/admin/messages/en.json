@@ -1390,6 +1390,7 @@
     "pickerNoteLabel": "NOTE (OPTIONAL)",
     "pickerContains": "What it has — tell the customer",
     "pickerSize": "Size",
+    "pickerAddons": "Add-ons",
     "pickerRemove": "Remove",
     "pickerWithout": "no {name}",
     "pickerNotePlaceholder": "extra ice, no peanuts…",
