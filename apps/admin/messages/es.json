@@ -1086,6 +1086,7 @@
   "Cashier": {
     "registerAt": "Caja · {store}",
     "stampsToday": "SELLOS HOY",
+    "pointsToday": "PUNTOS HOY",
     "switchCashier": "Cambiar de cajero",
     "capBanner": "Alcanzaste el tope diario de sellos de este cajero. Pedí a un supervisor que reinicie el contador.",
     "modeEarn": "Sumar sellos",
