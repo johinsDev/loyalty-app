@@ -1,14 +1,9 @@
 "use client";
 
-import {
-  Button,
-  type CountryCode,
-  InputPhone,
-  isValidE164Phone,
-} from "@loyalty/ui";
+import { Button, type CountryCode, toPhoneValue } from "@loyalty/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useDebounce } from "ahooks";
-import { ArrowLeft, Check, KeyRound, QrCode, User, UserPlus } from "lucide-react";
+import { ArrowLeft, Check, KeyRound, User, UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -18,46 +13,48 @@ import { useTRPC } from "@/lib/trpc/client";
 
 import { useActiveStoreId } from "../use-active-store";
 
+import { NumpadPhone } from "./numpad-phone";
+
 export type IdentifiedCustomer = { id: string; name: string | null; phone: string };
 
 /**
- * Cashier identify pane — customer-first, obligatory (no anonymous sale). Look a
- * customer up by phone (country picker defaults to the org's country); if they
- * don't exist, quick-register them (name + phone) with a WhatsApp PIN the
- * customer reads back before the account is created. Resolves to
- * `onSelect(customer)` either way.
+ * Cashier phone-lookup pane — customer-first, obligatory (no anonymous sale).
+ * An on-screen numpad (country picker defaults to the org's country) drives the
+ * lookup; if the socio doesn't exist, quick-register them (name + phone) with a
+ * WhatsApp PIN they read back before the account is created. Resolves to
+ * `onSelect(customer)` either way. Renders bare — the identify view wraps it in
+ * the card + tab shell.
  */
-export function IdentifyPane({
-  onSelect,
-  onScan,
-}: {
-  onSelect: (c: IdentifiedCustomer) => void;
-  /** Jump to the QR scanner — resolves a reward QR straight into the register. */
-  onScan: () => void;
-}) {
+export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) => void }) {
   const t = useTranslations("Cashier");
   const trpc = useTRPC();
   const fade = useFadeUp();
   const activeStoreId = useActiveStoreId();
 
-  const [phone, setPhone] = useState("");
+  const loc = useQuery(trpc.settings.localization.queryOptions());
+  const defaultCountry = (loc.data?.defaultPhoneCountry ?? "CO") as CountryCode;
+
+  const [countryOverride, setCountryOverride] = useState<CountryCode | null>(null);
+  const country = countryOverride ?? defaultCountry;
+  const [digits, setDigits] = useState("");
+
   const [step, setStep] = useState<"lookup" | "pin">("lookup");
   const [regName, setRegName] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pin, setPin] = useState("");
 
-  const loc = useQuery(trpc.settings.localization.queryOptions());
-  const defaultCountry = (loc.data?.defaultPhoneCountry ?? "CO") as CountryCode;
+  const pv = toPhoneValue(digits, country);
+  const phone = pv.e164;
+  const valid = pv.isValid;
 
   const debounced = useDebounce(phone, { wait: 300 });
   const search = useQuery(
     trpc.customers.search.queryOptions(
       { query: debounced, limit: 8 },
-      { enabled: isValidE164Phone(debounced) },
+      { enabled: valid && debounced.length > 0 },
     ),
   );
   const results = search.data ?? [];
-  const valid = isValidE164Phone(phone);
   const showRegister = valid && !search.isFetching && results.length === 0;
 
   const requestPin = useMutation(trpc.customers.requestRegisterPin.mutationOptions());
@@ -98,7 +95,7 @@ export function IdentifyPane({
   // ── PIN entry (blocking): the account is created only once confirmed ────────
   if (step === "pin") {
     return (
-      <div className="bg-card border-border mx-auto max-w-md rounded-3xl border p-6 shadow-sm">
+      <div>
         <button
           type="button"
           onClick={() => {
@@ -111,9 +108,9 @@ export function IdentifyPane({
           <ArrowLeft className="size-4" />
           {t("back")}
         </button>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
+        <h2 className="font-display text-xl font-semibold tracking-tight">
           {t("registerPinTitle")}
-        </h1>
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">{t("registerPinHint", { phone })}</p>
         <label className="text-muted-foreground/70 mt-4 mb-1.5 block text-[0.6875rem] font-extrabold tracking-wider">
           {t("codeLabel")}
@@ -148,19 +145,17 @@ export function IdentifyPane({
     );
   }
 
-  // ── Lookup by phone ─────────────────────────────────────────────────────────
+  // ── Lookup by phone (numpad) ────────────────────────────────────────────────
   return (
-    <div className="bg-card border-border rounded-3xl border p-6 shadow-sm">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">{t("identifyTitle")}</h1>
-      <p className="text-muted-foreground mt-1 mb-4 text-sm">{t("identifyPhoneHint")}</p>
-
-      <InputPhone
-        key={defaultCountry}
-        size="sm"
-        defaultCountry={defaultCountry}
-        value={phone}
-        onChange={(v) => setPhone(v.e164)}
-        placeholder={t("searchPlaceholder")}
+    <div>
+      <NumpadPhone
+        country={country}
+        onCountryChange={setCountryOverride}
+        digits={digits}
+        onDigitsChange={setDigits}
+        placeholder={t("phonePlaceholder")}
+        countryLabel={t("countryLabel")}
+        backspaceLabel={t("backspaceLabel")}
       />
 
       {valid && results.length > 0 ? (
@@ -177,9 +172,7 @@ export function IdentifyPane({
                 <User className="size-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold">
-                  {hit.name?.trim() || hit.phone}
-                </div>
+                <div className="truncate text-sm font-bold">{hit.name?.trim() || hit.phone}</div>
                 <div className="text-muted-foreground/70 truncate text-xs font-semibold">
                   {hit.phone}
                 </div>
@@ -195,9 +188,7 @@ export function IdentifyPane({
             <UserPlus className="text-primary size-4" />
             {t("quickRegisterTitle")}
           </div>
-          <p className="text-muted-foreground mt-1 text-xs font-semibold">
-            {t("quickRegisterHint")}
-          </p>
+          <p className="text-muted-foreground mt-1 text-xs font-semibold">{t("quickRegisterHint")}</p>
           <input
             value={regName}
             onChange={(e) => setRegName(e.target.value)}
@@ -216,23 +207,6 @@ export function IdentifyPane({
           </Button>
         </div>
       ) : null}
-
-      {/* Alternative entry: scan the customer's reward QR to jump straight in. */}
-      <div className="mt-5 flex items-center gap-3">
-        <span className="bg-border h-px flex-1" />
-        <span className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
-          {t("orLabel")}
-        </span>
-        <span className="bg-border h-px flex-1" />
-      </div>
-      <button
-        type="button"
-        onClick={onScan}
-        className="border-border bg-card text-foreground hover:bg-muted mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-bold"
-      >
-        <QrCode className="size-4" />
-        {t("scanCustomerQr")}
-      </button>
     </div>
   );
 }
