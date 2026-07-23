@@ -5,7 +5,18 @@ import { Button } from "@loyalty/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import { useDebounce } from "ahooks";
-import { ArrowUp, Check, Gift, Lightbulb, Minus, Plus, Search, Tag, Trash2 } from "lucide-react";
+import {
+  ArrowUp,
+  Check,
+  Gift,
+  Lightbulb,
+  Minus,
+  Plus,
+  Search,
+  Tag,
+  Trash2,
+  TrendingUp,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -231,14 +242,13 @@ export function ItemizedPurchase({
   const upsellText = (u: (typeof upsell)[number]): string => {
     switch (u.kind) {
       case "add-item":
-        return t("upsellAddItem", { promo: u.promo.name });
+        return t("upsellAddItem");
       case "spend-to-threshold":
-        return t("upsellSpend", { amount: formatCop(u.addCents), promo: u.promo.name });
+        return t("upsellSpend", { amount: formatCop(u.addCents) });
       case "variant-swap":
         return t("upsellSwap", {
           extra: formatCop(u.extraCents),
           discount: formatCop(u.discountCents),
-          promo: u.promo.name,
         });
     }
   };
@@ -467,22 +477,39 @@ export function ItemizedPurchase({
             </div>
           ) : null}
 
-          {/* Upsell nudges — what the cashier can suggest to unlock a promo */}
+          {/* Upsell nudges — actionable prompts to unlock a promo */}
           {cart.length > 0 && upsell.length > 0 ? (
-            <div className="border-primary/30 bg-primary/5 rounded-2xl border p-3.5">
-              <div className="flex items-center gap-2">
-                <Lightbulb className="text-primary size-4" />
-                <h3 className="text-sm font-bold">{t("upsellHeading")}</h3>
+            <div className="border-primary/20 bg-primary/5 rounded-2xl border p-3.5">
+              <div className="text-primary flex items-center gap-1.5">
+                <Lightbulb className="size-4" />
+                <h3 className="text-xs font-extrabold tracking-wide uppercase">
+                  {t("upsellHeading")}
+                </h3>
               </div>
-              <div className="mt-2 space-y-1.5">
+              <div className="mt-2.5 space-y-2">
                 {upsell.map((u, i) => (
-                  <p
+                  <div
                     key={`${u.kind}-${u.promo.id}-${i}`}
-                    className="text-foreground flex items-start gap-1.5 text-xs font-semibold"
+                    className="bg-card border-border flex items-start gap-2.5 rounded-xl border p-2.5"
                   >
-                    <ArrowUp className="text-primary mt-0.5 size-3.5 flex-none" />
-                    <span>{upsellText(u)}</span>
-                  </p>
+                    <span className="bg-primary/10 text-primary grid size-7 flex-none place-items-center rounded-lg">
+                      {u.kind === "add-item" ? (
+                        <Plus className="size-4" />
+                      ) : u.kind === "spend-to-threshold" ? (
+                        <TrendingUp className="size-4" />
+                      ) : (
+                        <ArrowUp className="size-4" />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-foreground text-xs leading-snug font-semibold">
+                        {upsellText(u)}
+                      </p>
+                      <span className="bg-primary/10 text-primary mt-1 inline-block max-w-full truncate rounded-md px-1.5 py-0.5 text-[10px] font-extrabold">
+                        {u.promo.name}
+                      </span>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
