@@ -112,6 +112,11 @@ export function AddonGroupsEditor({
             </button>
           </div>
 
+          <p className="text-muted-foreground/70 mt-1.5 text-[0.6875rem] font-semibold">
+            {t(g.selectionType === "single" ? "addonGroups.singleHint" : "addonGroups.multiHint")}
+            {g.required ? ` · ${t("addonGroups.requiredHint")}` : ""}
+          </p>
+
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {addons.map((a) => {
               const on = g.addonIds.includes(a.id);

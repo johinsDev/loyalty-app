@@ -1706,6 +1706,9 @@
       "single": "Una",
       "multi": "Varias",
       "required": "Obligatorio",
+      "singleHint": "El cliente elige solo UNA de estas adiciones (ej. tamaño).",
+      "multiHint": "El cliente puede elegir VARIAS de estas adiciones (ej. toppings).",
+      "requiredHint": "debe elegir al menos una",
       "addGroup": "Agregar grupo",
       "emptyCatalog": "Todavía no hay adiciones en el catálogo. Creá algunas en"
     },
