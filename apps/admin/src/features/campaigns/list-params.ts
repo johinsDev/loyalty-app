@@ -7,10 +7,10 @@ import { createLoader, parseAsArrayOf, parseAsIsoDate, parseAsString } from "nuq
 
 import { tableParsers } from "@/components/data-table";
 
-const TYPE_VALUES = ["promotional", "automated", "transactional"] as const;
+export const TYPE_VALUES = ["promotional", "automated", "transactional"] as const;
 type CampaignType = (typeof TYPE_VALUES)[number];
 
-const STATE_VALUES = ["draft", "scheduled", "sending", "sent", "paused"] as const;
+export const STATE_VALUES = ["draft", "scheduled", "sending", "sent", "paused"] as const;
 
 /** Full nuqs parser map for the campaigns list URL (table state + facets).
  *  Shared by the client view and the RSC loader so both derive the same input. */
