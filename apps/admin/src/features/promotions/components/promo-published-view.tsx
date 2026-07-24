@@ -105,6 +105,7 @@ export function PromoPublishedView({ id }: { id: string }) {
       await archiveMut.mutateAsync({ id });
       await queryClient.invalidateQueries(trpc.promociones.adminList.queryFilter());
       toast.success(t("archived", { name: promo?.name ?? "" }));
+      router.refresh();
       router.push("/promotions");
     } catch {
       toast.error(t("archiveError"));

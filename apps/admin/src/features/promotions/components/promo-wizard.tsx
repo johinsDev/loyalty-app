@@ -453,6 +453,7 @@ export function PromoWizard({ id }: { id: string }) {
         }
       }
       if (!announced) toast.success(t("created", { name: form.name }));
+      router.refresh();
       router.push("/promotions");
       return;
     }
