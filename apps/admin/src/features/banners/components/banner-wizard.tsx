@@ -405,6 +405,7 @@ export function BannerWizard({ id }: { id?: string }) {
         toast.success(id ? t("updated", { name: form.name }) : t("created", { name: form.name }));
       }
       router.push("/banners");
+      router.refresh();
       return;
     }
     const ok = await persistStep();
