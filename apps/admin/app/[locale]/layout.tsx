@@ -3,7 +3,7 @@ import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 
 import { FloatingChrome } from "@/components/floating-chrome";
 import { routing } from "@/i18n/routing";
@@ -40,7 +40,11 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   return (
     <NextIntlClientProvider>
-      <FloatingChrome />
+      {/* `FloatingChrome` reads `usePathname()` → dynamic under `cacheComponents`;
+          isolate it so the rest of the shell stays static. */}
+      <Suspense fallback={null}>
+        <FloatingChrome />
+      </Suspense>
       <Providers>{children}</Providers>
       <Toaster position="top-right" />
     </NextIntlClientProvider>

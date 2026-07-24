@@ -1,5 +1,5 @@
 import { STAFF_OR_ABOVE } from "@loyalty/auth/server";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 
 import { requireRole } from "@/lib/auth-guard";
 
@@ -7,8 +7,20 @@ import { requireRole } from "@/lib/auth-guard";
  * Gate for the whole admin CRM route group: staff/manager/owner pass, customers
  * get bounced. The shell + store scope live one level down in
  * `[storeId]/layout.tsx` (which needs the store segment to resolve).
+ *
+ * The role check reads the session cookie, so under `cacheComponents` it runs
+ * inside a Suspense boundary — the `[storeId]` shell below streams its own
+ * skeleton once the gate passes, so this fallback stays empty.
  */
-export default async function DashboardLayout({ children }: { children: ReactNode }) {
+export default function DashboardLayout({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={null}>
+      <DashboardGate>{children}</DashboardGate>
+    </Suspense>
+  );
+}
+
+async function DashboardGate({ children }: { children: ReactNode }) {
   await requireRole(STAFF_OR_ABOVE);
   return children;
 }

@@ -8,6 +8,7 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const config: NextConfig = {
   reactStrictMode: true,
+  cacheComponents: true,
   // @loyalty/{rate-limit,cache} default to the upstash provider in preview +
   // prod and load @upstash/* through the `new Function` import in their
   // `_lazy.ts` — opaque to @vercel/nft, so the SDK (though installed) never
