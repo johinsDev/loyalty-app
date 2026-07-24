@@ -1,6 +1,7 @@
 "use client";
 
 import type { EmployeeListItem } from "@loyalty/api/features/employees/schemas";
+import { authClient } from "@loyalty/auth/client";
 import {
   Button,
   DropdownMenu,
@@ -27,16 +28,10 @@ import { useTRPC } from "@/lib/trpc/client";
 import { useImpersonate } from "../use-impersonate";
 
 /** Per-row ⋯ menu for a member: detail · edit · disable/enable · impersonate
- *  (owner) · delete. Invitation rows have no actions here. */
-export function EmployeeRowActions({
-  row,
-  isOwner,
-  currentUserId,
-}: {
-  row: EmployeeListItem;
-  isOwner: boolean;
-  currentUserId: string | null;
-}) {
+ *  (owner) · delete. Invitation rows have no actions here. Owner status +
+ *  current user come from the client session so this island is self-contained
+ *  in the server table / grid card. */
+export function EmployeeRowActions({ row }: { row: EmployeeListItem }) {
   const t = useTranslations("Employees");
   const trpc = useTRPC();
   const router = useRouter();
@@ -45,9 +40,17 @@ export function EmployeeRowActions({
   const [, setDetailId] = useQueryState("detalle", parseAsString);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const invalidate = () =>
-    queryClient.invalidateQueries(trpc.employees.list.queryFilter());
-  const opts = { onSuccess: invalidate };
+  const { data: session } = authClient.useSession();
+  const currentUserId = session?.user?.id ?? null;
+  const isOwner = (session?.user as { role?: string } | undefined)?.role === "admin";
+
+  // Every list-changing mutation re-runs the server table render via
+  // `router.refresh()`; `invalidateQueries` is kept as a harmless legacy no-op.
+  const refresh = () => {
+    void queryClient.invalidateQueries(trpc.employees.list.queryFilter());
+    router.refresh();
+  };
+  const opts = { onSuccess: refresh };
   const disable = useMutation(trpc.employees.disable.mutationOptions(opts));
   const enable = useMutation(trpc.employees.enable.mutationOptions(opts));
   const remove = useMutation(trpc.employees.remove.mutationOptions(opts));
