@@ -1,7 +1,9 @@
 "use client";
 
+import type { AppRouter } from "@loyalty/api";
 import { authClient } from "@loyalty/auth/client";
 import type { Role } from "@loyalty/auth/server";
+import type { inferRouterOutputs } from "@trpc/server";
 import {
   Avatar,
   AvatarFallback,
@@ -127,6 +129,8 @@ const GROUPS: Group[] = [
 ];
 
 const RANK: Record<Role, number> = { customer: 0, staff: 1, manager: 2, owner: 3 };
+
+type NavCounts = inferRouterOutputs<AppRouter>["dashboard"]["navCounts"];
 const ROLE_RANK: Record<RoleMin, number> = { staff: 1, manager: 2, owner: 3 };
 
 function active(pathname: string, href: Href) {
@@ -149,11 +153,13 @@ const ROW_ACTIVE = "bg-primary/10 text-primary";
 export function AdminNav({
   role,
   name,
+  navCounts,
   onNavigate,
   onOpenSearch,
 }: {
   role: Role;
   name: string;
+  navCounts?: NavCounts;
   onNavigate?: () => void;
   onOpenSearch?: () => void;
 }) {
@@ -169,6 +175,7 @@ export function AdminNav({
     ...trpc.dashboard.navCounts.queryOptions(),
     enabled: RANK[role] >= RANK.manager,
     staleTime: 60_000,
+    ...(navCounts ? { initialData: navCounts } : {}),
   });
   const badgeLabel = (key: BadgeKey): string | null =>
     counts ? compactNumber(format, counts[key]) : null;

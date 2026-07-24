@@ -1,8 +1,10 @@
 "use client";
 
+import type { AppRouter } from "@loyalty/api";
 import type { Role } from "@loyalty/auth/server";
 import { Button, Sheet, SheetContent, SheetTitle } from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
+import type { inferRouterOutputs } from "@trpc/server";
 import { Menu, QrCode } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
@@ -18,6 +20,8 @@ import { useTRPC } from "@/lib/trpc/client";
 
 const RANK: Record<Role, number> = { customer: 0, staff: 1, manager: 2, owner: 3 };
 
+export type NavCounts = inferRouterOutputs<AppRouter>["dashboard"]["navCounts"];
+
 /**
  * Admin shell — a fixed sidebar on desktop (lg+) and a drawer on tablet/mobile
  * (below lg, admin-only so the shared mobile breakpoint is untouched). The nav
@@ -27,10 +31,12 @@ const RANK: Record<Role, number> = { customer: 0, staff: 1, manager: 2, owner: 3
 export function AdminShell({
   role,
   name,
+  navCounts,
   children,
 }: {
   role: Role;
   name: string;
+  navCounts?: NavCounts;
   children: ReactNode;
 }) {
   const t = useTranslations("Admin");
@@ -50,6 +56,7 @@ export function AdminShell({
     ...trpc.dashboard.navCounts.queryOptions(),
     enabled: RANK[role] >= RANK.manager,
     staleTime: 60_000,
+    ...(navCounts ? { initialData: navCounts } : {}),
   });
 
   return (
@@ -62,6 +69,7 @@ export function AdminShell({
         <AdminNav
           role={role}
           name={name}
+          navCounts={navCounts}
           onOpenSearch={() => setSearchOpen(true)}
         />
       </aside>
@@ -73,6 +81,7 @@ export function AdminShell({
           <AdminNav
             role={role}
             name={name}
+          navCounts={navCounts}
             onNavigate={() => setOpen(false)}
             onOpenSearch={() => {
               setOpen(false);

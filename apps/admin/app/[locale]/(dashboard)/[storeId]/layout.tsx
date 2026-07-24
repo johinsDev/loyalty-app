@@ -1,4 +1,4 @@
-import { STAFF_OR_ABOVE } from "@loyalty/auth/server";
+import { MANAGER_OR_ABOVE, STAFF_OR_ABOVE } from "@loyalty/auth/server";
 import type { ReactNode } from "react";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -7,6 +7,7 @@ import { redirect } from "@/i18n/navigation";
 import { requireRole } from "@/lib/auth-guard";
 import { StoreScopeProvider } from "@/lib/store-scope";
 import { loadStoreScope } from "@/lib/store-scope-server";
+import { trpc } from "@/lib/trpc/server";
 
 type Props = {
   children: ReactNode;
@@ -30,11 +31,25 @@ export default async function StoreLayout({ children, params }: Props) {
     return null;
   }
 
+  // Prefetch the sidebar counters (manager+) so they paint with the HTML — the
+  // shell's client query then hydrates from this instead of a fresh fetch.
+  let navCounts: Awaited<
+    ReturnType<Awaited<ReturnType<typeof trpc>>["dashboard"]["navCounts"]>
+  > | undefined;
+  if (MANAGER_OR_ABOVE.includes(role)) {
+    try {
+      const api = await trpc();
+      navCounts = await api.dashboard.navCounts();
+    } catch {
+      navCounts = undefined;
+    }
+  }
+
   return (
     <StoreScopeProvider
       value={{ segment: storeId, storeId: scope.storeId, store: scope.store, stores }}
     >
-      <AdminShell role={role} name={name}>
+      <AdminShell role={role} name={name} navCounts={navCounts}>
         <ImpersonationBanner />
         {children}
       </AdminShell>
