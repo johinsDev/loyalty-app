@@ -143,7 +143,11 @@ export function RewardWizard({ id }: { id: string }) {
     setDirty(false);
     setExitOpen(false);
     if (pendingHref && pendingHref !== "__back__") window.location.href = pendingHref;
-    else router.push("/rewards");
+    else {
+      // The draft may have been created/edited — refresh the RSC list on return.
+      router.push("/rewards");
+      router.refresh();
+    }
   };
   const tryExit = () => {
     if (dirty) {
@@ -151,6 +155,7 @@ export function RewardWizard({ id }: { id: string }) {
       setExitOpen(true);
     } else {
       router.push("/rewards");
+      router.refresh();
     }
   };
 
@@ -344,6 +349,7 @@ export function RewardWizard({ id }: { id: string }) {
       }
       if (!announced) toast.success(t("created", { name: form.name }));
       router.push("/rewards");
+      router.refresh();
       return;
     }
     const isServerStep = stepIndex < 4;

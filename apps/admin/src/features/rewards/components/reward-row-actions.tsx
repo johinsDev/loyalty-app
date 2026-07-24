@@ -39,7 +39,12 @@ export function RewardRowActions({ reward }: { reward: RewardActionsRow }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const name = reward.name || t("list.namePlaceholder");
-  const invalidate = () => queryClient.invalidateQueries(trpc.rewards.adminList.queryFilter());
+  // Server-table list: invalidate keeps react-query consumers fresh, but the
+  // list is now an RSC — `router.refresh()` re-renders it after a mutation.
+  const invalidate = () => {
+    void queryClient.invalidateQueries(trpc.rewards.adminList.queryFilter());
+    router.refresh();
+  };
 
   const archive = useMutation(trpc.rewards.archive.mutationOptions());
   const remove = useMutation(trpc.rewards.remove.mutationOptions());
