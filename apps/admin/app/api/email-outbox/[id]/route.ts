@@ -4,8 +4,6 @@ import { NextResponse } from "next/server";
 import { isDevOnlyEnabled } from "@/lib/dev-only";
 import { trpc } from "@/lib/trpc/server";
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 /**
  * E2E hook for fetching a single email row by id. Disabled in production.

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { env } from "@/env";
 import { log } from "@/lib/log";
 
-export const dynamic = "force-dynamic";
 
 /**
  * Liveness + upstream check. The admin CRM is a thin client of the API
