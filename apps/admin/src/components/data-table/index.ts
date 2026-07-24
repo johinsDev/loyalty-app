@@ -1,4 +1,5 @@
 export { DataTable } from "./data-table";
+export { DataTableSkeleton } from "./data-table-skeleton";
 export { DataTableBulkBar } from "./data-table-bulk-bar";
 export { DataTableFilters, FilterSection } from "./data-table-filters";
 export { DataTableColumnHeader } from "./data-table-column-header";

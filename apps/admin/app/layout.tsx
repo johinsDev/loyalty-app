@@ -5,19 +5,9 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { routing } from "@/i18n/routing";
-import { trpc } from "@/lib/trpc/server";
+import { getBranding } from "@/lib/branding-server";
 
 import "./globals.css";
-
-/** Org brand color (cached, public). Null when unreachable/unset → defaults. */
-async function brandColor(): Promise<string | null> {
-  try {
-    const branding = await (await trpc()).settings.branding();
-    return branding.brandColor ?? null;
-  } catch {
-    return null;
-  }
-}
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -45,7 +35,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // The admin chrome uses the preset's fixed Violet accent (see globals.css).
   // The tenant brand color only themes the customer-facing preview islands, so
   // scope `brandThemeCss` (which targets :root/.dark) down to `.preview-customer`.
-  const brandCss = brandThemeCss(await brandColor())
+  const brandCss = brandThemeCss((await getBranding())?.brandColor ?? null)
     .replaceAll(":root", ".preview-customer")
     .replaceAll(".dark", ".dark .preview-customer");
 
