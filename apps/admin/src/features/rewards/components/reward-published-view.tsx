@@ -112,6 +112,9 @@ export function RewardPublishedView({ id }: { id: string }) {
         sortOrder: form.sortOrder,
       });
       await queryClient.invalidateQueries(trpc.rewards.getAdmin.queryFilter({ id }));
+      // Design/copy edits change the list row (icon/background/name) — re-render
+      // the RSC list so it reflects the change on next visit.
+      router.refresh();
       toast.success(t("updated", { name: reward?.name ?? "" }));
     } catch {
       toast.error(t("saveError"));
@@ -124,6 +127,7 @@ export function RewardPublishedView({ id }: { id: string }) {
       await queryClient.invalidateQueries(trpc.rewards.adminList.queryFilter());
       toast.success(t("archived", { name: reward?.name ?? "" }));
       router.push("/rewards");
+      router.refresh();
     } catch {
       toast.error(t("archiveError"));
     }
