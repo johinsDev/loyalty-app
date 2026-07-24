@@ -42,6 +42,7 @@ export function BannerRowActions({ banner }: { banner: { id: string; name: strin
           toast.success(t("deleted", { name: banner.name }));
           setOpen(false);
           void invalidate();
+          router.refresh();
         },
         onError: () => toast.error(t("saveError")),
       },

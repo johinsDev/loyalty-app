@@ -4,7 +4,7 @@ import { createLoader, parseAsArrayOf, parseAsIsoDate, parseAsString } from "nuq
 
 import { tableParsers } from "@/components/data-table";
 
-const STATE_VALUES = ["draft", "scheduled", "active", "expired"] as const;
+export const STATE_VALUES = ["draft", "scheduled", "active", "expired"] as const;
 type BannerState = (typeof STATE_VALUES)[number];
 
 /** Full nuqs parser map for the banners list URL (table state + facets). Shared
