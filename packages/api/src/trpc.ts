@@ -237,7 +237,11 @@ const withTiming = t.middleware(async ({ ctx, next, path, type }) => {
 // mutation get different ceilings. Abuse-sensitive procedures stack a
 // tighter `rateLimit({...})` on top (separate named counter → it trips
 // first). Fails open when no limiter is bound (CLI/tests).
-const BASELINE_QUERY: RateLimitRule = { limit: 120, window: "1m" };
+// Reads are cheap + idempotent, and RSC fans a single page view out into many
+// concurrent query calls (the dashboard alone is ~15), all keyed to one user —
+// so the query ceiling is generous. Mutations stay tight. Abuse-sensitive
+// procedures still stack their own `rateLimit({...})` on top.
+const BASELINE_QUERY: RateLimitRule = { limit: 600, window: "1m" };
 const BASELINE_MUTATION: RateLimitRule = { limit: 40, window: "1m" };
 
 const withBaseline = t.middleware(async ({ ctx, next, type }) => {
