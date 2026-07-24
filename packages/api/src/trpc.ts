@@ -8,7 +8,7 @@ import {
   type Session,
 } from "@loyalty/auth/server";
 import type { AnalyticsBinding } from "@loyalty/analytics";
-import { db } from "@loyalty/db";
+import { createDb, type Database } from "@loyalty/db";
 import type { FlagsBinding } from "@loyalty/feature-flags";
 import type { RateLimitResult, RateLimitRule } from "@loyalty/rate-limit";
 import type { FakeRealtime, RealtimeClient } from "@loyalty/realtime";
@@ -69,7 +69,7 @@ export interface LoggerBinding {
 }
 
 export type Context = {
-  db: typeof db;
+  db: Database;
   session: Session | null;
   headers: Headers;
   rateLimiter?: RateLimiterBinding;
@@ -178,7 +178,7 @@ export type CaptureError = (
 export const createContext = async (opts: { headers: Headers }): Promise<Context> => {
   const session = await auth.api.getSession({ headers: opts.headers });
   return {
-    db,
+    db: createDb(),
     session,
     headers: opts.headers,
   };

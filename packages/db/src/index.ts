@@ -1,4 +1,4 @@
-export { db, type Database } from "./client";
+export { db, createDb, type Database } from "./client";
 export * as schema from "./schema";
 export {
   customerExistsForUser,
