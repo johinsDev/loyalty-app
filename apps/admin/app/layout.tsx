@@ -35,30 +35,30 @@ export const metadata: Metadata = {
   title: "Loyalty CRM",
 };
 
-export default async function RootLayout({ children }: { children: ReactNode }) {
-  const cookieStore = await cookies();
-  const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value;
-  const lang = routing.locales.includes(cookieLocale as (typeof routing.locales)[number])
-    ? cookieLocale
-    : routing.defaultLocale;
+export default  function RootLayout({ children }: { children: ReactNode }) {
+  // const cookieStore = await cookies();
+  // const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value;
+  // const lang = routing.locales.includes(cookieLocale as (typeof routing.locales)[number])
+  //   ? cookieLocale
+  //   : routing.defaultLocale;
 
   // The admin chrome uses the preset's fixed Violet accent (see globals.css).
   // The tenant brand color only themes the customer-facing preview islands, so
   // scope `brandThemeCss` (which targets :root/.dark) down to `.preview-customer`.
-  const brandCss = brandThemeCss(await brandColor())
-    .replaceAll(":root", ".preview-customer")
-    .replaceAll(".dark", ".dark .preview-customer");
+  // const brandCss = brandThemeCss(await brandColor())
+  //   .replaceAll(":root", ".preview-customer")
+  //   .replaceAll(".dark", ".dark .preview-customer");
 
   return (
     <html
-      lang={lang}
+      // lang={lang}
       className={`${fraunces.variable} ${inter.variable}`}
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>
-        {brandCss ? (
+        {/* {brandCss ? (
           <style id="brand-theme" dangerouslySetInnerHTML={{ __html: brandCss }} />
-        ) : null}
+        ) : null} */}
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

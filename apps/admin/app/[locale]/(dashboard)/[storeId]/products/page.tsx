@@ -13,21 +13,7 @@ export default async function ProductsPage({ params }: Props) {
   const { locale, storeId: segment } = await params;
   setRequestLocale(locale);
 
-  const { scope } = await loadStoreScope(segment);
-  let initialData:
-    | Awaited<ReturnType<Awaited<ReturnType<typeof trpc>>["menu"]["adminList"]>>
-    | undefined;
-  try {
-    const api = await trpc();
-    initialData = await api.menu.adminList({
-      perPage: 100,
-      sort: "updated",
-      dir: "desc",
-      storeId: scope?.storeId ?? undefined,
-    });
-  } catch {
-    initialData = undefined;
-  }
+ 
 
-  return <ProductsView initialData={initialData} />;
+  return <ProductsView  />;
 }

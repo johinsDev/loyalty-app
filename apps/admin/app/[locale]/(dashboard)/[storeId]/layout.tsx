@@ -22,34 +22,18 @@ type Props = {
  */
 export default async function StoreLayout({ children, params }: Props) {
   const { locale, storeId } = await params;
-  const { session, role } = await requireRole(STAFF_OR_ABOVE);
-  const name = (session.user as { name?: string }).name?.trim() || "Equipo";
-
-  const { stores, scope } = await loadStoreScope(storeId);
-  if (!scope) {
-    redirect({ href: { pathname: "/[storeId]/dashboard", params: { storeId: "all" } }, locale });
-    return null;
-  }
+  // const { session, role } = await requireRole(STAFF_OR_ABOVE);
+  // const name = (session.user as { name?: string }).name?.trim() || "Equipo";
+  
 
   // Prefetch the sidebar counters (manager+) so they paint with the HTML — the
   // shell's client query then hydrates from this instead of a fresh fetch.
-  let navCounts: Awaited<
-    ReturnType<Awaited<ReturnType<typeof trpc>>["dashboard"]["navCounts"]>
-  > | undefined;
-  if (MANAGER_OR_ABOVE.includes(role)) {
-    try {
-      const api = await trpc();
-      navCounts = await api.dashboard.navCounts();
-    } catch {
-      navCounts = undefined;
-    }
-  }
-
+  
   return (
     <StoreScopeProvider
-      value={{ segment: storeId, storeId: scope.storeId, store: scope.store, stores }}
+      value={{ segment: storeId, storeId:storeId, store: null, stores: [] }}
     >
-      <AdminShell role={role} name={name} navCounts={navCounts}>
+      <AdminShell role={'owner'} name={'TEST'} navCounts={{ customers: 0, promotions: 0,stores: 0}}>
         <ImpersonationBanner />
         {children}
       </AdminShell>

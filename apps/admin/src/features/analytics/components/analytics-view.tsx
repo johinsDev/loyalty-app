@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@loyalty/ui";
 import {
   Filter,
   Grid3x3,
@@ -15,7 +14,7 @@ import type { AppRouter } from "@loyalty/api";
 import { Skeleton } from "@loyalty/ui";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useState } from "react";
 
@@ -25,15 +24,8 @@ import { AreaChart, Bars, Donut } from "@/features/dashboard/components/charts";
 import { TeamLeaderboardPanel } from "@/features/employees/components/team-leaderboard-panel";
 import { PromotionsAnalyticsPanel } from "@/features/promotions/components/promotions-analytics-panel";
 import { useFadeUp } from "@/lib/animate";
+import { money } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
-
-import {
-  engagementClick,
-  engagementOpen,
-  growthSeries,
-  revenueBars,
-  tierMix,
-} from "../data";
 
 const PERIODS = ["7d", "30d", "90d"] as const;
 type Period = (typeof PERIODS)[number];
@@ -63,7 +55,7 @@ const ICON: Record<Section, LucideIcon> = {
  * Analytics — growth/retention/funnel hub with a left section nav (overview,
  * cohorts, funnel) and period chips. Reuses the dashboard chart wrappers; the
  * /analytics/cohorts and /analytics/funnel routes deep-link a section via
- * `section`. Design-first / hardcoded (../data).
+ * `section`. All sections read real tRPC aggregates (dashboard.*).
  */
 type DashOut = inferRouterOutputs<AppRouter>["dashboard"];
 
@@ -72,11 +64,17 @@ export function AnalyticsView({
   initialPeriod,
   initialFunnel,
   initialCohorts,
+  initialSeries,
+  initialTiers,
+  initialEngagement,
 }: {
   section?: Section;
   initialPeriod?: Period;
   initialFunnel?: DashOut["funnel"];
   initialCohorts?: DashOut["cohorts"];
+  initialSeries?: DashOut["series"];
+  initialTiers?: DashOut["tiers"];
+  initialEngagement?: DashOut["redemptionEngagement"];
 }) {
   const t = useTranslations("Analytics");
   const fade = useFadeUp({ step: 40 });
@@ -148,7 +146,14 @@ export function AnalyticsView({
         {/* Active section */}
         <div className="lg:col-span-3">
           {active === "overview" ? (
-            <Overview fade={fade} />
+            <Overview
+              fade={fade}
+              period={period}
+              initialPeriod={initialPeriod}
+              initialSeries={initialSeries}
+              initialTiers={initialTiers}
+              initialEngagement={initialEngagement}
+            />
           ) : active === "campaigns" ? (
             <CampaignsAnalyticsPanel />
           ) : active === "promotions" ? (
@@ -175,8 +180,64 @@ export function AnalyticsView({
 
 type Fade = (index: number) => React.CSSProperties | undefined;
 
-function Overview({ fade }: { fade: Fade }) {
+/** Tier key → brand color, mirroring the dashboard's tier donut. */
+const TIER_COLORS: Record<string, string> = {
+  hoja: "var(--primary)",
+  flor: "color-mix(in srgb, var(--primary) 45%, #fff)",
+  oro: "#f0a868",
+};
+
+function Overview({
+  fade,
+  period,
+  initialPeriod,
+  initialSeries,
+  initialTiers,
+  initialEngagement,
+}: {
+  fade: Fade;
+  period: Period;
+  initialPeriod?: Period;
+  initialSeries?: DashOut["series"];
+  initialTiers?: DashOut["tiers"];
+  initialEngagement?: DashOut["redemptionEngagement"];
+}) {
   const t = useTranslations("Analytics");
+  const format = useFormatter();
+  const trpc = useTRPC();
+  // Server-prefetched for the initial period (no first-paint flash); tiers are
+  // period-independent so they hydrate directly. keepPreviousData keeps period
+  // switches smooth.
+  const onInitial = period === initialPeriod;
+
+  const seriesQ = useQuery(
+    trpc.dashboard.series.queryOptions(
+      { period },
+      { initialData: onInitial ? initialSeries : undefined, placeholderData: keepPreviousData },
+    ),
+  );
+  const tiersQ = useQuery(
+    trpc.dashboard.tiers.queryOptions(undefined, { initialData: initialTiers }),
+  );
+  const engQ = useQuery(
+    trpc.dashboard.redemptionEngagement.queryOptions(
+      { period },
+      { initialData: onInitial ? initialEngagement : undefined, placeholderData: keepPreviousData },
+    ),
+  );
+
+  const points = seriesQ.data ?? [];
+  const growth = points.map((p) => p.newMembers);
+  const revenue = points.map((p) => Math.round(p.revenueCents / 100));
+  const redemptions = points.map((p) => p.redemptions);
+
+  const tierTotal = (tiersQ.data?.tiers ?? []).reduce((s, tt) => s + tt.count, 0) || 1;
+  const tierMix = (tiersQ.data?.tiers ?? []).map((tt) => ({
+    key: tt.key,
+    pct: Math.round((tt.count / tierTotal) * 100),
+    color: TIER_COLORS[tt.key] ?? "#c7cdd4",
+  }));
+
   return (
     <div className="grid gap-3 lg:grid-cols-2">
       <ChartCard
@@ -185,7 +246,11 @@ function Overview({ fade }: { fade: Fade }) {
         style={fade(0)}
       >
         <div className="h-48">
-          <AreaChart series={growthSeries} />
+          {seriesQ.isPending ? (
+            <Skeleton className="size-full rounded-xl" />
+          ) : (
+            <AreaChart series={growth} />
+          )}
         </div>
       </ChartCard>
 
@@ -194,21 +259,29 @@ function Overview({ fade }: { fade: Fade }) {
         subtitle={t("tierSubtitle")}
         style={fade(1)}
       >
-        <div className="flex flex-wrap items-center justify-center gap-4">
-          <Donut slices={tierMix} center="4" centerSub={t("nav.overview")} />
-          <ul className="min-w-40 flex-1 space-y-2 text-sm">
-            {tierMix.map((s) => (
-              <li key={s.key} className="flex items-center gap-2">
-                <span
-                  className="size-2.5 flex-none rounded-full"
-                  style={{ background: s.color }}
-                />
-                <span className="flex-1">{t(`tier.${s.key}`)}</span>
-                <span className="font-bold">{s.pct}%</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {tiersQ.isPending ? (
+          <Skeleton className="h-40 w-full rounded-xl" />
+        ) : (
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Donut
+              slices={tierMix}
+              center={format.number(tierTotal)}
+              centerSub={t("stage.members")}
+            />
+            <ul className="min-w-40 flex-1 space-y-2 text-sm">
+              {tierMix.map((s) => (
+                <li key={s.key} className="flex items-center gap-2">
+                  <span
+                    className="size-2.5 flex-none rounded-full"
+                    style={{ background: s.color }}
+                  />
+                  <span className="flex-1">{t(`tier.${s.key}`)}</span>
+                  <span className="font-bold">{s.pct}%</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </ChartCard>
 
       <ChartCard
@@ -217,7 +290,11 @@ function Overview({ fade }: { fade: Fade }) {
         style={fade(2)}
       >
         <div className="h-44">
-          <Bars series={revenueBars} />
+          {seriesQ.isPending ? (
+            <Skeleton className="size-full rounded-xl" />
+          ) : (
+            <Bars series={revenue} />
+          )}
         </div>
       </ChartCard>
 
@@ -226,27 +303,35 @@ function Overview({ fade }: { fade: Fade }) {
         subtitle={t("engagementSubtitle")}
         style={fade(3)}
       >
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <div className="text-muted-foreground/70 mb-1 flex items-center gap-1.5 text-xs font-bold">
-              <span className="bg-primary size-2 rounded-full" />
-              {t("open")}
+        {seriesQ.isPending || engQ.isPending ? (
+          <Skeleton className="h-40 w-full rounded-xl" />
+        ) : (
+          <div className="space-y-3">
+            <div className="h-28">
+              <Bars series={redemptions} />
             </div>
-            <div className="h-32">
-              <Bars series={engagementOpen} />
+            <div className="grid grid-cols-2 gap-3">
+              <MiniStat
+                label={t("redeemRate")}
+                value={`${engQ.data?.redeemerRatePct ?? 0}%`}
+              />
+              <MiniStat
+                label={t("discountGranted")}
+                value={money(format, engQ.data?.discountCents ?? 0)}
+              />
             </div>
           </div>
-          <div>
-            <div className="text-muted-foreground/70 mb-1 flex items-center gap-1.5 text-xs font-bold">
-              <span className="bg-primary/50 size-2 rounded-full" />
-              {t("click")}
-            </div>
-            <div className="h-32">
-              <Bars series={engagementClick} />
-            </div>
-          </div>
-        </div>
+        )}
       </ChartCard>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-muted/40 rounded-2xl px-3 py-2.5">
+      <div className="text-muted-foreground/70 text-xs font-bold">{label}</div>
+      <div className="font-display mt-0.5 text-xl font-semibold tracking-tight">{value}</div>
     </div>
   );
 }
@@ -402,17 +487,9 @@ function ChartCard({
     >
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-display text-lg font-semibold tracking-tight">
-              {title}
-            </h2>
-            <Badge
-              variant="secondary"
-              className="text-[0.625rem] font-bold text-blue-600"
-            >
-              Beta
-            </Badge>
-          </div>
+          <h2 className="font-display text-lg font-semibold tracking-tight">
+            {title}
+          </h2>
           {subtitle ? (
             <p className="text-muted-foreground/80 mt-0.5 text-xs font-semibold">
               {subtitle}

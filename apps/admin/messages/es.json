@@ -3027,15 +3027,15 @@
       "promotions": "Promociones"
     },
     "growthTitle": "Crecimiento de clientes",
-    "growthSubtitle": "Nuevos socios por mes",
+    "growthSubtitle": "Nuevos socios en el periodo",
     "tierTitle": "Distribución por tier",
     "tierSubtitle": "Mix de la base",
     "revenueTitle": "Ingresos por lealtad",
-    "revenueSubtitle": "Atribuidos al programa",
-    "engagementTitle": "Engagement de notificaciones",
-    "engagementSubtitle": "Apertura vs clic",
-    "open": "Apertura",
-    "click": "Clic",
+    "revenueSubtitle": "Cobrado en el periodo",
+    "engagementTitle": "Engagement de canjes",
+    "engagementSubtitle": "Canjes y tasa de canje",
+    "redeemRate": "Tasa de canje",
+    "discountGranted": "Descuento otorgado",
     "cohortsTitle": "Retención por cohorte",
     "cohortsSubtitle": "% que vuelve por semana",
     "cohort": "Cohorte",
@@ -3047,10 +3047,9 @@
       "redeemed": "Canjearon"
     },
     "tier": {
-      "bronze": "Bronce",
-      "silver": "Plata",
-      "gold": "Oro",
-      "diamond": "Diamante"
+      "hoja": "Hoja",
+      "flor": "Flor",
+      "oro": "Oro"
     },
     "noData": "Sin datos aún"
   },

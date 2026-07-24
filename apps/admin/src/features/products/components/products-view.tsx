@@ -62,7 +62,7 @@ interface Row {
  */
 type MenuAdminList = inferRouterOutputs<AppRouter>["menu"]["adminList"];
 
-export function ProductsView({ initialData }: { initialData?: MenuAdminList }) {
+export function ProductsView() {
   const t = useTranslations("Products");
   const tCommon = useTranslations("Common");
   const router = useRouter();
@@ -86,8 +86,7 @@ export function ProductsView({ initialData }: { initialData?: MenuAdminList }) {
         dir: "desc",
         storeId: storeId ?? undefined,
       },
-      // Server-prefetched first paint (RSC) — input is static, so it always seeds.
-      initialData ? { initialData } : {},
+
     ),
   );
   const categoriesQuery = useQuery(trpc.menu.categories.queryOptions());

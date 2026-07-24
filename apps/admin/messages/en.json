@@ -3027,15 +3027,15 @@
       "promotions": "Promotions"
     },
     "growthTitle": "Customer growth",
-    "growthSubtitle": "New members per month",
+    "growthSubtitle": "New members in the period",
     "tierTitle": "Tier distribution",
     "tierSubtitle": "Base mix",
     "revenueTitle": "Loyalty revenue",
-    "revenueSubtitle": "Attributed to the program",
-    "engagementTitle": "Notification engagement",
-    "engagementSubtitle": "Open vs click",
-    "open": "Open",
-    "click": "Click",
+    "revenueSubtitle": "Charged in the period",
+    "engagementTitle": "Redemption engagement",
+    "engagementSubtitle": "Redemptions and redeem rate",
+    "redeemRate": "Redeem rate",
+    "discountGranted": "Discount granted",
     "cohortsTitle": "Cohort retention",
     "cohortsSubtitle": "% returning per week",
     "cohort": "Cohort",
@@ -3047,10 +3047,9 @@
       "redeemed": "Redeemed"
     },
     "tier": {
-      "bronze": "Bronze",
-      "silver": "Silver",
-      "gold": "Gold",
-      "diamond": "Diamond"
+      "hoja": "Leaf",
+      "flor": "Flower",
+      "oro": "Gold"
     },
     "noData": "No data yet"
   },
