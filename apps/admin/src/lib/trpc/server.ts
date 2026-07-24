@@ -21,6 +21,19 @@ const procedureTypes = new Map(
   ).map(([path, proc]) => [path, proc._def.type]),
 );
 
+// Property probes JS/serialization runtimes fire on the caller proxy (awaiting
+// checks `.then`; JSON/string coercion check `.toJSON`/`.toString`/`.valueOf`).
+// None are procedures — answering them with a nested proxy makes the runtime
+// call tRPC at a bogus path (e.g. `toJSON` → 404).
+const NON_PROCEDURE_KEYS = new Set([
+  "then",
+  "catch",
+  "finally",
+  "toJSON",
+  "toString",
+  "valueOf",
+]);
+
 /**
  * Caller-shaped proxy (`api.foo.bar(input)`) backed by an HTTP tRPC client, so
  * the call-sites are byte-for-byte the same as the in-process caller. The
@@ -47,20 +60,20 @@ const httpCaller = (cookie: string): ServerCaller => {
 
   const build = (path: string[]): unknown =>
     new Proxy(() => undefined, {
-      // `await trpc()` returns this proxy from an async fn, so the runtime
-      // probes `.then` to test for a thenable. It must NOT answer then/catch/
-      // finally with a procedure, or awaiting it calls tRPC at path "then" →
-      // 404 ("No procedure found on path then"). No real procedure is named that.
+      // See NON_PROCEDURE_KEYS: don't answer serialization/thenable probes with
+      // a nested proxy (that would dispatch a bogus tRPC call on JSON/await).
       get: (_target, key) =>
-        typeof key === "string" &&
-        key !== "then" &&
-        key !== "catch" &&
-        key !== "finally"
+        typeof key === "string" && !NON_PROCEDURE_KEYS.has(key)
           ? build([...path, key])
           : undefined,
       apply: (_target, _thisArg, args) => {
         const procedure = path.join(".");
-        return procedureTypes.get(procedure) === "mutation"
+        const kind = procedureTypes.get(procedure);
+        // Only dispatch for a path that is a real procedure — a stray call on a
+        // non-procedure path (serialization edge cases) resolves to undefined
+        // instead of hitting the Worker at a 404 path.
+        if (!kind) return undefined;
+        return kind === "mutation"
           ? client.mutation(procedure, args[0])
           : client.query(procedure, args[0]);
       },
