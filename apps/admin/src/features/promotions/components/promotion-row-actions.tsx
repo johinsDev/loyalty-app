@@ -39,7 +39,10 @@ export function PromotionRowActions({ promo }: { promo: PromoActionsRow }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const name = promo.name || t("list.namePlaceholder");
-  const invalidate = () => queryClient.invalidateQueries(trpc.promociones.adminList.queryFilter());
+  const invalidate = () => {
+    void queryClient.invalidateQueries(trpc.promociones.adminList.queryFilter());
+    router.refresh();
+  };
 
   const archive = useMutation(trpc.promociones.archive.mutationOptions());
   const remove = useMutation(trpc.promociones.remove.mutationOptions());
