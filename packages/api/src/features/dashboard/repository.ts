@@ -182,9 +182,9 @@ export class DashboardRepository {
   async series(orgId: string, period: Period, now = new Date()): Promise<DashboardSeriesPoint[]> {
     const days = PERIOD_DAYS[period];
     const start = daysAgo(now, days);
-    const [purchases, redemptions] = await Promise.all([
+    const [purchases, redemptions, signups] = await Promise.all([
       this.db
-        .select({ createdAt: purchase.createdAt })
+        .select({ createdAt: purchase.createdAt, priceCents: purchase.priceCents })
         .from(purchase)
         .where(
         and(
@@ -198,20 +198,40 @@ export class DashboardRepository {
         .select({ createdAt: redemption.createdAt })
         .from(redemption)
         .where(and(eq(redemption.organizationId, orgId), gte(redemption.createdAt, start))),
+      // Member signups stay org-level (customers aren't store-bound).
+      this.db
+        .select({ createdAt: customer.createdAt })
+        .from(customer)
+        .where(and(eq(customer.organizationId, orgId), gte(customer.createdAt, start))),
     ]);
 
     // Pre-seed every day in the window so the chart has no gaps.
-    const buckets = new Map<string, { purchases: number; redemptions: number }>();
+    const buckets = new Map<
+      string,
+      { purchases: number; redemptions: number; revenueCents: number; newMembers: number }
+    >();
     for (let i = 0; i < days; i++) {
-      buckets.set(isoDay(daysAgo(now, days - 1 - i)), { purchases: 0, redemptions: 0 });
+      buckets.set(isoDay(daysAgo(now, days - 1 - i)), {
+        purchases: 0,
+        redemptions: 0,
+        revenueCents: 0,
+        newMembers: 0,
+      });
     }
     for (const p of purchases) {
       const b = buckets.get(isoDay(p.createdAt));
-      if (b) b.purchases += 1;
+      if (b) {
+        b.purchases += 1;
+        b.revenueCents += p.priceCents;
+      }
     }
     for (const r of redemptions) {
       const b = buckets.get(isoDay(r.createdAt));
       if (b) b.redemptions += 1;
+    }
+    for (const s of signups) {
+      const b = buckets.get(isoDay(s.createdAt));
+      if (b) b.newMembers += 1;
     }
     return [...buckets.entries()].map(([date, v]) => ({ date, ...v }));
   }

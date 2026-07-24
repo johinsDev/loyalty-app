@@ -50,6 +50,10 @@ export interface DashboardSeriesPoint {
   date: string;
   purchases: number;
   redemptions: number;
+  /** Gross charged (Σ purchase.priceCents) that day; store-scoped. */
+  revenueCents: number;
+  /** Customers created that day; org-level (wallet is org-wide). */
+  newMembers: number;
 }
 
 export interface RecentPurchaseRow {
