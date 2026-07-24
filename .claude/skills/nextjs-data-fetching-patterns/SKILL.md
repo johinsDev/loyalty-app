@@ -3,7 +3,7 @@ name: nextjs-data-fetching-patterns
 description: Decision guide for choosing the right data-fetching / caching / state pattern in a Next.js App Router (RSC) app — server cache vs React Query vs promise+use() vs URL/nuqs vs draft Zustand vs mutations/optimistic, including tRPC. Use when starting a feature or planning a refactor and you need to pick the pattern that fits before writing code.
 auto_invoke: false
 tools: Read, Grep, Glob, Edit, Write, Bash, WebFetch
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Next.js Data-Fetching & State Pattern Decision Guide
@@ -123,6 +123,11 @@ return <HydrationBoundary state={dehydrate(qc)}>{children}</HydrationBoundary>
 `<Suspense>` = streams the shell first, data fills in. Blocking vs streaming is a
 **choice**, not inherent to React Query.
 **Cost:** ships RQ runtime + dehydrated JSON in the HTML.
+**Gotcha (blast-radius rule):** never wrap a whole page/large layout in ONE
+`<HydrationBoundary>` — it forces the entire subtree to hydrate at once, killing
+TTI. Wrap only the specific interactive component
+(`<HydrationBoundary><DataTable/></HydrationBoundary>`); a page with a chart + a
+table hydrates them in separate, isolated boundaries.
 
 ### F. React Query client fetch (`useQuery`)
 **What:** plain client `useQuery`, no server prefetch.
@@ -134,9 +139,13 @@ filters, pagination).
 1 fetch, no props.
 
 ### G. Mutations — React Query `useMutation` (optimistic) vs Server Action + `useOptimistic`
-**`useMutation` + `onMutate`:** optimistic update + rollback + **surgical**
-`invalidateQueries(['key'])` (refetches only that). Shared cache → all consumers
-update together. Best on list/heavy pages and when state is shown in many places.
+**`useMutation` + `onMutate` (the CRM standard):** optimistic update + rollback +
+**surgical** `invalidateQueries(['key'])` (refetches only that). Shared cache → all
+consumers update together. Best on list/heavy pages and when state is shown in many
+places. **CRITICAL — dual invalidation:** if that same data is ALSO server-cached
+(`use cache`/`fetch`), the mutation must trigger a Server Action calling
+`revalidateTag()` **alongside** the client `invalidateQueries()` — otherwise a hard
+refresh serves stale HTML.
 **Server Action + `useOptimistic` + `revalidateTag`/`router.refresh()`:** RSC-native,
 less client JS. But `router.refresh()` is **coarse** (re-fetches the whole route)
 and `useOptimistic` is **per-component** (no cross-component sharing). Use raw
@@ -170,7 +179,7 @@ RQ for dependent data; simple URL-shareable filtering/pagination → nuqs.
 | Server-derivable, consumed in a client component, refreshes by navigation | D: promise + `use()` + Suspense |
 | Server-derivable, must stay a live client query + fast paint | E: prefetch(`void`) + hydrate + `useSuspenseQuery` |
 | Depends on client-only state / per-session / client-triggered | F: client `useQuery` (+ `keepPreviousData`) |
-| Write/toggle with optimistic UI, shown in many places | G: `useMutation` + optimistic + `invalidate` |
+| Write/toggle with optimistic UI, shown in many places | G: `useMutation` + optimistic + `invalidate` (dual-invalidate if also server-cached) |
 | Write, RSC-first, single place, no RQ | G: Server Action + `useOptimistic` |
 | Filter/sort/page, per-change URL OK (tables/admin) | H: nuqs |
 | Interdependent/batched filters (search) | H: Zustand `draft`/`applied`, RQ off the draft |
@@ -224,6 +233,10 @@ calls it; weigh the type-safety win against that hop.
   no.
 - **Admin data table (filter/sort/paginate)** → H: nuqs (URL per change) +
   D/E (server-fetched results). The textbook "tablecn" case.
+- **CRM admin table with massive/complex filters (10+ conditional rules)** → H, but
+  do NOT serialize the whole filter object into the URL (URI-length limits + ugly).
+  Save the filter JSON to the DB as a **Saved View** and sync only `?viewId=123`
+  via nuqs; the server reads the id, loads the filter, queries the data.
 
 ---
 
@@ -240,6 +253,13 @@ calls it; weigh the type-safety win against that hop.
   streaming-vs-blocking; **the shared cache** (RQ key / `cache()`) solves sharing.
 - Making the whole page `'use client'` → keep the shell as server components,
   only the interactive bits as client islands (the real JS-bundle win).
+- Wrapping a whole page in ONE `<HydrationBoundary>` → hydrates everything at once,
+  kills TTI; isolate per interactive component (blast-radius rule).
+- Over-fetching into hydration: `dehydrate(qc)` serializes rows into a hidden JSON
+  script tag — prefetching `SELECT *` / 1000 rows doubles the HTML payload and
+  spikes server CPU. Project only the columns you render before `prefetchQuery`.
+- Hydrating non-serializable data (raw `Date`/`Map`/`Set`) → crashes or degrades to
+  strings; use `superjson` or map dates to ISO strings before dehydrating.
 
 ---
 
