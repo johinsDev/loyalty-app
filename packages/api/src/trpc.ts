@@ -156,6 +156,22 @@ export interface CacheBinding {
   delete(key: string): Promise<void>;
 }
 
+/**
+ * Read-through cache for org-scoped aggregate reads (dashboard KPIs, nav counts,
+ * branding, the store switcher list) — the ones RSC fans out on every view. The
+ * `key` MUST include the orgId (+ store/period) so tenants and scopes never share
+ * an entry. Fails open (runs `factory` uncached) when no store is bound
+ * (CLI/tests). Short TTLs → aggregates tolerate ≤`ttlSeconds` of staleness.
+ */
+export function cachedRead<T>(
+  ctx: { cache?: CacheBinding },
+  key: string,
+  ttlSeconds: number,
+  factory: () => Promise<T>,
+): Promise<T> {
+  return ctx.cache ? ctx.cache.getOrSet(key, factory, ttlSeconds) : factory();
+}
+
 /** Structural slice of the `@loyalty/shortlinks` manager (the `shorten` op). */
 export interface ShortlinksBinding {
   shorten(

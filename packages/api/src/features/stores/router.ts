@@ -1,7 +1,13 @@
 import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
-import { managerProcedure, publicProcedure, router, staffProcedure } from "../../trpc";
+import {
+  cachedRead,
+  managerProcedure,
+  publicProcedure,
+  router,
+  staffProcedure,
+} from "../../trpc";
 import type { MapDeps } from "./service";
 import { StoresRepository } from "./repository";
 import {
@@ -48,9 +54,13 @@ export const storesRouter = router({
   list: managerProcedure
     .input(storesListInputSchema)
     .query(async ({ ctx, input }) => makeService(ctx.db).adminList(await requireOrg(), input)),
-  switcherList: staffProcedure.query(async ({ ctx }) =>
-    makeService(ctx.db).switcherList(await requireOrg()),
-  ),
+  switcherList: staffProcedure.query(async ({ ctx }) => {
+    const org = await requireOrg();
+    // Hit on every admin nav (loadStoreScope resolves the [storeId] segment).
+    return cachedRead(ctx, `stores:switcher:${org}`, 60, () =>
+      makeService(ctx.db).switcherList(org),
+    );
+  }),
   listByIds: managerProcedure
     .input(bulkIdsSchema)
     .query(async ({ ctx, input }) => makeService(ctx.db).listByIds(await requireOrg(), input.ids)),

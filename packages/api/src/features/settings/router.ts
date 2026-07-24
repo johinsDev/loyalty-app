@@ -2,7 +2,7 @@ import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
 import { loadLocaleContext } from "../_shared/localize";
-import { managerProcedure, publicProcedure, router } from "../../trpc";
+import { cachedRead, managerProcedure, publicProcedure, router } from "../../trpc";
 import { SettingsRepository } from "./repository";
 import {
   setLoyaltyScopeInputSchema,
@@ -44,9 +44,13 @@ export const settingsRouter = router({
       makeService(ctx.db).updateLocalization(await requireOrg(), input),
     ),
 
-  branding: publicProcedure.query(async ({ ctx }) =>
-    makeService(ctx.db).branding(await orgId()),
-  ),
+  branding: publicProcedure.query(async ({ ctx }) => {
+    const org = await orgId();
+    // Hit on every admin page (root layout theme + [locale] metadata favicon).
+    return cachedRead(ctx, `settings:branding:${org}`, 60, () =>
+      makeService(ctx.db).branding(org),
+    );
+  }),
   updateBranding: managerProcedure
     .input(updateBrandingInputSchema)
     .mutation(async ({ ctx, input }) =>
