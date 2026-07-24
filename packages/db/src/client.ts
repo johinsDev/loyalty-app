@@ -18,14 +18,25 @@ type Db = LibSQLDatabase<typeof schema>;
 // deferred to the first actual query.
 let instance: Db | undefined;
 
-function resolve(): Db {
-  if (instance) return instance;
+/**
+ * Build a **fresh** libSQL/drizzle client. Cloudflare Workers bind an I/O object
+ * to the request that created it, so a module singleton shared across concurrent
+ * requests gets canceled ("cross-request promise resolution"). The per-request
+ * tRPC context calls this so each request owns its client; long-lived runtimes
+ * (Node scripts, jobs) keep using the {@link db} singleton below.
+ */
+export function createDb(): Db {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error("DATABASE_URL is not set");
   }
   const client = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN });
-  instance = drizzle(client, { schema, casing: "snake_case" });
+  return drizzle(client, { schema, casing: "snake_case" });
+}
+
+function resolve(): Db {
+  if (instance) return instance;
+  instance = createDb();
   return instance;
 }
 
