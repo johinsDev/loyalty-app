@@ -1420,6 +1420,9 @@
   },
   "Admin": {
     "menu": "Menu",
+    "errorTitle": "Something went wrong",
+    "errorBody": "We couldn't load this section. Try again in a moment.",
+    "errorRetry": "Retry",
     "greeting": "Hi, {name}",
     "storesMembers": "{stores, plural, one {# store} other {# stores}} · {members} members",
     "cashierMode": "Cashier mode",

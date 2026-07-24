@@ -1420,6 +1420,9 @@
   },
   "Admin": {
     "menu": "Menú",
+    "errorTitle": "Algo salió mal",
+    "errorBody": "No pudimos cargar esta sección. Reintenta en un momento.",
+    "errorRetry": "Reintentar",
     "greeting": "Hola, {name}",
     "storesMembers": "{stores, plural, one {# tienda} other {# tiendas}} · {members} socios",
     "cashierMode": "Modo caja",
