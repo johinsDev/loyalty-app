@@ -69,6 +69,7 @@ export function CampaignRowActions({ campaign }: { campaign: RowCampaign }) {
           toast.success(t("deleted", { name: campaign.name }));
           setOpen(false);
           void invalidate();
+          router.refresh();
         },
         onError: () => toast.error(t("saveError")),
       },
@@ -84,6 +85,7 @@ export function CampaignRowActions({ campaign }: { campaign: RowCampaign }) {
         onSuccess: () => {
           toast.success(msg);
           void invalidate();
+          router.refresh();
         },
         onError: () => toast.error(t("saveError")),
       },
