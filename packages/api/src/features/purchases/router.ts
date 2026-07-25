@@ -9,7 +9,7 @@ import {
   rateLimit,
   router,
 } from "../../trpc";
-import { listCacheKey } from "../_shared/list-cache";
+import { LIST_CACHE_TTL_SECONDS, listCacheKey } from "../_shared/list-cache";
 import { buildPointsService } from "../points/router";
 import { PurchasesRepository } from "./repository";
 import {
@@ -79,7 +79,7 @@ export const purchasesRouter = router({
     .input(purchasesAdminListInputSchema)
     .query(async ({ ctx, input }) => {
       const org = await requireOrg();
-      return cachedRead(ctx, listCacheKey("purchases", org, input), 60, () =>
+      return cachedRead(ctx, listCacheKey("purchases", org, input), LIST_CACHE_TTL_SECONDS, () =>
         buildService(ctx).adminList(org, input),
       );
     }),

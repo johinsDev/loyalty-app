@@ -11,6 +11,9 @@ export function listCacheKey(name: string, orgId: string, input: unknown): strin
   return `list:${name}:${orgId}:${stableStringify(input)}`;
 }
 
+/** TTL (seconds) for the admin list read-through cache — matches the dashboard aggregates' TTL. */
+export const LIST_CACHE_TTL_SECONDS = 60;
+
 /**
  * Deterministic JSON: object keys sorted recursively at every level so key order
  * never changes the string; array order is preserved (it's meaningful — e.g. the

@@ -12,7 +12,7 @@ import {
   staffProcedure,
 } from "../../trpc";
 import { loadLocaleContext } from "../_shared/localize";
-import { listCacheKey } from "../_shared/list-cache";
+import { LIST_CACHE_TTL_SECONDS, listCacheKey } from "../_shared/list-cache";
 import { rewardBenefitSummary } from "./format";
 import { RewardsRepository } from "./repository";
 import { RewardsService } from "./service";
@@ -135,7 +135,7 @@ export const rewardsRouter = router({
     .input(rewardAdminListInputSchema)
     .query(async ({ ctx, input }) => {
       const org = await orgId();
-      return cachedRead(ctx, listCacheKey("rewards", org, input), 60, () =>
+      return cachedRead(ctx, listCacheKey("rewards", org, input), LIST_CACHE_TTL_SECONDS, () =>
         buildRewardsService(ctx).adminList(org, input),
       );
     }),

@@ -10,7 +10,7 @@ import {
   router,
   staffProcedure,
 } from "../../trpc";
-import { listCacheKey } from "../_shared/list-cache";
+import { LIST_CACHE_TTL_SECONDS, listCacheKey } from "../_shared/list-cache";
 import { EmployeesRepository } from "./repository";
 import {
   acceptInviteSchema,
@@ -66,7 +66,7 @@ export const employeesRouter = router({
     .input(employeesListInputSchema)
     .query(async ({ ctx, input }) => {
       const org = await requireOrg();
-      return cachedRead(ctx, listCacheKey("employees", org, input), 60, () =>
+      return cachedRead(ctx, listCacheKey("employees", org, input), LIST_CACHE_TTL_SECONDS, () =>
         makeService(ctx.db).list(org, input),
       );
     }),

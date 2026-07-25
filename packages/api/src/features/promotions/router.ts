@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { loadLocaleContext } from "../_shared/localize";
-import { listCacheKey } from "../_shared/list-cache";
+import { LIST_CACHE_TTL_SECONDS, listCacheKey } from "../_shared/list-cache";
 import { cachedRead, managerProcedure, publicProcedure, router, staffProcedure } from "../../trpc";
 import { PromoRepository } from "./repository";
 import {
@@ -125,7 +125,7 @@ export const promocionesRouter = router({
     .input(adminListInputSchema)
     .query(async ({ ctx, input }) => {
       const org = await requireOrg();
-      return cachedRead(ctx, listCacheKey("promotions", org, input), 60, () =>
+      return cachedRead(ctx, listCacheKey("promotions", org, input), LIST_CACHE_TTL_SECONDS, () =>
         makeService(ctx.db).adminList(org, input),
       );
     }),
