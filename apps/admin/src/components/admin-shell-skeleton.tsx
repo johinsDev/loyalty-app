@@ -1,39 +1,46 @@
 import { Skeleton } from "@loyalty/ui";
 
-import { ListPageSkeleton } from "@/components/data-table";
-
 /**
- * Static fallback for the store shell's Suspense boundary — the sidebar + top
- * bar frame with a generic page skeleton in the content slot. Shown only while
- * the auth-gated shell (role, store scope, nav counts) resolves on first load /
- * store switch; page-to-page navigation uses the inner content skeleton instead.
+ * Fallbacks for the store shell's streamed holes. The frame (rails + top bar) is
+ * static, so only the nav and greeting need placeholders — sized to match their
+ * real components so filling the hole causes no layout shift.
  */
-export function AdminShellSkeleton() {
+
+const NAV_ROWS = ["a", "b", "c", "d", "e", "f", "g", "h"] as const;
+
+/** Matches {@link AdminNav}: brand row + search + grouped rows + footer. */
+export function NavSkeleton() {
   return (
-    <div className="bg-card flex h-screen overflow-hidden">
-      <aside className="border-border hidden w-64 flex-none border-r p-4 lg:block">
-        <Skeleton className="h-10 w-full rounded-xl" />
-        <div className="mt-6 space-y-2">
-          {["home", "customers", "purchases", "rewards", "promos", "banners", "team", "settings"].map(
-            (row) => (
-              <Skeleton key={row} className="h-9 w-full rounded-lg" />
-            ),
-          )}
+    <div className="bg-card flex h-full flex-col">
+      <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+        <Skeleton className="size-9 flex-none rounded-xl" />
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-3 w-12" />
         </div>
-      </aside>
-      <div className="bg-muted/30 flex min-w-0 flex-1 flex-col">
-        <header className="bg-card border-border flex flex-none items-center gap-3 border-b px-4 py-3 lg:px-6">
-          <div className="min-w-0 flex-1 space-y-2">
-            <Skeleton className="h-5 w-48" />
-            <Skeleton className="h-3 w-32" />
-          </div>
-          <Skeleton className="h-10 w-40 rounded-xl" />
-          <Skeleton className="h-10 w-28 rounded-xl" />
-        </header>
-        <main className="flex-1 overflow-y-auto">
-          <ListPageSkeleton />
-        </main>
       </div>
+      <div className="px-3 py-2">
+        <Skeleton className="h-10 w-full rounded-lg" />
+      </div>
+      <div className="flex-1 space-y-2 px-3 py-2">
+        {NAV_ROWS.map((row) => (
+          <Skeleton key={row} className="h-10 w-full rounded-lg" />
+        ))}
+      </div>
+      <div className="border-border flex items-center gap-2 border-t p-2">
+        <Skeleton className="size-8 flex-none rounded-full" />
+        <Skeleton className="h-4 flex-1" />
+      </div>
+    </div>
+  );
+}
+
+/** Matches the greeting hole: title line + subtitle line. */
+export function GreetingSkeleton() {
+  return (
+    <div className="min-w-0 flex-1 space-y-2">
+      <Skeleton className="h-5 w-48" />
+      <Skeleton className="h-3 w-32" />
     </div>
   );
 }

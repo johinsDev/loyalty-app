@@ -26,7 +26,7 @@ type SessionUser = { id: string; name?: string | null };
  * and pages all gate through this, so what used to be 2–3 independent `auth.me()`
  * Worker hops collapse to a single call per request. Returns `null` signed out.
  */
-const getMe = cache(
+export const getMe = cache(
   async (): Promise<{ user: SessionUser; role: Role } | null> => {
     if (viaWorker) {
       const me = await (await trpc()).auth.me().catch(() => null);
