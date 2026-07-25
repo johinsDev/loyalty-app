@@ -44,3 +44,13 @@ export function GreetingSkeleton() {
     </div>
   );
 }
+
+/** Matches the top-bar scope islands: store switcher (sm+) + cashier button. */
+export function ScopeIslandsSkeleton() {
+  return (
+    <>
+      <Skeleton className="hidden h-10 w-40 rounded-xl sm:block" />
+      <Skeleton className="h-10 w-28 rounded-xl" />
+    </>
+  );
+}

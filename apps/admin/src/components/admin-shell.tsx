@@ -1,12 +1,9 @@
 "use client";
 
-import { Skeleton } from "@loyalty/ui";
 import { useTranslations } from "next-intl";
 import { type ReactNode, Suspense } from "react";
 
-import { CashierButton } from "@/components/cashier-button";
 import { MobileNav } from "@/components/mobile-nav";
-import { StoreSwitcher } from "@/components/store-switcher";
 import { CommandPaletteProvider } from "@/lib/command-palette-context";
 
 /**
@@ -15,10 +12,11 @@ import { CommandPaletteProvider } from "@/lib/command-palette-context";
  * nor the `[storeId]` param, so it prerenders as the static shell under
  * `cacheComponents`. Each dynamic piece streams into its own hole:
  *
- * - `nav` / `greeting` — RSC holes (role/name/counts, cookie) passed from the
- *   layout; a client component may render server elements received as props.
- * - {@link MobileNav} / {@link StoreSwitcher} / {@link CashierButton} — client
- *   islands that read the `[storeId]` param (`useParams`), each in a `<Suspense>`.
+ * - `nav` / `greeting` / `scopeIslands` — RSC holes passed from the layout (role,
+ *   name+counts, and the store-scoped switcher + cashier seeded server-side); a
+ *   client component may render server elements received as props.
+ * - {@link MobileNav} — client island that reads `usePathname` (to close on
+ *   navigation), in its own `<Suspense>`.
  *
  * ⌘K is wired through {@link CommandPaletteProvider} so the server-rendered nav's
  * search button can open the palette without crossing a function prop over the
@@ -27,10 +25,12 @@ import { CommandPaletteProvider } from "@/lib/command-palette-context";
 export function AdminShell({
   nav,
   greeting,
+  scopeIslands,
   children,
 }: {
   nav: ReactNode; // <Suspense><NavData/></Suspense> from the layout
   greeting: ReactNode; // <Suspense><Greeting/></Suspense> from the layout
+  scopeIslands: ReactNode; // <Suspense><ScopeIslands/></Suspense> (switcher + cashier)
   children: ReactNode;
 }) {
   const t = useTranslations("Admin");
@@ -54,13 +54,7 @@ export function AdminShell({
 
             {greeting}
 
-            <Suspense fallback={<Skeleton className="hidden h-10 w-40 rounded-xl sm:block" />}>
-              <StoreSwitcher />
-            </Suspense>
-
-            <Suspense fallback={<Skeleton className="h-10 w-28 rounded-xl" />}>
-              <CashierButton />
-            </Suspense>
+            {scopeIslands}
           </header>
 
           <main className="flex-1 overflow-y-auto">{children}</main>
