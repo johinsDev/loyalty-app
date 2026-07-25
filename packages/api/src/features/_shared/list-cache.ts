@@ -8,7 +8,23 @@
  * skills.
  */
 export function listCacheKey(name: string, orgId: string, input: unknown): string {
-  // Deterministic stringify: sort keys so `{a,b}` and `{b,a}` hash equal.
-  const stable = JSON.stringify(input, Object.keys(input as object).sort());
-  return `list:${name}:${orgId}:${stable}`;
+  return `list:${name}:${orgId}:${stableStringify(input)}`;
+}
+
+/**
+ * Deterministic JSON: object keys sorted recursively at every level so key order
+ * never changes the string; array order is preserved (it's meaningful — e.g. the
+ * `sort` array encodes multi-column precedence). Unlike `JSON.stringify`'s
+ * array-replacer form, this keeps nested object fields (the `{ id, desc }` sort
+ * items) instead of collapsing them to `{}`.
+ */
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  const obj = value as Record<string, unknown>;
+  const body = Object.keys(obj)
+    .sort()
+    .map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`)
+    .join(",");
+  return `{${body}}`;
 }
