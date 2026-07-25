@@ -54,3 +54,29 @@ export function ScopeIslandsSkeleton() {
     </>
   );
 }
+
+const PAGE_BLOCKS = ["a", "b", "c", "d"] as const;
+
+/**
+ * Neutral fallback for the shell's page hole (`{children}`), shown while a page
+ * that awaits at its top level (dashboard, settings, detail, analytics) streams
+ * in. Deliberately shape-agnostic — a header + a content grid — so it doesn't
+ * flash a table-shaped skeleton on non-list pages. List pages render their own
+ * header synchronously and stream only their table, so they never hit this.
+ */
+export function PageSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
+      <div className="space-y-2">
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-4 w-64" />
+      </div>
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {PAGE_BLOCKS.map((b) => (
+          <Skeleton key={b} className="h-28 rounded-2xl" />
+        ))}
+      </div>
+      <Skeleton className="mt-4 h-64 w-full rounded-2xl" />
+    </div>
+  );
+}

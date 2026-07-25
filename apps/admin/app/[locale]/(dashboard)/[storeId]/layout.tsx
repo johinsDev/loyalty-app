@@ -4,9 +4,9 @@ import { AdminShell } from "@/components/admin-shell";
 import {
   GreetingSkeleton,
   NavSkeleton,
+  PageSkeleton,
   ScopeIslandsSkeleton,
 } from "@/components/admin-shell-skeleton";
-import { ListPageSkeleton } from "@/components/data-table";
 import { ImpersonationBanner } from "@/features/employees/components/impersonation-banner";
 import { Greeting } from "@/features/shell/greeting";
 import { NavData } from "@/features/shell/nav-data";
@@ -49,7 +49,7 @@ export default function StoreLayout({ children, params }: Props) {
       }
     >
       <ImpersonationBanner />
-      <Suspense fallback={<ListPageSkeleton />}>
+      <Suspense fallback={<PageSkeleton />}>
         <RoleGate>{children}</RoleGate>
       </Suspense>
     </AdminShell>
