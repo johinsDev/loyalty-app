@@ -1,6 +1,12 @@
 import "server-only";
 
-import { auth, getUserRole, type Role } from "@loyalty/auth/server";
+import {
+  auth,
+  getUserRole,
+  MANAGER_OR_ABOVE,
+  type Role,
+  STAFF_OR_ABOVE,
+} from "@loyalty/auth/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
@@ -61,3 +67,6 @@ export async function requireRole(allowed: readonly Role[]) {
   if (!allowed.includes(me.role)) redirect("/sign-in?error=forbidden");
   return { session: { user: me.user }, role: me.role };
 }
+
+export const requireStaff = () => requireRole(STAFF_OR_ABOVE);
+export const requireManager = () => requireRole(MANAGER_OR_ABOVE);
