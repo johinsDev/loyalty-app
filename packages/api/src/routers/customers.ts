@@ -28,6 +28,7 @@ import {
   verifyRegisterPin,
 } from "../features/_shared/register-pin";
 import { requireCache } from "../features/_shared/claim-code";
+import { listCacheKey } from "../features/_shared/list-cache";
 import { DrizzleNotificationPreferences } from "../features/notifications/preferences-repository";
 import { WINDOW_DAYS } from "../features/points/config";
 import { PointsRepository } from "../features/points/repository";
@@ -35,7 +36,7 @@ import { PointsService } from "../features/points/service";
 import { tierFor } from "../features/points/tier-calc";
 import { StampsRepository } from "../features/stamps/repository";
 import { StampsService } from "../features/stamps/service";
-import { managerProcedure, ownerProcedure, rateLimit, router, staffProcedure } from "../trpc";
+import { cachedRead, managerProcedure, ownerProcedure, rateLimit, router, staffProcedure } from "../trpc";
 
 const orgId = async (): Promise<string> => (await getPrimaryOrganizationId()) ?? "";
 async function requireOrg(): Promise<string> {
@@ -198,7 +199,12 @@ export const customersRouter = router({
   // ── Admin CRM (managers) ─────────────────────────────────────────────────
   adminList: managerProcedure
     .input(customersListInputSchema)
-    .query(async ({ ctx, input }) => readSvc(ctx.db).adminList(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => {
+      const org = await requireOrg();
+      return cachedRead(ctx, listCacheKey("customers", org, input), 60, () =>
+        readSvc(ctx.db).adminList(org, input),
+      );
+    }),
 
   adminListByIds: managerProcedure
     .input(bulkIdsSchema)
