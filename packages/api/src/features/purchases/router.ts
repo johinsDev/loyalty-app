@@ -2,12 +2,14 @@ import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
 import {
+  cachedRead,
   managerProcedure,
   ownerProcedure,
   protectedProcedure,
   rateLimit,
   router,
 } from "../../trpc";
+import { listCacheKey } from "../_shared/list-cache";
 import { buildPointsService } from "../points/router";
 import { PurchasesRepository } from "./repository";
 import {
@@ -75,7 +77,12 @@ export const purchasesRouter = router({
   // ---- Admin (managers) -----------------------------------------------
   adminList: managerProcedure
     .input(purchasesAdminListInputSchema)
-    .query(async ({ ctx, input }) => buildService(ctx).adminList(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => {
+      const org = await requireOrg();
+      return cachedRead(ctx, listCacheKey("purchases", org, input), 60, () =>
+        buildService(ctx).adminList(org, input),
+      );
+    }),
 
   adminListByIds: managerProcedure
     .input(bulkIdsSchema)
