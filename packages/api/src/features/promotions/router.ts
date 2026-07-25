@@ -3,7 +3,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { loadLocaleContext } from "../_shared/localize";
-import { managerProcedure, publicProcedure, router, staffProcedure } from "../../trpc";
+import { listCacheKey } from "../_shared/list-cache";
+import { cachedRead, managerProcedure, publicProcedure, router, staffProcedure } from "../../trpc";
 import { PromoRepository } from "./repository";
 import {
   adminListInputSchema,
@@ -122,7 +123,12 @@ export const promocionesRouter = router({
     }),
   adminList: managerProcedure
     .input(adminListInputSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).adminList(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => {
+      const org = await requireOrg();
+      return cachedRead(ctx, listCacheKey("promotions", org, input), 60, () =>
+        makeService(ctx.db).adminList(org, input),
+      );
+    }),
   analytics: managerProcedure
     .input(promoAnalyticsInputSchema)
     .query(async ({ ctx, input }) => makeService(ctx.db).analytics(await requireOrg(), input.from)),
