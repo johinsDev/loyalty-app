@@ -16,10 +16,13 @@ export function listCacheKey(name: string, orgId: string, input: unknown): strin
  * never changes the string; array order is preserved (it's meaningful — e.g. the
  * `sort` array encodes multi-column precedence). Unlike `JSON.stringify`'s
  * array-replacer form, this keeps nested object fields (the `{ id, desc }` sort
- * items) instead of collapsing them to `{}`.
+ * items) instead of collapsing them to `{}`. Callers must pass JSON-plain values;
+ * `Date` is normalized to its ISO string, other exotic types (Map/Set/RegExp)
+ * are unsupported and would misbehave (collapse to `{}` like the sort bug did).
  */
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (value instanceof Date) return JSON.stringify(value.toISOString());
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
   const obj = value as Record<string, unknown>;
   const body = Object.keys(obj)
