@@ -2,6 +2,7 @@ import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
 import {
+  cachedRead,
   managerProcedure,
   ownerProcedure,
   protectedProcedure,
@@ -9,6 +10,7 @@ import {
   router,
   staffProcedure,
 } from "../../trpc";
+import { listCacheKey } from "../_shared/list-cache";
 import { EmployeesRepository } from "./repository";
 import {
   acceptInviteSchema,
@@ -62,7 +64,12 @@ export const employeesRouter = router({
   // ── Reads (managers + owner) ────────────────────────────────────────────────
   list: managerProcedure
     .input(employeesListInputSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).list(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => {
+      const org = await requireOrg();
+      return cachedRead(ctx, listCacheKey("employees", org, input), 60, () =>
+        makeService(ctx.db).list(org, input),
+      );
+    }),
   listByIds: managerProcedure
     .input(bulkIdsSchema)
     .query(async ({ ctx, input }) =>
