@@ -1,44 +1,32 @@
 import { setRequestLocale } from "next-intl/server";
-import type { SearchParams } from "nuqs/server";
 
 import { CustomersKpis } from "@/features/customers/components/customers-kpis";
 import { CustomersListHeader } from "@/features/customers/components/customers-list-header";
 import { CustomersView } from "@/features/customers/components/customers-view";
-import { buildCustomersInput, loadCustomersSearchParams } from "@/features/customers/list-params";
-import { trpc } from "@/lib/trpc/server";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<SearchParams>;
 };
 
 /**
- * Customers list — a hydrated client table. The RSC prefetches the first page
- * (from the URL searchParams, Worker-cached) and hands it to {@link CustomersView}
- * as `initialData`, so the table paints server-rendered on entry; the client then
- * owns the react-query cache + refetching. The input is built with the same
- * `buildCustomersInput` the view uses, so the seed matches the client's queryKey.
+ * Customers list — a client-cached table (react-query + nuqs). The page is a
+ * shell with NO server data `await`, so navigating here is instant (a server
+ * `await` on the list would block the soft navigation until the Worker responds
+ * — the ~1-2s hang the RSC-prefetch caused). `CustomersView`'s `useQuery` paints
+ * from its client cache on re-entry (instant, no skeleton) and only fetches on a
+ * genuinely new filter. We deliberately drop the server prefetch: the client
+ * cache already gives the instant re-entry we wanted; SSR-first-paint on a hard
+ * reload isn't worth blocking every in-app navigation for an authed admin.
  */
-export default async function CustomersPage({ params, searchParams }: Props) {
+export default async function CustomersPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-
-  const input = buildCustomersInput(await loadCustomersSearchParams(searchParams));
-  let initialData:
-    | Awaited<ReturnType<Awaited<ReturnType<typeof trpc>>["customers"]["adminList"]>>
-    | undefined;
-  try {
-    const api = await trpc();
-    initialData = await api.customers.adminList(input);
-  } catch {
-    initialData = undefined;
-  }
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
       <CustomersListHeader />
       <CustomersKpis />
-      <CustomersView initialData={initialData} />
+      <CustomersView />
     </div>
   );
 }
