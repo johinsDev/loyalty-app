@@ -1,32 +1,50 @@
-import { setRequestLocale } from "next-intl/server";
+import { Skeleton } from "@loyalty/ui";
+import { Suspense } from "react";
 
+import { DataTableSkeleton } from "@/components/data-table";
 import { CustomersKpis } from "@/features/customers/components/customers-kpis";
 import { CustomersListHeader } from "@/features/customers/components/customers-list-header";
 import { CustomersView } from "@/features/customers/components/customers-view";
 
-type Props = {
-  params: Promise<{ locale: string }>;
-};
-
 /**
- * Customers list — a client-cached table (react-query + nuqs). The page is a
- * shell with NO server data `await`, so navigating here is instant (a server
- * `await` on the list would block the soft navigation until the Worker responds
- * — the ~1-2s hang the RSC-prefetch caused). `CustomersView`'s `useQuery` paints
- * from its client cache on re-entry (instant, no skeleton) and only fetches on a
- * genuinely new filter. We deliberately drop the server prefetch: the client
- * cache already gives the instant re-entry we wanted; SSR-first-paint on a hard
- * reload isn't worth blocking every in-app navigation for an authed admin.
+ * Customers list. Mirrors the purchases page: the header renders synchronously
+ * (a client component reading i18n from the provider) so the page produces a
+ * **static prerendered shell** under `cacheComponents`, and the KPI strip + the
+ * table each stream into their own `<Suspense>` hole.
+ *
+ * The Suspense boundaries are load-bearing, not cosmetic. The client islands
+ * read the URL via nuqs (`useSearchParams`); a `useSearchParams` read *without*
+ * a Suspense boundary opts the entire route into dynamic rendering — which makes
+ * it un-prefetchable, so every navigation here was a live RSC round-trip (~1.2s
+ * of held old-page). With the shell static, Next prefetches it into the Router
+ * Cache and navigating here is an instant cache hit (like the purchases list),
+ * with the data streaming in behind the skeletons. No top-level `await` — that
+ * too would de-opt the shell to dynamic.
  */
-export default async function CustomersPage({ params }: Props) {
-  const { locale } = await params;
-  setRequestLocale(locale);
-
+export default function CustomersPage() {
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
       <CustomersListHeader />
-      <CustomersKpis />
-      <CustomersView />
+
+      <div className="mt-5">
+        <Suspense
+          fallback={
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {["a", "b", "c", "d"].map((k) => (
+                <Skeleton key={k} className="h-24 rounded-3xl" />
+              ))}
+            </div>
+          }
+        >
+          <CustomersKpis />
+        </Suspense>
+      </div>
+
+      <div className="mt-4">
+        <Suspense fallback={<DataTableSkeleton columns={7} />}>
+          <CustomersView />
+        </Suspense>
+      </div>
     </div>
   );
 }
