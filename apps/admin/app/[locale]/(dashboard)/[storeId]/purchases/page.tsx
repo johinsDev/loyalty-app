@@ -1,14 +1,14 @@
 import { Skeleton } from "@loyalty/ui";
 import { setRequestLocale } from "next-intl/server";
 import type { SearchParams } from "nuqs/server";
-import { Suspense } from "react";
 
-import { DataTableSkeleton, SelectionProvider } from "@/components/data-table";
+import { DataTableSkeleton, KeyedSuspense, SelectionProvider } from "@/components/data-table";
 import { PurchasesBulkBar } from "@/features/purchases/components/purchases-bulk-bar";
 import { PurchasesKpis } from "@/features/purchases/components/purchases-kpis";
 import { PurchasesListHeader } from "@/features/purchases/components/purchases-list-header";
 import { PurchasesTable } from "@/features/purchases/components/purchases-table";
 import { PurchasesToolbar } from "@/features/purchases/components/purchases-toolbar";
+import { PURCHASE_FILTER_KEYS } from "@/features/purchases/list-params";
 import { loadStoreScope } from "@/lib/store-scope-server";
 
 type Props = {
@@ -28,7 +28,8 @@ export default function PurchasesPage({ params, searchParams }: Props) {
       <PurchasesListHeader />
 
       <div className="mt-5">
-        <Suspense
+        <KeyedSuspense
+          watch={PURCHASE_FILTER_KEYS}
           fallback={
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               {["a", "b", "c", "d"].map((k) => (
@@ -38,15 +39,15 @@ export default function PurchasesPage({ params, searchParams }: Props) {
           }
         >
           <PurchasesKpisSection params={params} searchParams={searchParams} />
-        </Suspense>
+        </KeyedSuspense>
       </div>
 
       <SelectionProvider>
         <PurchasesToolbar />
         <div className="mt-4">
-          <Suspense fallback={<DataTableSkeleton columns={11} />}>
+          <KeyedSuspense watch={PURCHASE_FILTER_KEYS} fallback={<DataTableSkeleton columns={11} />}>
             <PurchasesTableSection params={params} searchParams={searchParams} />
-          </Suspense>
+          </KeyedSuspense>
         </div>
         <PurchasesBulkBar />
       </SelectionProvider>
