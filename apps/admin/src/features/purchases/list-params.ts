@@ -10,6 +10,23 @@ import {
 
 import { tableParsers } from "@/components/data-table";
 
+/** URL params that actually filter the result set — the ones a `KeyedSuspense`
+ *  watches to re-flash the skeleton on change. Excludes page/sort/view/cols so
+ *  paginating and sorting keep the current rows (smooth) instead of flashing. */
+export const PURCHASE_FILTER_KEYS = [
+  "q",
+  "store",
+  "cashier",
+  "effectiveness",
+  "currency",
+  "entry",
+  "customer",
+  "amountMin",
+  "amountMax",
+  "from",
+  "to",
+] as const;
+
 export const EFFECTIVENESS_VALUES = ["promo", "reward", "full"] as const;
 export const REDEMPTION_CURRENCY_VALUES = ["stamps", "points"] as const;
 export const ENTRY_SOURCE_VALUES = ["campaign", "shortlink", "organic"] as const;
