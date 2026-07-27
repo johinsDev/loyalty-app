@@ -1,6 +1,5 @@
 export { DataTable } from "./data-table";
 export { DataTableSkeleton } from "./data-table-skeleton";
-export { KeyedSuspense } from "./keyed-suspense";
 export { ListPageSkeleton } from "./list-page-skeleton";
 export { DataTableBulkBar } from "./data-table-bulk-bar";
 export { ServerTable, type ServerColumn } from "./server-table";
