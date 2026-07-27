@@ -2,8 +2,8 @@ import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
 import { loadLocaleContext } from "../_shared/localize";
-import { LIST_CACHE_TTL_SECONDS, listCacheKey } from "../_shared/list-cache";
-import { cachedRead, managerProcedure, publicProcedure, router, staffProcedure } from "../../trpc";
+import { cachedListRead } from "../_shared/list-cache";
+import { managerProcedure, publicProcedure, router, staffProcedure } from "../../trpc";
 import { BannersRepository } from "./repository";
 import {
   advanceInputSchema,
@@ -110,7 +110,7 @@ export const bannersRouter = router({
     .input(bannersListInputSchema)
     .query(async ({ ctx, input }) => {
       const org = await requireOrg();
-      return cachedRead(ctx, listCacheKey("banners", org, input), LIST_CACHE_TTL_SECONDS, () =>
+      return cachedListRead(ctx, "banners", org, input, () =>
         makeService(ctx.db).adminList(org, input),
       );
     }),

@@ -8,7 +8,7 @@ import {
   type Session,
 } from "@loyalty/auth/server";
 import type { AnalyticsBinding } from "@loyalty/analytics";
-import { createDb, type Database } from "@loyalty/db";
+import { createDb, type Database, getPrimaryOrganizationId } from "@loyalty/db";
 import type { FlagsBinding } from "@loyalty/feature-flags";
 import type { RateLimitResult, RateLimitRule } from "@loyalty/rate-limit";
 import type { FakeRealtime, RealtimeClient } from "@loyalty/realtime";
@@ -17,6 +17,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { bumpListVersion, LIST_CACHED_ENTITIES } from "./features/_shared/list-cache";
 import {
   getClientIp,
   resolveKey,
@@ -336,12 +337,40 @@ const withErrorCapture = t.middleware(async ({ ctx, next, path, type }) => {
   return result;
 });
 
+/**
+ * After a successful mutation on a list-cached entity's router (e.g.
+ * `customers.create`), bumps that entity's list-cache version so every
+ * `adminList`/`list` read for the org is instantly unreachable — the FE's
+ * `router.refresh()` after a create/edit/delete then hits a fresh cache miss
+ * instead of the up-to-60s-stale Worker cache entry. No per-mutation wiring:
+ * any mutation under a list-cached router segment busts automatically. Runs
+ * around the whole chain (awaits `next()` first) so it only fires on success,
+ * and fails open — a bust error must never break the mutation itself. See
+ * `cachedListRead` in `./features/_shared/list-cache.ts`.
+ */
+const bustListsOnMutation = t.middleware(async ({ ctx, type, path, next }) => {
+  const result = await next();
+  if (type === "mutation" && result.ok) {
+    const entity = path.split(".")[0] ?? "";
+    if (LIST_CACHED_ENTITIES.has(entity as never)) {
+      try {
+        const org = await getPrimaryOrganizationId();
+        if (org) await bumpListVersion(ctx, entity, org);
+      } catch {
+        // fail-open: a failed bust must never break the mutation
+      }
+    }
+  }
+  return result;
+});
+
 /** Every exported procedure builds on this — perf timing (outermost) + error
- *  capture (→ Sentry) + baseline limit. */
+ *  capture (→ Sentry) + baseline limit + list-cache mutation busting. */
 const baseProcedure = t.procedure
   .use(withTiming)
   .use(withErrorCapture)
-  .use(withBaseline);
+  .use(withBaseline)
+  .use(bustListsOnMutation);
 
 export const publicProcedure = baseProcedure;
 

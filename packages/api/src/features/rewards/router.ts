@@ -2,7 +2,6 @@ import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
 import { z } from "zod";
 
 import {
-  cachedRead,
   type CacheBinding,
   managerProcedure,
   protectedProcedure,
@@ -12,7 +11,7 @@ import {
   staffProcedure,
 } from "../../trpc";
 import { loadLocaleContext } from "../_shared/localize";
-import { LIST_CACHE_TTL_SECONDS, listCacheKey } from "../_shared/list-cache";
+import { cachedListRead } from "../_shared/list-cache";
 import { rewardBenefitSummary } from "./format";
 import { RewardsRepository } from "./repository";
 import { RewardsService } from "./service";
@@ -135,7 +134,7 @@ export const rewardsRouter = router({
     .input(rewardAdminListInputSchema)
     .query(async ({ ctx, input }) => {
       const org = await orgId();
-      return cachedRead(ctx, listCacheKey("rewards", org, input), LIST_CACHE_TTL_SECONDS, () =>
+      return cachedListRead(ctx, "rewards", org, input, () =>
         buildRewardsService(ctx).adminList(org, input),
       );
     }),
