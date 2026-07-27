@@ -17,7 +17,3 @@ export const loadStoreScope = cache(async (segment: string) => {
   const stores = await api.stores.switcherList().catch(() => []);
   return { stores, scope: resolveStoreScope(stores, segment) };
 });
-
-/** Server half of the store-scope dual — the name server callers read. Client
- *  components use `useStoreScope()` (URL-driven) from `@/lib/store-scope`. */
-export const getStoreScope = loadStoreScope;
