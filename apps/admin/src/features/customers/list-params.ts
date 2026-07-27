@@ -1,33 +1,8 @@
 import type { CustomersListInput } from "@loyalty/api/features/customers/schemas";
 import { endOfDay } from "@loyalty/date";
-import {
-  createLoader,
-  parseAsArrayOf,
-  parseAsInteger,
-  parseAsIsoDate,
-  parseAsString,
-} from "nuqs/server";
-
-import { tableParsers } from "@/components/data-table";
 
 export const TIER_VALUES = ["hoja", "flor", "oro"] as const;
 export const STATUS_VALUES = ["active", "banned", "inactive"] as const;
-
-/** Full nuqs parser map for the customers list URL (table state + facets). */
-export const customersSearchParams = {
-  q: tableParsers.q,
-  page: tableParsers.page,
-  perPage: tableParsers.perPage,
-  sort: tableParsers.sort,
-  view: tableParsers.view,
-  cols: tableParsers.cols,
-  tier: parseAsArrayOf(parseAsString).withDefault([]),
-  status: parseAsArrayOf(parseAsString).withDefault([]),
-  from: parseAsIsoDate,
-  to: parseAsIsoDate,
-  spendMin: parseAsInteger,
-  spendMax: parseAsInteger,
-};
 
 export type CustomersSearchValues = {
   q: string;
@@ -61,5 +36,3 @@ export function buildCustomersInput(v: CustomersSearchValues): CustomersListInpu
     spendMax: v.spendMax ?? undefined,
   };
 }
-
-export const loadCustomersSearchParams = createLoader(customersSearchParams);
