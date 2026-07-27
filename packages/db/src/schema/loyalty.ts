@@ -156,6 +156,12 @@ export const purchase = sqliteTable(
       t.organizationId,
       t.idempotencyKey,
     ),
+    // The customer list aggregates visits/ltv/lastVisit via a grouped join on
+    // `customer_id`; without this the planner full-SCANs `purchase` per customer.
+    byCustomer: index("purchase_customer_idx").on(t.customerId),
+    // Org-scoped time-windowed reads (dashboard/customer KPIs: count/sum over a
+    // 30d window filtered by org).
+    byOrgCreated: index("purchase_org_created_idx").on(t.organizationId, t.createdAt),
   }),
 );
 
