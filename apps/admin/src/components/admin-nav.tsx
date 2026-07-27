@@ -1,9 +1,7 @@
 "use client";
 
-import type { AppRouter } from "@loyalty/api";
 import { authClient } from "@loyalty/auth/client";
 import type { Role } from "@loyalty/auth/server";
-import type { inferRouterOutputs } from "@trpc/server";
 import {
   Avatar,
   AvatarFallback,
@@ -43,6 +41,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { useCommandPalette } from "@/lib/command-palette-context";
 import { compactNumber } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
 import { NotificationsInbox } from "@/components/notifications-inbox";
@@ -130,7 +129,6 @@ const GROUPS: Group[] = [
 
 const RANK: Record<Role, number> = { customer: 0, staff: 1, manager: 2, owner: 3 };
 
-type NavCounts = inferRouterOutputs<AppRouter>["dashboard"]["navCounts"];
 const ROLE_RANK: Record<RoleMin, number> = { staff: 1, manager: 2, owner: 3 };
 
 function active(pathname: string, href: Href) {
@@ -147,27 +145,18 @@ const ROW_ACTIVE = "bg-primary/10 text-primary";
 /**
  * The admin sidebar content — brand + role header, ⌘K search, grouped nav with
  * collapsible submenus (Campañas / Analytics / Ajustes), and a footer with the
- * user menu + notifications inbox. Used inside both the fixed desktop aside and
- * the mobile/tablet drawer (Sheet); `onNavigate` closes the drawer on tap.
+ * user menu + notifications inbox. Rendered by the layout's `nav` RSC hole (role
+ * server-resolved) and reused inside both the fixed desktop aside and the mobile
+ * drawer. The drawer closes on route change (owned by {@link MobileNav}); the ⌘K
+ * search button opens the palette via {@link useCommandPalette}.
  */
-export function AdminNav({
-  role,
-  name,
-  navCounts,
-  onNavigate,
-  onOpenSearch,
-}: {
-  role: Role;
-  name: string;
-  navCounts?: NavCounts;
-  onNavigate?: () => void;
-  onOpenSearch?: () => void;
-}) {
+export function AdminNav({ role, name }: { role: Role; name: string }) {
   const t = useTranslations("Nav");
   const tRoles = useTranslations("Roles");
   const format = useFormatter();
   const pathname = usePathname();
   const trpc = useTRPC();
+  const { open: openSearch } = useCommandPalette();
   const groups = GROUPS.filter((g) => RANK[role] >= ROLE_RANK[g.min]);
 
   // `navCounts` is a manager procedure; staff never see a badged row anyway.
@@ -175,7 +164,6 @@ export function AdminNav({
     ...trpc.dashboard.navCounts.queryOptions(),
     enabled: RANK[role] >= RANK.manager,
     staleTime: 60_000,
-    ...(navCounts ? { initialData: navCounts } : {}),
   });
   const badgeLabel = (key: BadgeKey): string | null =>
     counts ? compactNumber(format, counts[key]) : null;
@@ -199,7 +187,7 @@ export function AdminNav({
       <div className="px-3 py-2">
         <button
           type="button"
-          onClick={onOpenSearch}
+          onClick={openSearch}
           className="border-border bg-muted/50 text-muted-foreground hover:text-foreground relative flex h-10 w-full items-center rounded-lg border pr-12 pl-9 text-sm"
         >
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
@@ -218,17 +206,11 @@ export function AdminNav({
             <div className="space-y-0.5">
               {group.items.map((it) =>
                 it.sub ? (
-                  <SubmenuItem
-                    key={it.href}
-                    item={it}
-                    pathname={pathname}
-                    onNavigate={onNavigate}
-                  />
+                  <SubmenuItem key={it.href} item={it} pathname={pathname} />
                 ) : (
                   <Link
                     key={it.href}
                     href={it.href as never}
-                    onClick={onNavigate}
                     className={`${ROW} ${active(pathname, it.href) ? ROW_ACTIVE : ROW_IDLE}`}
                   >
                     <it.icon className="size-5 flex-none" />
@@ -252,7 +234,6 @@ export function AdminNav({
             </div>
             <Link
               href={"/storage" as never}
-              onClick={onNavigate}
               className={`${ROW} ${active(pathname, "/storage") ? ROW_ACTIVE : ROW_IDLE}`}
             >
               <FlaskConical className="size-5 flex-none" />
@@ -271,15 +252,7 @@ export function AdminNav({
   );
 }
 
-function SubmenuItem({
-  item,
-  pathname,
-  onNavigate,
-}: {
-  item: Item;
-  pathname: string;
-  onNavigate?: () => void;
-}) {
+function SubmenuItem({ item, pathname }: { item: Item; pathname: string }) {
   const t = useTranslations("Nav");
   const isActive = item.sub!.some((s) => active(pathname, s.href));
   // Controlled: a derived `defaultOpen` would change as the route changes while
@@ -303,7 +276,6 @@ function SubmenuItem({
           <Link
             key={s.href + s.key}
             href={s.href as never}
-            onClick={onNavigate}
             className={`flex h-9 items-center rounded-lg px-3 text-sm font-medium transition-colors ${
               pathname === s.href
                 ? "bg-primary/10 text-primary"

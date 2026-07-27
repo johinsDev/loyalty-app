@@ -9,6 +9,7 @@ import {
   router,
   staffProcedure,
 } from "../../trpc";
+import { cachedListRead } from "../_shared/list-cache";
 import { EmployeesRepository } from "./repository";
 import {
   acceptInviteSchema,
@@ -62,7 +63,12 @@ export const employeesRouter = router({
   // ── Reads (managers + owner) ────────────────────────────────────────────────
   list: managerProcedure
     .input(employeesListInputSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).list(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => {
+      const org = await requireOrg();
+      return cachedListRead(ctx, "employees", org, input, () =>
+        makeService(ctx.db).list(org, input),
+      );
+    }),
   listByIds: managerProcedure
     .input(bulkIdsSchema)
     .query(async ({ ctx, input }) =>

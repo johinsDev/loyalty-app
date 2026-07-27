@@ -1,7 +1,6 @@
 import { brandThemeCss, ThemeProvider } from "@loyalty/ui";
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
-import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { routing } from "@/i18n/routing";
@@ -26,11 +25,12 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const cookieStore = await cookies();
-  const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value;
-  const lang = routing.locales.includes(cookieLocale as (typeof routing.locales)[number])
-    ? cookieLocale
-    : routing.defaultLocale;
+  // `<html lang>` is set to the default locale so the root layout stays fully
+  // static (reading the `NEXT_LOCALE` cookie here would force the whole shell —
+  // and `/_not-found` — dynamic under `cacheComponents`). The URL-driven locale
+  // (next-intl `as-needed` prefix) still localizes the app itself; this attribute
+  // is only the document-level default.
+  const lang = routing.defaultLocale;
 
   // The admin chrome uses the preset's fixed Violet accent (see globals.css).
   // The tenant brand color only themes the customer-facing preview islands, so

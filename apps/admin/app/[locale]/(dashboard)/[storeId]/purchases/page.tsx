@@ -1,14 +1,14 @@
 import { Skeleton } from "@loyalty/ui";
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { setRequestLocale } from "next-intl/server";
 import type { SearchParams } from "nuqs/server";
 import { Suspense } from "react";
 
 import { DataTableSkeleton, SelectionProvider } from "@/components/data-table";
 import { PurchasesBulkBar } from "@/features/purchases/components/purchases-bulk-bar";
 import { PurchasesKpis } from "@/features/purchases/components/purchases-kpis";
+import { PurchasesListHeader } from "@/features/purchases/components/purchases-list-header";
 import { PurchasesTable } from "@/features/purchases/components/purchases-table";
 import { PurchasesToolbar } from "@/features/purchases/components/purchases-toolbar";
-import { loadPurchasesSearchParams } from "@/features/purchases/list-params";
 import { loadStoreScope } from "@/lib/store-scope-server";
 
 type Props = {
@@ -17,66 +17,60 @@ type Props = {
 };
 
 /**
- * Purchases list — static shell (header) with the KPI strip and the table each
- * streaming into their own `<Suspense>` hole (both honor the active filters, so
- * both are keyed on the filter slice). Store scope from the `[storeId]` segment
- * hard-filters both.
+ * Purchases list — the shell (header + toolbar) renders synchronously so
+ * navigating here never flashes a full-page skeleton; the KPI strip and the
+ * table each stream into their own unkeyed `<Suspense>` hole (both honor the
+ * active filters). Store scope from the `[storeId]` segment hard-filters both.
  */
-export default async function PurchasesPage({ params, searchParams }: Props) {
-  const { locale, storeId: segment } = await params;
-  setRequestLocale(locale);
-  const t = await getTranslations("Purchases");
-  const sp = await searchParams;
-  const { scope } = await loadStoreScope(segment);
-  const storeId = scope?.storeId ?? null;
-
-  const v = loadPurchasesSearchParams(sp);
-  const filterKey = JSON.stringify({
-    q: v.q,
-    store: v.store,
-    cashier: v.cashier,
-    effectiveness: v.effectiveness,
-    currency: v.currency,
-    entry: v.entry,
-    customer: v.customer,
-    amountMin: v.amountMin,
-    amountMax: v.amountMax,
-    from: v.from,
-    to: v.to,
-    view: v.view,
-  });
-
+export default function PurchasesPage({ params, searchParams }: Props) {
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
-      </div>
+      <PurchasesListHeader />
 
       <div className="mt-5">
         <Suspense
-          key={filterKey}
           fallback={
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {Array.from({ length: 4 }, (_, i) => (
-                <Skeleton key={i} className="h-24 rounded-3xl" />
+              {["a", "b", "c", "d"].map((k) => (
+                <Skeleton key={k} className="h-24 rounded-3xl" />
               ))}
             </div>
           }
         >
-          <PurchasesKpis searchParams={sp} storeId={storeId} />
+          <PurchasesKpisSection params={params} searchParams={searchParams} />
         </Suspense>
       </div>
 
       <SelectionProvider>
         <PurchasesToolbar />
         <div className="mt-4">
-          <Suspense key={filterKey} fallback={<DataTableSkeleton columns={11} />}>
-            <PurchasesTable searchParams={sp} storeId={storeId} />
+          <Suspense fallback={<DataTableSkeleton columns={11} />}>
+            <PurchasesTableSection params={params} searchParams={searchParams} />
           </Suspense>
         </div>
         <PurchasesBulkBar />
       </SelectionProvider>
     </div>
   );
+}
+
+/** Resolve the `[storeId]` segment → real store id (or null for aggregate).
+ *  `loadStoreScope` is request-cached, so the KPI + table sections share it. */
+async function resolveStoreId(params: Props["params"]): Promise<string | null> {
+  const { locale, storeId: segment } = await params;
+  setRequestLocale(locale);
+  const { scope } = await loadStoreScope(segment);
+  return scope?.storeId ?? null;
+}
+
+async function PurchasesKpisSection({ params, searchParams }: Props) {
+  const storeId = await resolveStoreId(params);
+  const sp = await searchParams;
+  return <PurchasesKpis searchParams={sp} storeId={storeId} />;
+}
+
+async function PurchasesTableSection({ params, searchParams }: Props) {
+  const storeId = await resolveStoreId(params);
+  const sp = await searchParams;
+  return <PurchasesTable searchParams={sp} storeId={storeId} />;
 }

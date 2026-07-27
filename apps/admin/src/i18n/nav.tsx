@@ -1,8 +1,7 @@
 "use client";
 
-import { type ComponentProps, useContext, useMemo } from "react";
-
-import { StoreScopeContext } from "@/lib/store-scope";
+import { useParams } from "next/navigation";
+import { type ComponentProps, useMemo } from "react";
 
 import {
   Link as IntlLink,
@@ -15,8 +14,8 @@ import {
  * `/[storeId]` segment now, so components would otherwise have to thread the
  * active store into every `<Link>` / `router.push`. Instead these wrappers take
  * the bare route (`/customers`, `{ pathname: "/customers/[id]", params }`) and
- * inject the current `storeId` segment — read from {@link StoreScopeContext},
- * falling back to `"all"` outside a scoped layout. `usePathname` strips the
+ * inject the current `storeId` segment — read from the `[storeId]` URL param
+ * (`useParams`), falling back to `"all"` outside a scoped route. `usePathname` strips the
  * segment back off so existing active-state checks against bare keys keep
  * working. Non-store routes (register, sign-in, dev tools) pass through.
  */
@@ -66,7 +65,8 @@ function scopeHref(href: StoreHref, segment: string): StoreHref {
 }
 
 function useSegment(): string {
-  return useContext(StoreScopeContext)?.segment ?? "all";
+  const params = useParams();
+  return typeof params.storeId === "string" ? params.storeId : "all";
 }
 
 type IntlLinkProps = ComponentProps<typeof IntlLink>;

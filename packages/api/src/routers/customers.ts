@@ -28,6 +28,7 @@ import {
   verifyRegisterPin,
 } from "../features/_shared/register-pin";
 import { requireCache } from "../features/_shared/claim-code";
+import { cachedListRead } from "../features/_shared/list-cache";
 import { DrizzleNotificationPreferences } from "../features/notifications/preferences-repository";
 import { WINDOW_DAYS } from "../features/points/config";
 import { PointsRepository } from "../features/points/repository";
@@ -198,7 +199,12 @@ export const customersRouter = router({
   // ── Admin CRM (managers) ─────────────────────────────────────────────────
   adminList: managerProcedure
     .input(customersListInputSchema)
-    .query(async ({ ctx, input }) => readSvc(ctx.db).adminList(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => {
+      const org = await requireOrg();
+      return cachedListRead(ctx, "customers", org, input, () =>
+        readSvc(ctx.db).adminList(org, input),
+      );
+    }),
 
   adminListByIds: managerProcedure
     .input(bulkIdsSchema)

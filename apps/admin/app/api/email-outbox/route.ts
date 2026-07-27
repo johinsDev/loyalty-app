@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 import { isDevOnlyEnabled } from "@/lib/dev-only";
 import { trpc } from "@/lib/trpc/server";
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;

@@ -5,7 +5,7 @@ import { Button, Input, Label, Separator } from "@loyalty/ui";
 import { Delete, Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 import { useRouter } from "@/i18n/nav";
 import { getAppUrl } from "@/lib/app-url";
@@ -35,8 +35,6 @@ const GRAD = "bg-gradient-to-br from-primary via-primary/90 to-primary/70";
 export function SignInForm({ passwordEnabled }: Props) {
   const t = useTranslations("Auth");
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const forbidden = searchParams.get("error") === "forbidden";
 
   const [step, setStep] = useState<Step>("email");
   const [loading, setLoading] = useState<"magic" | "email" | null>(null);
@@ -127,11 +125,12 @@ export function SignInForm({ passwordEnabled }: Props) {
 
         {/* FORM PANEL */}
         <div className="flex flex-1 basis-80 flex-col justify-center p-6 sm:min-h-72 sm:p-10">
-          {forbidden ? (
-            <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-100">
-              {t("errorForbidden")}
-            </div>
-          ) : null}
+          {/* `useSearchParams` opts its boundary into dynamic rendering under
+              `cacheComponents`; isolate the `?error=forbidden` read here so the
+              form itself stays statically prerenderable. */}
+          <Suspense fallback={null}>
+            <ForbiddenBanner />
+          </Suspense>
 
           {step === "email" && (
             <div className="flex flex-col gap-2">
@@ -316,6 +315,19 @@ export function SignInForm({ passwordEnabled }: Props) {
         </div>
       </div>
     </main>
+  );
+}
+
+/** Reads `?error=forbidden` (bounced non-staff) — kept separate + Suspense-
+ *  wrapped by the form because `useSearchParams` opts into dynamic rendering. */
+function ForbiddenBanner() {
+  const t = useTranslations("Auth");
+  const searchParams = useSearchParams();
+  if (searchParams.get("error") !== "forbidden") return null;
+  return (
+    <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+      {t("errorForbidden")}
+    </div>
   );
 }
 

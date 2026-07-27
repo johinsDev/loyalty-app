@@ -4,6 +4,7 @@ import { useSession } from "@loyalty/auth/client";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   createContext,
+  Suspense,
   useContext,
   useEffect,
   useMemo,
@@ -81,6 +82,25 @@ export function AnalyticsProvider(props: ProviderProps): ReactNode {
     }
   }, [analytics, session?.data?.user]);
 
+  return (
+    <AnalyticsContext.Provider value={analytics}>
+      {/* `useSearchParams` (in the tracker) forces the nearest boundary dynamic
+          under PPR/`cacheComponents`; isolating it here keeps the wrapped app
+          (`children`) statically prerenderable instead of the whole tree. */}
+      <Suspense fallback={null}>
+        <PageViewTracker analytics={analytics} />
+      </Suspense>
+      {props.children}
+    </AnalyticsContext.Provider>
+  );
+}
+
+/**
+ * Emits a `$pageview` on every navigation. Kept separate + Suspense-wrapped by
+ * the provider because it reads `useSearchParams()`, which opts its boundary
+ * into dynamic rendering.
+ */
+function PageViewTracker({ analytics }: { analytics: Analytics }): null {
   // Manual pageview on navigation — Next App Router doesn't fire
   // posthog-js's history-based capture reliably.
   const pathname = usePathname();
@@ -93,12 +113,7 @@ export function AnalyticsProvider(props: ProviderProps): ReactNode {
       $search: query ? `?${query}` : undefined,
     });
   }, [analytics, pathname, searchParams]);
-
-  return (
-    <AnalyticsContext.Provider value={analytics}>
-      {props.children}
-    </AnalyticsContext.Provider>
-  );
+  return null;
 }
 
 /**

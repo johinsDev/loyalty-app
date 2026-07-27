@@ -1,13 +1,17 @@
-import { MANAGER_OR_ABOVE, STAFF_OR_ABOVE } from "@loyalty/auth/server";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 
 import { AdminShell } from "@/components/admin-shell";
+import {
+  GreetingSkeleton,
+  NavSkeleton,
+  PageSkeleton,
+  ScopeIslandsSkeleton,
+} from "@/components/admin-shell-skeleton";
 import { ImpersonationBanner } from "@/features/employees/components/impersonation-banner";
-import { redirect } from "@/i18n/navigation";
-import { requireRole } from "@/lib/auth-guard";
-import { StoreScopeProvider } from "@/lib/store-scope";
-import { loadStoreScope } from "@/lib/store-scope-server";
-import { trpc } from "@/lib/trpc/server";
+import { Greeting } from "@/features/shell/greeting";
+import { NavData } from "@/features/shell/nav-data";
+import { RoleGate } from "@/features/shell/role-gate";
+import { ScopeIslands } from "@/features/shell/scope-islands";
 
 type Props = {
   children: ReactNode;
@@ -15,44 +19,39 @@ type Props = {
 };
 
 /**
- * Store-scoped shell. Resolves the `[storeId]` segment (`"all"` = aggregate, or
- * a real store id) against the org's live store list, bounces an unknown id to
- * `/all`, and provides the scope to the switcher + nav + views. Every admin CRM
- * page renders inside here.
+ * Store shell. A **static** frame ({@link AdminShell}) with each dynamic piece
+ * streaming into its own hole: the role-gated nav, the name+counts greeting, the
+ * store-scoped islands (switcher + cashier, seeded server-side), and the page.
+ * Nothing here `await`s at the top — the `params` promise is passed down into the
+ * `scopeIslands` hole, not awaited here — so the frame prerenders and the pieces
+ * fill in independently, no "skeleton of everything" on reload. Store scope is
+ * resolved client-side from the URL (`useStoreScope`, seeded via `ScopeIslands`);
+ * route protection is per-page + the Worker. `RoleGate` provides the role to the
+ * page subtree for client `useHasRole` gating.
  */
-export default async function StoreLayout({ children, params }: Props) {
-  const { locale, storeId } = await params;
-  const { session, role } = await requireRole(STAFF_OR_ABOVE);
-  const name = (session.user as { name?: string }).name?.trim() || "Equipo";
-
-  const { stores, scope } = await loadStoreScope(storeId);
-  if (!scope) {
-    redirect({ href: { pathname: "/[storeId]/dashboard", params: { storeId: "all" } }, locale });
-    return null;
-  }
-
-  // Prefetch the sidebar counters (manager+) so they paint with the HTML — the
-  // shell's client query then hydrates from this instead of a fresh fetch.
-  let navCounts: Awaited<
-    ReturnType<Awaited<ReturnType<typeof trpc>>["dashboard"]["navCounts"]>
-  > | undefined;
-  if (MANAGER_OR_ABOVE.includes(role)) {
-    try {
-      const api = await trpc();
-      navCounts = await api.dashboard.navCounts();
-    } catch {
-      navCounts = undefined;
-    }
-  }
-
+export default function StoreLayout({ children, params }: Props) {
   return (
-    <StoreScopeProvider
-      value={{ segment: storeId, storeId: scope.storeId, store: scope.store, stores }}
+    <AdminShell
+      nav={
+        <Suspense fallback={<NavSkeleton />}>
+          <NavData />
+        </Suspense>
+      }
+      greeting={
+        <Suspense fallback={<GreetingSkeleton />}>
+          <Greeting />
+        </Suspense>
+      }
+      scopeIslands={
+        <Suspense fallback={<ScopeIslandsSkeleton />}>
+          <ScopeIslands params={params} />
+        </Suspense>
+      }
     >
-      <AdminShell role={role} name={name} navCounts={navCounts}>
-        <ImpersonationBanner />
-        {children}
-      </AdminShell>
-    </StoreScopeProvider>
+      <ImpersonationBanner />
+      <Suspense fallback={<PageSkeleton />}>
+        <RoleGate>{children}</RoleGate>
+      </Suspense>
+    </AdminShell>
   );
 }

@@ -1,7 +1,7 @@
 import { OWNER_ONLY } from "@loyalty/auth/server";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 
 import { DevToolsNav } from "@/features/dev/components/dev-tools-nav";
 import { requireRole } from "@/lib/auth-guard";
@@ -24,7 +24,18 @@ type Props = {
  *   3. The page itself can add its own checks (`protectedProcedure`,
  *      etc.) but the layout's role check covers the broad case.
  */
-export default async function DevLayout({ children, params }: Props) {
+export default function DevLayout({ children, params }: Props) {
+  // The gate reads the session cookie + runtime env, so it streams inside a
+  // Suspense boundary under `cacheComponents`; the inner boundary keeps the
+  // DevToolsNav mounted while a page navigation resolves.
+  return (
+    <Suspense fallback={null}>
+      <DevGate params={params}>{children}</DevGate>
+    </Suspense>
+  );
+}
+
+async function DevGate({ children, params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   if (!isDevOnlyEnabled()) notFound();
@@ -33,7 +44,7 @@ export default async function DevLayout({ children, params }: Props) {
   return (
     <>
       <DevToolsNav />
-      {children}
+      <Suspense fallback={null}>{children}</Suspense>
     </>
   );
 }

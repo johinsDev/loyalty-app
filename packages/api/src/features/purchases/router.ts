@@ -8,6 +8,7 @@ import {
   rateLimit,
   router,
 } from "../../trpc";
+import { cachedListRead } from "../_shared/list-cache";
 import { buildPointsService } from "../points/router";
 import { PurchasesRepository } from "./repository";
 import {
@@ -75,7 +76,12 @@ export const purchasesRouter = router({
   // ---- Admin (managers) -----------------------------------------------
   adminList: managerProcedure
     .input(purchasesAdminListInputSchema)
-    .query(async ({ ctx, input }) => buildService(ctx).adminList(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => {
+      const org = await requireOrg();
+      return cachedListRead(ctx, "purchases", org, input, () =>
+        buildService(ctx).adminList(org, input),
+      );
+    }),
 
   adminListByIds: managerProcedure
     .input(bulkIdsSchema)

@@ -270,3 +270,138 @@ calls it; weigh the type-safety win against that hop.
 3. If on tRPC, translate via Step 4.
 4. For `use cache`/PPR mechanics, consult the **next-cache-components** skill.
 5. Keep server vs client islands explicit; default to server, opt into client.
+
+---
+
+# Part 2 — Next 16 `cacheComponents` (PPR): layouts, route protection, islands, cache layers
+
+Everything above is *which pattern per datum*. This part is *how it all assembles under
+`cacheComponents: true`* — the flag that turns the App Router into **static shell + streamed
+holes (PPR)**. Learned the hard way flipping `apps/admin`. Read this before touching a layout,
+a route guard, or adding a cache under the flag.
+
+## The one rule that decides everything
+
+> Under `cacheComponents`, **any access to dynamic data** — `cookies()`, `headers()`,
+> `searchParams`, `params` (incl. `useParams`/`useSearchParams` in a client component during
+> prerender), or an uncached `fetch`/`await trpc()` — is allowed **only inside a `<Suspense>`
+> boundary or a `"use cache"` function**. Anything else fails the build:
+> *"Uncached data was accessed outside of `<Suspense>`."*
+
+**The build is the validator.** `cd apps/<app> && bun run build` enumerates every offender,
+one per page (it exits on the first per page — re-run after each fix). It runs headless here
+(env present). Never commit a red build; iterate build → fix → build, commit only when green.
+`use cache` REQUIRES this flag.
+
+## `use cache` is cookie-blind — this splits your whole caching strategy
+
+`"use cache"` forbids dynamic APIs **inside** it. Our RSC tRPC caller
+(`apps/*/src/lib/trpc/server.ts`) reads `headers()` to forward the session cookie. Therefore:
+
+- **Public procedure** (no auth) → make a **cookie-free** client (own `createTRPCUntypedClient`,
+  no cookie header) → wrap in `use cache` + `cacheLife` + `cacheTag`. ✅ `getBranding`
+  (`settings.branding`) does this — it's what lets the root layout prerender.
+- **Protected procedure** (needs the cookie for authz) → **cannot** be `use cache`. Removing the
+  cookie breaks the Worker's authz; keeping it is illegal inside `use cache`. → Use the
+  **Worker-side cache** instead (`cachedRead(ctx, key, ttl, factory)` in `packages/api/src/trpc.ts`;
+  key MUST include org + scope/filter/period). `navCounts`, the dashboard aggregates, and the
+  `adminList` reads are all protected → Worker-cached, never `use cache`.
+
+**The four cache layers (only two survive a navigation server-side, one client-side):**
+
+| Layer | Lives | Survives navigation? | True recycle (0 refetch)? |
+| --- | --- | --- | --- |
+| React `cache()` | one request | ❌ dedup intra-render only | no |
+| **Next Data Cache** (`use cache`) | cross-request, by args + tag | ✅ | ✅ — but public data only |
+| **Worker cache** (`cachedRead`) | server, own key | ✅ | ~5ms (skips Turso, **still a Vercel→Worker hop**) |
+| **react-query** | browser | ✅ | ✅ 0ms, but +JS, consumer becomes client |
+
+`getMe()`/`loadStoreScope()` use `cache()` → they **dedupe within a request** but do NOT recycle
+across navigations. For cross-navigation recycling of protected list data, the honest options are
+Worker-cache (cheap hop, keeps RSC) or react-query (0ms, +JS) — pick per the "server tables vs
+react-query" trade. A cookie-free **internal-token BFF** would unlock `use cache` for protected
+reads too, at the cost of a service-auth surface — only worth it for a public-facing marketplace,
+not an internal CRM.
+
+## `cacheTag` is for INVALIDATION, not keying
+
+- The **key** is automatic — the **arguments** of the `use cache` fn. `search(filters)` → each
+  `filters` combo is its own entry, for free. Never hash filters into a tag.
+- The **tag** is a coarse label for `revalidateTag(...)`. Tag by the **entity/dimension** you
+  invalidate along, or by the **contents** of the result (call `cacheTag(\`item:\${id}\`)` after the
+  fetch, for each id returned) — so `revalidateTag("item:X")` busts every cached list that
+  contained X, regardless of which filters produced it. Tagging by full-filter-hash makes
+  invalidation impossible (you can't enumerate the combos that touched X).
+
+## Layouts + route protection under the flag
+
+- **A layout that reads the cookie/param is dynamic** — it can't be part of the static prerender.
+  Don't `await` role + scope + counts together at the top of one layout: that blocks the whole
+  chrome on the slowest hop and streams a "skeleton of everything." **Decompose:** a **static
+  frame** (structural chrome that reads *neither* cookie *nor* param) + **independent `<Suspense>`
+  holes** for each dynamic piece (role→nav, name+counts→greeting, page→content). Each fills in
+  alone; the frame paints instantly.
+- **Route protection: co-locate per page**, not in a chrome-blocking layout. Put
+  `await requireRole(...)` as the first line of each page's async section (already inside a
+  Suspense), deduped via `getMe`'s `cache()`. **Data security is the Worker's** (every procedure is
+  role-gated) — the page guard is only the UX redirect. A group-gate layout that wraps the frame
+  forces the frame dynamic; if you keep one, put the gate in its own Suspense hole so it doesn't
+  block siblings.
+- **`generateStaticParams` + `setRequestLocale`** stay — they're what PPR wants. But a **runtime
+  dynamic segment** (`[storeId]` = real store ids, no static params possible) is **irreducibly
+  dynamic**: every reader of that segment (scoped `<Link>`, switcher, `useParams`) must live in a
+  hole/island. The static frame is the chrome *minus* the scoped bits.
+
+## Server value → client consumer: context is the transport, not the source
+
+Client components (an interactive nav: active-state, collapsibles, ⌘K, drawer) often need a
+**server-derived** value (role, store scope). Don't source it from a client `useQuery` — that
+mis-models server state as client-live-state (skill Step 1). Instead: an **RSC hole resolves it**
+(cookie/param, in Suspense) and **passes it as a prop** into the client component, or feeds a
+**context provider** whose *value came from the server*. The context/provider is the server→client
+**bridge**, which is fine; sourcing it from react-query is the smell. Dual helpers for a value
+needed on both sides: `getX()` (async, server) + `useX()` (hook, client) — e.g.
+`getStoreScope(segment)` (Worker-cached list + pure resolve) and `useStoreScope()` (`useParams` +
+hydrated `switcherList`).
+
+## Client islands that read `useSearchParams`/`useParams` must be Suspense-isolated
+
+A layout-level client component reading `useSearchParams()` (analytics pageview tracker) or
+`usePathname()`/`useParams()` (floating chrome, store switcher) forces its **whole subtree**
+dynamic under the flag. Wrap just that reader in its own `<Suspense fallback={null}>` so the app
+around it stays statically prerenderable. (This is why the analytics `PageViewTracker` and admin
+`FloatingChrome` are each Suspense-wrapped.)
+
+## PPR at the item level — decompose a card by data nature, not by component
+
+A list card is rarely one cache policy. Split it:
+
+| Piece | Nature | Treatment |
+| --- | --- | --- |
+| Body (name, image, static detail) | shared, stable | `use cache` (hours) if public; server render |
+| Price / live figure | shared, **volatile** | its **own** `<Suspense>` hole; `use cache` **seconds** + `cacheTag(\`price:\${id}\`)` → near-live, shields the API, arrives last without blocking the card |
+| Favorite / per-user status | per-user | **client island**, hydrated `useQuery(['favorites'])` (correct on first paint) + `useMutation` optimistic + `invalidate` — **never** in shared `use cache` |
+| Figure that depends on a client toggle (taxes, guests, currency) | client-state | if the value **already came** in the payload → `useState` over server data (or promise + `use()`); if toggling **refetches** → react-query `useQuery` keyed on the toggle + `keepPreviousData` |
+
+The decisive question for the last row: **"does toggling go back to the server?"** No → props +
+`useState` (or `use()` to bridge a server-started promise into a client component; one-shot, don't
+use it for in-place refetch — it re-suspends on every new promise). Yes → react-query.
+
+## Skeletons = exact dimensions (zero CLS)
+
+A hole's fallback must occupy the **same space** as the resolved content (control heights, row
+counts, line widths), so filling it causes no layout shift. Size the shell/nav/greeting skeletons
+against the real components. (oxlint forbids array-index keys — use stable string keys in skeleton
+`.map`s.)
+
+## Failure modes seen (and the fix)
+
+- `export const dynamic`/`runtime` route-segment config → **rejected** under the flag; delete it
+  (redundant — dynamic is inferred from the reads).
+- `getBranding` as `use cache` while it calls `trpc()` → throws (reads `headers()`); give it a
+  **cookie-free** client first.
+- Root layout reading `cookies()` for `<html lang>` → breaks `/_not-found` prerender; use a static
+  default locale (the URL prefix still localizes).
+- One layout awaiting role+scope+counts → "skeleton of everything" on reload; decompose into holes.
+- Re-filtering a server table re-hits Turso → the RSC caller sets `cache:no-store`; add
+  **Worker-cache** on the list read keyed by org+filters (protected → can't `use cache`).
