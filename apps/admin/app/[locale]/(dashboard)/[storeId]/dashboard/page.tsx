@@ -2,7 +2,7 @@ import { Badge, Skeleton } from "@loyalty/ui";
 import { AlertTriangle, Sparkles } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { SearchParams } from "nuqs/server";
-import { Suspense } from "react";
+import { type ReactNode, Suspense } from "react";
 
 import {
   CardSkeleton,
@@ -13,7 +13,7 @@ import {
 import { PeriodBar } from "@/features/dashboard/components/period-bar";
 import { SetupChecklist } from "@/features/dashboard/components/setup-checklist";
 import * as W from "@/features/dashboard/components/widgets";
-import { loadDashboardSearchParams } from "@/features/dashboard/list-params";
+import { type DashboardPeriod, loadDashboardSearchParams } from "@/features/dashboard/list-params";
 import { CampaignsKpiStrip } from "@/features/campaigns/components/campaigns-kpi-strip";
 import { DashboardPromoCard } from "@/features/promotions/components/dashboard-promo-card";
 import { PromoKpiStrip } from "@/features/promotions/components/promo-kpi-strip";
@@ -24,22 +24,72 @@ type Props = {
   searchParams: Promise<SearchParams>;
 };
 
+type Wp = { period: DashboardPeriod; storeId: string | null };
+
+/** Resolve a widget's `{period, storeId}` — the `storeId` hop (`loadStoreScope`,
+ *  request-cached → one real round-trip shared by all widgets) and the `period`
+ *  (searchParams) both live here so they run INSIDE a Suspense hole, never at the
+ *  page top. A top-level `await` of either is a dynamic/Worker read that de-opts
+ *  the static shell and freezes navigation (the customers-list bug). */
+async function widgetProps(
+  params: Props["params"],
+  searchParams: Props["searchParams"],
+): Promise<Wp> {
+  const [{ storeId: segment }, sp] = await Promise.all([params, searchParams]);
+  const { scope } = await loadStoreScope(segment);
+  const { period } = loadDashboardSearchParams(sp);
+  return { period, storeId: scope?.storeId ?? null };
+}
+
+/**
+ * A dashboard widget hole. Resolves `{period, storeId}` in-hole (see
+ * {@link widgetProps}) then renders the widget. `keyed` wraps it in an inner
+ * `<Suspense key={period}>` so the widget re-skeletons on a period switch
+ * (period-dependent widgets); omit it for period-independent widgets so they
+ * stream once and stay across a switch.
+ */
+async function Widget({
+  params,
+  searchParams,
+  fallback,
+  keyed = false,
+  render,
+}: {
+  params: Props["params"];
+  searchParams: Props["searchParams"];
+  fallback: ReactNode;
+  keyed?: boolean;
+  render: (wp: Wp) => ReactNode;
+}) {
+  const wp = await widgetProps(params, searchParams);
+  return keyed ? (
+    <Suspense key={wp.period} fallback={fallback}>
+      {render(wp)}
+    </Suspense>
+  ) : (
+    render(wp)
+  );
+}
+
 /**
  * Admin dashboard — a static shell (chrome + card frames + titles paint
- * instantly) with each stat/chart as its own server component in its own
- * `<Suspense>` hole, awaiting its own `dashboard.*` query. The period lives in
- * the URL ({@link PeriodBar}); period-dependent widgets are keyed on it so they
- * re-skeleton on a switch, period-independent ones stream once and stay. Store
- * scope comes from the `[storeId]` segment (resolution is cached by the layout).
+ * instantly) with each stat/chart as its own `<Suspense>` hole. Nothing dynamic
+ * is `await`ed at the top: store scope + period resolve inside each hole (via
+ * {@link Widget}), so the shell prerenders and navigating here is instant — the
+ * widgets stream in behind their skeletons. Period-dependent widgets re-skeleton
+ * on a switch (inner keyed Suspense); period-independent ones stream once.
  */
 export default async function DashboardPage({ params, searchParams }: Props) {
-  const { locale, storeId: segment } = await params;
+  const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Dashboard");
-  const { period } = loadDashboardSearchParams(await searchParams);
-  const { scope } = await loadStoreScope(segment);
-  const storeId = scope?.storeId ?? null;
-  const wp = { period, storeId };
+  const box = { params, searchParams };
+  const heroFallback = (
+    <div>
+      <Skeleton className="h-12 w-40 bg-white/25" />
+      <Skeleton className="mt-2 h-4 w-52 bg-white/20" />
+    </div>
+  );
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
@@ -55,16 +105,13 @@ export default async function DashboardPage({ params, searchParams }: Props) {
             {t("impactTitle")}
           </span>
           <div className="mt-4 flex flex-wrap items-end gap-x-10 gap-y-4">
-            <Suspense
-              key={period}
-              fallback={
-                <div>
-                  <Skeleton className="h-12 w-40 bg-white/25" />
-                  <Skeleton className="mt-2 h-4 w-52 bg-white/20" />
-                </div>
-              }
-            >
-              <W.HeroRevenue {...wp} />
+            <Suspense fallback={heroFallback}>
+              <Widget
+                {...box}
+                keyed
+                fallback={heroFallback}
+                render={(wp) => <W.HeroRevenue {...wp} />}
+              />
             </Suspense>
             <div className="flex flex-col gap-1">
               <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs font-extrabold">
@@ -78,8 +125,13 @@ export default async function DashboardPage({ params, searchParams }: Props) {
 
       {/* KPI row */}
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Suspense key={period} fallback={<KpiRowSkeleton />}>
-          <W.KpiRow {...wp} />
+        <Suspense fallback={<KpiRowSkeleton />}>
+          <Widget
+            {...box}
+            keyed
+            fallback={<KpiRowSkeleton />}
+            render={(wp) => <W.KpiRow {...wp} />}
+          />
         </Suspense>
       </div>
 
@@ -99,8 +151,13 @@ export default async function DashboardPage({ params, searchParams }: Props) {
           className="lg:col-span-2"
         >
           <div className="h-52">
-            <Suspense key={period} fallback={<Skeleton className="size-full rounded-xl" />}>
-              <W.PurchasesTrend {...wp} />
+            <Suspense fallback={<Skeleton className="size-full rounded-xl" />}>
+              <Widget
+                {...box}
+                keyed
+                fallback={<Skeleton className="size-full rounded-xl" />}
+                render={(wp) => <W.PurchasesTrend {...wp} />}
+              />
             </Suspense>
           </div>
         </ChartCard>
@@ -123,8 +180,13 @@ export default async function DashboardPage({ params, searchParams }: Props) {
         </ChartCard>
         <ChartCard title={t("redemptionTitle")} subtitle={t("redemptionSubtitle")}>
           <div className="h-40">
-            <Suspense key={period} fallback={<Skeleton className="size-full rounded-xl" />}>
-              <W.RedemptionsTrend {...wp} />
+            <Suspense fallback={<Skeleton className="size-full rounded-xl" />}>
+              <Widget
+                {...box}
+                keyed
+                fallback={<Skeleton className="size-full rounded-xl" />}
+                render={(wp) => <W.RedemptionsTrend {...wp} />}
+              />
             </Suspense>
           </div>
         </ChartCard>
@@ -144,12 +206,21 @@ export default async function DashboardPage({ params, searchParams }: Props) {
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <ChartCard title={t("recentPurchasesTitle")} liveLabel={t("live")}>
           <Suspense fallback={<ListSkeletonRows rows={6} />}>
-            <W.RecentPurchases storeId={storeId} />
+            <Widget
+              {...box}
+              fallback={<ListSkeletonRows rows={6} />}
+              render={(wp) => <W.RecentPurchases storeId={wp.storeId} />}
+            />
           </Suspense>
         </ChartCard>
         <ChartCard title={t("topCustomersTitle")} subtitle={t("topCustomersSubtitle")}>
-          <Suspense key={period} fallback={<ListSkeletonRows rows={6} />}>
-            <W.TopCustomers {...wp} />
+          <Suspense fallback={<ListSkeletonRows rows={6} />}>
+            <Widget
+              {...box}
+              keyed
+              fallback={<ListSkeletonRows rows={6} />}
+              render={(wp) => <W.TopCustomers {...wp} />}
+            />
           </Suspense>
         </ChartCard>
       </div>
@@ -158,7 +229,11 @@ export default async function DashboardPage({ params, searchParams }: Props) {
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <ChartCard title={t("atRiskTitle")} subtitle={t("atRiskSubtitle")}>
           <Suspense fallback={<ListSkeletonRows rows={5} />}>
-            <W.AtRisk storeId={storeId} />
+            <Widget
+              {...box}
+              fallback={<ListSkeletonRows rows={5} />}
+              render={(wp) => <W.AtRisk storeId={wp.storeId} />}
+            />
           </Suspense>
         </ChartCard>
         <ChartCard title={t("fraudTitle")} subtitle={t("fraudSubtitle")}>
@@ -184,13 +259,23 @@ export default async function DashboardPage({ params, searchParams }: Props) {
       {/* Retention + program liability */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <ChartCard title={t("retentionTitle")} subtitle={t("retentionSubtitle")}>
-          <Suspense key={period} fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
-            <W.RetentionStats period={period} />
+          <Suspense fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
+            <Widget
+              {...box}
+              keyed
+              fallback={<Skeleton className="h-16 w-full rounded-xl" />}
+              render={(wp) => <W.RetentionStats period={wp.period} />}
+            />
           </Suspense>
         </ChartCard>
         <ChartCard title={t("liabilityTitle")} subtitle={t("liabilitySubtitle")}>
-          <Suspense key={period} fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
-            <W.LiabilityStats period={period} />
+          <Suspense fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
+            <Widget
+              {...box}
+              keyed
+              fallback={<Skeleton className="h-16 w-full rounded-xl" />}
+              render={(wp) => <W.LiabilityStats period={wp.period} />}
+            />
           </Suspense>
         </ChartCard>
       </div>
@@ -198,13 +283,23 @@ export default async function DashboardPage({ params, searchParams }: Props) {
       {/* Top products + sales by store */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <ChartCard title={t("topProductsTitle")} subtitle={t("topProductsSubtitle")}>
-          <Suspense key={period} fallback={<ListSkeletonRows rows={6} />}>
-            <W.TopProducts {...wp} />
+          <Suspense fallback={<ListSkeletonRows rows={6} />}>
+            <Widget
+              {...box}
+              keyed
+              fallback={<ListSkeletonRows rows={6} />}
+              render={(wp) => <W.TopProducts {...wp} />}
+            />
           </Suspense>
         </ChartCard>
         <ChartCard title={t("salesByStoreTitle")}>
-          <Suspense key={period} fallback={<ListSkeletonRows rows={3} />}>
-            <W.SalesByStore period={period} />
+          <Suspense fallback={<ListSkeletonRows rows={3} />}>
+            <Widget
+              {...box}
+              keyed
+              fallback={<ListSkeletonRows rows={3} />}
+              render={(wp) => <W.SalesByStore period={wp.period} />}
+            />
           </Suspense>
         </ChartCard>
       </div>
