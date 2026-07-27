@@ -128,32 +128,11 @@ export class CustomersRepository {
 
     const orderBy = this.listOrderBy(input.sort, { visits, ltv, lastVisit });
 
-    const rows = await this.db
-      .select({
-        id: customer.id,
-        name: customer.name,
-        phone: customer.phone,
-        email: customer.email,
-        tierKey: pointsAccount.currentTierKey,
-        banned: user.banned,
-        visits,
-        ltv,
-        lastVisit,
-        createdAt: customer.createdAt,
-      })
-      .from(customer)
-      .leftJoin(user, eq(user.id, customer.id))
-      .leftJoin(pointsAccount, eq(pointsAccount.customerId, customer.id))
-      .leftJoin(purchase, and(eq(purchase.customerId, customer.id), isNull(purchase.voidedAt)))
-      .where(where)
-      .groupBy(customer.id)
-      .having(having)
-      .orderBy(...orderBy)
-      .limit(input.perPage)
-      .offset(pageOffset(input.page, input.perPage));
-
-    // total honors the same filters (count over the grouped set).
-    const totalRows = await this.db
+    // The counted set = the same grouped/filtered customers, wrapped as a
+    // subquery so the total is a single `count(*)` (not materializing every row
+    // to read `.length`). Runs in parallel with the page query → one Turso
+    // round-trip of wall time instead of two sequential ones.
+    const countedSet = this.db
       .select({ id: customer.id })
       .from(customer)
       .leftJoin(user, eq(user.id, customer.id))
@@ -161,7 +140,36 @@ export class CustomersRepository {
       .leftJoin(purchase, and(eq(purchase.customerId, customer.id), isNull(purchase.voidedAt)))
       .where(where)
       .groupBy(customer.id)
-      .having(having);
+      .having(having)
+      .as("counted");
+
+    const [rows, totalRows] = await Promise.all([
+      this.db
+        .select({
+          id: customer.id,
+          name: customer.name,
+          phone: customer.phone,
+          email: customer.email,
+          tierKey: pointsAccount.currentTierKey,
+          banned: user.banned,
+          visits,
+          ltv,
+          lastVisit,
+          createdAt: customer.createdAt,
+        })
+        .from(customer)
+        .leftJoin(user, eq(user.id, customer.id))
+        .leftJoin(pointsAccount, eq(pointsAccount.customerId, customer.id))
+        .leftJoin(purchase, and(eq(purchase.customerId, customer.id), isNull(purchase.voidedAt)))
+        .where(where)
+        .groupBy(customer.id)
+        .having(having)
+        .orderBy(...orderBy)
+        .limit(input.perPage)
+        .offset(pageOffset(input.page, input.perPage)),
+      this.db.select({ n: sql<number>`count(*)` }).from(countedSet),
+    ]);
+    const total = Number(totalRows[0]?.n ?? 0);
 
     const items: CustomerListItem[] = rows.map((r) => ({
       id: r.id,
@@ -175,7 +183,7 @@ export class CustomersRepository {
       lastVisitAt: secToDate(r.lastVisit),
       createdAt: r.createdAt,
     }));
-    return { rows: items, total: totalRows.length, pageCount: pageCountOf(totalRows.length, input.perPage) };
+    return { rows: items, total, pageCount: pageCountOf(total, input.perPage) };
   }
 
   async listByIds(orgId: string, ids: string[]): Promise<CustomerListItem[]> {

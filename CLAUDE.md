@@ -65,6 +65,7 @@ These have come up enough that they're load-bearing — break them and something
 - **Default to writing no comments.** Add one only when the *why* is non-obvious.
 - **Never hand-edit DB migrations.** Change the Drizzle schema, then `bun run db:generate`.
 - **shadcn copy-paste model.** Components in `packages/ui/src/components/ui/<name>.tsx` are *yours* — modify them directly. Don't wrap them in another abstraction layer.
+- **Pick the data-fetching pattern before coding.** For any new data/state (admin or web), run the `nextjs-data-fetching-patterns` skill first. Server-render by default; `use cache`+`cacheTag` only for public/cookie-free data; React `cache()` to dedup per-request; `useQuery` only for client-state/polling/filters (+`keepPreviousData`); prefetch+hydrate to warm it. **Never `await` a dynamic input (searchParams/cookies, or a Worker/DB read that reads them) at a page's top level** — it de-opts the static shell and freezes navigation until it resolves; resolve those inside `<Suspense>` holes (see the purchases page). To re-flash a skeleton on a filter change, key the *server*-side inner `<Suspense>` on the filter params.
 
 ---
 
