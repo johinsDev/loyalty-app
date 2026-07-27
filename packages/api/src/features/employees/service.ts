@@ -545,7 +545,8 @@ export class EmployeesService {
     return { memberId: member.id };
   }
 
-  async update(orgId: string, actor: Actor, input: UpdateEmployeeInput): Promise<void> {
+  /** Returns the target user's id — callers use it to bust any per-user caches keyed off it (e.g. the cached role lookup) when `input.role` changed. */
+  async update(orgId: string, actor: Actor, input: UpdateEmployeeInput): Promise<string> {
     const row = await this.requireTarget(orgId, input.memberId, actor);
     const memberPatch: Record<string, unknown> = {};
     const userPatch: Record<string, unknown> = {};
@@ -575,6 +576,7 @@ export class EmployeesService {
         metadata: { storeIds: input.storeIds },
       });
     }
+    return row.user.id;
   }
 
   async setRating(orgId: string, actor: Actor, memberId: string, rating: number | null): Promise<void> {

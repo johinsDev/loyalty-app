@@ -2,7 +2,7 @@ import { getUserRole } from "@loyalty/auth/server";
 import { customerExistsForUser, phoneNumberInUse } from "@loyalty/db";
 import { z } from "zod";
 
-import { protectedProcedure, router } from "../trpc";
+import { cachedRead, protectedProcedure, router } from "../trpc";
 
 /**
  * Auth/session helpers for the front-ends. `me` resolves the current user, their
@@ -16,9 +16,10 @@ import { protectedProcedure, router } from "../trpc";
  */
 export const authRouter = router({
   me: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
     const [role, isCustomer] = await Promise.all([
-      getUserRole(ctx.session.user.id),
-      customerExistsForUser(ctx.session.user.id),
+      cachedRead(ctx, `role:${userId}`, 60, () => getUserRole(userId)),
+      customerExistsForUser(userId),
     ]);
     return { user: ctx.session.user, role, isCustomer };
   }),

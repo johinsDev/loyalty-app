@@ -116,9 +116,13 @@ export const employeesRouter = router({
     ),
   update: ownerProcedure
     .input(updateEmployeeSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).update(await requireOrg(), actorOf(ctx), input),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const targetUserId = await makeService(ctx.db).update(await requireOrg(), actorOf(ctx), input);
+      // Role resolution is cached in `auth.me` (see `../../trpc#cachedRead`) —
+      // bust it so a role change is reflected immediately instead of waiting
+      // out the TTL.
+      if (input.role) await ctx.cache?.delete(`role:${targetUserId}`);
+    }),
   setRating: ownerProcedure
     .input(setRatingSchema)
     .mutation(async ({ ctx, input }) =>
