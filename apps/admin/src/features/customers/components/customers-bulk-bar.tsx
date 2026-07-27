@@ -7,24 +7,28 @@ import { Download } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { DataTableBulkBar, useSelection } from "@/components/data-table";
+import { DataTableBulkBar } from "@/components/data-table";
 import { downloadCsv, rowsToCsv } from "@/lib/csv";
 import { useTRPC } from "@/lib/trpc/client";
 
 /**
- * Bulk-action bar for the customers list — reads the selected ids from the
- * {@link useSelection} context and exports them to CSV (fetching the full rows
- * by id on demand, so the export isn't limited to the current page).
+ * Bulk-action bar for the customers list. Takes the current selection from the
+ * `DataTable` (tanstack row selection, by id) and exports it to CSV — fetching
+ * the full rows by id on demand, so the export isn't limited to the current page.
  */
-export function CustomersBulkBar() {
+export function CustomersBulkBar({
+  selectedIds,
+  onClear,
+}: {
+  selectedIds: string[];
+  onClear: () => void;
+}) {
   const t = useTranslations("Customers");
   const locale = useLocale();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const { ids, clear } = useSelection();
 
   const onExport = async () => {
-    const selectedIds = [...ids];
     const data = await queryClient.fetchQuery(
       trpc.customers.adminListByIds.queryOptions({ ids: selectedIds }),
     );
@@ -47,7 +51,7 @@ export function CustomersBulkBar() {
   };
 
   return (
-    <DataTableBulkBar count={ids.size} onClear={clear}>
+    <DataTableBulkBar count={selectedIds.length} onClear={onClear}>
       <Button variant="ghost" size="sm" className="h-9 gap-1.5 rounded-full" onClick={onExport}>
         <Download className="size-4" />
         {t("bulkExport")}
