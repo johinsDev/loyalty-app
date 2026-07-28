@@ -136,6 +136,17 @@ export function createAuth(
         crossSubDomainCookies: { enabled: true, domain: cookieDomain },
       },
     }),
+    // Skip the session DB lookup on most requests: Better Auth caches the
+    // resolved session + user in a **signed cookie** for `maxAge` seconds, so
+    // `getSession` — run on every tRPC request (`createContext`) and the RSC
+    // auth-guard — validates from the cookie instead of hitting Turso. This is
+    // the dominant per-request/per-navigation auth cost. `maxAge` also bounds how
+    // long a ban / session-revocation (Empleados "Inhabilitado") takes to bite,
+    // since the cached cookie stays valid until it expires — 60s trades a small
+    // ban-latency for skipping the DB on the flood of same-minute requests.
+    session: {
+      cookieCache: { enabled: true, maxAge: 60 },
+    },
     // Where the admin plugin sends a banned user hitting the OAuth callback
     // (Google). Without this it defaults to `${baseURL}/error` — the Worker
     // origin, which has no such route. Point it at the web sign-in so the
