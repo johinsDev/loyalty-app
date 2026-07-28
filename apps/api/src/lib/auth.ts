@@ -38,13 +38,33 @@ type SendMagicLinkPayload = { email: string; url: string };
 const secondaryStorage =
   env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
     ? ((redis) => ({
-        get: (key: string) => redis.get<string>(key),
+        // Wrapped in try/catch so a Redis hiccup is LOGGED, not silent: a failed
+        // session read/write would otherwise bounce the user with no trace. The
+        // key is a session token (secret) — never log it, only the op + error.
+        get: async (key: string) => {
+          try {
+            return await redis.get<string>(key);
+          } catch (err) {
+            log.error({ err }, "auth.secondaryStorage.get.failed");
+            return null;
+          }
+        },
         set: async (key: string, value: string, ttl?: number) => {
-          if (ttl) await redis.set(key, value, { ex: ttl });
-          else await redis.set(key, value);
+          try {
+            if (ttl) await redis.set(key, value, { ex: ttl });
+            else await redis.set(key, value);
+          } catch (err) {
+            // Rethrow: a dropped session write must surface, not fail silently.
+            log.error({ err, ttl }, "auth.secondaryStorage.set.failed");
+            throw err;
+          }
         },
         delete: async (key: string) => {
-          await redis.del(key);
+          try {
+            await redis.del(key);
+          } catch (err) {
+            log.error({ err }, "auth.secondaryStorage.delete.failed");
+          }
         },
       }))(
         new Redis({

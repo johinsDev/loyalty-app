@@ -120,12 +120,10 @@ export function createAuth(
   return betterAuth({
     database: drizzleAdapter(db, { provider: "sqlite" }),
     // Read sessions from Redis (Upstash) when the Worker provides it → the
-    // per-request/per-navigation `getSession` stops hitting Turso. Kept in the
-    // DB too so audit hooks + admin session listing still work (see AuthDeps).
-    ...(deps.secondaryStorage && {
-      secondaryStorage: deps.secondaryStorage,
-      session: { storeSessionInDatabase: true },
-    }),
+    // per-request/per-navigation `getSession` stops hitting Turso. The DB copy
+    // is kept via `session.storeSessionInDatabase` below (NOT here — a second
+    // `session` key would clobber the canonical one and silently drop cookieCache).
+    ...(deps.secondaryStorage && { secondaryStorage: deps.secondaryStorage }),
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL,
     // Better Auth rejects any request whose Origin isn't listed here
@@ -162,6 +160,12 @@ export function createAuth(
     // ban-latency for skipping the DB on the flood of same-minute requests.
     session: {
       cookieCache: { enabled: true, maxAge: 60 },
+      // When Redis is the primary session store (secondaryStorage), also keep the
+      // DB copy: `cookieCache` is a cache *over the DB session*, so without this
+      // Better Auth moves sessions out of the DB and cookieCache revalidation
+      // fails → users get bounced after login. Also keeps the login-audit hook +
+      // Empleados session listing/revocation (which read the DB) working.
+      ...(deps.secondaryStorage && { storeSessionInDatabase: true }),
     },
     // Where the admin plugin sends a banned user hitting the OAuth callback
     // (Google). Without this it defaults to `${baseURL}/error` — the Worker
