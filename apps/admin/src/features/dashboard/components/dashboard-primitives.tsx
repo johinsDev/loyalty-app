@@ -19,10 +19,10 @@ export function ChartCard({
   style,
   children,
 }: {
-  title: string;
-  subtitle?: string;
-  badge?: string;
-  liveLabel?: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
+  badge?: ReactNode;
+  liveLabel?: ReactNode;
   className?: string;
   style?: CSSProperties;
   children: ReactNode;
@@ -138,7 +138,7 @@ export function CardSkeleton({
   className = "",
   bodyHeight = "h-40",
 }: {
-  title: string;
+  title: ReactNode;
   className?: string;
   bodyHeight?: string;
 }) {
