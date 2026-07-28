@@ -95,7 +95,10 @@ export const loyaltyCard = sqliteTable("loyalty_card", {
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
-});
+}, (t) => ({
+  // dashboard `liability` sums currentStamps across the org's cards.
+  byOrg: index("loyalty_card_org_idx").on(t.organizationId),
+}));
 
 // A purchase recorded at the register. Belongs to a customer; grants one stamp.
 // Products/value config don't matter yet — only the price is captured.
@@ -430,6 +433,9 @@ export const redemption = sqliteTable(
       t.rewardId,
     ),
     byPurchase: index("redemption_purchase_idx").on(t.purchaseId),
+    // dashboard reads (recent/series/overview/liability) filter+order by
+    // (org, createdAt); the customer idx buries createdAt behind customerId.
+    byOrgCreated: index("redemption_org_created_idx").on(t.organizationId, t.createdAt),
   }),
 );
 
@@ -508,7 +514,10 @@ export const streak = sqliteTable("streak", {
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
-});
+}, (t) => ({
+  // dashboard `tiers` counts active streaks per org.
+  byOrgStatus: index("streak_org_status_idx").on(t.organizationId, t.status),
+}));
 
 export const customerRelations = relations(customer, ({ one, many }) => ({
   organization: one(organization, {
@@ -604,7 +613,10 @@ export const pointsAccount = sqliteTable("points_account", {
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
-});
+}, (t) => ({
+  // dashboard `tiers` groups by currentTierKey per org.
+  byOrg: index("points_account_org_idx").on(t.organizationId),
+}));
 
 export const pointsTransactionRelations = relations(
   pointsTransaction,
