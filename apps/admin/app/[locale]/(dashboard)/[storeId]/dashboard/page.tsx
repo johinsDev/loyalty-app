@@ -1,6 +1,6 @@
 import { Badge, Skeleton } from "@loyalty/ui";
 import { AlertTriangle, Sparkles } from "lucide-react";
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { setRequestLocale } from "next-intl/server";
 import type { SearchParams } from "nuqs/server";
 import { type ReactNode, Suspense } from "react";
 
@@ -10,6 +10,7 @@ import {
   KpiRowSkeleton,
   ListSkeletonRows,
 } from "@/features/dashboard/components/dashboard-primitives";
+import { DText } from "@/features/dashboard/components/dashboard-text";
 import { PeriodBar } from "@/features/dashboard/components/period-bar";
 import { SetupChecklist } from "@/features/dashboard/components/setup-checklist";
 import * as W from "@/features/dashboard/components/widgets";
@@ -29,13 +30,15 @@ type Wp = { period: DashboardPeriod; storeId: string | null };
 /** Resolve a widget's `{period, storeId}` — the `storeId` hop (`loadStoreScope`,
  *  request-cached → one real round-trip shared by all widgets) and the `period`
  *  (searchParams) both live here so they run INSIDE a Suspense hole, never at the
- *  page top. A top-level `await` of either is a dynamic/Worker read that de-opts
- *  the static shell and freezes navigation (the customers-list bug). */
+ *  page top (a top-level `await` of either de-opts the static shell and freezes
+ *  navigation, the customers-list bug). Also sets the request locale here so the
+ *  server widgets' `getTranslations`/`getFormatter` resolve inside the hole. */
 async function widgetProps(
   params: Props["params"],
   searchParams: Props["searchParams"],
 ): Promise<Wp> {
-  const [{ storeId: segment }, sp] = await Promise.all([params, searchParams]);
+  const [{ locale, storeId: segment }, sp] = await Promise.all([params, searchParams]);
+  setRequestLocale(locale);
   const { scope } = await loadStoreScope(segment);
   const { period } = loadDashboardSearchParams(sp);
   return { period, storeId: scope?.storeId ?? null };
@@ -72,17 +75,15 @@ async function Widget({
 }
 
 /**
- * Admin dashboard — a static shell (chrome + card frames + titles paint
- * instantly) with each stat/chart as its own `<Suspense>` hole. Nothing dynamic
- * is `await`ed at the top: store scope + period resolve inside each hole (via
+ * Admin dashboard — a **static** shell (chrome + card frames + titles paint
+ * instantly) with each stat/chart as its own `<Suspense>` hole. Nothing is
+ * `await`ed at the top: titles render via the client {@link DText} (SSR'd from
+ * the intl provider) and store scope + period resolve inside each hole (via
  * {@link Widget}), so the shell prerenders and navigating here is instant — the
  * widgets stream in behind their skeletons. Period-dependent widgets re-skeleton
  * on a switch (inner keyed Suspense); period-independent ones stream once.
  */
-export default async function DashboardPage({ params, searchParams }: Props) {
-  const { locale } = await params;
-  setRequestLocale(locale);
-  const t = await getTranslations("Dashboard");
+export default function DashboardPage({ params, searchParams }: Props) {
   const box = { params, searchParams };
   const heroFallback = (
     <div>
@@ -102,7 +103,7 @@ export default async function DashboardPage({ params, searchParams }: Props) {
         <div className="relative">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-extrabold tracking-wider">
             <Sparkles className="size-3.5" />
-            {t("impactTitle")}
+            <DText k="impactTitle" />
           </span>
           <div className="mt-4 flex flex-wrap items-end gap-x-10 gap-y-4">
             <Suspense fallback={heroFallback}>
@@ -115,9 +116,11 @@ export default async function DashboardPage({ params, searchParams }: Props) {
             </Suspense>
             <div className="flex flex-col gap-1">
               <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs font-extrabold">
-                {t("comingSoon")}
+                <DText k="comingSoon" />
               </span>
-              <span className="text-xs font-semibold text-white/70">{t("impactComingSoon")}</span>
+              <span className="text-xs font-semibold text-white/70">
+                <DText k="impactComingSoon" />
+              </span>
             </div>
           </div>
         </div>
@@ -146,8 +149,8 @@ export default async function DashboardPage({ params, searchParams }: Props) {
       {/* Purchases trend + tier mix */}
       <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <ChartCard
-          title={t("purchasesTitle")}
-          subtitle={t("purchasesSubtitle")}
+          title={<DText k="purchasesTitle" />}
+          subtitle={<DText k="purchasesSubtitle" />}
           className="lg:col-span-2"
         >
           <div className="h-52">
@@ -161,24 +164,24 @@ export default async function DashboardPage({ params, searchParams }: Props) {
             </Suspense>
           </div>
         </ChartCard>
-        <Suspense fallback={<CardSkeleton title={t("tiersTitle")} />}>
+        <Suspense fallback={<CardSkeleton title={<DText k="tiersTitle" />} />}>
           <W.TierCard />
         </Suspense>
       </div>
 
       {/* DAU (coming soon) + redemptions trend */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <ChartCard title={t("dauTitle")} subtitle={t("dauSubtitle")}>
+        <ChartCard title={<DText k="dauTitle" />} subtitle={<DText k="dauSubtitle" />}>
           <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
             <Badge variant="secondary" className="text-xs">
-              {t("comingSoon")}
+              <DText k="comingSoon" />
             </Badge>
             <p className="text-muted-foreground max-w-56 text-xs font-semibold">
-              {t("dauComingSoon")}
+              <DText k="dauComingSoon" />
             </p>
           </div>
         </ChartCard>
-        <ChartCard title={t("redemptionTitle")} subtitle={t("redemptionSubtitle")}>
+        <ChartCard title={<DText k="redemptionTitle" />} subtitle={<DText k="redemptionSubtitle" />}>
           <div className="h-40">
             <Suspense fallback={<Skeleton className="size-full rounded-xl" />}>
               <Widget
@@ -194,7 +197,7 @@ export default async function DashboardPage({ params, searchParams }: Props) {
 
       {/* Cohorts + promo performance (island) */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <ChartCard title={t("cohortsTitle")} subtitle={t("cohortsSubtitle")}>
+        <ChartCard title={<DText k="cohortsTitle" />} subtitle={<DText k="cohortsSubtitle" />}>
           <Suspense fallback={<Skeleton className="h-40 w-full rounded-xl" />}>
             <W.CohortsTable />
           </Suspense>
@@ -204,7 +207,7 @@ export default async function DashboardPage({ params, searchParams }: Props) {
 
       {/* Recent purchases + top customers */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <ChartCard title={t("recentPurchasesTitle")} liveLabel={t("live")}>
+        <ChartCard title={<DText k="recentPurchasesTitle" />} liveLabel={<DText k="live" />}>
           <Suspense fallback={<ListSkeletonRows rows={6} />}>
             <Widget
               {...box}
@@ -213,7 +216,10 @@ export default async function DashboardPage({ params, searchParams }: Props) {
             />
           </Suspense>
         </ChartCard>
-        <ChartCard title={t("topCustomersTitle")} subtitle={t("topCustomersSubtitle")}>
+        <ChartCard
+          title={<DText k="topCustomersTitle" />}
+          subtitle={<DText k="topCustomersSubtitle" />}
+        >
           <Suspense fallback={<ListSkeletonRows rows={6} />}>
             <Widget
               {...box}
@@ -227,7 +233,7 @@ export default async function DashboardPage({ params, searchParams }: Props) {
 
       {/* At-risk + fraud (coming soon) + recent claims */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
-        <ChartCard title={t("atRiskTitle")} subtitle={t("atRiskSubtitle")}>
+        <ChartCard title={<DText k="atRiskTitle" />} subtitle={<DText k="atRiskSubtitle" />}>
           <Suspense fallback={<ListSkeletonRows rows={5} />}>
             <Widget
               {...box}
@@ -236,20 +242,20 @@ export default async function DashboardPage({ params, searchParams }: Props) {
             />
           </Suspense>
         </ChartCard>
-        <ChartCard title={t("fraudTitle")} subtitle={t("fraudSubtitle")}>
+        <ChartCard title={<DText k="fraudTitle" />} subtitle={<DText k="fraudSubtitle" />}>
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
             <span className="bg-muted text-muted-foreground grid size-11 place-items-center rounded-2xl">
               <AlertTriangle className="size-5" />
             </span>
             <Badge variant="secondary" className="text-xs">
-              {t("comingSoon")}
+              <DText k="comingSoon" />
             </Badge>
             <p className="text-muted-foreground max-w-56 text-xs font-semibold">
-              {t("fraudComingSoon")}
+              <DText k="fraudComingSoon" />
             </p>
           </div>
         </ChartCard>
-        <ChartCard title={t("recentClaimsTitle")}>
+        <ChartCard title={<DText k="recentClaimsTitle" />}>
           <Suspense fallback={<ListSkeletonRows rows={6} />}>
             <W.RecentClaims />
           </Suspense>
@@ -258,7 +264,7 @@ export default async function DashboardPage({ params, searchParams }: Props) {
 
       {/* Retention + program liability */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <ChartCard title={t("retentionTitle")} subtitle={t("retentionSubtitle")}>
+        <ChartCard title={<DText k="retentionTitle" />} subtitle={<DText k="retentionSubtitle" />}>
           <Suspense fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
             <Widget
               {...box}
@@ -268,7 +274,7 @@ export default async function DashboardPage({ params, searchParams }: Props) {
             />
           </Suspense>
         </ChartCard>
-        <ChartCard title={t("liabilityTitle")} subtitle={t("liabilitySubtitle")}>
+        <ChartCard title={<DText k="liabilityTitle" />} subtitle={<DText k="liabilitySubtitle" />}>
           <Suspense fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
             <Widget
               {...box}
@@ -282,7 +288,7 @@ export default async function DashboardPage({ params, searchParams }: Props) {
 
       {/* Top products + sales by store */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <ChartCard title={t("topProductsTitle")} subtitle={t("topProductsSubtitle")}>
+        <ChartCard title={<DText k="topProductsTitle" />} subtitle={<DText k="topProductsSubtitle" />}>
           <Suspense fallback={<ListSkeletonRows rows={6} />}>
             <Widget
               {...box}
@@ -292,7 +298,7 @@ export default async function DashboardPage({ params, searchParams }: Props) {
             />
           </Suspense>
         </ChartCard>
-        <ChartCard title={t("salesByStoreTitle")}>
+        <ChartCard title={<DText k="salesByStoreTitle" />}>
           <Suspense fallback={<ListSkeletonRows rows={3} />}>
             <Widget
               {...box}

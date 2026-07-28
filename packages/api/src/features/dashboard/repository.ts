@@ -369,15 +369,21 @@ export class DashboardRepository {
     now = new Date(),
   ): Promise<RedemptionEngagement> {
     const start = daysAgo(now, PERIOD_DAYS[period]);
-    const [agg] = await this.db
-      .select({
-        redemptions: sql<number>`count(*)`,
-        redeemers: sql<number>`count(distinct ${redemption.customerId})`,
-        discount: sql<number>`coalesce(sum(${redemption.discountCents}), 0)`,
-      })
-      .from(redemption)
-      .where(and(eq(redemption.organizationId, orgId), gte(redemption.createdAt, start)));
-    const active = (await this.retention(orgId, period, now)).activeCustomers;
+    // The redemption aggregate and `retention` (its own purchase scan) are
+    // independent → run them in parallel instead of awaiting sequentially.
+    const [aggRows, retention] = await Promise.all([
+      this.db
+        .select({
+          redemptions: sql<number>`count(*)`,
+          redeemers: sql<number>`count(distinct ${redemption.customerId})`,
+          discount: sql<number>`coalesce(sum(${redemption.discountCents}), 0)`,
+        })
+        .from(redemption)
+        .where(and(eq(redemption.organizationId, orgId), gte(redemption.createdAt, start))),
+      this.retention(orgId, period, now),
+    ]);
+    const agg = aggRows[0];
+    const active = retention.activeCustomers;
     const redeemers = Number(agg?.redeemers ?? 0);
     return {
       redemptions: Number(agg?.redemptions ?? 0),
