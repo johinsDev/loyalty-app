@@ -2,6 +2,7 @@ import { Skeleton } from "@loyalty/ui";
 import { Suspense } from "react";
 
 import { DataTableSkeleton } from "@/components/data-table";
+import { IslandBoundary } from "@/components/island-boundary";
 import { CustomersKpis } from "@/features/customers/components/customers-kpis";
 import { CustomersListHeader } from "@/features/customers/components/customers-list-header";
 import { CustomersView } from "@/features/customers/components/customers-view";
@@ -27,23 +28,27 @@ export default function CustomersPage() {
       <CustomersListHeader />
 
       <div className="mt-5">
-        <Suspense
-          fallback={
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {["a", "b", "c", "d"].map((k) => (
-                <Skeleton key={k} className="h-24 rounded-3xl" />
-              ))}
-            </div>
-          }
-        >
-          <CustomersKpis />
-        </Suspense>
+        <IslandBoundary>
+          <Suspense
+            fallback={
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {["a", "b", "c", "d"].map((k) => (
+                  <Skeleton key={k} className="h-24 rounded-3xl" />
+                ))}
+              </div>
+            }
+          >
+            <CustomersKpis />
+          </Suspense>
+        </IslandBoundary>
       </div>
 
       <div className="mt-4">
-        <Suspense fallback={<DataTableSkeleton columns={7} />}>
-          <CustomersView />
-        </Suspense>
+        <IslandBoundary>
+          <Suspense fallback={<DataTableSkeleton columns={7} />}>
+            <CustomersView />
+          </Suspense>
+        </IslandBoundary>
       </div>
     </div>
   );
