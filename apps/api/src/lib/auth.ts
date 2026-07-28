@@ -1,6 +1,8 @@
 import { createAuth } from "@loyalty/auth/server";
 import { tasks } from "@trigger.dev/sdk/v3";
+import { Redis } from "@upstash/redis";
 
+import { env } from "./env";
 import { log } from "./log";
 
 import type { sendOtpWhatsappTask } from "@loyalty/jobs/trigger/send-otp-whatsapp";
@@ -27,8 +29,35 @@ type SendMagicLinkPayload = { email: string; url: string };
  * cross-subdomain cookie + extra trusted origins come from `createAuth` via
  * `AUTH_COOKIE_DOMAIN` / `BETTER_AUTH_TRUSTED_ORIGINS`.
  */
+// Redis-backed session store (Upstash) so Better Auth's `getSession` — run on
+// every request + RSC auth-guard — reads sessions from Redis instead of Turso.
+// Only when creds are present (prod/preview; mirrors the cache/rate-limit
+// provider selection); local/dev without Upstash falls back to DB sessions. Raw
+// strings (`automaticDeserialization: false`) — Better Auth stores its own
+// serialized values. Passed via deps so `@upstash/redis` never lands in the FE.
+const secondaryStorage =
+  env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
+    ? ((redis) => ({
+        get: (key: string) => redis.get<string>(key),
+        set: async (key: string, value: string, ttl?: number) => {
+          if (ttl) await redis.set(key, value, { ex: ttl });
+          else await redis.set(key, value);
+        },
+        delete: async (key: string) => {
+          await redis.del(key);
+        },
+      }))(
+        new Redis({
+          url: env.UPSTASH_REDIS_REST_URL,
+          token: env.UPSTASH_REDIS_REST_TOKEN,
+          automaticDeserialization: false,
+        }),
+      )
+    : undefined;
+
 export const auth = createAuth(
   {
+    secondaryStorage,
     sendOtp: async ({ phoneNumber, code }) => {
       // Local dev (no Trigger.dev): don't dispatch — log the code so it can be
       // entered from the console. Prod/preview always set TRIGGER_SECRET_KEY.

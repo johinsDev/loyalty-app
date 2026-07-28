@@ -5,7 +5,7 @@ import {
   recordAudit,
   schema,
 } from "@loyalty/db";
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import {
@@ -36,6 +36,15 @@ export type AuthDeps = {
    * lean Worker never runs the mailer). Omitted → the magicLink plugin is off.
    */
   sendMagicLink?: (args: { email: string; url: string }) => Promise<void>;
+  /**
+   * Redis-backed session store (Upstash). Passed by the Worker (which has the
+   * creds) — NOT imported here, so the FE apps don't pull `@upstash/redis` into
+   * their bundle. When present, session reads hit Redis instead of Turso on
+   * every request (the dominant per-navigation auth cost); we still keep the DB
+   * copy (`storeSessionInDatabase`) so the login audit hook + Empleados session
+   * listing/revocation keep working and existing sessions aren't invalidated.
+   */
+  secondaryStorage?: BetterAuthOptions["secondaryStorage"];
 };
 
 export type CreateAuthOptions = {
@@ -110,6 +119,13 @@ export function createAuth(
 
   return betterAuth({
     database: drizzleAdapter(db, { provider: "sqlite" }),
+    // Read sessions from Redis (Upstash) when the Worker provides it → the
+    // per-request/per-navigation `getSession` stops hitting Turso. Kept in the
+    // DB too so audit hooks + admin session listing still work (see AuthDeps).
+    ...(deps.secondaryStorage && {
+      secondaryStorage: deps.secondaryStorage,
+      session: { storeSessionInDatabase: true },
+    }),
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL,
     // Better Auth rejects any request whose Origin isn't listed here
