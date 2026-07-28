@@ -17,7 +17,7 @@ import {
   streak,
   variantIngredient,
 } from "@loyalty/db/schema";
-import { and, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 
 import {
   computeDeltaPct,
@@ -264,34 +264,32 @@ export class DashboardRepository {
 
   /** Customers who purchased before but not within `days` — win-back candidates. */
   async atRisk(orgId: string, days: number, limit: number, now = new Date()): Promise<AtRiskRow[]> {
+    // Last purchase per customer in ONE grouped query (was: scan all org
+    // purchases + last-per-customer in JS + a second id→customer lookup). HAVING
+    // the max purchase date fall before the cutoff, oldest-first, joined to the
+    // customer. `created_at` is stored as unix seconds, so the max()/cutoff
+    // comparison + the returned value go through a seconds integer (drizzle's
+    // `max()` drops the timestamp mode).
+    const cutoffSec = Math.floor(daysAgo(now, days).getTime() / 1000);
+    const lastSec = sql<number>`max(${purchase.createdAt})`;
     const rows = await this.db
-      .select({ customerId: purchase.customerId, createdAt: purchase.createdAt })
+      .select({ id: customer.id, name: customer.name, phone: customer.phone, last: lastSec })
       .from(purchase)
-      .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt), ...this.purchaseStoreCond));
-    // Last purchase per customer (drizzle returns Date; avoids sql max() ambiguity).
-    const last = new Map<string, Date>();
-    for (const p of rows) {
-      const cur = last.get(p.customerId);
-      if (!cur || p.createdAt > cur) last.set(p.customerId, p.createdAt);
-    }
-    const cutoff = daysAgo(now, days);
-    const risky = [...last.entries()]
-      .filter(([, d]) => d < cutoff)
-      .sort((a, b) => a[1].getTime() - b[1].getTime())
-      .slice(0, limit);
-    if (risky.length === 0) return [];
-    const ids = risky.map(([id]) => id);
-    const custs = await this.db
-      .select({ id: customer.id, name: customer.name, phone: customer.phone })
-      .from(customer)
-      .where(inArray(customer.id, ids));
-    const byId = new Map(custs.map((c) => [c.id, c]));
-    return risky.map(([id, d]) => ({
-      id,
-      name: byId.get(id)?.name?.trim() || byId.get(id)?.phone || "—",
-      lastPurchaseAt: d,
-      daysSince: Math.floor((now.getTime() - d.getTime()) / 86400000),
-    }));
+      .innerJoin(customer, eq(customer.id, purchase.customerId))
+      .where(and(eq(purchase.organizationId, orgId), isNull(purchase.voidedAt), ...this.purchaseStoreCond))
+      .groupBy(purchase.customerId)
+      .having(sql`max(${purchase.createdAt}) < ${cutoffSec}`)
+      .orderBy(asc(lastSec))
+      .limit(limit);
+    return rows.map((r) => {
+      const d = new Date(Number(r.last) * 1000);
+      return {
+        id: r.id,
+        name: r.name?.trim() || r.phone || "—",
+        lastPurchaseAt: d,
+        daysSince: Math.floor((now.getTime() - d.getTime()) / 86400000),
+      };
+    });
   }
 
   /** Repeat rate + visit frequency over the window. */
@@ -430,69 +428,60 @@ export class DashboardRepository {
     now = new Date(),
   ): Promise<TopProductRow[]> {
     const start = daysAgo(now, PERIOD_DAYS[period]);
-    const lines = await this.db
+
+    // COGS per variant (Σ qty × ingredient cost), pre-aggregated as a subquery so
+    // the whole thing is ONE query (was: fetch lines → fetch variant COGS →
+    // aggregate in JS → fetch product names, 3 sequential round-trips). Join
+    // lines → product (name) + variant COGS, group by product, order by revenue.
+    const variantCogs = this.db
+      .select({
+        variantId: variantIngredient.variantId,
+        cost: sql<number>`sum(${variantIngredient.quantity} * ${ingredient.costPerUnitCents})`.as(
+          "cost",
+        ),
+      })
+      .from(variantIngredient)
+      .innerJoin(ingredient, eq(ingredient.id, variantIngredient.ingredientId))
+      .groupBy(variantIngredient.variantId)
+      .as("variant_cogs");
+
+    const revenue = sql<number>`sum(${purchaseItem.qty} * ${purchaseItem.unitAmountCents})`;
+    const rows = await this.db
       .select({
         productId: purchaseItem.productId,
-        variantId: purchaseItem.variantId,
-        qty: purchaseItem.qty,
-        unitAmountCents: purchaseItem.unitAmountCents,
+        name: product.name,
+        units: sql<number>`sum(${purchaseItem.qty})`,
+        revenue,
+        cogs: sql<number>`sum(${purchaseItem.qty} * coalesce(${variantCogs.cost}, 0))`,
       })
       .from(purchaseItem)
       .innerJoin(purchase, eq(purchase.id, purchaseItem.purchaseId))
+      .leftJoin(product, eq(product.id, purchaseItem.productId))
+      .leftJoin(variantCogs, eq(variantCogs.variantId, purchaseItem.variantId))
       .where(
         and(
           eq(purchase.organizationId, orgId),
           isNull(purchase.voidedAt),
-            ...this.purchaseStoreCond,
+          ...this.purchaseStoreCond,
           gte(purchase.createdAt, start),
         ),
-      );
-    if (lines.length === 0) return [];
+      )
+      .groupBy(purchaseItem.productId)
+      .orderBy(desc(revenue))
+      .limit(limit);
 
-    // COGS per variant (Σ qty × ingredient cost) for the sold variants.
-    const variantIds = [...new Set(lines.map((l) => l.variantId).filter((x): x is string => !!x))];
-    const variantCogs = new Map<string, number>();
-    if (variantIds.length > 0) {
-      const recipeRows = await this.db
-        .select({
-          variantId: variantIngredient.variantId,
-          cost: sql<number>`sum(${variantIngredient.quantity} * ${ingredient.costPerUnitCents})`,
-        })
-        .from(variantIngredient)
-        .innerJoin(ingredient, eq(ingredient.id, variantIngredient.ingredientId))
-        .where(inArray(variantIngredient.variantId, variantIds))
-        .groupBy(variantIngredient.variantId);
-      for (const r of recipeRows) variantCogs.set(r.variantId, Number(r.cost));
-    }
-
-    const agg = new Map<string, { units: number; revenue: number; cogs: number }>();
-    for (const l of lines) {
-      const cur = agg.get(l.productId) ?? { units: 0, revenue: 0, cogs: 0 };
-      cur.units += l.qty;
-      cur.revenue += l.qty * l.unitAmountCents;
-      cur.cogs += l.qty * (l.variantId ? (variantCogs.get(l.variantId) ?? 0) : 0);
-      agg.set(l.productId, cur);
-    }
-    const top = [...agg.entries()]
-      .sort((a, b) => b[1].revenue - a[1].revenue)
-      .slice(0, limit);
-    const ids = top.map(([id]) => id);
-    const names = await this.db
-      .select({ id: product.id, name: product.name })
-      .from(product)
-      .where(inArray(product.id, ids));
-    const nameById = new Map(names.map((n) => [n.id, n.name]));
-    return top.map(([id, v]) => ({
-      productId: id,
-      name: nameById.get(id) ?? "—",
-      units: v.units,
-      revenueCents: Math.round(v.revenue),
-      cogsCents: Math.round(v.cogs),
-      marginPct:
-        v.revenue > 0 && v.cogs > 0
-          ? Math.round(((v.revenue - v.cogs) / v.revenue) * 100)
-          : null,
-    }));
+    return rows.map((r) => {
+      const rev = Number(r.revenue);
+      const cogs = Number(r.cogs);
+      return {
+        productId: r.productId,
+        name: r.name ?? "—",
+        units: Number(r.units),
+        revenueCents: Math.round(rev),
+        cogsCents: Math.round(cogs),
+        marginPct: rev > 0 && cogs > 0 ? Math.round(((rev - cogs) / rev) * 100) : null,
+      };
+    });
   }
 
   /** Weekly retention cohorts: group customers by their first-purchase week,
