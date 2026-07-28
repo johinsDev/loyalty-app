@@ -1,6 +1,8 @@
 import { createAuth } from "@loyalty/auth/server";
 import { tasks } from "@trigger.dev/sdk/v3";
+import { Redis } from "@upstash/redis";
 
+import { env } from "./env";
 import { log } from "./log";
 
 import type { sendOtpWhatsappTask } from "@loyalty/jobs/trigger/send-otp-whatsapp";
@@ -27,8 +29,55 @@ type SendMagicLinkPayload = { email: string; url: string };
  * cross-subdomain cookie + extra trusted origins come from `createAuth` via
  * `AUTH_COOKIE_DOMAIN` / `BETTER_AUTH_TRUSTED_ORIGINS`.
  */
+// Redis-backed session store (Upstash) so Better Auth's `getSession` — run on
+// every request + RSC auth-guard — reads sessions from Redis instead of Turso.
+// Only when creds are present (prod/preview; mirrors the cache/rate-limit
+// provider selection); local/dev without Upstash falls back to DB sessions. Raw
+// strings (`automaticDeserialization: false`) — Better Auth stores its own
+// serialized values. Passed via deps so `@upstash/redis` never lands in the FE.
+const secondaryStorage =
+  env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
+    ? ((redis) => ({
+        // Wrapped in try/catch so a Redis hiccup is LOGGED, not silent: a failed
+        // session read/write would otherwise bounce the user with no trace. The
+        // key is a session token (secret) — never log it, only the op + error.
+        get: async (key: string) => {
+          try {
+            return await redis.get<string>(key);
+          } catch (err) {
+            log.error({ err }, "auth.secondaryStorage.get.failed");
+            return null;
+          }
+        },
+        set: async (key: string, value: string, ttl?: number) => {
+          try {
+            if (ttl) await redis.set(key, value, { ex: ttl });
+            else await redis.set(key, value);
+          } catch (err) {
+            // Rethrow: a dropped session write must surface, not fail silently.
+            log.error({ err, ttl }, "auth.secondaryStorage.set.failed");
+            throw err;
+          }
+        },
+        delete: async (key: string) => {
+          try {
+            await redis.del(key);
+          } catch (err) {
+            log.error({ err }, "auth.secondaryStorage.delete.failed");
+          }
+        },
+      }))(
+        new Redis({
+          url: env.UPSTASH_REDIS_REST_URL,
+          token: env.UPSTASH_REDIS_REST_TOKEN,
+          automaticDeserialization: false,
+        }),
+      )
+    : undefined;
+
 export const auth = createAuth(
   {
+    secondaryStorage,
     sendOtp: async ({ phoneNumber, code }) => {
       // Local dev (no Trigger.dev): don't dispatch — log the code so it can be
       // entered from the console. Prod/preview always set TRIGGER_SECRET_KEY.
