@@ -76,95 +76,52 @@ export class DashboardRepository {
     const curStart = daysAgo(now, days);
     const prevStart = daysAgo(now, days * 2);
 
-    const cnt = sql<number>`count(*)`;
-    const revenue = sql<number>`coalesce(sum(${purchase.priceCents}), 0)`;
+    // Collapsed from 9 single-value queries to 3 grouped ones (one per table).
+    // Each window count/sum becomes a `SUM(CASE …)` over the SAME gte/lt
+    // conditions the split queries used, so Drizzle encodes the dates identically
+    // and the numbers are unchanged. Purchase + redemption gate the scan to
+    // `>= prevStart` (both windows live there) → the org_created indexes serve it.
+    const inCurC = gte(customer.createdAt, curStart);
+    const inPrevC = and(gte(customer.createdAt, prevStart), lt(customer.createdAt, curStart));
+    const inCurP = gte(purchase.createdAt, curStart);
+    const inPrevP = and(gte(purchase.createdAt, prevStart), lt(purchase.createdAt, curStart));
+    const inCurR = gte(redemption.createdAt, curStart);
+    const inPrevR = and(gte(redemption.createdAt, prevStart), lt(redemption.createdAt, curStart));
+    const purchaseBase = and(
+      eq(purchase.organizationId, orgId),
+      isNull(purchase.voidedAt),
+      ...this.purchaseStoreCond,
+    );
 
     const [
-      [{ total = 0 } = {}],
-      [{ v: membersCur = 0 } = {}],
-      [{ v: membersPrev = 0 } = {}],
-      [{ v: purchasesCur = 0 } = {}],
-      [{ v: purchasesPrev = 0 } = {}],
-      [{ v: revenueCur = 0 } = {}],
-      [{ v: revenuePrev = 0 } = {}],
-      [{ v: redemptionsCur = 0 } = {}],
-      [{ v: redemptionsPrev = 0 } = {}],
+      [{ total = 0, membersCur = 0, membersPrev = 0 } = {}],
+      [{ purchasesCur = 0, purchasesPrev = 0, revenueCur = 0, revenuePrev = 0 } = {}],
+      [{ redemptionsCur = 0, redemptionsPrev = 0 } = {}],
     ] = await Promise.all([
-      this.db.select({ total: cnt }).from(customer).where(eq(customer.organizationId, orgId)),
       this.db
-        .select({ v: cnt })
+        .select({
+          total: sql<number>`count(*)`,
+          membersCur: sql<number>`coalesce(sum(case when ${inCurC} then 1 else 0 end), 0)`,
+          membersPrev: sql<number>`coalesce(sum(case when ${inPrevC} then 1 else 0 end), 0)`,
+        })
         .from(customer)
-        .where(and(eq(customer.organizationId, orgId), gte(customer.createdAt, curStart))),
+        .where(eq(customer.organizationId, orgId)),
       this.db
-        .select({ v: cnt })
-        .from(customer)
-        .where(
-          and(
-            eq(customer.organizationId, orgId),
-            gte(customer.createdAt, prevStart),
-            lt(customer.createdAt, curStart),
-          ),
-        ),
-      this.db
-        .select({ v: cnt })
+        .select({
+          purchasesCur: sql<number>`coalesce(sum(case when ${inCurP} then 1 else 0 end), 0)`,
+          purchasesPrev: sql<number>`coalesce(sum(case when ${inPrevP} then 1 else 0 end), 0)`,
+          revenueCur: sql<number>`coalesce(sum(case when ${inCurP} then ${purchase.priceCents} else 0 end), 0)`,
+          revenuePrev: sql<number>`coalesce(sum(case when ${inPrevP} then ${purchase.priceCents} else 0 end), 0)`,
+        })
         .from(purchase)
-        .where(
-          and(
-            eq(purchase.organizationId, orgId),
-            isNull(purchase.voidedAt),
-            ...this.purchaseStoreCond,
-            gte(purchase.createdAt, curStart),
-          ),
-        ),
+        .where(and(purchaseBase, gte(purchase.createdAt, prevStart))),
       this.db
-        .select({ v: cnt })
-        .from(purchase)
-        .where(
-          and(
-            eq(purchase.organizationId, orgId),
-            isNull(purchase.voidedAt),
-            ...this.purchaseStoreCond,
-            gte(purchase.createdAt, prevStart),
-            lt(purchase.createdAt, curStart),
-          ),
-        ),
-      this.db
-        .select({ v: revenue })
-        .from(purchase)
-        .where(
-          and(
-            eq(purchase.organizationId, orgId),
-            isNull(purchase.voidedAt),
-            ...this.purchaseStoreCond,
-            gte(purchase.createdAt, curStart),
-          ),
-        ),
-      this.db
-        .select({ v: revenue })
-        .from(purchase)
-        .where(
-          and(
-            eq(purchase.organizationId, orgId),
-            isNull(purchase.voidedAt),
-            ...this.purchaseStoreCond,
-            gte(purchase.createdAt, prevStart),
-            lt(purchase.createdAt, curStart),
-          ),
-        ),
-      this.db
-        .select({ v: cnt })
+        .select({
+          redemptionsCur: sql<number>`coalesce(sum(case when ${inCurR} then 1 else 0 end), 0)`,
+          redemptionsPrev: sql<number>`coalesce(sum(case when ${inPrevR} then 1 else 0 end), 0)`,
+        })
         .from(redemption)
-        .where(and(eq(redemption.organizationId, orgId), gte(redemption.createdAt, curStart))),
-      this.db
-        .select({ v: cnt })
-        .from(redemption)
-        .where(
-          and(
-            eq(redemption.organizationId, orgId),
-            gte(redemption.createdAt, prevStart),
-            lt(redemption.createdAt, curStart),
-          ),
-        ),
+        .where(and(eq(redemption.organizationId, orgId), gte(redemption.createdAt, prevStart))),
     ]);
 
     return {
@@ -430,35 +387,27 @@ export class DashboardRepository {
   /** The program's outstanding liability + in-window grant/spend of stamps + points. */
   async liability(orgId: string, period: Period, now = new Date()): Promise<LoyaltyLiability> {
     const start = daysAgo(now, PERIOD_DAYS[period]);
-    const [[stampsOut], [pointsOut], [earned], [redeemed], [stampsSpent]] = await Promise.all([
+    // The three pointsTransaction sums (all-time outstanding, earned-in-window,
+    // redeemed-in-window) fold into one grouped pass via SUM(CASE …) over the
+    // same type+date conditions → identical numbers, 5 round-trips down to 3.
+    const earnCond = and(eq(pointsTransaction.type, "earn"), gte(pointsTransaction.createdAt, start));
+    const redeemCond = and(
+      eq(pointsTransaction.type, "redeem"),
+      gte(pointsTransaction.createdAt, start),
+    );
+    const [[stampsOut], [pts], [stampsSpent]] = await Promise.all([
       this.db
         .select({ v: sql<number>`coalesce(sum(${loyaltyCard.currentStamps}), 0)` })
         .from(loyaltyCard)
         .where(eq(loyaltyCard.organizationId, orgId)),
       this.db
-        .select({ v: sql<number>`coalesce(sum(${pointsTransaction.points}), 0)` })
+        .select({
+          pointsOut: sql<number>`coalesce(sum(${pointsTransaction.points}), 0)`,
+          earned: sql<number>`coalesce(sum(case when ${earnCond} then ${pointsTransaction.points} else 0 end), 0)`,
+          redeemed: sql<number>`coalesce(sum(case when ${redeemCond} then ${pointsTransaction.points} else 0 end), 0)`,
+        })
         .from(pointsTransaction)
         .where(eq(pointsTransaction.organizationId, orgId)),
-      this.db
-        .select({ v: sql<number>`coalesce(sum(${pointsTransaction.points}), 0)` })
-        .from(pointsTransaction)
-        .where(
-          and(
-            eq(pointsTransaction.organizationId, orgId),
-            eq(pointsTransaction.type, "earn"),
-            gte(pointsTransaction.createdAt, start),
-          ),
-        ),
-      this.db
-        .select({ v: sql<number>`coalesce(sum(${pointsTransaction.points}), 0)` })
-        .from(pointsTransaction)
-        .where(
-          and(
-            eq(pointsTransaction.organizationId, orgId),
-            eq(pointsTransaction.type, "redeem"),
-            gte(pointsTransaction.createdAt, start),
-          ),
-        ),
       this.db
         .select({ v: sql<number>`coalesce(sum(${redemption.stampsSpent}), 0)` })
         .from(redemption)
@@ -466,9 +415,9 @@ export class DashboardRepository {
     ]);
     return {
       stampsOutstanding: Number(stampsOut?.v ?? 0),
-      pointsOutstanding: Number(pointsOut?.v ?? 0),
-      pointsEarned: Number(earned?.v ?? 0),
-      pointsRedeemed: Math.abs(Number(redeemed?.v ?? 0)),
+      pointsOutstanding: Number(pts?.pointsOut ?? 0),
+      pointsEarned: Number(pts?.earned ?? 0),
+      pointsRedeemed: Math.abs(Number(pts?.redeemed ?? 0)),
       stampsSpent: Number(stampsSpent?.v ?? 0),
     };
   }
