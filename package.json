@@ -38,6 +38,7 @@
     "db:seed:menu": "bash scripts/with-infisical.sh bun run --cwd packages/db src/seed-menu.ts",
     "db:reset:test": "bash scripts/with-infisical.sh bun run --cwd packages/db src/reset-test.ts",
     "db:backfill-customers": "bash scripts/with-infisical.sh bun run --cwd packages/db src/backfill-customers.ts",
+    "db:backfill-primary-category": "bash scripts/with-infisical.sh bun run --cwd packages/db src/backfill-primary-category.ts",
     "db:seed:preview-admin": "bash scripts/with-infisical.sh bun run --cwd packages/auth src/seed-preview-admin.ts",
     "jobs:dev": "bash scripts/with-infisical.sh bun run --cwd packages/jobs dev",
     "jobs:deploy": "bun run --cwd packages/jobs deploy",

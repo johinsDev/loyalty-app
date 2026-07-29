@@ -195,6 +195,8 @@ export const purchaseItem = sqliteTable(
   },
   (t) => ({
     byPurchase: index("purchase_item_purchase_idx").on(t.purchaseId),
+    // Per-product / per-category revenue aggregates scan by product.
+    byProduct: index("purchase_item_product_idx").on(t.productId),
   }),
 );
 
