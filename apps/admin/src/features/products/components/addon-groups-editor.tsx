@@ -1,6 +1,15 @@
 "use client";
 
-import { Badge, Button, Checkbox, Input, NumberInput } from "@loyalty/ui";
+import {
+  Badge,
+  Button,
+  Checkbox,
+  Input,
+  Label,
+  NumberInput,
+  RadioGroup,
+  RadioGroupItem,
+} from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Search, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -148,7 +157,7 @@ function GroupCard({
   });
 
   return (
-    <div className="border-border rounded-2xl border p-3.5">
+    <div className="border-border space-y-5 rounded-2xl border p-4">
       <div className="flex items-center gap-2">
         <Input
           value={group.name}
@@ -167,104 +176,106 @@ function GroupCard({
         </Button>
       </div>
 
-      <div className="mt-3">
-        <p className="text-xs font-bold">{t("source.label")}</p>
-        <div className="mt-1.5 space-y-1.5">
+      <div className="space-y-2.5">
+        <Label className="text-xs">{t("source.label")}</Label>
+        {/* The panel for each source renders directly under ITS OWN option, so
+            there is never a doubt about which choice it belongs to. */}
+        <RadioGroup
+          value={group.source}
+          onValueChange={(v) => setSource(v as AddonGroupSource)}
+          className="gap-3"
+        >
           {(["category", "manual"] as const).map((s) => (
-            <label key={s} className="flex cursor-pointer items-start gap-2.5 text-sm">
-              <input
-                type="radio"
-                name={`source-${group.id}`}
-                checked={group.source === s}
-                onChange={() => setSource(s)}
-                className="mt-1"
-              />
-              <span>
-                <span className="font-semibold">{t(`source.${s}`)}</span>
-                <span className="text-muted-foreground/70 block text-xs font-semibold">
-                  {t(`source.${s}Hint`)}
+            <div key={s} className="space-y-2">
+              <label className="flex cursor-pointer items-start gap-3">
+                <RadioGroupItem value={s} className="mt-0.5 flex-none" />
+                <span className="space-y-0.5">
+                  <span className="block text-sm font-semibold leading-none">
+                    {t(`source.${s}`)}
+                  </span>
+                  <span className="text-muted-foreground/70 block text-xs font-semibold">
+                    {t(`source.${s}Hint`)}
+                  </span>
                 </span>
-              </span>
-            </label>
+              </label>
+
+              {group.source !== s ? null : s === "category" ? (
+                categories.length === 0 ? (
+                  <p className="text-muted-foreground ml-7 text-xs font-semibold">
+                    {t("source.noCategories")}
+                  </p>
+                ) : (
+                  <div className="ml-7 flex flex-wrap gap-2">
+                    {categories.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => onChange({ ...group, categoryId: c.id })}
+                        aria-pressed={group.categoryId === c.id}
+                        className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
+                          group.categoryId === c.id
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:bg-muted/50"
+                        }`}
+                      >
+                        {c.name}
+                        <span className="ml-1.5 text-xs opacity-70">{c.memberCount}</span>
+                      </button>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <div className="ml-7 space-y-2">
+                  <div className="relative">
+                    <Search className="text-muted-foreground absolute top-1/2 left-3 size-3.5 -translate-y-1/2" />
+                    <Input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder={t("searchAddons")}
+                      className="h-9 pl-8"
+                    />
+                  </div>
+                  <div className="border-border max-h-48 space-y-0.5 overflow-y-auto rounded-xl border p-1.5">
+                    {filtered.length === 0 ? (
+                      <p className="text-muted-foreground py-4 text-center text-xs font-semibold">
+                        {t("noneFound")}
+                      </p>
+                    ) : (
+                      filtered.map((a) => (
+                        <label
+                          key={a.id}
+                          className="hover:bg-muted/50 flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-sm"
+                        >
+                          <Checkbox
+                            checked={group.addonIds.includes(a.id)}
+                            onCheckedChange={() => toggleAddon(a.id)}
+                          />
+                          <span className="flex-1 font-semibold">{a.name}</span>
+                          <span className="text-muted-foreground text-xs font-semibold tabular-nums">
+                            +{fmtCop(a.priceDeltaCents)}
+                          </span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           ))}
-        </div>
+        </RadioGroup>
       </div>
 
-      {group.source === "category" ? (
-        <div className="mt-3">
-          {categories.length === 0 ? (
-            <p className="text-muted-foreground text-xs font-semibold">
-              {t("source.noCategories")}
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => onChange({ ...group, categoryId: c.id })}
-                  className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
-                    group.categoryId === c.id
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground"
-                  }`}
-                >
-                  {c.name}
-                  <span className="ml-1 text-xs opacity-70">({c.memberCount})</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="mt-3 space-y-2">
-          <div className="relative">
-            <Search className="text-muted-foreground absolute top-1/2 left-3 size-3.5 -translate-y-1/2" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("searchAddons")}
-              className="h-9 pl-8"
-            />
-          </div>
-          <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
-            {filtered.length === 0 ? (
-              <p className="text-muted-foreground py-3 text-center text-xs font-semibold">
-                {t("noneFound")}
-              </p>
-            ) : (
-              filtered.map((a) => (
-                <label
-                  key={a.id}
-                  className="hover:bg-muted/50 flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm"
-                >
-                  <Checkbox
-                    checked={group.addonIds.includes(a.id)}
-                    onCheckedChange={() => toggleAddon(a.id)}
-                  />
-                  <span className="flex-1 font-semibold">{a.name}</span>
-                  <span className="text-muted-foreground text-xs font-semibold tabular-nums">
-                    +{fmtCop(a.priceDeltaCents)}
-                  </span>
-                </label>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="mt-3">
-        <p className="text-xs font-bold">{t("rule.label")}</p>
-        <div className="mt-1.5 space-y-1.5">
+      <div className="space-y-2.5">
+        <Label className="text-xs">{t("rule.label")}</Label>
+        <RadioGroup
+          value={group.mode}
+          onValueChange={(v) => onChange({ ...group, mode: v as AddonGroupMode })}
+          className="gap-3"
+        >
           {MODES.map((m) => (
-            <label key={m} className="flex cursor-pointer items-center gap-2.5 text-sm">
-              <input
-                type="radio"
-                name={`mode-${group.id}`}
-                checked={group.mode === m}
-                onChange={() => onChange({ ...group, mode: m })}
-              />
-              <span className="font-semibold">{t(`rule.${m}`)}</span>
+            <label key={m} className="flex cursor-pointer items-center gap-3">
+              <RadioGroupItem value={m} className="flex-none" />
+              <span className="text-sm font-semibold">{t(`rule.${m}`)}</span>
               {m === "upTo" && group.mode === "upTo" ? (
                 <NumberInput
                   value={group.maxSelect}
@@ -275,24 +286,22 @@ function GroupCard({
               ) : null}
             </label>
           ))}
-          {group.mode !== "exactlyOne" ? (
-            <label className="flex cursor-pointer items-center gap-2.5 text-sm">
-              <Checkbox
-                checked={group.required}
-                onCheckedChange={(c) => onChange({ ...group, required: c === true })}
-              />
-              <span className="font-semibold">{t("rule.required")}</span>
-            </label>
-          ) : null}
-        </div>
+        </RadioGroup>
+        {group.mode !== "exactlyOne" ? (
+          <label className="border-border/70 mt-1 flex cursor-pointer items-center gap-3 border-t pt-3">
+            <Checkbox
+              checked={group.required}
+              onCheckedChange={(c) => onChange({ ...group, required: c === true })}
+            />
+            <span className="text-sm font-semibold">{t("rule.required")}</span>
+          </label>
+        ) : null}
       </div>
 
-      <div className="bg-muted/40 mt-3 rounded-xl px-3 py-2">
+      <div className="bg-muted/40 space-y-1.5 rounded-xl px-3.5 py-3">
         <p className="text-muted-foreground text-xs font-semibold">{t("previewLabel")}</p>
-        <p className="mt-0.5 text-sm font-semibold">{preview}</p>
-        <Badge variant="secondary" className="mt-1.5">
-          {t("resolves", { n: resolvedCount })}
-        </Badge>
+        <p className="text-sm font-semibold">{preview}</p>
+        <Badge variant="secondary">{t("resolves", { n: resolvedCount })}</Badge>
       </div>
     </div>
   );
