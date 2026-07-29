@@ -19,14 +19,22 @@ import type { ReactNode } from "react";
  * Wrap the island's `<Suspense>` (not its child) so it catches the throw:
  *   <IslandBoundary><Suspense fallback={<Skel/>}><Widget/></Suspense></IslandBoundary>
  *
- * Pass `label` to override the default "couldn't load this section" copy.
+ * Pass `label` to override the default "couldn't load this section" copy. Pass
+ * `bare` for an island already nested inside a card frame (a dashboard
+ * `ChartCard`) so the retry renders inline without doubling the border/rounding.
  */
-type FallbackProps = { label?: ReactNode };
+type FallbackProps = { label?: ReactNode; bare?: boolean };
 
-function IslandFallback({ label }: FallbackProps, { unstable_retry }: ErrorInfo) {
+function IslandFallback({ label, bare }: FallbackProps, { unstable_retry }: ErrorInfo) {
   const t = useTranslations("Admin");
   return (
-    <div className="bg-card border-border grid place-items-center gap-2 rounded-3xl border p-6 text-center">
+    <div
+      className={
+        bare
+          ? "grid place-items-center gap-2 p-4 text-center"
+          : "bg-card border-border grid place-items-center gap-2 rounded-3xl border p-6 text-center"
+      }
+    >
       <p className="text-muted-foreground text-sm">{label ?? t("errorBody")}</p>
       <Button variant="outline" size="sm" onClick={unstable_retry}>
         {t("errorRetry")}
