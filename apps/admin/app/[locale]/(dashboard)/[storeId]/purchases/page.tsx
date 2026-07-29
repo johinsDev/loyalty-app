@@ -4,6 +4,7 @@ import type { SearchParams } from "nuqs/server";
 import { Suspense } from "react";
 
 import { DataTableSkeleton, SelectionProvider } from "@/components/data-table";
+import { IslandBoundary } from "@/components/island-boundary";
 import { PurchasesBulkBar } from "@/features/purchases/components/purchases-bulk-bar";
 import { PurchasesKpis } from "@/features/purchases/components/purchases-kpis";
 import { PurchasesListHeader } from "@/features/purchases/components/purchases-list-header";
@@ -53,17 +54,21 @@ export default function PurchasesPage({ params, searchParams }: Props) {
       <PurchasesListHeader />
 
       <div className="mt-5">
-        <Suspense fallback={KpisSkeleton}>
-          <PurchasesKpisSection params={params} searchParams={searchParams} />
-        </Suspense>
+        <IslandBoundary>
+          <Suspense fallback={KpisSkeleton}>
+            <PurchasesKpisSection params={params} searchParams={searchParams} />
+          </Suspense>
+        </IslandBoundary>
       </div>
 
       <SelectionProvider>
         <PurchasesToolbar />
         <div className="mt-4">
-          <Suspense fallback={<DataTableSkeleton columns={11} />}>
-            <PurchasesTableSection params={params} searchParams={searchParams} />
-          </Suspense>
+          <IslandBoundary>
+            <Suspense fallback={<DataTableSkeleton columns={11} />}>
+              <PurchasesTableSection params={params} searchParams={searchParams} />
+            </Suspense>
+          </IslandBoundary>
         </div>
         <PurchasesBulkBar />
       </SelectionProvider>

@@ -4,6 +4,7 @@ import { setRequestLocale } from "next-intl/server";
 import type { SearchParams } from "nuqs/server";
 import { type ReactNode, Suspense } from "react";
 
+import { IslandBoundary } from "@/components/island-boundary";
 import {
   CardSkeleton,
   ChartCard,
@@ -75,13 +76,29 @@ async function Widget({
 }
 
 /**
+ * A dashboard widget hole: an {@link IslandBoundary} (degrades a single failed
+ * widget to an inline retry, keeping the rest of the dashboard alive) wrapping
+ * the `<Suspense>` that streams it. `bare` because each already sits inside a
+ * `ChartCard`/section frame, so the retry renders inline without a second border.
+ */
+function Hole({ fallback, children }: { fallback: ReactNode; children: ReactNode }) {
+  return (
+    <IslandBoundary bare>
+      <Suspense fallback={fallback}>{children}</Suspense>
+    </IslandBoundary>
+  );
+}
+
+/**
  * Admin dashboard — a **static** shell (chrome + card frames + titles paint
  * instantly) with each stat/chart as its own `<Suspense>` hole. Nothing is
  * `await`ed at the top: titles render via the client {@link DText} (SSR'd from
  * the intl provider) and store scope + period resolve inside each hole (via
  * {@link Widget}), so the shell prerenders and navigating here is instant — the
  * widgets stream in behind their skeletons. Period-dependent widgets re-skeleton
- * on a switch (inner keyed Suspense); period-independent ones stream once.
+ * on a switch (inner keyed Suspense); period-independent ones stream once. Each
+ * hole is an {@link Hole} (error boundary + Suspense) so one widget blip degrades
+ * to an inline retry instead of tripping the route-level `error.tsx`.
  */
 export default function DashboardPage({ params, searchParams }: Props) {
   const box = { params, searchParams };
@@ -106,14 +123,14 @@ export default function DashboardPage({ params, searchParams }: Props) {
             <DText k="impactTitle" />
           </span>
           <div className="mt-4 flex flex-wrap items-end gap-x-10 gap-y-4">
-            <Suspense fallback={heroFallback}>
+            <Hole fallback={heroFallback}>
               <Widget
                 {...box}
                 keyed
                 fallback={heroFallback}
                 render={(wp) => <W.HeroRevenue {...wp} />}
               />
-            </Suspense>
+            </Hole>
             <div className="flex flex-col gap-1">
               <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs font-extrabold">
                 <DText k="comingSoon" />
@@ -128,14 +145,14 @@ export default function DashboardPage({ params, searchParams }: Props) {
 
       {/* KPI row */}
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Suspense fallback={<KpiRowSkeleton />}>
+        <Hole fallback={<KpiRowSkeleton />}>
           <Widget
             {...box}
             keyed
             fallback={<KpiRowSkeleton />}
             render={(wp) => <W.KpiRow {...wp} />}
           />
-        </Suspense>
+        </Hole>
       </div>
 
       {/* Campaigns + promos — client islands with their own loading */}
@@ -154,19 +171,19 @@ export default function DashboardPage({ params, searchParams }: Props) {
           className="lg:col-span-2"
         >
           <div className="h-52">
-            <Suspense fallback={<Skeleton className="size-full rounded-xl" />}>
+            <Hole fallback={<Skeleton className="size-full rounded-xl" />}>
               <Widget
                 {...box}
                 keyed
                 fallback={<Skeleton className="size-full rounded-xl" />}
                 render={(wp) => <W.PurchasesTrend {...wp} />}
               />
-            </Suspense>
+            </Hole>
           </div>
         </ChartCard>
-        <Suspense fallback={<CardSkeleton title={<DText k="tiersTitle" />} />}>
+        <Hole fallback={<CardSkeleton title={<DText k="tiersTitle" />} />}>
           <W.TierCard />
-        </Suspense>
+        </Hole>
       </div>
 
       {/* DAU (coming soon) + redemptions trend */}
@@ -183,14 +200,14 @@ export default function DashboardPage({ params, searchParams }: Props) {
         </ChartCard>
         <ChartCard title={<DText k="redemptionTitle" />} subtitle={<DText k="redemptionSubtitle" />}>
           <div className="h-40">
-            <Suspense fallback={<Skeleton className="size-full rounded-xl" />}>
+            <Hole fallback={<Skeleton className="size-full rounded-xl" />}>
               <Widget
                 {...box}
                 keyed
                 fallback={<Skeleton className="size-full rounded-xl" />}
                 render={(wp) => <W.RedemptionsTrend {...wp} />}
               />
-            </Suspense>
+            </Hole>
           </div>
         </ChartCard>
       </div>
@@ -198,9 +215,9 @@ export default function DashboardPage({ params, searchParams }: Props) {
       {/* Cohorts + promo performance (island) */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <ChartCard title={<DText k="cohortsTitle" />} subtitle={<DText k="cohortsSubtitle" />}>
-          <Suspense fallback={<Skeleton className="h-40 w-full rounded-xl" />}>
+          <Hole fallback={<Skeleton className="h-40 w-full rounded-xl" />}>
             <W.CohortsTable />
-          </Suspense>
+          </Hole>
         </ChartCard>
         <DashboardPromoCard />
       </div>
@@ -208,39 +225,39 @@ export default function DashboardPage({ params, searchParams }: Props) {
       {/* Recent purchases + top customers */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <ChartCard title={<DText k="recentPurchasesTitle" />} liveLabel={<DText k="live" />}>
-          <Suspense fallback={<ListSkeletonRows rows={6} />}>
+          <Hole fallback={<ListSkeletonRows rows={6} />}>
             <Widget
               {...box}
               fallback={<ListSkeletonRows rows={6} />}
               render={(wp) => <W.RecentPurchases storeId={wp.storeId} />}
             />
-          </Suspense>
+          </Hole>
         </ChartCard>
         <ChartCard
           title={<DText k="topCustomersTitle" />}
           subtitle={<DText k="topCustomersSubtitle" />}
         >
-          <Suspense fallback={<ListSkeletonRows rows={6} />}>
+          <Hole fallback={<ListSkeletonRows rows={6} />}>
             <Widget
               {...box}
               keyed
               fallback={<ListSkeletonRows rows={6} />}
               render={(wp) => <W.TopCustomers {...wp} />}
             />
-          </Suspense>
+          </Hole>
         </ChartCard>
       </div>
 
       {/* At-risk + fraud (coming soon) + recent claims */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <ChartCard title={<DText k="atRiskTitle" />} subtitle={<DText k="atRiskSubtitle" />}>
-          <Suspense fallback={<ListSkeletonRows rows={5} />}>
+          <Hole fallback={<ListSkeletonRows rows={5} />}>
             <Widget
               {...box}
               fallback={<ListSkeletonRows rows={5} />}
               render={(wp) => <W.AtRisk storeId={wp.storeId} />}
             />
-          </Suspense>
+          </Hole>
         </ChartCard>
         <ChartCard title={<DText k="fraudTitle" />} subtitle={<DText k="fraudSubtitle" />}>
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
@@ -256,57 +273,57 @@ export default function DashboardPage({ params, searchParams }: Props) {
           </div>
         </ChartCard>
         <ChartCard title={<DText k="recentClaimsTitle" />}>
-          <Suspense fallback={<ListSkeletonRows rows={6} />}>
+          <Hole fallback={<ListSkeletonRows rows={6} />}>
             <W.RecentClaims />
-          </Suspense>
+          </Hole>
         </ChartCard>
       </div>
 
       {/* Retention + program liability */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <ChartCard title={<DText k="retentionTitle" />} subtitle={<DText k="retentionSubtitle" />}>
-          <Suspense fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
+          <Hole fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
             <Widget
               {...box}
               keyed
               fallback={<Skeleton className="h-16 w-full rounded-xl" />}
               render={(wp) => <W.RetentionStats period={wp.period} />}
             />
-          </Suspense>
+          </Hole>
         </ChartCard>
         <ChartCard title={<DText k="liabilityTitle" />} subtitle={<DText k="liabilitySubtitle" />}>
-          <Suspense fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
+          <Hole fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
             <Widget
               {...box}
               keyed
               fallback={<Skeleton className="h-16 w-full rounded-xl" />}
               render={(wp) => <W.LiabilityStats period={wp.period} />}
             />
-          </Suspense>
+          </Hole>
         </ChartCard>
       </div>
 
       {/* Top products + sales by store */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <ChartCard title={<DText k="topProductsTitle" />} subtitle={<DText k="topProductsSubtitle" />}>
-          <Suspense fallback={<ListSkeletonRows rows={6} />}>
+          <Hole fallback={<ListSkeletonRows rows={6} />}>
             <Widget
               {...box}
               keyed
               fallback={<ListSkeletonRows rows={6} />}
               render={(wp) => <W.TopProducts {...wp} />}
             />
-          </Suspense>
+          </Hole>
         </ChartCard>
         <ChartCard title={<DText k="salesByStoreTitle" />}>
-          <Suspense fallback={<ListSkeletonRows rows={3} />}>
+          <Hole fallback={<ListSkeletonRows rows={3} />}>
             <Widget
               {...box}
               keyed
               fallback={<ListSkeletonRows rows={3} />}
               render={(wp) => <W.SalesByStore period={wp.period} />}
             />
-          </Suspense>
+          </Hole>
         </ChartCard>
       </div>
     </div>
