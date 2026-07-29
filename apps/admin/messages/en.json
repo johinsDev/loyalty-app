@@ -1738,6 +1738,9 @@
       "applyToAll": "Apply to all variants",
       "copyFrom": "Copy recipe from",
       "copyActions": "Copy recipe"
+    },
+    "ingredients": {
+      "title": "Ingredients"
     }
   },
   "Command": {
@@ -3193,6 +3196,63 @@
       "empty": "No categories yet",
       "members": "{n} add-ons",
       "affects": "affects {n} products"
+    }
+  },
+  "Ingredients": {
+    "title": "Ingredients",
+    "subtitle": "The supplies your recipes are made of, and what drives cost.",
+    "backToProducts": "Back to products",
+    "searchPlaceholder": "Search ingredient…",
+    "categoryFilter": "Category",
+    "unitFilter": "Unit",
+    "archivedFilter": "Archived",
+    "showArchived": "Show archived",
+    "archivedBadge": "Archived",
+    "categoriesManage": "Categories",
+    "empty": "No ingredients yet",
+    "emptyHint": "Create the first one so you can build recipes and compute cost.",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "save": "Save",
+    "archive": "Archive",
+    "restore": "Restore",
+    "rowActions": "Actions",
+    "loading": "Loading…",
+    "usedIn": "{n} products",
+    "saved": "Saved {name}",
+    "created": "Created {name}",
+    "deleted": "Deleted {name}",
+    "archived": "Archived {name}",
+    "restored": "Restored {name}",
+    "saveError": "Could not save",
+    "deleteTitle": "Delete {name}?",
+    "deleteHint": "No recipe uses it, so it can be deleted.",
+    "deleteBlocked": "{n} products use it. It can't be deleted while it's in a recipe — archive it to remove it from the pickers without touching history.",
+    "deleteUnlinks": "{n} add-ons are linked to this ingredient. Deleting it leaves them without one.",
+    "col": {
+      "name": "Ingredient",
+      "category": "Category",
+      "unit": "Unit",
+      "cost": "Cost",
+      "usage": "Usage"
+    },
+    "usage": {
+      "see": "See where it's used",
+      "title": "{name} is used in",
+      "none": "No recipe uses it yet.",
+      "addons": "Linked add-ons"
+    },
+    "ingredient": {
+      "new": "New ingredient",
+      "edit": "Edit ingredient",
+      "name": "Name",
+      "namePlaceholder": "e.g. Milk",
+      "category": "Category",
+      "categoryNone": "No category",
+      "unit": "Unit",
+      "cost": "Cost per {unit}",
+      "costHint": "Cost per unit × the recipe quantity is what gives each variant its cost."
     }
   }
 }

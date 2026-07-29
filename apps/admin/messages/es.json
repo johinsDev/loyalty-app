@@ -1738,6 +1738,9 @@
       "applyToAll": "Aplicar a todas las variantes",
       "copyFrom": "Copiar receta de",
       "copyActions": "Copiar receta"
+    },
+    "ingredients": {
+      "title": "Ingredientes"
     }
   },
   "Command": {
@@ -3193,6 +3196,63 @@
       "empty": "Todavía no hay categorías",
       "members": "{n} adiciones",
       "affects": "afecta {n} productos"
+    }
+  },
+  "Ingredients": {
+    "title": "Ingredientes",
+    "subtitle": "Insumos que componen tus recetas y alimentan el costo.",
+    "backToProducts": "Volver a productos",
+    "searchPlaceholder": "Buscar ingrediente…",
+    "categoryFilter": "Categoría",
+    "unitFilter": "Unidad",
+    "archivedFilter": "Archivados",
+    "showArchived": "Mostrar archivados",
+    "archivedBadge": "Archivado",
+    "categoriesManage": "Categorías",
+    "empty": "Todavía no hay ingredientes",
+    "emptyHint": "Creá el primero para poder armar recetas y calcular el costo.",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "archive": "Archivar",
+    "restore": "Restaurar",
+    "rowActions": "Acciones",
+    "loading": "Cargando…",
+    "usedIn": "{n} productos",
+    "saved": "Se guardó {name}",
+    "created": "Se creó {name}",
+    "deleted": "Se eliminó {name}",
+    "archived": "Se archivó {name}",
+    "restored": "Se restauró {name}",
+    "saveError": "No se pudo guardar",
+    "deleteTitle": "¿Eliminar {name}?",
+    "deleteHint": "No lo usa ninguna receta, así que se puede eliminar.",
+    "deleteBlocked": "Lo usan {n} productos. No se puede eliminar mientras esté en una receta — archivalo para sacarlo de los selectores sin tocar el historial.",
+    "deleteUnlinks": "Hay {n} adiciones vinculadas a este insumo. Si lo eliminás, quedan sin insumo.",
+    "col": {
+      "name": "Ingrediente",
+      "category": "Categoría",
+      "unit": "Unidad",
+      "cost": "Costo",
+      "usage": "Uso"
+    },
+    "usage": {
+      "see": "Ver dónde se usa",
+      "title": "{name} se usa en",
+      "none": "Todavía no lo usa ninguna receta.",
+      "addons": "Adiciones vinculadas"
+    },
+    "ingredient": {
+      "new": "Nuevo ingrediente",
+      "edit": "Editar ingrediente",
+      "name": "Nombre",
+      "namePlaceholder": "ej. Leche",
+      "category": "Categoría",
+      "categoryNone": "Sin categoría",
+      "unit": "Unidad",
+      "cost": "Costo por {unit}",
+      "costHint": "El costo por unidad × la cantidad de la receta es lo que da el costo de cada variante."
     }
   }
 }
