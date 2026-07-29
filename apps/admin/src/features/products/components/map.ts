@@ -2,7 +2,7 @@ import type { AppRouter } from "@loyalty/api";
 import type { ProductUpsertInput } from "@loyalty/api/features/products/write-schemas";
 import type { inferRouterOutputs } from "@trpc/server";
 
-import type { ProductDraft, ProductStatus } from "../data";
+import type { ProductDraft, ProductMedia, ProductStatus } from "../data";
 
 type AdminDetail = NonNullable<inferRouterOutputs<AppRouter>["menu"]["getAdmin"]>;
 
@@ -14,11 +14,14 @@ const slugPart = (s: string) =>
 const valueId = (optionId: string, label: string) => `${optionId}::${slugPart(label)}`;
 const variantId = (optionValueIds: string[]) => `var::${[...optionValueIds].sort().join("+")}`;
 
-/** Modifiers + images the editor UI doesn't manage yet — round-tripped verbatim
- *  through a save so an edit never wipes them. */
+/** The variant-scoped `product_image` row id, derived from the variant id so a
+ *  re-save updates the same row and unlinking the image deletes it. */
+const variantImageId = (vid: string) => `${vid}::img`;
+
+/** Modifiers the editor UI doesn't manage yet — round-tripped verbatim through a
+ *  save so an edit never wipes them. */
 export interface ProductPassthrough {
   modifierGroups: ProductUpsertInput["modifierGroups"];
-  images: ProductUpsertInput["images"];
 }
 
 /** API detail → the editor's client draft (+ the passthrough it must preserve). */
@@ -34,12 +37,29 @@ export function detailToDraft(d: AdminDetail): {
     for (const v of o.values) valueMeta.set(v.id, { optIdx, label: v.label });
   });
 
+  // Product-level photos are the editable media. A variant's image is a
+  // `product_image` row scoped to that variant; it's shown among the product
+  // photos so the picker can select it — appended at the end, never at index 0
+  // (that one is the "main" photo).
+  const media: ProductMedia[] = d.images
+    .filter((img) => img.variantId == null)
+    .map((img) => ({ id: img.id, emoji: "", url: img.url }));
+  const mediaIdByUrl = new Map(media.map((m) => [m.url, m.id]));
+  const mediaIdForUrl = (id: string, url: string) => {
+    const known = mediaIdByUrl.get(url);
+    if (known != null) return known;
+    media.push({ id, emoji: "", url });
+    mediaIdByUrl.set(url, id);
+    return id;
+  };
+
   const variants = d.variants.map((v) => {
     const combo: string[] = Array.from({ length: d.options.length }, () => "");
     for (const vid of v.optionValueIds) {
       const meta = valueMeta.get(vid);
       if (meta) combo[meta.optIdx] = meta.label;
     }
+    const own = d.images.find((img) => img.variantId === v.id);
     return {
       id: v.id,
       combo,
@@ -47,7 +67,7 @@ export function detailToDraft(d: AdminDetail): {
       promoPrice: v.promoPriceCents == null ? null : v.promoPriceCents / 100,
       sku: v.sku ?? "",
       stock: null as number | null,
-      image: null as string | null,
+      image: own ? mediaIdForUrl(own.id, own.url) : null,
       ingredients: v.ingredients.map((i) => ({
         ingredientId: i.ingredientId,
         quantity: i.quantity,
@@ -61,11 +81,7 @@ export function detailToDraft(d: AdminDetail): {
   const draft: ProductDraft = {
     name: d.name,
     description: d.description ?? "",
-    // Product-level photos become the editable media; variant-scoped images are
-    // preserved via passthrough (the UI doesn't manage those yet).
-    media: d.images
-      .filter((img) => img.variantId == null)
-      .map((img) => ({ id: img.id, emoji: "", url: img.url })),
+    media,
     videoUrl: "",
     currency: d.currency,
     price: d.basePriceCents / 100,
@@ -125,18 +141,17 @@ export function detailToDraft(d: AdminDetail): {
           sortOrder: mo.sortOrder,
         })),
       })),
-      // Only variant-scoped images round-trip here; product-level photos live in
-      // draft.media and are rebuilt on save.
-      images: d.images
-        .filter((img) => img.variantId != null)
-        .map((img) => ({
-          id: img.id,
-          url: img.url,
-          alt: img.alt,
-          variantId: img.variantId,
-          sortOrder: img.sortOrder,
-        })),
     },
+  };
+}
+
+/** Drop a photo from the draft and unlink every variant that pointed at it, so
+ *  no variant is left referencing media that no longer exists. */
+export function removeMediaFromDraft(draft: ProductDraft, mediaId: string): ProductDraft {
+  return {
+    ...draft,
+    media: draft.media.filter((m) => m.id !== mediaId),
+    variants: draft.variants.map((v) => (v.image === mediaId ? { ...v, image: null } : v)),
   };
 }
 
@@ -181,6 +196,21 @@ export function draftToUpsert(
         sortOrder: j,
       })),
     };
+  });
+
+  // A variant's image is a `product_image` row scoped to that variant, holding
+  // the url of the product photo it points at. Emoji-only media can't be stored
+  // (there's no url), so those selections produce no row.
+  const urlByMediaId = new Map(
+    draft.media.filter((m) => m.url).map((m) => [m.id, m.url as string]),
+  );
+  const variantImages = draft.variants.flatMap((v, i) => {
+    const vid = variants[i]?.id;
+    const url = v.image == null ? undefined : urlByMediaId.get(v.image);
+    if (vid == null || url == null) return [];
+    return [
+      { id: variantImageId(vid), url, alt: null, variantId: vid, sortOrder: i },
+    ];
   });
 
   return {
@@ -229,8 +259,8 @@ export function draftToUpsert(
           sortOrder: j,
         })),
       })),
-    // Product photos from the media UI (only uploaded ones have a url) + the
-    // preserved variant-scoped images.
+    // Product photos from the media UI (only uploaded ones have a url) + one
+    // row per variant that picked an image.
     images: [
       ...draft.media
         .filter((m) => m.url)
@@ -241,7 +271,7 @@ export function draftToUpsert(
           variantId: null,
           sortOrder: i,
         })),
-      ...passthrough.images,
+      ...variantImages,
     ],
   };
 }
