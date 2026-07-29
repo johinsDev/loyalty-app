@@ -52,7 +52,7 @@ export const ingredientToDraft = (i: IngredientRow): IngredientDraft => ({
   unit: (UNITS as readonly string[]).includes(i.unit)
     ? (i.unit as (typeof UNITS)[number])
     : "u",
-  costPerUnit: i.costPerUnitCents,
+  costPerUnit: i.costPerUnitCents / 100,
   categoryId: i.categoryId,
 });
 
@@ -95,7 +95,7 @@ export function IngredientEditorDialog({
     const payload = {
       name,
       unit: value.unit,
-      costPerUnitCents: value.costPerUnit ?? 0,
+      costPerUnitCents: Math.round((value.costPerUnit ?? 0) * 100),
       categoryId: value.categoryId,
     };
     try {
@@ -139,7 +139,11 @@ export function IngredientEditorDialog({
                 }
               >
                 <SelectTrigger className="h-10">
-                  <SelectValue />
+                  <SelectValue>
+                    {(v) =>
+                      categories.find((c) => c.id === v)?.name ?? t("ingredient.categoryNone")
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">{t("ingredient.categoryNone")}</SelectItem>

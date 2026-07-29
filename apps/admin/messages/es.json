@@ -1708,7 +1708,7 @@
       "addGroup": "Agregar grupo",
       "removeGroup": "Quitar grupo",
       "namePlaceholder": "Nombre del grupo (ej. Toppings)",
-      "defaultName": "adiciones",
+      "defaultName": "las adiciones",
       "emptyCatalog": "Todavía no tenés adiciones en el catálogo.",
       "goToCatalog": "Crear adiciones",
       "searchAddons": "Buscar adición…",
@@ -1716,7 +1716,7 @@
       "previewLabel": "Así lo va a ver el cliente",
       "previewRequired": "obligatorio",
       "previewOptional": "opcional",
-      "resolves": "Incluye {n} adiciones",
+      "resolves": "{n, plural, =0 {No incluye ninguna adición todavía} one {Incluye 1 adición} other {Incluye # adiciones}}",
       "source": {
         "label": "¿Qué adiciones ofrece?",
         "category": "Una categoría entera",
@@ -3217,8 +3217,8 @@
       "hint": "Agrupá las adiciones (ej. Proteínas, Vegetales) para poder ofrecer un grupo entero en un producto.",
       "placeholder": "Nombre de la categoría",
       "empty": "Todavía no hay categorías",
-      "members": "{n} adiciones",
-      "affects": "afecta {n} productos"
+      "members": "{n, plural, =0 {Sin adiciones} one {1 adición} other {# adiciones}}",
+      "affects": "{n, plural, one {afecta 1 producto} other {afecta # productos}}"
     }
   },
   "Ingredients": {
@@ -3242,7 +3242,7 @@
     "restore": "Restaurar",
     "rowActions": "Acciones",
     "loading": "Cargando…",
-    "usedIn": "{n} productos",
+    "usedIn": "{n, plural, one {1 producto} other {# productos}}",
     "saved": "Se guardó {name}",
     "created": "Se creó {name}",
     "deleted": "Se eliminó {name}",

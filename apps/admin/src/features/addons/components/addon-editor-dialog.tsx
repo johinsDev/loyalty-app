@@ -72,8 +72,9 @@ export const addonToDraft = (a: AddonRow): AddonDraft => ({
   id: a.id,
   name: a.name,
   description: a.description ?? "",
-  priceDelta: a.priceDeltaCents,
-  cost: a.costIsDerived ? undefined : a.costCents,
+  // CurrencyInput works in major units; the API speaks cents.
+  priceDelta: a.priceDeltaCents / 100,
+  cost: a.costIsDerived ? undefined : a.costCents / 100,
   ingredientId: a.ingredientId,
   ingredientQty: a.ingredientQty ?? undefined,
   categoryId: a.categoryId,
@@ -132,8 +133,8 @@ export function AddonEditorDialog({
     const payload = {
       name,
       description: value.description.trim() || null,
-      priceDeltaCents: value.priceDelta ?? 0,
-      costCents: value.cost ?? 0,
+      priceDeltaCents: Math.round((value.priceDelta ?? 0) * 100),
+      costCents: Math.round((value.cost ?? 0) * 100),
       ingredientId: value.ingredientId,
       ingredientQty: value.ingredientId ? (value.ingredientQty ?? 0) : null,
       categoryId: value.categoryId,
@@ -192,7 +193,11 @@ export function AddonEditorDialog({
                 }
               >
                 <SelectTrigger className="h-10">
-                  <SelectValue />
+                  <SelectValue>
+                    {(v) =>
+                      categories.find((c) => c.id === v)?.name ?? t("addon.categoryNone")
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">{t("addon.categoryNone")}</SelectItem>

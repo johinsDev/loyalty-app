@@ -2,7 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import type { SearchParams } from "nuqs/server";
 import { Suspense } from "react";
 
-import { DataTableSkeleton } from "@/components/data-table";
+import { DataTableSkeleton, SelectionProvider } from "@/components/data-table";
 import { IslandBoundary } from "@/components/island-boundary";
 import { IngredientsListHeader } from "@/features/ingredients/components/ingredients-list-header";
 import { IngredientsTable } from "@/features/ingredients/components/ingredients-table";
@@ -28,14 +28,18 @@ export default function ProductIngredientsPage({ params, searchParams }: Props) 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
       <IngredientsListHeader />
-      <IngredientsToolbar />
-      <div className="mt-4">
-        <IslandBoundary>
-          <Suspense fallback={<DataTableSkeleton columns={5} />}>
-            <IngredientsTableSection params={params} searchParams={searchParams} />
-          </Suspense>
-        </IslandBoundary>
-      </div>
+      {/* `ServerPagination` reads the selection context, so the provider has to
+          wrap the table hole even though these lists have no bulk actions yet. */}
+      <SelectionProvider>
+        <IngredientsToolbar />
+        <div className="mt-4">
+          <IslandBoundary>
+            <Suspense fallback={<DataTableSkeleton columns={5} />}>
+              <IngredientsTableSection params={params} searchParams={searchParams} />
+            </Suspense>
+          </IslandBoundary>
+        </div>
+      </SelectionProvider>
     </div>
   );
 }

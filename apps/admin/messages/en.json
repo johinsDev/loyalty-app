@@ -1708,7 +1708,7 @@
       "addGroup": "Add group",
       "removeGroup": "Remove group",
       "namePlaceholder": "Group name (e.g. Toppings)",
-      "defaultName": "add-ons",
+      "defaultName": "the add-ons",
       "emptyCatalog": "You don't have any add-ons in the catalog yet.",
       "goToCatalog": "Create add-ons",
       "searchAddons": "Search add-on…",
@@ -1716,7 +1716,7 @@
       "previewLabel": "This is what the customer sees",
       "previewRequired": "required",
       "previewOptional": "optional",
-      "resolves": "Includes {n} add-ons",
+      "resolves": "{n, plural, =0 {No add-ons included yet} one {Includes 1 add-on} other {Includes # add-ons}}",
       "source": {
         "label": "Which add-ons does it offer?",
         "category": "A whole category",
@@ -3217,8 +3217,8 @@
       "hint": "Group add-ons (e.g. Proteins, Vegetables) so a product can offer a whole group at once.",
       "placeholder": "Category name",
       "empty": "No categories yet",
-      "members": "{n} add-ons",
-      "affects": "affects {n} products"
+      "members": "{n, plural, =0 {No add-ons} one {1 add-on} other {# add-ons}}",
+      "affects": "{n, plural, one {affects 1 product} other {affects # products}}"
     }
   },
   "Ingredients": {
@@ -3242,7 +3242,7 @@
     "restore": "Restore",
     "rowActions": "Actions",
     "loading": "Loading…",
-    "usedIn": "{n} products",
+    "usedIn": "{n, plural, one {1 product} other {# products}}",
     "saved": "Saved {name}",
     "created": "Created {name}",
     "deleted": "Deleted {name}",
