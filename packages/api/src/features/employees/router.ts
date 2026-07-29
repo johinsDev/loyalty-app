@@ -206,7 +206,16 @@ export const employeesRouter = router({
     ),
   acceptInvitation: protectedProcedure
     .input(acceptInviteSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).acceptInvitation(actorOf(ctx), input.invitationId),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const result = await makeService(ctx.db).acceptInvitation(
+        actorOf(ctx),
+        input.invitationId,
+      );
+      // Accepting creates the `member` row, i.e. the caller stops being a plain
+      // customer. They were signed in to get here, so the auth guard has almost
+      // certainly cached their old role already — without this bust they'd be
+      // locked out of staff routes until it expired.
+      await bustRoles(ctx, ctx.session.user.id);
+      return result;
+    }),
 });

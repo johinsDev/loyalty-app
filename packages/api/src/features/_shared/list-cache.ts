@@ -67,7 +67,15 @@ export async function listVersion(
   orgId: string,
 ): Promise<string> {
   if (!ctx.cache) return "0";
-  return (await ctx.cache.get<string>(listVersionKey(entity, orgId))) ?? "0";
+  try {
+    return (await ctx.cache.get<string>(listVersionKey(entity, orgId))) ?? "0";
+  } catch {
+    // Fail open, like `cachedRead`. An unreachable cache must degrade an admin
+    // list to an uncached read, not 500 it. Falling back to "0" only risks
+    // reusing a pre-bump key, and `cachedRead` is about to bypass the cache
+    // anyway for the same reason.
+    return "0";
+  }
 }
 
 /** Bump an entity's list version so every cached list for that org is

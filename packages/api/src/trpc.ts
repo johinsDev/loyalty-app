@@ -174,13 +174,28 @@ export interface CacheBinding {
  * an entry. Fails open (runs `factory` uncached) when no store is bound
  * (CLI/tests). Short TTLs → aggregates tolerate ≤`ttlSeconds` of staleness.
  */
-export function cachedRead<T>(
-  ctx: { cache?: CacheBinding },
+export async function cachedRead<T>(
+  ctx: { cache?: CacheBinding; log?: LoggerBinding },
   key: string,
   ttlSeconds: number,
   factory: () => Promise<T>,
 ): Promise<T> {
-  return ctx.cache ? ctx.cache.getOrSet(key, factory, ttlSeconds) : factory();
+  if (!ctx.cache) return factory();
+  try {
+    return await ctx.cache.getOrSet(key, factory, ttlSeconds);
+  } catch (error) {
+    // Fail OPEN, never closed. `CacheStore.get` doesn't swallow provider
+    // errors, so an Upstash blip would otherwise throw — and since the org
+    // resolution (`createContext`) and the role gate (`enforceRole`) both run
+    // on the critical path of every request, that would take the whole app
+    // down rather than degrade it. A read-through cache must never be a hard
+    // dependency for a read.
+    ctx.log?.warn(
+      { event: "cache.error", key, err: error instanceof Error ? error.message : String(error) },
+      "cache read failed — falling back to the source",
+    );
+    return factory();
+  }
 }
 
 /**
