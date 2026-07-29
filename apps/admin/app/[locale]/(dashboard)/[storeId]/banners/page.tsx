@@ -3,6 +3,7 @@ import type { SearchParams } from "nuqs/server";
 import { Suspense } from "react";
 
 import { DataTableSkeleton, SelectionProvider } from "@/components/data-table";
+import { IslandBoundary } from "@/components/island-boundary";
 import { BannerDetailModalMount } from "@/features/banners/components/banner-detail-modal-mount";
 import { BannersBulkBar } from "@/features/banners/components/banners-bulk-bar";
 import { BannersListHeader } from "@/features/banners/components/banners-list-header";
@@ -29,9 +30,11 @@ export default function BannersPage({ params, searchParams }: Props) {
       <SelectionProvider>
         <BannersToolbar />
         <div className="mt-4">
-          <Suspense fallback={<DataTableSkeleton columns={7} />}>
-            <BannersTableSection params={params} searchParams={searchParams} />
-          </Suspense>
+          <IslandBoundary>
+            <Suspense fallback={<DataTableSkeleton columns={7} />}>
+              <BannersTableSection params={params} searchParams={searchParams} />
+            </Suspense>
+          </IslandBoundary>
         </div>
         <BannersBulkBar />
       </SelectionProvider>

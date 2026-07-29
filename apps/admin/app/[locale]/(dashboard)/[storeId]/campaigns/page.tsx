@@ -3,6 +3,7 @@ import type { SearchParams } from "nuqs/server";
 import { Suspense } from "react";
 
 import { DataTableSkeleton, SelectionProvider } from "@/components/data-table";
+import { IslandBoundary } from "@/components/island-boundary";
 import { CampaignDetailModalMount } from "@/features/campaigns/components/campaign-detail-modal-mount";
 import { CampaignsBulkBar } from "@/features/campaigns/components/campaigns-bulk-bar";
 import { CampaignsListHeader } from "@/features/campaigns/components/campaigns-list-header";
@@ -28,9 +29,11 @@ export default function CampaignsPage({ params, searchParams }: Props) {
       <SelectionProvider>
         <CampaignsToolbar />
         <div className="mt-4">
-          <Suspense fallback={<DataTableSkeleton columns={8} />}>
-            <CampaignsTableSection params={params} searchParams={searchParams} />
-          </Suspense>
+          <IslandBoundary>
+            <Suspense fallback={<DataTableSkeleton columns={8} />}>
+              <CampaignsTableSection params={params} searchParams={searchParams} />
+            </Suspense>
+          </IslandBoundary>
         </div>
         <CampaignsBulkBar />
       </SelectionProvider>

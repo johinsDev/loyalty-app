@@ -3,6 +3,7 @@ import type { SearchParams } from "nuqs/server";
 import { Suspense } from "react";
 
 import { DataTableSkeleton, SelectionProvider } from "@/components/data-table";
+import { IslandBoundary } from "@/components/island-boundary";
 import { EmployeeDetailModalMount } from "@/features/employees/components/employee-detail-modal-mount";
 import { EmployeesBulkBar } from "@/features/employees/components/employees-bulk-bar";
 import { EmployeesListHeader } from "@/features/employees/components/employees-list-header";
@@ -28,9 +29,11 @@ export default function EmployeesPage({ params, searchParams }: Props) {
       <SelectionProvider>
         <EmployeesToolbar />
         <div className="mt-4">
-          <Suspense fallback={<DataTableSkeleton columns={9} />}>
-            <EmployeesTableSection params={params} searchParams={searchParams} />
-          </Suspense>
+          <IslandBoundary>
+            <Suspense fallback={<DataTableSkeleton columns={9} />}>
+              <EmployeesTableSection params={params} searchParams={searchParams} />
+            </Suspense>
+          </IslandBoundary>
         </div>
         <EmployeesBulkBar />
       </SelectionProvider>

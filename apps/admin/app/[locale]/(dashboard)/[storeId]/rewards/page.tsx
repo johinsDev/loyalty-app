@@ -3,6 +3,7 @@ import type { SearchParams } from "nuqs/server";
 import { Suspense } from "react";
 
 import { DataTableSkeleton, SelectionProvider } from "@/components/data-table";
+import { IslandBoundary } from "@/components/island-boundary";
 import { RewardsListHeader } from "@/features/rewards/components/rewards-list-header";
 import { RewardsTable } from "@/features/rewards/components/rewards-table";
 import { RewardsToolbar } from "@/features/rewards/components/rewards-toolbar";
@@ -27,9 +28,11 @@ export default function RewardsPage({ params, searchParams }: Props) {
       <SelectionProvider>
         <RewardsToolbar />
         <div className="mt-4">
-          <Suspense fallback={<DataTableSkeleton columns={7} />}>
-            <RewardsTableSection params={params} searchParams={searchParams} />
-          </Suspense>
+          <IslandBoundary>
+            <Suspense fallback={<DataTableSkeleton columns={7} />}>
+              <RewardsTableSection params={params} searchParams={searchParams} />
+            </Suspense>
+          </IslandBoundary>
         </div>
       </SelectionProvider>
     </div>

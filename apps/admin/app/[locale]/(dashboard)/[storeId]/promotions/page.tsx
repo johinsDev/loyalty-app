@@ -3,6 +3,7 @@ import type { SearchParams } from "nuqs/server";
 import { Suspense } from "react";
 
 import { DataTableSkeleton, SelectionProvider } from "@/components/data-table";
+import { IslandBoundary } from "@/components/island-boundary";
 import { PromotionsListHeader } from "@/features/promotions/components/promotions-list-header";
 import { PromotionsTable } from "@/features/promotions/components/promotions-table";
 import { PromotionsToolbar } from "@/features/promotions/components/promotions-toolbar";
@@ -27,9 +28,11 @@ export default function PromotionsPage({ params, searchParams }: Props) {
       <SelectionProvider>
         <PromotionsToolbar />
         <div className="mt-4">
-          <Suspense fallback={<DataTableSkeleton columns={9} />}>
-            <PromotionsTableSection params={params} searchParams={searchParams} />
-          </Suspense>
+          <IslandBoundary>
+            <Suspense fallback={<DataTableSkeleton columns={9} />}>
+              <PromotionsTableSection params={params} searchParams={searchParams} />
+            </Suspense>
+          </IslandBoundary>
         </div>
       </SelectionProvider>
     </div>
