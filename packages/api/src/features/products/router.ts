@@ -10,9 +10,9 @@ import {
   rateLimit,
   router,
 } from "../../trpc";
-import { AddonsRepository } from "./addons-repository";
+import { AddonsRepository } from "../addons";
+import { IngredientsRepository } from "../ingredients";
 import { ProductsAdminRepository } from "./admin-repository";
-import { IngredientsRepository } from "./ingredients-repository";
 import { ProductsRepository } from "./repository";
 import {
   listInputSchema,
@@ -21,13 +21,12 @@ import {
   slugInputSchema,
 } from "./schemas";
 import { MenuService } from "./service";
+import { addonCreateSchema, addonUpdateSchema } from "../addons/schemas";
 import {
-  addonCreateSchema,
-  addonListInputSchema,
-  addonUpdateSchema,
   ingredientCreateSchema,
-  ingredientListInputSchema,
   ingredientUpdateSchema,
+} from "../ingredients/schemas";
+import {
   productAdminListInputSchema,
   productStatusSchema,
   productUpsertInputSchema,
@@ -41,6 +40,9 @@ export function buildMenuService(ctx: { db: typeof Db }): MenuService {
 }
 
 const idInput = z.object({ id: z.string().min(1) });
+const legacySearchInput = z
+  .object({ search: z.string().trim().max(80).optional() })
+  .default({});
 
 export const menuRouter = router({
   // ---- Admin CRUD (manager) -------------------------------------------------
@@ -73,11 +75,17 @@ export const menuRouter = router({
       new ProductsAdminRepository(ctx.db).adminList(await orgId(), input),
     ),
 
-  // ---- Ingredient catalog (manager) ----------------------------------------
+  // ---- Legacy catalog shims (manager) --------------------------------------
+  // The add-on and ingredient catalogs moved to their own features
+  // (`features/addons`, `features/ingredients`) with paginated, filterable
+  // lists. These delegates keep the existing admin screens working while they
+  // migrate to `addons.*` / `ingredients.*`; drop them once nothing calls them.
   ingredients: managerProcedure
-    .input(ingredientListInputSchema)
-    .query(async ({ ctx, input }) =>
-      new IngredientsRepository(ctx.db).list(await orgId(), input.search),
+    // `search` is accepted and ignored — callers all pass `{}` and filter
+    // client-side. Kept so the legacy call sites still type-check.
+    .input(legacySearchInput)
+    .query(async ({ ctx }) =>
+      new IngredientsRepository(ctx.db).listForPicker(await orgId()),
     ),
   ingredientCreate: managerProcedure
     .input(ingredientCreateSchema)
@@ -95,12 +103,18 @@ export const menuRouter = router({
       new IngredientsRepository(ctx.db).remove(await orgId(), input.id),
     ),
 
-  // ---- Add-on catalog (manager) --------------------------------------------
-  addons: managerProcedure
-    .input(addonListInputSchema)
-    .query(async ({ ctx, input }) =>
-      new AddonsRepository(ctx.db).list(await orgId(), input.search),
-    ),
+  addons: managerProcedure.input(legacySearchInput).query(async ({ ctx }) => {
+    const res = await new AddonsRepository(ctx.db).list(await orgId(), {
+      q: undefined,
+      page: 1,
+      perPage: 100,
+      sort: [],
+      categoryId: [],
+      active: [],
+      linked: [],
+    });
+    return res.rows;
+  }),
   addonCreate: managerProcedure
     .input(addonCreateSchema)
     .mutation(async ({ ctx, input }) =>
@@ -146,6 +160,13 @@ export const menuRouter = router({
     const id = await orgId();
     const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
     return buildMenuService(ctx).categories(id, lc);
+  }),
+
+  /** Roots with their sub-categories — the customer menu's two-row chip strip. */
+  categoryTree: publicProcedure.query(async ({ ctx }) => {
+    const id = await orgId();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    return buildMenuService(ctx).categoryTree(id, lc);
   }),
 
   // ---- Per-user favorites --------------------------------------------------

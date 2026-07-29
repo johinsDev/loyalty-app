@@ -1,5 +1,6 @@
 "use client";
 
+import { marginPct, variantCogsCents } from "@loyalty/api/features/_shared/cogs";
 import {
   Button,
   Checkbox,
@@ -63,7 +64,7 @@ export function RecipeEditor({
 
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
-  const [unit, setUnit] = useState("g");
+  const [unit, setUnit] = useState<(typeof UNITS)[number]>("g");
   const [cost, setCost] = useState<number | undefined>(undefined);
 
   const setVariant = (idx: number, next: Variant) =>
@@ -96,9 +97,11 @@ export function RecipeEditor({
   };
 
   const variantCost = (v: Variant) =>
-    v.ingredients.reduce(
-      (s, l) => s + l.quantity * (byId.get(l.ingredientId)?.costPerUnitCents ?? 0),
-      0,
+    variantCogsCents(
+      v.ingredients.map((l) => ({
+        quantity: l.quantity,
+        costPerUnitCents: byId.get(l.ingredientId)?.costPerUnitCents ?? 0,
+      })),
     );
 
   const onCreate = async () => {
@@ -125,7 +128,7 @@ export function RecipeEditor({
       {variants.map((v, idx) => {
         const c = variantCost(v);
         const price = Math.round(v.price * 100);
-        const margin = price > 0 ? Math.round(((price - c) / price) * 100) : null;
+        const margin = marginPct(price, c);
         return (
           <div key={v.id} className="border-border rounded-2xl border p-3.5">
             <div className="flex items-center justify-between gap-2">
@@ -291,7 +294,10 @@ export function RecipeEditor({
             </div>
             <div className="space-y-2">
               <Label className="text-xs">{t("recipe.unit")}</Label>
-              <Select value={unit} onValueChange={(v) => setUnit(v ?? "u")}>
+              <Select
+                value={unit}
+                onValueChange={(v) => setUnit((v as (typeof UNITS)[number]) ?? "u")}
+              >
                 <SelectTrigger size="lg" className="w-full text-sm">
                   <SelectValue />
                 </SelectTrigger>

@@ -6,7 +6,14 @@ import {
   type LocaleContext,
 } from "../_shared/localize";
 import type { ProductsRepository } from "./repository";
-import type { ListInput, MenuCard, MenuList, ProductDetail, SectionView } from "./schemas";
+import type {
+  ListInput,
+  MenuCard,
+  MenuCategoryNode,
+  MenuList,
+  ProductDetail,
+  SectionView,
+} from "./schemas";
 
 // Public menu reads are cached (the catalog rarely changes). Module singleton so
 // it survives across requests in a warm Worker isolate. Keys include the active
@@ -56,10 +63,18 @@ export class MenuService {
   categories(
     orgId: string,
     lc: LocaleContext,
-  ): Promise<{ id: string; slug: string; name: string }[]> {
+  ): Promise<{ id: string; slug: string; name: string; parentId: string | null }[]> {
     return cache.getOrSet(
       `menu:${orgId}:categories:${lc.locale}`,
       () => this.repo.categories(orgId, lc),
+      TTL_SECONDS,
+    );
+  }
+
+  categoryTree(orgId: string, lc: LocaleContext): Promise<MenuCategoryNode[]> {
+    return cache.getOrSet(
+      `menu:${orgId}:category-tree:${lc.locale}`,
+      () => this.repo.categoryTree(orgId, lc),
       TTL_SECONDS,
     );
   }
@@ -81,7 +96,7 @@ export class MenuService {
   async invalidate(orgId: string): Promise<void> {
     const keys: string[] = [];
     for (const locale of SUPPORTED_LOCALES) {
-      keys.push(`menu:${orgId}:categories:${locale}`);
+      keys.push(`menu:${orgId}:categories:${locale}`, `menu:${orgId}:category-tree:${locale}`);
       for (const currency of SUPPORTED_CURRENCIES) {
         const lc = `${locale}:${currency}`;
         keys.push(

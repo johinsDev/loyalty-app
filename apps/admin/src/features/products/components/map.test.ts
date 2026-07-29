@@ -33,6 +33,7 @@ function makeDetail(overrides: Partial<AdminDetail> = {}): AdminDetail {
     seoDescription: null,
     ogImageUrl: null,
     categoryIds: [],
+    primaryCategoryId: null,
     storeIds: null,
     options: [
       {

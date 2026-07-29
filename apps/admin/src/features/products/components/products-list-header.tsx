@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, buttonVariants } from "@loyalty/ui";
-import { FolderTree, Plus, PlusCircle } from "lucide-react";
+import { Carrot, FolderTree, Plus, PlusCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Link, useRouter } from "@/i18n/nav";
@@ -26,6 +26,14 @@ export function ProductsListHeader() {
         >
           <PlusCircle className="size-4" />
           {t("addon.title")}
+        </Button>
+        <Button
+          variant="outline"
+          className="h-10 gap-2 rounded-xl font-semibold"
+          onClick={() => router.push("/products/ingredients")}
+        >
+          <Carrot className="size-4" />
+          {t("ingredients.title")}
         </Button>
         <Button
           variant="outline"

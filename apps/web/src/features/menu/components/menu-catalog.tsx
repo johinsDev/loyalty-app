@@ -50,7 +50,7 @@ export function MenuCatalog() {
 
   const storeId = useActiveCustomerStoreId() ?? undefined;
 
-  const categories = useQuery(trpc.menu.categories.queryOptions());
+  const categoryTree = useQuery(trpc.menu.categoryTree.queryOptions());
   const sections = useQuery(trpc.menu.sections.queryOptions({ placement: "menu", storeId }));
 
   const list = useInfiniteQuery(
@@ -100,9 +100,22 @@ export function MenuCatalog() {
   const bannerSection = sections.data?.find((s) => s.kind === "banner");
   const featuredSection = sections.data?.find((s) => s.kind === "featured");
   const carouselSections = sections.data?.filter((s) => s.kind === "carousel") ?? [];
-  const chips = ["", ...(categories.data ?? []).map((c) => c.slug)];
-  const catName = (slug: string) =>
-    categories.data?.find((c) => c.slug === slug)?.name ?? slug;
+  const roots = categoryTree.data ?? [];
+  const chips = ["", ...roots.map((c) => c.slug)];
+  // A selected root reveals a second row with its sub-categories; selecting a
+  // leaf keeps its root chip active, since the leaf lives inside it.
+  const activeRoot =
+    roots.find((r) => r.slug === q.cat) ??
+    roots.find((r) => r.children.some((c) => c.slug === q.cat));
+  const subChips = activeRoot?.children ?? [];
+  const catName = (slug: string) => {
+    for (const root of roots) {
+      if (root.slug === slug) return root.name;
+      const child = root.children.find((c) => c.slug === slug);
+      if (child) return child.name;
+    }
+    return slug;
+  };
   const sectionName = (slug: string) =>
     sections.data?.find((s) => s.slug === slug)?.name ?? slug;
 
@@ -154,7 +167,8 @@ export function MenuCatalog() {
 
       <div className="scrollbar-hide -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {chips.map((cat) => {
-          const active = !q.section && q.cat === cat;
+          const active =
+            !q.section && (cat === "" ? q.cat === "" : activeRoot?.slug === cat);
           return (
             <button
               key={cat || "all"}
@@ -173,6 +187,31 @@ export function MenuCatalog() {
           );
         })}
       </div>
+
+      {/* Sub-categories of the selected root. Only appears when that root has
+          any, so a flat catalog looks exactly as it did before. */}
+      {subChips.length > 0 ? (
+        <div className="scrollbar-hide -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          {[activeRoot!.slug, ...subChips.map((c) => c.slug)].map((slug, i) => {
+            const active = q.cat === slug;
+            return (
+              <button
+                key={slug}
+                type="button"
+                onClick={() => void setQ({ cat: slug, section: null })}
+                aria-pressed={active}
+                className={`h-8 shrink-0 rounded-full px-3.5 text-xs font-bold whitespace-nowrap transition-colors ${
+                  active
+                    ? "bg-primary/15 text-primary"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {i === 0 ? t("allIn", { name: activeRoot!.name }) : catName(slug)}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       {/* Destacado (featured product) — below the filters, stays pinned. */}
       {featuredSection ? <FeaturedCard section={featuredSection} /> : null}

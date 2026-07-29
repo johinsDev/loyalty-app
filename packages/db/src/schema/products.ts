@@ -1,5 +1,6 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
+  type AnySQLiteColumn,
   index,
   integer,
   real,
@@ -16,6 +17,9 @@ import { customer } from "./loyalty";
 // Shopify model (options → variant combos with price + image); toppings are
 // separate "modifier groups" (add-ons with selection rules + price delta).
 
+// Two levels max: roots and their children. Only leaves accept products — a
+// category that gains a child stops being assignable, and its existing products
+// are moved to an auto-created "General" leaf (see CategoriesRepository.create).
 export const category = sqliteTable(
   "category",
   {
@@ -25,10 +29,21 @@ export const category = sqliteTable(
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
-    parentId: text("parent_id"),
+    parentId: text("parent_id").references((): AnySQLiteColumn => category.id, {
+      onDelete: "cascade",
+    }),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
+    description: text("description"),
     sortOrder: integer("sort_order").notNull().default(0),
+    // Soft-delete: promos/rewards/stamp rules reference categories by id inside
+    // JSON (no FK), so a hard delete would silently orphan those rules.
+    archivedAt: integer("archived_at", { mode: "timestamp" }),
+    // True when this row was archived as a side effect of archiving its parent.
+    // Restoring the parent revives only these, never manually-archived children.
+    archivedByParent: integer("archived_by_parent", { mode: "boolean" })
+      .notNull()
+      .default(false),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -38,6 +53,11 @@ export const category = sqliteTable(
   },
   (t) => ({
     slugPerOrg: uniqueIndex("category_slug_per_org_uq").on(t.organizationId, t.slug),
+    byOrgParentSort: index("category_org_parent_sort_idx").on(
+      t.organizationId,
+      t.parentId,
+      t.sortOrder,
+    ),
   }),
 );
 
@@ -107,9 +127,16 @@ export const productCategory = sqliteTable(
     categoryId: text("category_id")
       .notNull()
       .references(() => category.id, { onDelete: "cascade" }),
+    // A product can live in several categories, but revenue is attributed to
+    // exactly one — otherwise the per-category totals would exceed the business
+    // total. Reads fall back to the lowest `sortOrder` when no primary is set.
+    isPrimary: integer("is_primary", { mode: "boolean" }).notNull().default(false),
   },
   (t) => ({
     pk: uniqueIndex("product_category_uq").on(t.productId, t.categoryId),
+    onePrimaryPerProduct: uniqueIndex("product_primary_category_uq")
+      .on(t.productId)
+      .where(sql`${t.isPrimary} = 1`),
   }),
 );
 
@@ -213,6 +240,40 @@ export const modifierOption = sqliteTable("modifier_option", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
+// Taxonomy for the *supply* catalogs — add-ons ("Proteínas", "Vegetales") and
+// ingredients. Deliberately separate from `category`, which classifies PRODUCTS
+// for the storefront and carries its own `product_category` join: mixing
+// "Bebidas" with "Proteínas" in one table would leak a `kind` filter into every
+// existing product query. An add-on group can point at one of these, in which
+// case the group's membership is resolved dynamically at render time.
+export const catalogCategory = sqliteTable(
+  "catalog_category",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(), // addon | ingredient
+    name: text("name").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    namePerOrgKind: uniqueIndex("catalog_category_name_per_org_kind_uq").on(
+      t.organizationId,
+      t.kind,
+      t.name,
+    ),
+  }),
+);
+
 // Org-level ingredient catalog (recipes reference these). `costPerUnitCents` +
 // the recipe quantities drive COGS. Inventory/stock is a deferred Phase-2 concern.
 export const ingredient = sqliteTable(
@@ -227,6 +288,13 @@ export const ingredient = sqliteTable(
     name: text("name").notNull(),
     unit: text("unit").notNull().default("u"), // g | ml | u | …
     costPerUnitCents: integer("cost_per_unit_cents").notNull().default(0),
+    categoryId: text("category_id").references(() => catalogCategory.id, {
+      onDelete: "set null",
+    }),
+    // Retired from the pickers without touching history. Hard deletion stays
+    // blocked while any recipe references it (the FK below is `restrict`), so
+    // archiving is the only way to shelve an ingredient that has been used.
+    archivedAt: integer("archived_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -265,6 +333,10 @@ export const variantIngredient = sqliteTable(
   },
   (t) => ({
     byVariant: index("variant_ingredient_variant_idx").on(t.variantId),
+    // Powers the reverse lookup (ingredient → which products use it) behind the
+    // "usado en N productos" column and the pre-delete check. Without it that's
+    // a full scan of every recipe line on each ingredients-list request.
+    byIngredient: index("variant_ingredient_ingredient_idx").on(t.ingredientId),
   }),
 );
 
@@ -285,8 +357,18 @@ export const addon = sqliteTable(
     name: text("name").notNull(),
     description: text("description"),
     priceDeltaCents: integer("price_delta_cents").notNull().default(0),
+    // Manual cost, authoritative ONLY for add-ons with no linked ingredient
+    // (car wax, nail trim). When `ingredientId` is set the cost is derived from
+    // `ingredientQty × ingredient.costPerUnitCents` instead of typed by hand.
     costCents: integer("cost_cents").notNull().default(0),
     ingredientId: text("ingredient_id").references(() => ingredient.id, {
+      onDelete: "set null",
+    }),
+    // How much of the linked ingredient one unit of this add-on consumes (30 g
+    // of perlas). The unit of measure is the ingredient's — an add-on is a
+    // sellable thing, so a standalone `unit` on it would be decorative.
+    ingredientQty: real("ingredient_qty"),
+    categoryId: text("category_id").references(() => catalogCategory.id, {
       onDelete: "set null",
     }),
     sku: text("sku"),
@@ -306,42 +388,41 @@ export const addon = sqliteTable(
   },
   (t) => ({
     namePerOrg: uniqueIndex("addon_name_per_org_uq").on(t.organizationId, t.name),
-  }),
-);
-
-// Per-currency price override for an add-on (mirrors modifierOptionPrice).
-export const addonPrice = sqliteTable(
-  "addon_price",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    addonId: text("addon_id")
-      .notNull()
-      .references(() => addon.id, { onDelete: "cascade" }),
-    currency: text("currency").notNull(),
-    amountCents: integer("amount_cents").notNull(),
-  },
-  (t) => ({
-    uq: uniqueIndex("addon_price_uq").on(t.addonId, t.currency),
+    byCategory: index("addon_category_idx").on(t.categoryId),
   }),
 );
 
 // A group attaches a set of catalog add-ons to one product with selection rules.
-export const addonGroup = sqliteTable("addon_group", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  productId: text("product_id")
-    .notNull()
-    .references(() => product.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  selectionType: text("selection_type").notNull().default("multi"), // single | multi
-  minSelect: integer("min_select").notNull().default(0),
-  maxSelect: integer("max_select"),
-  required: integer("required", { mode: "boolean" }).notNull().default(false),
-  sortOrder: integer("sort_order").notNull().default(0),
-});
+//
+// Membership comes from one of two sources. `manual` = the explicit
+// `addon_group_item` rows (full control, per product). `category` = every
+// active add-on in `categoryId`, resolved at render time — so adding "Pollo" to
+// Proteínas publishes it on every product offering that group, which is the
+// point, and why the category editor warns how many products it affects.
+export const addonGroup = sqliteTable(
+  "addon_group",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    productId: text("product_id")
+      .notNull()
+      .references(() => product.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    source: text("source").notNull().default("manual"), // manual | category
+    categoryId: text("category_id").references(() => catalogCategory.id, {
+      onDelete: "set null",
+    }),
+    selectionType: text("selection_type").notNull().default("multi"), // single | multi
+    minSelect: integer("min_select").notNull().default(0),
+    maxSelect: integer("max_select"),
+    required: integer("required", { mode: "boolean" }).notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => ({
+    byProduct: index("addon_group_product_idx").on(t.productId),
+  }),
+);
 
 // Which catalog add-ons a group offers (price comes from the add-on catalog).
 export const addonGroupItem = sqliteTable(
@@ -436,6 +517,12 @@ export const categoryRelations = relations(category, ({ one, many }) => ({
     fields: [category.organizationId],
     references: [organization.id],
   }),
+  parent: one(category, {
+    fields: [category.parentId],
+    references: [category.id],
+    relationName: "categoryParent",
+  }),
+  children: many(category, { relationName: "categoryParent" }),
   products: many(productCategory),
 }));
 
@@ -491,9 +578,22 @@ export const productVariantRelations = relations(productVariant, ({ one, many })
   ingredients: many(variantIngredient),
 }));
 
-export const ingredientRelations = relations(ingredient, ({ many }) => ({
+export const catalogCategoryRelations = relations(catalogCategory, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [catalogCategory.organizationId],
+    references: [organization.id],
+  }),
+  addons: many(addon),
+  ingredients: many(ingredient),
+}));
+
+export const ingredientRelations = relations(ingredient, ({ one, many }) => ({
   variantLines: many(variantIngredient),
   addons: many(addon),
+  category: one(catalogCategory, {
+    fields: [ingredient.categoryId],
+    references: [catalogCategory.id],
+  }),
 }));
 
 export const addonRelations = relations(addon, ({ one, many }) => ({
@@ -505,21 +605,21 @@ export const addonRelations = relations(addon, ({ one, many }) => ({
     fields: [addon.ingredientId],
     references: [ingredient.id],
   }),
-  prices: many(addonPrice),
-  groupItems: many(addonGroupItem),
-}));
-
-export const addonPriceRelations = relations(addonPrice, ({ one }) => ({
-  addon: one(addon, {
-    fields: [addonPrice.addonId],
-    references: [addon.id],
+  category: one(catalogCategory, {
+    fields: [addon.categoryId],
+    references: [catalogCategory.id],
   }),
+  groupItems: many(addonGroupItem),
 }));
 
 export const addonGroupRelations = relations(addonGroup, ({ one, many }) => ({
   product: one(product, {
     fields: [addonGroup.productId],
     references: [product.id],
+  }),
+  category: one(catalogCategory, {
+    fields: [addonGroup.categoryId],
+    references: [catalogCategory.id],
   }),
   items: many(addonGroupItem),
 }));
@@ -650,6 +750,7 @@ export const categoryTranslation = sqliteTable(
       .references(() => category.id, { onDelete: "cascade" }),
     locale: text("locale").notNull(),
     name: text("name").notNull(),
+    description: text("description"),
   },
   (t) => ({
     uq: uniqueIndex("category_translation_uq").on(t.categoryId, t.locale),
@@ -724,9 +825,9 @@ export type ProductVariantRow = typeof productVariant.$inferSelect;
 export type ProductImageRow = typeof productImage.$inferSelect;
 export type ModifierGroupRow = typeof modifierGroup.$inferSelect;
 export type ModifierOptionRow = typeof modifierOption.$inferSelect;
+export type CatalogCategoryRow = typeof catalogCategory.$inferSelect;
 export type AddonRow = typeof addon.$inferSelect;
 export type AddonInsert = typeof addon.$inferInsert;
-export type AddonPriceRow = typeof addonPrice.$inferSelect;
 export type AddonGroupRow = typeof addonGroup.$inferSelect;
 export type AddonGroupItemRow = typeof addonGroupItem.$inferSelect;
 export type SectionRow = typeof section.$inferSelect;

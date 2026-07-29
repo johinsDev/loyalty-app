@@ -9,8 +9,17 @@ const COP = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
 });
 const NUM = new Intl.NumberFormat("es-CO");
+/** Compact form for tight spots — a full COP amount overflows a donut's hole. */
+const COP_COMPACT = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "COP",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
 
 export const fmtCop = (cents: number): string => COP.format(Math.round(cents) / 100);
+export const fmtCopCompact = (cents: number): string =>
+  COP_COMPACT.format(Math.round(cents) / 100);
 export const fmtNum = (n: number): string => NUM.format(n);
 
 export const initialsOf = (name: string): string =>

@@ -1,5 +1,6 @@
 import type { db as Db } from "@loyalty/db";
 import {
+  category,
   customer,
   ingredient,
   loyaltyCard,
@@ -8,6 +9,7 @@ import {
   pointsAccount,
   pointsTransaction,
   product,
+  productCategory,
   promo,
   purchase,
   purchaseItem,
@@ -23,6 +25,7 @@ import {
   computeDeltaPct,
   PERIOD_DAYS,
   type AtRiskRow,
+  type CategorySalesRow,
   type CohortsView,
   type FunnelView,
   type NavCounts,
@@ -482,6 +485,123 @@ export class DashboardRepository {
         marginPct: rev > 0 && cogs > 0 ? Math.round(((rev - cogs) / rev) * 100) : null,
       };
     });
+  }
+
+  /**
+   * Revenue mix by **root** category. Two things keep the arithmetic honest:
+   *
+   * - each product contributes to exactly one category (`is_primary`, falling
+   *   back to the lowest `sort_order` so the figures are right even before the
+   *   backfill script runs) — otherwise a product filed under two categories
+   *   would be counted twice and the slices would exceed 100%;
+   * - sub-category sales are folded into their root, because that is the level
+   *   the owner thinks in ("how much of the business is Milk Tea?").
+   *
+   * Slices past `limit` collapse into one "rest" row (`categoryId: null` is
+   * reserved for genuinely uncategorised sales, so the caller labels by id).
+   */
+  async categoryMix(
+    orgId: string,
+    period: Period,
+    limit: number,
+    now = new Date(),
+  ): Promise<CategorySalesRow[]> {
+    const start = daysAgo(now, PERIOD_DAYS[period]);
+
+    const ranked = this.db
+      .select({
+        productId: productCategory.productId,
+        // Fold a leaf into its root; a root is its own bucket.
+        rootId: sql<string>`coalesce(${category.parentId}, ${category.id})`.as("root_id"),
+        rn: sql<number>`row_number() over (
+          partition by ${productCategory.productId}
+          order by ${productCategory.isPrimary} desc, ${category.sortOrder} asc
+        )`.as("rn"),
+      })
+      .from(productCategory)
+      .innerJoin(category, eq(category.id, productCategory.categoryId))
+      .where(eq(category.organizationId, orgId))
+      .as("ranked");
+
+    const primaryRoot = this.db
+      .select({ productId: ranked.productId, rootId: ranked.rootId })
+      .from(ranked)
+      .where(eq(ranked.rn, 1))
+      .as("primary_root");
+
+    const variantCogs = this.db
+      .select({
+        variantId: variantIngredient.variantId,
+        cost: sql<number>`sum(${variantIngredient.quantity} * ${ingredient.costPerUnitCents})`.as(
+          "cost",
+        ),
+      })
+      .from(variantIngredient)
+      .innerJoin(ingredient, eq(ingredient.id, variantIngredient.ingredientId))
+      .groupBy(variantIngredient.variantId)
+      .as("variant_cogs");
+
+    const revenue = sql<number>`sum(${purchaseItem.qty} * ${purchaseItem.unitAmountCents})`;
+    const rows = await this.db
+      .select({
+        categoryId: primaryRoot.rootId,
+        name: category.name,
+        units: sql<number>`sum(${purchaseItem.qty})`,
+        revenue,
+        cogs: sql<number>`sum(${purchaseItem.qty} * coalesce(${variantCogs.cost}, 0))`,
+      })
+      .from(purchaseItem)
+      .innerJoin(purchase, eq(purchase.id, purchaseItem.purchaseId))
+      .leftJoin(primaryRoot, eq(primaryRoot.productId, purchaseItem.productId))
+      .leftJoin(category, eq(category.id, primaryRoot.rootId))
+      .leftJoin(variantCogs, eq(variantCogs.variantId, purchaseItem.variantId))
+      .where(
+        and(
+          eq(purchase.organizationId, orgId),
+          isNull(purchase.voidedAt),
+          ...this.purchaseStoreCond,
+          gte(purchase.createdAt, start),
+        ),
+      )
+      // `rootId` is a computed alias, so it needs an explicit SQL reference here.
+      .groupBy(sql`${primaryRoot.rootId}`)
+      .orderBy(desc(revenue));
+
+    const total = rows.reduce((sum, r) => sum + Number(r.revenue ?? 0), 0);
+    const shaped = rows.map((r) => {
+      const rev = Math.round(Number(r.revenue ?? 0));
+      const cogs = Math.round(Number(r.cogs ?? 0));
+      return {
+        categoryId: r.categoryId ?? null,
+        name: r.name ?? null,
+        units: Number(r.units ?? 0),
+        revenueCents: rev,
+        cogsCents: cogs,
+        marginPct: rev > 0 && cogs > 0 ? Math.round(((rev - cogs) / rev) * 100) : null,
+        sharePct: total === 0 ? 0 : Math.round((rev / total) * 1000) / 10,
+      };
+    });
+
+    if (shaped.length <= limit) return shaped;
+    const head = shaped.slice(0, limit);
+    const rest = shaped.slice(limit);
+    const restRevenue = rest.reduce((s, r) => s + r.revenueCents, 0);
+    const restCogs = rest.reduce((s, r) => s + r.cogsCents, 0);
+    return [
+      ...head,
+      {
+        categoryId: "__rest__",
+        name: null,
+        units: rest.reduce((s, r) => s + r.units, 0),
+        revenueCents: restRevenue,
+        cogsCents: restCogs,
+        marginPct:
+          restRevenue > 0 && restCogs > 0
+            ? Math.round(((restRevenue - restCogs) / restRevenue) * 100)
+            : null,
+        sharePct: total === 0 ? 0 : Math.round((restRevenue / total) * 1000) / 10,
+      },
+    ];
   }
 
   /** Weekly retention cohorts: group customers by their first-purchase week,

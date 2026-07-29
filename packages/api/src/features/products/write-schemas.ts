@@ -132,6 +132,11 @@ const addonGroupInput = z.object({
   id: z.string().min(1),
   // Optional — an unnamed group falls back to a default header at the register.
   name: z.string().max(60).default(""),
+  // `manual` = the explicit `items` below. `category` = every active add-on in
+  // `categoryId`, resolved at render time, so adding one to the category
+  // publishes it on every product offering this group.
+  source: z.enum(["manual", "category"]).default("manual"),
+  categoryId: z.string().min(1).nullish(),
   selectionType: z.enum(["single", "multi"]).default("multi"),
   minSelect: z.number().int().min(0).default(0),
   maxSelect: z.number().int().min(1).nullish(),
@@ -170,6 +175,9 @@ export const productUpsertInputSchema = z.object({
   seoDescription: z.string().max(320).nullish(),
   ogImageUrl: z.string().url().nullish().or(z.literal("")),
   categoryIds: z.array(z.string().min(1)).default([]),
+  // Which of `categoryIds` owns this product's revenue in the per-category
+  // reports. Must be one of them; the server falls back to the first when unset.
+  primaryCategoryId: z.string().min(1).nullish(),
   // Stores this product is available at (null/empty = every store). Only
   // persisted when present in the input.
   storeIds: z.array(z.string()).nullable().optional(),
@@ -238,6 +246,7 @@ export interface ProductAdminDetail {
   seoDescription: string | null;
   ogImageUrl: string | null;
   categoryIds: string[];
+  primaryCategoryId: string | null;
   storeIds: string[] | null;
   options: { id: string; name: string; sortOrder: number; values: { id: string; label: string; sortOrder: number }[] }[];
   variants: {
@@ -276,6 +285,8 @@ export interface ProductAdminDetail {
   addonGroups: {
     id: string;
     name: string;
+    source: "manual" | "category";
+    categoryId: string | null;
     selectionType: string;
     minSelect: number;
     maxSelect: number | null;

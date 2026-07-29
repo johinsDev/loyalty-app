@@ -195,6 +195,35 @@ export const purchaseItem = sqliteTable(
   },
   (t) => ({
     byPurchase: index("purchase_item_purchase_idx").on(t.purchaseId),
+    // Per-product / per-category revenue aggregates scan by product.
+    byProduct: index("purchase_item_product_idx").on(t.productId),
+  }),
+);
+
+// Add-ons applied to a line, snapshotted at sale time. Supersedes the id-only
+// `purchase_item.addon_ids`, which forced the purchase detail to re-resolve
+// names against the *current* catalog: renaming an add-on rewrote old tickets
+// and deleting one dropped the label entirely. Name/price/cost are frozen here
+// so a receipt and its margin stay what they were. `addonId` is kept for
+// attribution but goes null if the catalog entry is removed.
+export const purchaseItemAddon = sqliteTable(
+  "purchase_item_addon",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    purchaseItemId: text("purchase_item_id")
+      .notNull()
+      .references(() => purchaseItem.id, { onDelete: "cascade" }),
+    addonId: text("addon_id"),
+    name: text("name").notNull(),
+    priceCents: integer("price_cents").notNull().default(0),
+    costCents: integer("cost_cents").notNull().default(0),
+    qty: integer("qty").notNull().default(1),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => ({
+    byItem: index("purchase_item_addon_item_idx").on(t.purchaseItemId),
   }),
 );
 
@@ -230,6 +259,8 @@ export const promoRedemption = sqliteTable(
 );
 
 export type PurchaseItemRow = typeof purchaseItem.$inferSelect;
+export type PurchaseItemAddonRow = typeof purchaseItemAddon.$inferSelect;
+export type PurchaseItemAddonInsert = typeof purchaseItemAddon.$inferInsert;
 export type PurchaseItemInsert = typeof purchaseItem.$inferInsert;
 export type PromoRedemptionRow = typeof promoRedemption.$inferSelect;
 
