@@ -1,5 +1,5 @@
 import type { db as Db } from "@loyalty/db";
-import { addon, addonGroup, catalogCategory, ingredient } from "@loyalty/db/schema";
+import { catalogCategory } from "@loyalty/db/schema";
 import { and, asc, eq, sql } from "drizzle-orm";
 
 import type {
@@ -19,13 +19,18 @@ export class CatalogCategoriesRepository {
    * membership through here at render time.
    */
   async list(orgId: string, kind: CatalogCategoryKind): Promise<CatalogCategoryRow[]> {
+    // NOTE: the column references here are written out fully qualified on
+    // purpose. Interpolating drizzle column objects into a raw `sql` template
+    // renders them UNQUALIFIED (`where "category_id" = "id"`), which inside a
+    // correlated subquery silently binds "id" to the inner table and makes
+    // every count come back 0.
     const memberExpr =
       kind === "addon"
-        ? sql<number>`(select count(*) from ${addon} where ${addon.categoryId} = ${catalogCategory.id})`
-        : sql<number>`(select count(*) from ${ingredient} where ${ingredient.categoryId} = ${catalogCategory.id})`;
+        ? sql<number>`(select count(*) from "addon" where "addon"."category_id" = "catalog_category"."id")`
+        : sql<number>`(select count(*) from "ingredient" where "ingredient"."category_id" = "catalog_category"."id")`;
     const productExpr =
       kind === "addon"
-        ? sql<number>`(select count(distinct ${addonGroup.productId}) from ${addonGroup} where ${addonGroup.categoryId} = ${catalogCategory.id})`
+        ? sql<number>`(select count(distinct "addon_group"."product_id") from "addon_group" where "addon_group"."category_id" = "catalog_category"."id")`
         : sql<number>`0`;
 
     const rows = await this.db

@@ -27,11 +27,14 @@ export class IngredientsRepository {
   /** Distinct products per ingredient. Relies on
    *  `variant_ingredient_ingredient_idx` — without it this is a full scan. */
   private productCountExpr() {
+    // Fully qualified on purpose: interpolating drizzle column objects into a
+    // raw `sql` template renders them UNQUALIFIED, so the correlated reference
+    // to the outer `ingredient.id` would bind to an inner table and return 0.
     return sql<number>`(
-      select count(distinct ${productVariant.productId})
-      from ${variantIngredient}
-      join ${productVariant} on ${productVariant.id} = ${variantIngredient.variantId}
-      where ${variantIngredient.ingredientId} = ${ingredient.id}
+      select count(distinct "product_variant"."product_id")
+      from "variant_ingredient"
+      join "product_variant" on "product_variant"."id" = "variant_ingredient"."variant_id"
+      where "variant_ingredient"."ingredient_id" = "ingredient"."id"
     )`;
   }
 
