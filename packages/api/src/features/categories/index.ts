@@ -1,7 +1,6 @@
 export { categoriesRouter } from "./router";
 export { CategoriesRepository } from "./repository";
 export {
-  CATEGORY_MAX_DEPTH,
   CATEGORY_PERIOD_DAYS,
   categoryCreateSchema,
   categoryIdSchema,

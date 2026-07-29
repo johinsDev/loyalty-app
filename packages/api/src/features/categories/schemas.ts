@@ -24,9 +24,6 @@ export const CATEGORY_PERIOD_DAYS: Record<CategoryPeriod, number> = {
   "90d": 90,
 };
 
-/** Max depth of the hierarchy: a root and one level of children. */
-export const CATEGORY_MAX_DEPTH = 2;
-
 export const categoryTreeInputSchema = z.object({
   search: z.string().trim().max(120).optional(),
   status: categoryStatusFilter.default("active"),

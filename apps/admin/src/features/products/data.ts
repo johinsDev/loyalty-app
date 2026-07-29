@@ -1,39 +1,8 @@
 // Hardcoded product catalog for the design-first Productos CRUD — a structured,
-// ecommerce-style model (Shopify/Tiendanube): categories with subcategories +
-// order, products with options→variants (price/sku/stock), multiple categories,
-// media, prices, inventory, codes, shipping, marketing meta + SEO. Seam: the
-// Phase A product catalog + storage channel for media. Prices are numbers.
-
-// ── Categories (tree + order) ───────────────────────────────────────────────
-
-export type Subcategory = { id: string; name: string };
-export type Category = {
-  id: string;
-  name: string;
-  subcategories: Subcategory[];
-};
-
-export const categories: Category[] = [
-  {
-    id: "c_milk",
-    name: "Milk Tea",
-    subcategories: [
-      { id: "s_classic", name: "Clásicos" },
-      { id: "s_brown", name: "Brown Sugar" },
-    ],
-  },
-  {
-    id: "c_fruit",
-    name: "Fruit Tea",
-    subcategories: [{ id: "s_citrus", name: "Cítricos" }],
-  },
-  { id: "c_specialty", name: "Especialidades", subcategories: [] },
-  {
-    id: "c_toppings",
-    name: "Toppings",
-    subcategories: [{ id: "s_boba", name: "Boba" }],
-  },
-];
+// ecommerce-style model (Shopify/Tiendanube): products with options→variants
+// (price/sku/stock), media, prices, inventory, codes, shipping, marketing meta +
+// SEO. Prices are numbers. Categories are NOT here: they are real rows, read
+// through `categories.tree` / `menu.categories`.
 
 // ── Products ────────────────────────────────────────────────────────────────
 
@@ -105,6 +74,9 @@ export type ProductDraft = {
   ageRange: string;
   gender: string;
   categoryIds: string[];
+  /** Which of `categoryIds` owns this product's revenue in the per-category
+   *  reports. Null = let the server pick the first. */
+  primaryCategoryId: string | null;
   /** Stores this product is available at (null = every store). */
   storeIds: string[] | null;
   featuredSections: string[];
@@ -173,6 +145,7 @@ export const emptyProductDraft: ProductDraft = {
   ageRange: "all",
   gender: "unisex",
   categoryIds: [],
+  primaryCategoryId: null,
   storeIds: null,
   featuredSections: [],
   tags: [],

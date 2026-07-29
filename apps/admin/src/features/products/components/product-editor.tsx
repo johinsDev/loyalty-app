@@ -69,7 +69,7 @@ import {
   type ProductType,
   type StockMode,
 } from "../data";
-import { CategoriesManager } from "./categories-view";
+import { CategoryPickerModal } from "./category-picker-modal";
 import { detailToDraft, draftToUpsert, type ProductPassthrough } from "./map";
 import { AddonGroupsEditor } from "./addon-groups-editor";
 import { RecipeEditor } from "./recipe-editor";
@@ -101,6 +101,7 @@ type Step = (typeof STEPS)[number];
  */
 export function ProductEditor({ id }: { id?: string }) {
   const t = useTranslations("Products");
+  const tCat = useTranslations("Products.cat");
   const locale = useLocale();
   const router = useRouter();
   const trpc = useTRPC();
@@ -848,31 +849,44 @@ export function ProductEditor({ id }: { id?: string }) {
             <p className="text-muted-foreground text-sm font-semibold">
               {t("categoriesHint")}
             </p>
-            <div className="flex flex-wrap gap-1.5">
-              {realCategories.map((c) => {
-                const on = draft.categoryIds.includes(c.id);
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() =>
-                      set(
-                        "categoryIds",
-                        on
-                          ? draft.categoryIds.filter((x) => x !== c.id)
-                          : [...draft.categoryIds, c.id],
-                      )
-                    }
-                    className={`h-8 rounded-full px-3 text-xs font-bold transition-colors ${
-                      on
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                );
-              })}
+            {/* The chips show what's applied; picking/creating happens in the
+                modal, so the whole catalog isn't dumped into the form. */}
+            <div className="border-border bg-muted/20 flex min-h-14 flex-wrap items-center gap-1.5 rounded-2xl border p-3">
+              {draft.categoryIds.length === 0 ? (
+                <span className="text-muted-foreground text-sm font-semibold">
+                  {t("categoriesEmpty")}
+                </span>
+              ) : (
+                draft.categoryIds.map((id) => {
+                  const label = realCategories.find((c) => c.id === id)?.label ?? id;
+                  const isPrimary = draft.primaryCategoryId === id;
+                  return (
+                    <span
+                      key={id}
+                      className="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full py-1 pr-1 pl-3 text-xs font-bold"
+                    >
+                      {label}
+                      {isPrimary ? (
+                        <span className="bg-primary/20 rounded-full px-1.5 py-0.5 text-[10px] uppercase">
+                          {tCat("primaryBadge")}
+                        </span>
+                      ) : null}
+                      <button
+                        type="button"
+                        aria-label={tCat("remove", { name: label })}
+                        className="hover:bg-primary/20 grid size-5 place-items-center rounded-full"
+                        onClick={() => {
+                          const next = draft.categoryIds.filter((x) => x !== id);
+                          set("categoryIds", next);
+                          if (isPrimary) set("primaryCategoryId", next[0] ?? null);
+                        }}
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  );
+                })
+              )}
             </div>
             <button
               type="button"
@@ -880,7 +894,7 @@ export function ProductEditor({ id }: { id?: string }) {
               className="text-primary inline-flex items-center gap-1.5 text-sm font-bold"
             >
               <FolderTree className="size-4" />
-              {t("manageCategories")}
+              {t("editSelection")}
             </button>
           </Block>
 
@@ -1101,26 +1115,18 @@ export function ProductEditor({ id }: { id?: string }) {
         </Block>
       )}
 
-      {/* Categories manager — in a modal so the product draft isn't lost */}
-      <ResponsiveModal open={categoriesOpen} onOpenChange={setCategoriesOpen}>
-        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-2xl">
-          <div className="flex flex-col px-6 pt-2 pb-6">
-            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
-              {t("cat.title")}
-            </ResponsiveModalTitle>
-            <ResponsiveModalDescription className="text-muted-foreground mt-1 mb-4 text-sm">
-              {t("cat.subtitle")}
-            </ResponsiveModalDescription>
-            <CategoriesManager />
-            <Button
-              className="mt-4 h-10 w-full rounded-xl font-semibold"
-              onClick={() => setCategoriesOpen(false)}
-            >
-              {t("done")}
-            </Button>
-          </div>
-        </ResponsiveModalContent>
-      </ResponsiveModal>
+      {/* Pick + manage categories without leaving the draft. Selection applies on
+          "Aplicar"; create/rename/archive write through immediately. */}
+      <CategoryPickerModal
+        open={categoriesOpen}
+        onOpenChange={setCategoriesOpen}
+        selectedIds={draft.categoryIds}
+        primaryId={draft.primaryCategoryId}
+        onApply={(ids, primaryId) => {
+          set("categoryIds", ids);
+          set("primaryCategoryId", primaryId);
+        }}
+      />
 
       {/* Variant image picker — pick a product image, upload a custom one, or clear */}
       <ResponsiveModal

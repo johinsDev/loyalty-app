@@ -75,6 +75,18 @@ const TIER_COLORS: Record<string, string> = {
   oro: "#f0a868",
 };
 
+/** Categorical ramp for the category mix — brand primary first, then decreasing
+ *  tints plus two accents, so 6 slices stay distinguishable in light and dark. */
+const CATEGORY_COLORS = [
+  "var(--primary)",
+  "color-mix(in srgb, var(--primary) 70%, #fff)",
+  "color-mix(in srgb, var(--primary) 45%, #fff)",
+  "#f0a868",
+  "#7fb3a2",
+  "color-mix(in srgb, var(--primary) 25%, #fff)",
+  "#c7cdd4",
+];
+
 /** Tier distribution donut — a full card (its subtitle needs the streak count). */
 export async function TierCard() {
   const t = await getTranslations("Dashboard");
@@ -318,6 +330,48 @@ export async function TopProducts({ period, storeId }: WidgetProps) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Where the money comes from, by category. Sub-category sales fold into their
+ * root and each product is attributed to exactly one category, so the slices add
+ * up to the window's revenue instead of double-counting a product filed in two.
+ */
+export async function CategoryMix({ period, storeId }: WidgetProps) {
+  const t = await getTranslations("Dashboard");
+  const rows = await (await trpc()).dashboard.categoryMix({ period, limit: 6, storeId });
+  const total = rows.reduce((sum, r) => sum + r.revenueCents, 0);
+  if (rows.length === 0 || total === 0) {
+    return <p className="text-muted-foreground py-4 text-sm font-semibold">{t("noData")}</p>;
+  }
+
+  const labelOf = (row: (typeof rows)[number]) =>
+    row.name ?? (row.categoryId === "__rest__" ? t("categoryRest") : t("categoryNone"));
+
+  const slices = rows.map((r, i) => ({
+    key: labelOf(r),
+    pct: r.sharePct,
+    color: CATEGORY_COLORS[i % CATEGORY_COLORS.length]!,
+  }));
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-4">
+      <Donut slices={slices} center={fmtCop(total)} centerSub={t("revenueShort")} />
+      <ul className="min-w-48 flex-1 space-y-2 text-sm">
+        {rows.map((r, i) => (
+          <li key={r.categoryId ?? "none"} className="flex items-center gap-2">
+            <span
+              className="size-2.5 flex-none rounded-full"
+              style={{ background: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}
+            />
+            <span className="min-w-0 flex-1 truncate">{labelOf(r)}</span>
+            <span className="tabular-nums">{fmtCop(r.revenueCents)}</span>
+            <span className="w-10 text-right font-bold tabular-nums">{r.sharePct}%</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

@@ -90,8 +90,12 @@ export const topProductsInputSchema = z.object({
   limit: z.number().int().min(1).max(50).default(8),
   ...storeScope,
 });
-/** Same shape; `limit` caps the named slices, the rest collapse into "Otras". */
-export const categoryMixInputSchema = topProductsInputSchema;
+/** `limit` caps the named slices; everything past it collapses into one row. */
+export const categoryMixInputSchema = z.object({
+  period: periodSchema.default("30d"),
+  limit: z.number().int().min(1).max(50).default(8),
+  ...storeScope,
+});
 
 /** A customer who hasn't purchased in `days` — a churn/win-back candidate. */
 export interface AtRiskRow {
