@@ -23,6 +23,7 @@ import {
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, getTableColumns, gt, gte, inArray, isNull, like, lt, lte, or, sql, type SQL } from "drizzle-orm";
 
+import { loadCategoryAncestry, withAncestors } from "../_shared/category-tree";
 import { buildOrderBy, pageCountOf, pageOffset, type ListResult } from "../_shared/list";
 import type { LocaleContext } from "../_shared/localize";
 import { availableAtStore } from "../_shared/store-availability";
@@ -562,18 +563,31 @@ export class PromoRepository {
     return map;
   }
 
-  /** category ids per product (to match category-scoped promos against a cart). */
-  async productCategories(productIds: string[]): Promise<Map<string, string[]>> {
+  /**
+   * Category ids per product (to match category-scoped promos against a cart).
+   * Includes each leaf's **parent**, so a promo written against "Milk Tea" still
+   * applies to a product filed under "Milk Tea › Premium".
+   */
+  async productCategories(
+    orgId: string,
+    productIds: string[],
+  ): Promise<Map<string, string[]>> {
     const map = new Map<string, string[]>();
     if (productIds.length === 0) return map;
-    const rows = await this.db
-      .select({ productId: productCategory.productId, categoryId: productCategory.categoryId })
-      .from(productCategory)
-      .where(inArray(productCategory.productId, productIds));
+    const [rows, ancestry] = await Promise.all([
+      this.db
+        .select({ productId: productCategory.productId, categoryId: productCategory.categoryId })
+        .from(productCategory)
+        .where(inArray(productCategory.productId, productIds)),
+      loadCategoryAncestry(this.db, orgId, { includeArchived: true }),
+    ]);
     for (const r of rows) {
       const arr = map.get(r.productId) ?? [];
       arr.push(r.categoryId);
       map.set(r.productId, arr);
+    }
+    for (const [productId, ids] of map) {
+      map.set(productId, withAncestors(ancestry, ids));
     }
     return map;
   }

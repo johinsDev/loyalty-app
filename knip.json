@@ -104,6 +104,7 @@
         "src/seed-rewards.ts",
         "src/reset-test.ts",
         "src/backfill-customers.ts",
+        "src/backfill-primary-category.ts",
         "src/seed-i18n.ts",
         "src/seed-onboarding.ts"
       ]

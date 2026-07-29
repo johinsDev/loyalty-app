@@ -315,6 +315,19 @@ export default function DashboardPage({ params, searchParams }: Props) {
             />
           </Hole>
         </ChartCard>
+        <ChartCard
+          title={<DText k="categoryMixTitle" />}
+          subtitle={<DText k="categoryMixSubtitle" />}
+        >
+          <Hole fallback={<ListSkeletonRows rows={5} />}>
+            <Widget
+              {...box}
+              keyed
+              fallback={<ListSkeletonRows rows={5} />}
+              render={(wp) => <W.CategoryMix {...wp} />}
+            />
+          </Hole>
+        </ChartCard>
         <ChartCard title={<DText k="salesByStoreTitle" />}>
           <Hole fallback={<ListSkeletonRows rows={3} />}>
             <Widget

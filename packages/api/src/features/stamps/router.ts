@@ -137,7 +137,7 @@ export const stampsRouter = router({
       const enriched = await enrichCart(promoRepo, {
         currency: input.currency ?? "COP",
         lines: input.items,
-      });
+      }, org);
 
       // Reward first (its units are excluded from the promo remainder).
       let reward: {
@@ -306,7 +306,7 @@ export const stampsRouter = router({
         const enriched = await enrichCart(promoRepo, {
           currency: input.currency ?? "COP",
           lines: input.items,
-        });
+        }, org);
 
         // Reward first: evaluate + exclude its units.
         let rewardDiscount = 0;
@@ -411,6 +411,7 @@ export const stampsRouter = router({
       const allowlist = loyalty.stamps.categoryIds;
       if (allowlist && allowlist.length > 0 && input.items && input.items.length > 0) {
         cartCategoryIds = await new StampsRepository(ctx.db).categoriesForProducts(
+          org,
           input.items.map((it) => it.productId),
         );
       }

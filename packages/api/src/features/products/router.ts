@@ -162,6 +162,13 @@ export const menuRouter = router({
     return buildMenuService(ctx).categories(id, lc);
   }),
 
+  /** Roots with their sub-categories — the customer menu's two-row chip strip. */
+  categoryTree: publicProcedure.query(async ({ ctx }) => {
+    const id = await orgId();
+    const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
+    return buildMenuService(ctx).categoryTree(id, lc);
+  }),
+
   // ---- Per-user favorites --------------------------------------------------
   myFavoriteIds: protectedProcedure.query(async ({ ctx }) =>
     buildMenuService(ctx).myFavoriteIds(await orgId(), ctx.session.user.id),

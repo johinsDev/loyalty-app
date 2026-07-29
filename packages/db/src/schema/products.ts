@@ -1,5 +1,6 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
+  type AnySQLiteColumn,
   index,
   integer,
   real,
@@ -16,6 +17,9 @@ import { customer } from "./loyalty";
 // Shopify model (options → variant combos with price + image); toppings are
 // separate "modifier groups" (add-ons with selection rules + price delta).
 
+// Two levels max: roots and their children. Only leaves accept products — a
+// category that gains a child stops being assignable, and its existing products
+// are moved to an auto-created "General" leaf (see CategoriesRepository.create).
 export const category = sqliteTable(
   "category",
   {
@@ -25,10 +29,21 @@ export const category = sqliteTable(
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
-    parentId: text("parent_id"),
+    parentId: text("parent_id").references((): AnySQLiteColumn => category.id, {
+      onDelete: "cascade",
+    }),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
+    description: text("description"),
     sortOrder: integer("sort_order").notNull().default(0),
+    // Soft-delete: promos/rewards/stamp rules reference categories by id inside
+    // JSON (no FK), so a hard delete would silently orphan those rules.
+    archivedAt: integer("archived_at", { mode: "timestamp" }),
+    // True when this row was archived as a side effect of archiving its parent.
+    // Restoring the parent revives only these, never manually-archived children.
+    archivedByParent: integer("archived_by_parent", { mode: "boolean" })
+      .notNull()
+      .default(false),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -38,6 +53,11 @@ export const category = sqliteTable(
   },
   (t) => ({
     slugPerOrg: uniqueIndex("category_slug_per_org_uq").on(t.organizationId, t.slug),
+    byOrgParentSort: index("category_org_parent_sort_idx").on(
+      t.organizationId,
+      t.parentId,
+      t.sortOrder,
+    ),
   }),
 );
 
@@ -107,9 +127,16 @@ export const productCategory = sqliteTable(
     categoryId: text("category_id")
       .notNull()
       .references(() => category.id, { onDelete: "cascade" }),
+    // A product can live in several categories, but revenue is attributed to
+    // exactly one — otherwise the per-category totals would exceed the business
+    // total. Reads fall back to the lowest `sortOrder` when no primary is set.
+    isPrimary: integer("is_primary", { mode: "boolean" }).notNull().default(false),
   },
   (t) => ({
     pk: uniqueIndex("product_category_uq").on(t.productId, t.categoryId),
+    onePrimaryPerProduct: uniqueIndex("product_primary_category_uq")
+      .on(t.productId)
+      .where(sql`${t.isPrimary} = 1`),
   }),
 );
 
@@ -490,6 +517,12 @@ export const categoryRelations = relations(category, ({ one, many }) => ({
     fields: [category.organizationId],
     references: [organization.id],
   }),
+  parent: one(category, {
+    fields: [category.parentId],
+    references: [category.id],
+    relationName: "categoryParent",
+  }),
+  children: many(category, { relationName: "categoryParent" }),
   products: many(productCategory),
 }));
 
@@ -717,6 +750,7 @@ export const categoryTranslation = sqliteTable(
       .references(() => category.id, { onDelete: "cascade" }),
     locale: text("locale").notNull(),
     name: text("name").notNull(),
+    description: text("description"),
   },
   (t) => ({
     uq: uniqueIndex("category_translation_uq").on(t.categoryId, t.locale),

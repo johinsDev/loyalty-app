@@ -1,5 +1,9 @@
 "use client";
 
+import type {
+  CategoryStatusFilter,
+  CategoryTreeNode,
+} from "@loyalty/api/features/categories/schemas";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,285 +15,344 @@ import {
   AlertDialogTitle,
   Button,
   Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@loyalty/ui";
-import {
-  ArrowLeft,
-  ChevronDown,
-  ChevronRight,
-  GripVertical,
-  Pencil,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, FolderTree, Plus, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { FilterSelect } from "@/components/filters";
+import { EmptyState } from "@/components/empty-state";
 import { Link } from "@/i18n/nav";
+import { useTRPC } from "@/lib/trpc/client";
 
-import { type Category, categories as seed, type Subcategory } from "../data";
+import { CategoriesTree } from "./categories-tree";
 
-function move<T>(list: T[], from: number, to: number): T[] {
-  const copy = [...list];
-  const [item] = copy.splice(from, 1);
-  if (item === undefined) return list;
-  copy.splice(to, 0, item);
-  return copy;
+const STATUSES: CategoryStatusFilter[] = ["active", "archived", "all"];
+
+type Editing = {
+  id: string | null;
+  name: string;
+  description: string;
+  parentId: string | null;
+};
+
+/** Replace one level's order in a cached tree, leaving every other level alone. */
+function reorderLevel(
+  nodes: CategoryTreeNode[],
+  parentId: string | null,
+  ids: string[],
+): CategoryTreeNode[] {
+  if (parentId === null) return sortByIds(nodes, ids);
+  return nodes.map((n) =>
+    n.id === parentId
+      ? { ...n, children: sortByIds(n.children, ids) }
+      : { ...n, children: reorderLevel(n.children, parentId, ids) },
+  );
 }
 
-const freshId = (prefix: string) =>
-  `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
+function sortByIds(nodes: CategoryTreeNode[], ids: string[]): CategoryTreeNode[] {
+  const rank = new Map(ids.map((id, i) => [id, i]));
+  return [...nodes]
+    .sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0))
+    .map((n, i) => ({ ...n, sortOrder: i }));
+}
 
-type Editing = { id: string | null; name: string; subs: Subcategory[] } | null;
+/** Flatten to the roots that can still accept a child (depth is 2). */
+const rootsOf = (nodes: CategoryTreeNode[]) => nodes.filter((n) => n.parentId === null);
 
 /**
- * Categories manager — a reorderable category → subcategory tree with inline
- * create/edit (no nested modal, so it works both on its page and inside a modal)
- * and delete confirmation. Design-first: mutations are local. Used by the page
- * {@link CategoriesView} and by a modal in the product editor (so editing
- * categories never navigates away and loses the product draft).
+ * Category management: a reorderable two-level tree with per-row business
+ * figures, search, and an active/archived filter.
+ *
+ * Deliberately **not** the server-driven data-table pattern the other admin lists
+ * use: the order *is* the content here (it drives the customer menu), and drag
+ * reordering cannot coexist with pagination or an arbitrary sort column. The list
+ * is dozens of rows, so it is fetched whole.
  */
-export function CategoriesManager() {
-  const t = useTranslations("Products");
-  const [cats, setCats] = useState<Category[]>(() =>
-    seed.map((c) => ({ ...c, subcategories: [...c.subcategories] })),
+export function CategoriesView({ storeId }: { storeId: string | null }) {
+  const t = useTranslations("Products.cat");
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<CategoryStatusFilter>("active");
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const [archiving, setArchiving] = useState<CategoryTreeNode | null>(null);
+
+  const input = { search: search.trim() || undefined, status, period: "30d" as const, storeId };
+  const treeOptions = trpc.categories.tree.queryOptions(input);
+  const treeQuery = useQuery(treeOptions);
+  const nodes = treeQuery.data ?? [];
+
+  const usageQuery = useQuery({
+    ...trpc.categories.usage.queryOptions({ id: archiving?.id ?? "" }),
+    enabled: archiving !== null,
+  });
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: trpc.categories.tree.queryKey() });
+
+  const create = useMutation(trpc.categories.create.mutationOptions());
+  const update = useMutation(trpc.categories.update.mutationOptions());
+  const archive = useMutation(trpc.categories.archive.mutationOptions());
+  const restore = useMutation(trpc.categories.restore.mutationOptions());
+  const reorder = useMutation(trpc.categories.reorder.mutationOptions());
+
+  // Dragging is only meaningful when every sibling is on screen: a search or the
+  // archived filter hides rows, so the dropped position wouldn't mean anything.
+  const draggable = search.trim() === "" && status === "active";
+
+  const roots = useMemo(() => rootsOf(nodes), [nodes]);
+  const parentOptions = useMemo(
+    () => roots.filter((r) => r.id !== editing?.id).map((r) => ({ id: r.id, name: r.name })),
+    [roots, editing?.id],
   );
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [editing, setEditing] = useState<Editing>(null);
-  const [toDelete, setToDelete] = useState<Category | null>(null);
 
-  const toggleExpand = (id: string) =>
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const onReorder = (parentId: string | null, ids: string[]) => {
+    // Optimistic: the row already moved under the pointer, so write the new order
+    // into the cache and only touch the server in the background.
+    queryClient.setQueryData(treeOptions.queryKey, (old: CategoryTreeNode[] | undefined) =>
+      old ? reorderLevel(old, parentId, ids) : old,
+    );
+    reorder.mutate(
+      { parentId, ids },
+      {
+        onError: () => {
+          toast.error(t("reorderFailed"));
+          void invalidate();
+        },
+      },
+    );
+  };
 
-  const startCreate = () => setEditing({ id: null, name: "", subs: [] });
-  const startEdit = (c: Category) =>
-    setEditing({
-      id: c.id,
-      name: c.name,
-      subs: c.subcategories.map((s) => ({ ...s })),
-    });
-
-  const saveEditing = () => {
+  const submitEditing = () => {
     if (!editing || !editing.name.trim()) return;
-    const subs = editing.subs.filter((s) => s.name.trim());
+    const payload = {
+      name: editing.name.trim(),
+      description: editing.description.trim() || undefined,
+      parentId: editing.parentId,
+    };
+    const onDone = (result: { movedCount: number; generalLeafName: string | null }) => {
+      setEditing(null);
+      void invalidate();
+      // Creating the first child of a populated category moves its products to an
+      // auto-created leaf — never let that happen silently.
+      if (result.movedCount > 0 && result.generalLeafName) {
+        toast.info(
+          t("movedToGeneral", { n: result.movedCount, leaf: result.generalLeafName }),
+          { duration: 8000 },
+        );
+      } else {
+        toast.success(editing.id ? t("saved") : t("created"));
+      }
+    };
+    const onError = (err: unknown) => toast.error(errorMessage(err, t));
+
     if (editing.id) {
-      setCats((prev) =>
-        prev.map((c) =>
-          c.id === editing.id
-            ? { ...c, name: editing.name.trim(), subcategories: subs }
-            : c,
-        ),
-      );
+      update.mutate({ ...payload, id: editing.id }, { onSuccess: onDone, onError });
     } else {
-      setCats((prev) => [
-        ...prev,
-        { id: freshId("c"), name: editing.name.trim(), subcategories: subs },
-      ]);
+      create.mutate(payload, { onSuccess: onDone, onError });
     }
-    setEditing(null);
   };
 
-  const onDelete = () => {
-    if (!toDelete) return;
-    setCats((prev) => prev.filter((c) => c.id !== toDelete.id));
-    toast.success(t("cat.deleted", { name: toDelete.name }));
-    setToDelete(null);
+  const confirmArchive = () => {
+    if (!archiving) return;
+    const node = archiving;
+    setArchiving(null);
+    archive.mutate(
+      { id: node.id },
+      {
+        onSuccess: () => {
+          void invalidate();
+          toast.success(t("archived", { name: node.name }), {
+            action: {
+              label: t("undo"),
+              onClick: () =>
+                restore.mutate({ id: node.id }, { onSuccess: () => void invalidate() }),
+            },
+          });
+        },
+        onError: (err) => toast.error(errorMessage(err, t)),
+      },
+    );
   };
+
+  const filtered = search.trim() !== "" || status !== "active";
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-muted-foreground text-sm font-semibold">
-          {t("cat.reorderHint")}
-        </p>
+    <div className="mx-auto w-full max-w-4xl px-5 py-6 lg:px-8">
+      <Link
+        href="/products"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm font-semibold"
+      >
+        <ArrowLeft className="size-4" />
+        {t("back")}
+      </Link>
+      <div className="mt-4 mb-5">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <p className="text-muted-foreground/80 mt-0.5 text-sm font-semibold">{t("subtitle")}</p>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-52 flex-1">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            className="h-10 pl-9"
+          />
+        </div>
+        <FilterSelect
+          allLabel={t("status.all")}
+          label={t("status.label")}
+          value={status === "all" ? null : status}
+          onValueChange={(v) => setStatus(v ?? "all")}
+          options={STATUSES.filter((s) => s !== "all").map((s) => ({
+            value: s,
+            label: t(`status.${s}`),
+          }))}
+        />
         <Button
           className="h-10 gap-2 rounded-xl font-semibold"
-          onClick={startCreate}
+          onClick={() => setEditing({ id: null, name: "", description: "", parentId: null })}
         >
           <Plus className="size-4" />
-          {t("cat.create")}
+          {t("create")}
         </Button>
       </div>
 
-      {/* Inline create/edit form */}
+      {!draggable && nodes.length > 0 ? (
+        <p className="text-muted-foreground mb-3 text-xs font-semibold">{t("dragDisabled")}</p>
+      ) : (
+        <p className="text-muted-foreground mb-3 text-xs font-semibold">{t("reorderHint")}</p>
+      )}
+
       {editing ? (
-        <div className="border-border bg-muted/30 space-y-3 rounded-2xl border p-4">
-          <div className="font-display font-semibold tracking-tight">
-            {editing.id ? t("cat.editCategory") : t("cat.newCategory")}
-          </div>
-          <Input
-            value={editing.name}
-            onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-            placeholder={t("cat.namePlaceholder")}
-            className="h-10"
-            autoFocus
-          />
-          <div className="space-y-2">
-            {editing.subs.map((s, i) => (
-              <div key={s.id} className="flex items-center gap-2">
-                <Input
-                  value={s.name}
-                  onChange={(e) => {
-                    const subs = [...editing.subs];
-                    subs[i] = { ...s, name: e.target.value };
-                    setEditing({ ...editing, subs });
-                  }}
-                  placeholder={t("cat.subPlaceholder")}
-                  className="h-10 flex-1"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label={t("cat.delete")}
-                  className="text-destructive hover:bg-destructive/10 size-10 flex-none rounded-xl"
-                  onClick={() =>
-                    setEditing({
-                      ...editing,
-                      subs: editing.subs.filter((x) => x.id !== s.id),
-                    })
-                  }
-                >
-                  <X className="size-4" />
-                </Button>
-              </div>
-            ))}
-            <Button
-              variant="outline"
-              className="h-10 gap-1.5 rounded-xl"
-              onClick={() =>
-                setEditing({
-                  ...editing,
-                  subs: [...editing.subs, { id: freshId("s"), name: "" }],
-                })
-              }
-            >
-              <Plus className="size-4" />
-              {t("cat.addSub")}
-            </Button>
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              className="h-10 rounded-xl"
-              onClick={() => setEditing(null)}
-            >
-              {t("cat.cancel")}
-            </Button>
-            <Button
-              className="h-10 rounded-xl font-semibold"
-              onClick={saveEditing}
-            >
-              {t("cat.save")}
-            </Button>
-          </div>
-        </div>
+        <EditingPanel
+          editing={editing}
+          parents={parentOptions}
+          pending={create.isPending || update.isPending}
+          onChange={setEditing}
+          onCancel={() => setEditing(null)}
+          onSubmit={submitEditing}
+        />
       ) : null}
 
-      {cats.length === 0 ? (
-        <p className="text-muted-foreground py-10 text-center text-sm">
-          {t("cat.empty")}
-        </p>
-      ) : (
-        <div className="border-border divide-border bg-card divide-y overflow-hidden rounded-2xl border">
-          {cats.map((c, idx) => (
-            <div key={c.id}>
-              <div
-                draggable
-                onDragStart={() => setDragIndex(idx)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => {
-                  if (dragIndex !== null && dragIndex !== idx) {
-                    setCats((prev) => move(prev, dragIndex, idx));
-                  }
-                  setDragIndex(null);
-                }}
-                className="flex items-center gap-2 px-3 py-2.5"
-              >
-                <GripVertical className="text-muted-foreground size-4 flex-none cursor-grab" />
-                {c.subcategories.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleExpand(c.id)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    {expanded.has(c.id) ? (
-                      <ChevronDown className="size-4" />
-                    ) : (
-                      <ChevronRight className="size-4" />
-                    )}
-                  </button>
-                ) : (
-                  <span className="size-4" />
-                )}
-                <span className="flex-1 font-bold">{c.name}</span>
-                {c.subcategories.length > 0 ? (
-                  <span className="text-muted-foreground/70 text-xs font-semibold">
-                    {c.subcategories.length}
-                  </span>
-                ) : null}
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label={t("cat.edit")}
-                  className="size-8 rounded-lg"
-                  onClick={() => startEdit(c)}
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label={t("cat.delete")}
-                  className="text-destructive hover:bg-destructive/10 size-8 rounded-lg"
-                  onClick={() => setToDelete(c)}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </div>
-              {expanded.has(c.id) ? (
-                <div className="bg-muted/20 divide-border divide-y border-t">
-                  {c.subcategories.map((s) => (
-                    <div
-                      key={s.id}
-                      className="flex items-center gap-2 py-2 pr-3 pl-12 text-sm"
-                    >
-                      <span className="flex-1 font-semibold">{s.name}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+      {treeQuery.isPending ? (
+        <div className="border-border bg-card divide-border divide-y rounded-2xl border">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3 px-3 py-3.5">
+              <span className="bg-muted size-4 animate-pulse rounded" />
+              <span className="bg-muted h-4 w-40 animate-pulse rounded" />
             </div>
           ))}
         </div>
+      ) : nodes.length === 0 ? (
+        <EmptyState
+          icon={FolderTree}
+          title={filtered ? t("noResults") : t("empty")}
+          hint={filtered ? t("noResultsHint") : t("emptyHint")}
+          action={
+            filtered ? (
+              <Button
+                variant="outline"
+                className="h-10 rounded-xl"
+                onClick={() => {
+                  setSearch("");
+                  setStatus("active");
+                }}
+              >
+                {t("clearFilters")}
+              </Button>
+            ) : null
+          }
+        />
+      ) : (
+        <div className="border-border bg-card overflow-hidden rounded-2xl border">
+          <CategoriesTree
+            nodes={nodes}
+            showMetrics
+            draggable={draggable}
+            onEdit={(n) =>
+              setEditing({
+                id: n.id,
+                name: n.name,
+                description: n.description ?? "",
+                parentId: n.parentId,
+              })
+            }
+            onAddChild={(n) =>
+              setEditing({ id: null, name: "", description: "", parentId: n.id })
+            }
+            onArchive={setArchiving}
+            onRestore={(n) =>
+              restore.mutate(
+                { id: n.id },
+                {
+                  onSuccess: () => {
+                    void invalidate();
+                    toast.success(t("restored", { name: n.name }));
+                  },
+                },
+              )
+            }
+            onReorder={onReorder}
+          />
+        </div>
       )}
 
-      <AlertDialog
-        open={toDelete !== null}
-        onOpenChange={(o) => !o && setToDelete(null)}
-      >
+      <AlertDialog open={archiving !== null} onOpenChange={(o) => !o && setArchiving(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("cat.deleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("cat.deleteDescription", { name: toDelete?.name ?? "" })}
-            </AlertDialogDescription>
+            <AlertDialogTitle>
+              {t("archiveTitle", { name: archiving?.name ?? "" })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{t("archiveDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
+
+          {/* What the archive touches. Promos/rewards/stamp rules reference
+              categories from inside JSON with no FK, so they keep resolving —
+              but the owner should know they exist before hiding the category. */}
+          <ul className="text-muted-foreground space-y-1 text-sm font-semibold">
+            {(archiving?.children.length ?? 0) > 0 ? (
+              <li>· {t("usageChildren", { n: archiving?.children.length ?? 0 })}</li>
+            ) : null}
+            {usageQuery.data ? (
+              <>
+                {usageQuery.data.products > 0 ? (
+                  <li>· {t("usageProducts", { n: usageQuery.data.products })}</li>
+                ) : null}
+                {usageQuery.data.promotions > 0 ? (
+                  <li>· {t("usagePromotions", { n: usageQuery.data.promotions })}</li>
+                ) : null}
+                {usageQuery.data.rewards > 0 ? (
+                  <li>· {t("usageRewards", { n: usageQuery.data.rewards })}</li>
+                ) : null}
+                {usageQuery.data.stampRules > 0 ? (
+                  <li>· {t("usageStampRules")}</li>
+                ) : null}
+              </>
+            ) : (
+              <li className="bg-muted h-4 w-48 animate-pulse rounded" />
+            )}
+          </ul>
+
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-10 px-4">
-              {t("cat.cancel")}
-            </AlertDialogCancel>
+            <AlertDialogCancel className="h-10 px-4">{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={onDelete}
-              className="bg-destructive h-10 px-4 text-white hover:bg-destructive/90"
+              onClick={confirmArchive}
+              className="bg-destructive hover:bg-destructive/90 h-10 px-4 text-white"
             >
-              {t("cat.deleteConfirm")}
+              {t("archiveConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -298,28 +361,102 @@ export function CategoriesManager() {
   );
 }
 
-/** Full-page categories screen (linked from the products list). The editor uses
- * the manager inside a modal instead, to preserve the in-progress draft. */
-export function CategoriesView() {
-  const t = useTranslations("Products");
+/** Inline create/edit panel — no nested modal, so it also works inside one. */
+function EditingPanel({
+  editing,
+  parents,
+  pending,
+  onChange,
+  onCancel,
+  onSubmit,
+}: {
+  editing: Editing;
+  parents: { id: string; name: string }[];
+  pending: boolean;
+  onChange: (e: Editing) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  const t = useTranslations("Products.cat");
+  const NONE = "__none__";
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 py-6 lg:px-8">
-      <Link
-        href="/products"
-        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm font-semibold"
-      >
-        <ArrowLeft className="size-4" />
-        {t("cat.back")}
-      </Link>
-      <div className="mt-4 mb-5">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          {t("cat.title")}
-        </h1>
-        <p className="text-muted-foreground/80 mt-0.5 text-sm font-semibold">
-          {t("cat.subtitle")}
-        </p>
+    <form
+      className="border-border bg-muted/30 mb-4 space-y-3 rounded-2xl border p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit();
+      }}
+    >
+      <div className="font-display font-semibold tracking-tight">
+        {editing.id ? t("editCategory") : t("newCategory")}
       </div>
-      <CategoriesManager />
-    </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="cat-name">{t("nameLabel")}</Label>
+          <Input
+            id="cat-name"
+            value={editing.name}
+            onChange={(e) => onChange({ ...editing, name: e.target.value })}
+            placeholder={t("namePlaceholder")}
+            className="h-10"
+            autoFocus
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="cat-desc">{t("descriptionLabel")}</Label>
+          <Input
+            id="cat-desc"
+            value={editing.description}
+            onChange={(e) => onChange({ ...editing, description: e.target.value })}
+            placeholder={t("descriptionPlaceholder")}
+            className="h-10"
+          />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>{t("parentLabel")}</Label>
+        <Select
+          value={editing.parentId ?? NONE}
+          onValueChange={(v) => onChange({ ...editing, parentId: v === NONE ? null : v })}
+        >
+          <SelectTrigger size="lg" className="w-full text-sm sm:max-w-xs">
+            <SelectValue>
+              {(v) => (v === NONE ? t("parentNone") : parents.find((p) => p.id === v)?.name)}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE}>{t("parentNone")}</SelectItem>
+            {parents.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-muted-foreground text-xs font-semibold">{t("parentHint")}</p>
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={onCancel}>
+          {t("cancel")}
+        </Button>
+        <Button
+          type="submit"
+          className="h-10 rounded-xl font-semibold"
+          disabled={pending || !editing.name.trim()}
+        >
+          {t("save")}
+        </Button>
+      </div>
+    </form>
   );
+}
+
+/** Surface the repository's typed failures instead of a generic error toast. */
+function errorMessage(err: unknown, t: (k: string) => string): string {
+  const message = err instanceof Error ? err.message : "";
+  if (message.includes("category-too-deep")) return t("errTooDeep");
+  if (message.includes("category-self-parent")) return t("errSelfParent");
+  if (message.includes("category-not-assignable")) return t("errNotAssignable");
+  return t("errGeneric");
 }

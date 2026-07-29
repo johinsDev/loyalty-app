@@ -90,6 +90,12 @@ export const topProductsInputSchema = z.object({
   limit: z.number().int().min(1).max(50).default(8),
   ...storeScope,
 });
+/** `limit` caps the named slices; everything past it collapses into one row. */
+export const categoryMixInputSchema = z.object({
+  period: periodSchema.default("30d"),
+  limit: z.number().int().min(1).max(50).default(8),
+  ...storeScope,
+});
 
 /** A customer who hasn't purchased in `days` — a churn/win-back candidate. */
 export interface AtRiskRow {
@@ -148,6 +154,22 @@ export interface TopProductRow {
   cogsCents: number;
   /** (revenue − cogs) / revenue, 0..100; null when no COGS known. */
   marginPct: number | null;
+}
+
+/**
+ * Revenue share of one **root** category in the window. Sub-category sales roll
+ * into their root, and each product contributes to exactly one category (its
+ * primary), so these rows sum to the window's revenue — the donut adds to 100%.
+ */
+export interface CategorySalesRow {
+  /** Null for the "no category" bucket. */
+  categoryId: string | null;
+  name: string | null;
+  units: number;
+  revenueCents: number;
+  cogsCents: number;
+  marginPct: number | null;
+  sharePct: number;
 }
 
 export interface StoreSalesRow {

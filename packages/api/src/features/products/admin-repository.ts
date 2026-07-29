@@ -21,6 +21,8 @@ import { and, asc, desc, eq, inArray, like, sql } from "drizzle-orm";
    intentionally sequential: child-collection order is load-bearing for FKs
    (values before variant-values, variants before their images). */
 import { partitionById } from "./diff";
+import { CategoriesRepository } from "../categories/repository";
+import { loadCategoryAncestry, withDescendants } from "../_shared/category-tree";
 import { slugify, slugSuffix } from "../_shared/slugify";
 import { availableAtStore } from "../_shared/store-availability";
 import type {
@@ -140,6 +142,7 @@ export class ProductsAdminRepository {
       seoDescription: p.seoDescription,
       ogImageUrl: p.ogImageUrl,
       categoryIds: p.categories.map((c) => c.categoryId),
+      primaryCategoryId: p.categories.find((c) => c.isPrimary)?.categoryId ?? null,
       storeIds: p.storeIds ?? null,
       options: p.options.map((o) => ({
         id: o.id,
@@ -231,6 +234,10 @@ export class ProductsAdminRepository {
       .limit(1);
     if (!owned[0]) throw new Error("product-not-found");
 
+    // Only leaves hold products: a category that groups others is a heading, not
+    // a shelf. Checked here so the editor can't route around the picker's UI.
+    await new CategoriesRepository(this.db).assertAssignable(orgId, input.categoryIds);
+
     const slug = await this.resolveSlug(orgId, input.name, input.id);
 
     await this.db.transaction(async (tx) => {
@@ -288,6 +295,28 @@ export class ProductsAdminRepository {
         await tx
           .insert(productCategory)
           .values(addCats.map((categoryId) => ({ productId: input.id, categoryId })));
+      }
+      // Exactly one category owns the revenue attribution. Clear before setting:
+      // `product_primary_category_uq` is a partial unique index, so two rows
+      // flagged at once — even mid-transaction — is rejected.
+      if (input.categoryIds.length > 0) {
+        const primary =
+          input.primaryCategoryId && keepCats.has(input.primaryCategoryId)
+            ? input.primaryCategoryId
+            : input.categoryIds[0]!;
+        await tx
+          .update(productCategory)
+          .set({ isPrimary: false })
+          .where(eq(productCategory.productId, input.id));
+        await tx
+          .update(productCategory)
+          .set({ isPrimary: true })
+          .where(
+            and(
+              eq(productCategory.productId, input.id),
+              eq(productCategory.categoryId, primary),
+            ),
+          );
       }
 
       // --- options + their values (delete removed first → cascades values) ---
@@ -517,13 +546,16 @@ export class ProductsAdminRepository {
     if (input.storeId) {
       conds.push(availableAtStore(product.storeIds, input.storeId));
     }
-    // Category facet → restrict to products linked to any of the given categories.
+    // Category facet → products linked to any of the given categories, or to a
+    // sub-category of one (products only ever attach to leaves, so picking a
+    // grouping category has to reach its children).
     let idFilter: string[] | null = null;
     if (input.categoryId && input.categoryId.length > 0) {
+      const ancestry = await loadCategoryAncestry(this.db, orgId, { includeArchived: true });
       const linked = await this.db
         .select({ productId: productCategory.productId })
         .from(productCategory)
-        .where(inArray(productCategory.categoryId, input.categoryId));
+        .where(inArray(productCategory.categoryId, withDescendants(ancestry, input.categoryId)));
       idFilter = [...new Set(linked.map((l) => l.productId))];
       if (idFilter.length === 0) return { rows: [], total: 0 };
       conds.push(inArray(product.id, idFilter));
