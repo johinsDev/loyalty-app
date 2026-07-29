@@ -148,17 +148,16 @@ export class RewardsRepository {
       [asc(reward.sortOrder), desc(reward.updatedAt)],
     );
 
-    const rows = await this.db
-      .select({ ...getTableColumns(reward), redemptions: usesExpr })
-      .from(reward)
-      .where(where)
-      .orderBy(...orderBy)
-      .limit(input.perPage)
-      .offset(pageOffset(input.page, input.perPage));
-    const totalRows = await this.db
-      .select({ value: sql<number>`count(*)` })
-      .from(reward)
-      .where(where);
+    const [rows, totalRows] = await Promise.all([
+      this.db
+        .select({ ...getTableColumns(reward), redemptions: usesExpr })
+        .from(reward)
+        .where(where)
+        .orderBy(...orderBy)
+        .limit(input.perPage)
+        .offset(pageOffset(input.page, input.perPage)),
+      this.db.select({ value: sql<number>`count(*)` }).from(reward).where(where),
+    ]);
     const total = Number(totalRows[0]?.value ?? 0);
     return {
       rows: rows.map((r) => ({ ...r, redemptions: Number(r.redemptions) })),

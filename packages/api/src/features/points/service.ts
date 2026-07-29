@@ -158,13 +158,12 @@ export class PointsService {
     opts: { silent?: boolean; noDowngrade?: boolean } = {},
   ): Promise<{ tierName: string } | null> {
     const windowStart = new Date(Date.now() - WINDOW_DAYS * DAY_MS);
-    const tierPoints = await this.repo.tierPoints(
-      organizationId,
-      customerId,
-      windowStart,
-    );
+    // Independent reads — `account` doesn't depend on the tier points.
+    const [tierPoints, account] = await Promise.all([
+      this.repo.tierPoints(organizationId, customerId, windowStart),
+      this.repo.account(organizationId, customerId),
+    ]);
     const view = tierFor(tierPoints);
-    const account = await this.repo.account(organizationId, customerId);
 
     const oldKey = account?.currentTierKey ?? null;
     const newKey = view.current.key;

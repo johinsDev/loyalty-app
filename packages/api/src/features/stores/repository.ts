@@ -108,17 +108,16 @@ export class StoresRepository {
       asc(store.createdAt),
     ]);
 
-    const rows = await this.db
-      .select()
-      .from(store)
-      .where(where)
-      .orderBy(...orderBy)
-      .limit(input.perPage)
-      .offset(pageOffset(input.page, input.perPage));
-    const totalRows = await this.db
-      .select({ value: sql<number>`count(*)` })
-      .from(store)
-      .where(where);
+    const [rows, totalRows] = await Promise.all([
+      this.db
+        .select()
+        .from(store)
+        .where(where)
+        .orderBy(...orderBy)
+        .limit(input.perPage)
+        .offset(pageOffset(input.page, input.perPage)),
+      this.db.select({ value: sql<number>`count(*)` }).from(store).where(where),
+    ]);
     const total = totalRows[0]?.value ?? 0;
     return { rows: rows.map(toItem), total, pageCount: pageCountOf(total, input.perPage) };
   }
