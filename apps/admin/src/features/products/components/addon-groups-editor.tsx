@@ -108,7 +108,12 @@ export function AddonGroupsEditor({
   );
 }
 
-type Addon = { id: string; name: string; priceDeltaCents: number };
+type Addon = {
+  id: string;
+  name: string;
+  priceDeltaCents: number;
+  categoryId: string | null;
+};
 type Category = { id: string; name: string; memberCount: number };
 
 function GroupCard({
@@ -129,9 +134,16 @@ function GroupCard({
 
   const setSource = (source: AddonGroupSource) => onChange({ ...group, source });
 
-  const category = categories.find((c) => c.id === group.categoryId) ?? null;
-  const resolvedCount =
-    group.source === "category" ? (category?.memberCount ?? 0) : group.addonIds.length;
+  // What the register will actually offer. `memberCount` counts every add-on in
+  // the category including inactive ones; the picker only returns active, so
+  // resolving locally is both cheaper (no extra request) and more truthful.
+  const resolved =
+    group.source === "category"
+      ? group.categoryId
+        ? addons.filter((a) => a.categoryId === group.categoryId)
+        : []
+      : addons.filter((a) => group.addonIds.includes(a.id));
+  const resolvedCount = resolved.length;
 
   const filtered = addons.filter((a) =>
     a.name.toLowerCase().includes(search.trim().toLowerCase()),
@@ -158,22 +170,31 @@ function GroupCard({
 
   return (
     <div className="border-border space-y-5 rounded-2xl border p-4">
-      <div className="flex items-center gap-2">
-        <Input
-          value={group.name}
-          onChange={(e) => onChange({ ...group, name: e.target.value })}
-          placeholder={t("namePlaceholder")}
-          className="h-10"
-        />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-destructive size-9 flex-none"
-          aria-label={t("removeGroup")}
-          onClick={onRemove}
-        >
-          <Trash2 className="size-4" />
-        </Button>
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <Input
+            value={group.name}
+            onChange={(e) => onChange({ ...group, name: e.target.value })}
+            placeholder={t("namePlaceholder")}
+            aria-invalid={!group.name.trim()}
+            aria-label={t("nameLabel")}
+            className="h-10"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-destructive size-9 flex-none"
+            aria-label={t("removeGroup")}
+            onClick={onRemove}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+        {/* Required: an unnamed group has no header at the register, and it is
+            what the preview sentence is built from. */}
+        {!group.name.trim() ? (
+          <p className="text-destructive text-xs font-semibold">{t("nameRequired")}</p>
+        ) : null}
       </div>
 
       <div className="space-y-2.5">
@@ -219,7 +240,9 @@ function GroupCard({
                         }`}
                       >
                         {c.name}
-                        <span className="ml-1.5 text-xs opacity-70">{c.memberCount}</span>
+                        <span className="ml-1.5 text-xs opacity-70">
+                          {addons.filter((a) => a.categoryId === c.id).length}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -273,35 +296,70 @@ function GroupCard({
           className="gap-3"
         >
           {MODES.map((m) => (
-            <label key={m} className="flex cursor-pointer items-center gap-3">
+            <label key={m} className="flex h-8 cursor-pointer items-center gap-3">
               <RadioGroupItem value={m} className="flex-none" />
               <span className="text-sm font-semibold">{t(`rule.${m}`)}</span>
-              {m === "upTo" && group.mode === "upTo" ? (
+              {/* Always mounted, disabled off-mode: rendering it only when
+                  `upTo` is picked changed the row height and shifted the whole
+                  block below it. */}
+              {m === "upTo" ? (
                 <NumberInput
                   value={group.maxSelect}
                   onValueChange={(v) => onChange({ ...group, maxSelect: Math.max(1, v ?? 1) })}
                   min={1}
-                  className="h-8 w-20"
+                  disabled={group.mode !== "upTo"}
+                  aria-label={t("rule.upTo")}
+                  className="h-8 w-20 disabled:opacity-40"
                 />
               ) : null}
             </label>
           ))}
         </RadioGroup>
-        {group.mode !== "exactlyOne" ? (
-          <label className="border-border/70 mt-1 flex cursor-pointer items-center gap-3 border-t pt-3">
-            <Checkbox
-              checked={group.required}
-              onCheckedChange={(c) => onChange({ ...group, required: c === true })}
-            />
-            <span className="text-sm font-semibold">{t("rule.required")}</span>
-          </label>
-        ) : null}
+        {/* Always rendered: hiding it for `exactlyOne` shifted the whole block.
+            And "exactly 1" IS required by definition, so showing it checked and
+            locked explains why it can't be toggled instead of just vanishing. */}
+        <label
+          className={`border-border/70 mt-1 flex items-center gap-3 border-t pt-3 ${
+            group.mode === "exactlyOne" ? "cursor-default" : "cursor-pointer"
+          }`}
+        >
+          <Checkbox
+            checked={group.mode === "exactlyOne" ? true : group.required}
+            disabled={group.mode === "exactlyOne"}
+            onCheckedChange={(c) => onChange({ ...group, required: c === true })}
+          />
+          <span
+            className={`text-sm font-semibold ${
+              group.mode === "exactlyOne" ? "text-muted-foreground" : ""
+            }`}
+          >
+            {t("rule.required")}
+          </span>
+          {group.mode === "exactlyOne" ? (
+            <span className="text-muted-foreground/70 text-xs font-semibold">
+              {t("rule.impliedRequired")}
+            </span>
+          ) : null}
+        </label>
       </div>
 
-      <div className="bg-muted/40 space-y-1.5 rounded-xl px-3.5 py-3">
+      <div className="bg-muted/40 space-y-2 rounded-xl px-3.5 py-3">
         <p className="text-muted-foreground text-xs font-semibold">{t("previewLabel")}</p>
         <p className="text-sm font-semibold">{preview}</p>
         <Badge variant="secondary">{t("resolves", { n: resolvedCount })}</Badge>
+        {resolved.length > 0 ? (
+          <ul className="space-y-0.5 pt-0.5">
+            {resolved.map((a) => (
+              <li
+                key={a.id}
+                className="text-muted-foreground flex justify-between gap-3 text-xs font-semibold"
+              >
+                <span className="truncate">{a.name}</span>
+                <span className="flex-none tabular-nums">+{fmtCop(a.priceDeltaCents)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
     </div>
   );

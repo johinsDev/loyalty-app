@@ -226,7 +226,11 @@ export function draftToUpsert(
     // a category group needs a category. An in-progress group is dropped so it
     // can't fail the save.
     addonGroups: draft.addonGroups
-      .filter((g) => (g.source === "category" ? !!g.categoryId : g.addonIds.length > 0))
+      .filter(
+        (g) =>
+          !!g.name.trim() &&
+          (g.source === "category" ? !!g.categoryId : g.addonIds.length > 0),
+      )
       .map((g, i) => ({
         id: g.id,
         name: g.name.trim(),

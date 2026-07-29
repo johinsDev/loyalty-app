@@ -1730,13 +1730,16 @@
         "exactlyOne": "Exactly 1",
         "upTo": "Up to",
         "any": "As many as they want",
-        "required": "Required"
+        "required": "Required",
+        "impliedRequired": "always, when picking exactly 1"
       },
       "preview": {
         "exactlyOne": "Pick 1 of {name} ({required})",
         "upTo": "Pick up to {n} of {name} ({required})",
         "any": "Add any {name} you want ({required})"
-      }
+      },
+      "nameLabel": "Group name",
+      "nameRequired": "Give it a name — it's the heading the customer sees."
     },
     "recipe": {
       "created": "“{name}” created",
