@@ -1376,7 +1376,6 @@
     "net": "Total",
     "willEarn": "Ganará:",
     "earnPtsUnit": "pts",
-    "viewDetail": "Ver detalle",
     "noDetail": "Sin descripción adicional.",
     "decrease": "Quitar",
     "increase": "Agregar",
@@ -3127,5 +3126,73 @@
     "filters": "Filtros",
     "clearAll": "Limpiar todo",
     "done": "Listo"
+  },
+  "Addons": {
+    "title": "Adiciones",
+    "subtitle": "Extras reutilizables que se suman a un producto en la caja.",
+    "backToProducts": "Volver a productos",
+    "searchPlaceholder": "Buscar adición…",
+    "categoryFilter": "Categoría",
+    "statusFilter": "Estado",
+    "linkedFilter": "Insumo",
+    "empty": "Todavía no hay adiciones",
+    "emptyHint": "Creá la primera para poder ofrecerla en tus productos.",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "rowActions": "Acciones",
+    "derived": "derivado",
+    "saved": "Se guardó {name}",
+    "created": "Se creó {name}",
+    "deleted": "Se eliminó {name}",
+    "saveError": "No se pudo guardar",
+    "deleteTitle": "¿Eliminar {name}?",
+    "deleteHint": "Se quita de los productos que la ofrecen. Las ventas ya registradas no cambian.",
+    "col": {
+      "name": "Adición",
+      "category": "Categoría",
+      "price": "Precio",
+      "cost": "Costo",
+      "ingredient": "Insumo",
+      "status": "Estado"
+    },
+    "status": {
+      "active": "Activa",
+      "inactive": "Inactiva"
+    },
+    "linked": {
+      "yes": "Vinculadas a un insumo",
+      "no": "Sin insumo"
+    },
+    "addon": {
+      "new": "Nueva adición",
+      "edit": "Editar adición",
+      "name": "Nombre",
+      "namePlaceholder": "ej. Perlas",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Opcional",
+      "category": "Categoría",
+      "categoryNone": "Sin categoría",
+      "price": "Precio que se cobra",
+      "cost": "Costo",
+      "ingredient": "Insumo vinculado",
+      "ingredientNone": "Ninguno",
+      "ingredientHint": "Si la adición sale de un insumo del inventario, vinculalo: el costo se calcula solo y no se te desactualiza.",
+      "noneFound": "No se encontró",
+      "qty": "Cantidad que consume ({unit})",
+      "derivedCost": "Costo: {cost} — {qty} {unit} × {unitCost} por unidad",
+      "sku": "SKU",
+      "active": "Activa"
+    },
+    "categories": {
+      "manage": "Categorías",
+      "title": "Categorías de adiciones",
+      "hint": "Agrupá las adiciones (ej. Proteínas, Vegetales) para poder ofrecer un grupo entero en un producto.",
+      "placeholder": "Nombre de la categoría",
+      "empty": "Todavía no hay categorías",
+      "members": "{n} adiciones",
+      "affects": "afecta {n} productos"
+    }
   }
 }

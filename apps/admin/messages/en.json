@@ -1376,7 +1376,6 @@
     "net": "Total",
     "willEarn": "Earns:",
     "earnPtsUnit": "pts",
-    "viewDetail": "View detail",
     "noDetail": "No extra description.",
     "decrease": "Decrease",
     "increase": "Increase",
@@ -3127,5 +3126,73 @@
     "filters": "Filters",
     "clearAll": "Clear all",
     "done": "Done"
+  },
+  "Addons": {
+    "title": "Add-ons",
+    "subtitle": "Reusable extras a customer can add to a product at the register.",
+    "backToProducts": "Back to products",
+    "searchPlaceholder": "Search add-on…",
+    "categoryFilter": "Category",
+    "statusFilter": "Status",
+    "linkedFilter": "Ingredient",
+    "empty": "No add-ons yet",
+    "emptyHint": "Create the first one so you can offer it on your products.",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "save": "Save",
+    "rowActions": "Actions",
+    "derived": "derived",
+    "saved": "Saved {name}",
+    "created": "Created {name}",
+    "deleted": "Deleted {name}",
+    "saveError": "Could not save",
+    "deleteTitle": "Delete {name}?",
+    "deleteHint": "It's removed from the products offering it. Recorded sales are unaffected.",
+    "col": {
+      "name": "Add-on",
+      "category": "Category",
+      "price": "Price",
+      "cost": "Cost",
+      "ingredient": "Ingredient",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "linked": {
+      "yes": "Linked to an ingredient",
+      "no": "Standalone"
+    },
+    "addon": {
+      "new": "New add-on",
+      "edit": "Edit add-on",
+      "name": "Name",
+      "namePlaceholder": "e.g. Pearls",
+      "description": "Description",
+      "descriptionPlaceholder": "Optional",
+      "category": "Category",
+      "categoryNone": "No category",
+      "price": "Price charged",
+      "cost": "Cost",
+      "ingredient": "Linked ingredient",
+      "ingredientNone": "None",
+      "ingredientHint": "If the add-on comes out of a stocked ingredient, link it: the cost is computed for you and can't go stale.",
+      "noneFound": "Nothing found",
+      "qty": "Quantity consumed ({unit})",
+      "derivedCost": "Cost: {cost} — {qty} {unit} × {unitCost} per unit",
+      "sku": "SKU",
+      "active": "Active"
+    },
+    "categories": {
+      "manage": "Categories",
+      "title": "Add-on categories",
+      "hint": "Group add-ons (e.g. Proteins, Vegetables) so a product can offer a whole group at once.",
+      "placeholder": "Category name",
+      "empty": "No categories yet",
+      "members": "{n} add-ons",
+      "affects": "affects {n} products"
+    }
   }
 }
