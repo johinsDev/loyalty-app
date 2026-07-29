@@ -53,6 +53,14 @@ export interface MenuList {
   nextCursor: string | null;
 }
 
+/** A menu category with its sub-categories (two levels; leaves hold products). */
+export interface MenuCategoryNode {
+  id: string;
+  slug: string;
+  name: string;
+  children: MenuCategoryNode[];
+}
+
 export interface SectionView {
   id: string;
   slug: string;

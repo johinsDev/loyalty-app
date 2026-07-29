@@ -22,14 +22,16 @@ import {
   sectionProduct,
   variantIngredient,
 } from "@loyalty/db/schema";
-import { and, asc, eq, gt, inArray, like, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, like, or, sql } from "drizzle-orm";
 
+import { idsForSlug, loadCategoryAncestry } from "../_shared/category-tree";
 import type { LocaleContext } from "../_shared/localize";
 import { getLoyaltyConfig, pickPrice } from "../_shared/localize";
 import { availableAtStore } from "../_shared/store-availability";
 import { earnFor } from "./earn";
 import type {
   MenuCard,
+  MenuCategoryNode,
   MenuList,
   ProductDetail,
   SectionView,
@@ -113,14 +115,20 @@ export class ProductsRepository {
         .orderBy(asc(product.sortOrder), asc(product.id))
         .limit(pageSize + 1);
     } else if (input.categorySlug) {
-      ids = await this.db
-        .select({ id: product.id, s: product.sortOrder })
-        .from(product)
-        .innerJoin(productCategory, eq(productCategory.productId, product.id))
-        .innerJoin(category, eq(category.id, productCategory.categoryId))
-        .where(and(...conds, eq(category.slug, input.categorySlug)))
-        .orderBy(asc(product.sortOrder), asc(product.id))
-        .limit(pageSize + 1);
+      // Products hang off leaves, so a root slug has to expand to its children
+      // — otherwise picking "Milk Tea" in the menu would show nothing.
+      const ancestry = await loadCategoryAncestry(this.db, input.orgId);
+      const categoryIds = idsForSlug(ancestry, input.categorySlug);
+      ids =
+        categoryIds.length === 0
+          ? []
+          : await this.db
+              .selectDistinct({ id: product.id, s: product.sortOrder })
+              .from(product)
+              .innerJoin(productCategory, eq(productCategory.productId, product.id))
+              .where(and(...conds, inArray(productCategory.categoryId, categoryIds)))
+              .orderBy(asc(product.sortOrder), asc(product.id))
+              .limit(pageSize + 1);
     } else {
       ids = await this.db
         .select({ id: product.id, s: product.sortOrder })
@@ -214,8 +222,17 @@ export class ProductsRepository {
       if (!firstImage.has(img.productId)) firstImage.set(img.productId, img.url);
     }
 
+    // A card carries the slug of every category it counts for — its own leaves
+    // AND their parents — so a root chip highlights products stored on a leaf.
     const cats = await this.db
-      .select({ productId: productCategory.productId, slug: category.slug })
+      .select({
+        productId: productCategory.productId,
+        categoryId: productCategory.categoryId,
+        slug: category.slug,
+        parentSlug: sql<string | null>`(
+          select p.slug from ${category} p where p.id = ${category.parentId}
+        )`,
+      })
       .from(productCategory)
       .innerJoin(category, eq(category.id, productCategory.categoryId))
       .where(inArray(productCategory.productId, productIds));
@@ -223,6 +240,7 @@ export class ProductsRepository {
     for (const c of cats) {
       const arr = catSlugs.get(c.productId) ?? [];
       arr.push(c.slug);
+      if (c.parentSlug && !arr.includes(c.parentSlug)) arr.push(c.parentSlug);
       catSlugs.set(c.productId, arr);
     }
 
@@ -559,19 +577,29 @@ export class ProductsRepository {
     }));
   }
 
+  /**
+   * Flat list of live categories (roots + leaves), localized. Kept flat on
+   * purpose — the products facet, the promo combobox and the stamps config all
+   * read this shape. Archived ones are excluded everywhere. Use
+   * {@link categoryTree} when the hierarchy matters.
+   */
   async categories(
     orgId: string,
     ctx: LocaleContext,
-  ): Promise<{ id: string; slug: string; name: string }[]> {
+  ): Promise<{ id: string; slug: string; name: string; parentId: string | null }[]> {
     const rows = await this.db
-      .select({ id: category.id, slug: category.slug, name: category.name })
+      .select({
+        id: category.id,
+        slug: category.slug,
+        name: category.name,
+        parentId: category.parentId,
+      })
       .from(category)
-      .where(eq(category.organizationId, orgId))
+      .where(and(eq(category.organizationId, orgId), isNull(category.archivedAt)))
       .orderBy(asc(category.sortOrder), asc(category.name));
 
-    if (ctx.locale === ctx.defaultLocale || rows.length === 0) {
-      return rows.map((r) => ({ id: r.id, slug: r.slug, name: r.name }));
-    }
+    if (ctx.locale === ctx.defaultLocale || rows.length === 0) return rows;
+
     const trs = await this.db
       .select()
       .from(categoryTranslation)
@@ -582,7 +610,27 @@ export class ProductsRepository {
         ),
       );
     const nameById = new Map(trs.map((t) => [t.categoryId, t.name]));
-    return rows.map((r) => ({ id: r.id, slug: r.slug, name: nameById.get(r.id) ?? r.name }));
+    return rows.map((r) => ({ ...r, name: nameById.get(r.id) ?? r.name }));
+  }
+
+  /**
+   * The live category tree for the customer menu: roots, each with its leaves.
+   * Drives the two-row chip strip (root chips, then sub-chips once a root with
+   * children is selected).
+   */
+  async categoryTree(orgId: string, ctx: LocaleContext): Promise<MenuCategoryNode[]> {
+    const flat = await this.categories(orgId, ctx);
+    const roots: MenuCategoryNode[] = [];
+    const byId = new Map<string, MenuCategoryNode>(
+      flat.map((c) => [c.id, { id: c.id, slug: c.slug, name: c.name, children: [] }]),
+    );
+    for (const row of flat) {
+      const node = byId.get(row.id)!;
+      const parent = row.parentId ? byId.get(row.parentId) : undefined;
+      if (parent) parent.children.push(node);
+      else roots.push(node);
+    }
+    return roots;
   }
 
   async favoriteProductIds(orgId: string, customerId: string): Promise<string[]> {

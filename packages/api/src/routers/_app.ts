@@ -2,6 +2,7 @@ import { addonsRouter } from "../features/addons";
 import { bannersRouter } from "../features/banners";
 import { catalogCategoriesRouter } from "../features/catalog-categories";
 import { campaignsRouter } from "../features/campaigns";
+import { categoriesRouter } from "../features/categories";
 import { dashboardRouter } from "../features/dashboard";
 import { emailOutboxRouter } from "../features/email-outbox";
 import { employeesRouter } from "../features/employees";
@@ -42,7 +43,10 @@ export const appRouter = router({
   menu: menuRouter,
   addons: addonsRouter,
   ingredients: ingredientsRouter,
+  // `catalogCategories` classifies add-ons/ingredients; `categories` is the
+  // storefront product hierarchy. Deliberately separate tables.
   catalogCategories: catalogCategoriesRouter,
+  categories: categoriesRouter,
   banners: bannersRouter,
   campaigns: campaignsRouter,
   dashboard: dashboardRouter,

@@ -26,6 +26,8 @@
     "./features/rewards": "./src/features/rewards/index.ts",
     "./features/products": "./src/features/products/index.ts",
     "./features/products/write-schemas": "./src/features/products/write-schemas.ts",
+    "./features/categories": "./src/features/categories/index.ts",
+    "./features/categories/schemas": "./src/features/categories/schemas.ts",
     "./features/banners": "./src/features/banners/index.ts",
     "./features/banners/schemas": "./src/features/banners/schemas.ts",
     "./features/campaigns": "./src/features/campaigns/index.ts",

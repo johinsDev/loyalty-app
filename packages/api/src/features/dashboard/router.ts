@@ -4,6 +4,7 @@ import { cachedRead, managerProcedure, router } from "../../trpc";
 import { DashboardRepository } from "./repository";
 import {
   atRiskInputSchema,
+  categoryMixInputSchema,
   overviewInputSchema,
   recentInputSchema,
   seriesInputSchema,
@@ -123,6 +124,22 @@ export const dashboardRouter = router({
         `dash:topProducts:${org}:${scope(input.storeId)}:${input.period}:${input.limit}`,
         TTL,
         () => new DashboardRepository(ctx.db, input.storeId).topProducts(org, input.period, input.limit),
+      );
+    }),
+  categoryMix: managerProcedure
+    .input(categoryMixInputSchema)
+    .query(async ({ ctx, input }) => {
+      const org = await orgId();
+      return cachedRead(
+        ctx,
+        `dash:categoryMix:${org}:${scope(input.storeId)}:${input.period}:${input.limit}`,
+        TTL,
+        () =>
+          new DashboardRepository(ctx.db, input.storeId).categoryMix(
+            org,
+            input.period,
+            input.limit,
+          ),
       );
     }),
   salesByStore: managerProcedure

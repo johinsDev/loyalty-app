@@ -267,7 +267,7 @@ export class PromoService {
         promos.map((p) => p.id),
         customerId,
       ),
-      opts.enriched ?? enrichCart(this.repo, cart),
+      opts.enriched ?? enrichCart(this.repo, cart, orgId),
     ]);
     const exclusions = opts.exclusions ?? [];
 
@@ -339,7 +339,7 @@ export class PromoService {
         promos.map((p) => p.id),
         customerId,
       ),
-      opts.enriched ?? enrichCart(this.repo, cart),
+      opts.enriched ?? enrichCart(this.repo, cart, orgId),
       this.repo.variantPrices(productIds),
     ]);
     const exclusions = opts.exclusions ?? [];

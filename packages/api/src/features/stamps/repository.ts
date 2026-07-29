@@ -18,6 +18,7 @@ import {
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 
+import { loadCategoryAncestry, withAncestors } from "../_shared/category-tree";
 import { redeemWithinTx } from "../rewards/redeem-tx";
 import { applyStampProgress } from "./eligibility";
 import type { PurchaseHistoryItem, StampsAccrual, WalletView } from "./schemas";
@@ -77,14 +78,21 @@ export class StampsRepository {
     return toView(await this.currentWallet(orgId, customerId), acc);
   }
 
-  /** Distinct category ids of the given products (cart eligibility check). */
-  async categoriesForProducts(productIds: string[]): Promise<string[]> {
+  /**
+   * Distinct category ids of the given products (cart eligibility check),
+   * including the parents of each leaf — a stamp rule scoped to "Milk Tea" must
+   * still accept a drink filed under "Milk Tea › Premium".
+   */
+  async categoriesForProducts(orgId: string, productIds: string[]): Promise<string[]> {
     if (productIds.length === 0) return [];
-    const rows = await this.db
-      .selectDistinct({ categoryId: productCategory.categoryId })
-      .from(productCategory)
-      .where(inArray(productCategory.productId, productIds));
-    return rows.map((r) => r.categoryId);
+    const [rows, ancestry] = await Promise.all([
+      this.db
+        .selectDistinct({ categoryId: productCategory.categoryId })
+        .from(productCategory)
+        .where(inArray(productCategory.productId, productIds)),
+      loadCategoryAncestry(this.db, orgId, { includeArchived: true }),
+    ]);
+    return withAncestors(ancestry, rows.map((r) => r.categoryId));
   }
 
   /** The shift feed: recent (non-void) purchases at a store since `since`, lean

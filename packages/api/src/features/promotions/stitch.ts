@@ -13,11 +13,12 @@ export async function enrichCart(
     "productCategories" | "modifierOptionDeltas" | "addonDeltas"
   >,
   cart: Cart,
+  orgId: string,
 ): Promise<Cart> {
   const modifierIds = [...new Set(cart.lines.flatMap((l) => l.modifierOptionIds ?? []))];
   const addonIds = [...new Set(cart.lines.flatMap((l) => l.addonIds ?? []))];
   const [cats, deltas, addonDeltas] = await Promise.all([
-    repo.productCategories(cart.lines.map((l) => l.productId)),
+    repo.productCategories(orgId, cart.lines.map((l) => l.productId)),
     repo.modifierOptionDeltas(modifierIds),
     repo.addonDeltas(addonIds),
   ]);
