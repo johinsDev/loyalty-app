@@ -1,6 +1,6 @@
 import type { db as Db } from "@loyalty/db";
 import {
-  addon,
+  purchaseItemAddon,
   customer,
   ingredient,
   loyaltyCard,
@@ -25,6 +25,7 @@ import {
 import {
   and,
   desc,
+  asc,
   eq,
   exists,
   gte,
@@ -1013,7 +1014,7 @@ export class PurchasesRepository {
     const modifierIds = [
       ...new Set(rows.flatMap((r) => r.modifierOptionIds ?? [])),
     ];
-    const addonIds = [...new Set(rows.flatMap((r) => r.addonIds ?? []))];
+    const itemIds = rows.map((r) => r.id);
     const ingredientIds = [
       ...new Set(rows.flatMap((r) => r.removedIngredientIds ?? [])),
     ];
@@ -1021,7 +1022,7 @@ export class PurchasesRepository {
     const [variantLabels, modifierLabels, addonLabels, ingredientLabels] = await Promise.all([
       this.variantLabels(variantIds),
       this.modifierLabels(modifierIds),
-      this.addonLabels(addonIds),
+      this.addonSnapshots(itemIds),
       this.ingredientLabels(ingredientIds),
     ]);
 
@@ -1034,9 +1035,7 @@ export class PurchasesRepository {
       modifierLabels: (r.modifierOptionIds ?? [])
         .map((mid) => modifierLabels.get(mid))
         .filter((l): l is string => l != null),
-      addonLabels: (r.addonIds ?? [])
-        .map((aid) => addonLabels.get(aid))
-        .filter((l): l is string => l != null),
+      addonLabels: addonLabels.get(r.id) ?? [],
       removedLabels: (r.removedIngredientIds ?? [])
         .map((iid) => ingredientLabels.get(iid))
         .filter((l): l is string => l != null),
@@ -1085,15 +1084,27 @@ export class PurchasesRepository {
     return out;
   }
 
-  /** addonId → catalog name (add-ons applied to a line). */
-  private async addonLabels(addonIds: string[]): Promise<Map<string, string>> {
-    const out = new Map<string, string>();
-    if (addonIds.length === 0) return out;
+  /**
+   * purchaseItemId → the add-on names frozen at sale time.
+   *
+   * Reads `purchase_item_addon`, NOT the live catalog. Resolving `addon_ids`
+   * against the catalog meant a rename rewrote historical receipts and a
+   * deletion made the label vanish; the snapshot keeps a ticket what it was.
+   */
+  private async addonSnapshots(itemIds: string[]): Promise<Map<string, string[]>> {
+    const out = new Map<string, string[]>();
+    if (itemIds.length === 0) return out;
     const rows = await this.db
-      .select({ id: addon.id, name: addon.name })
-      .from(addon)
-      .where(inArray(addon.id, addonIds));
-    for (const r of rows) out.set(r.id, r.name);
+      .select({
+        purchaseItemId: purchaseItemAddon.purchaseItemId,
+        name: purchaseItemAddon.name,
+      })
+      .from(purchaseItemAddon)
+      .where(inArray(purchaseItemAddon.purchaseItemId, itemIds))
+      .orderBy(asc(purchaseItemAddon.sortOrder));
+    for (const r of rows) {
+      out.set(r.purchaseItemId, [...(out.get(r.purchaseItemId) ?? []), r.name]);
+    }
     return out;
   }
 
