@@ -1,5 +1,6 @@
 "use client";
 
+import { marginPct, variantCogsCents } from "@loyalty/api/features/_shared/cogs";
 import {
   Button,
   Checkbox,
@@ -96,9 +97,11 @@ export function RecipeEditor({
   };
 
   const variantCost = (v: Variant) =>
-    v.ingredients.reduce(
-      (s, l) => s + l.quantity * (byId.get(l.ingredientId)?.costPerUnitCents ?? 0),
-      0,
+    variantCogsCents(
+      v.ingredients.map((l) => ({
+        quantity: l.quantity,
+        costPerUnitCents: byId.get(l.ingredientId)?.costPerUnitCents ?? 0,
+      })),
     );
 
   const onCreate = async () => {
@@ -125,7 +128,7 @@ export function RecipeEditor({
       {variants.map((v, idx) => {
         const c = variantCost(v);
         const price = Math.round(v.price * 100);
-        const margin = price > 0 ? Math.round(((price - c) / price) * 100) : null;
+        const margin = marginPct(price, c);
         return (
           <div key={v.id} className="border-border rounded-2xl border p-3.5">
             <div className="flex items-center justify-between gap-2">
