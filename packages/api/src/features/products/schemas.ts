@@ -106,6 +106,8 @@ export interface DetailModifierGroup {
 export interface DetailAddonGroup {
   id: string;
   name: string;
+  source: "manual" | "category";
+  categoryId: string | null;
   selectionType: "single" | "multi";
   minSelect: number;
   maxSelect: number | null;

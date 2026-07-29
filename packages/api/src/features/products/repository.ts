@@ -1,5 +1,6 @@
 import type { db as Db } from "@loyalty/db";
 import {
+  addon,
   addonGroup,
   addonGroupItem,
   category,
@@ -384,6 +385,42 @@ export class ProductsRepository {
     const amountFor = (ownerCents: number, override: number | undefined) =>
       detailCurrency === p.currency ? ownerCents : (override ?? ownerCents);
 
+    // Resolve the add-on categories referenced by `category`-sourced groups in
+    // one query, rather than per group.
+    const wantedCategoryIds = [
+      ...new Set(
+        p.addonGroups
+          .filter((g) => g.source === "category" && g.categoryId)
+          .map((g) => g.categoryId as string),
+      ),
+    ];
+    const addonsByCategory = new Map<
+      string,
+      { id: string; name: string; priceDeltaCents: number }[]
+    >();
+    if (wantedCategoryIds.length > 0) {
+      const rows = await this.db
+        .select({
+          id: addon.id,
+          name: addon.name,
+          priceDeltaCents: addon.priceDeltaCents,
+          categoryId: addon.categoryId,
+        })
+        .from(addon)
+        .where(
+          and(
+            eq(addon.organizationId, orgId),
+            eq(addon.active, true),
+            inArray(addon.categoryId, wantedCategoryIds),
+          ),
+        )
+        .orderBy(asc(addon.sortOrder), asc(addon.name));
+      for (const r of rows) {
+        const key = r.categoryId ?? "";
+        addonsByCategory.set(key, [...(addonsByCategory.get(key) ?? []), r]);
+      }
+    }
+
     return {
       id: p.id,
       slug: p.slug,
@@ -430,15 +467,27 @@ export class ProductsRepository {
       addonGroups: p.addonGroups.map((g) => ({
         id: g.id,
         name: g.name,
+        source: g.source as "manual" | "category",
+        categoryId: g.categoryId,
         selectionType: g.selectionType as "single" | "multi",
         minSelect: g.minSelect,
         maxSelect: g.maxSelect,
         required: g.required,
-        items: g.items.map((it) => ({
-          addonId: it.addonId,
-          name: it.addon.name,
-          priceDeltaCents: it.addon.priceDeltaCents,
-        })),
+        // A `category` group has no stored items — its membership is whatever
+        // is active in that category right now, which is the whole point:
+        // adding an add-on to the category publishes it here immediately.
+        items:
+          g.source === "category"
+            ? (addonsByCategory.get(g.categoryId ?? "") ?? []).map((a) => ({
+                addonId: a.id,
+                name: a.name,
+                priceDeltaCents: a.priceDeltaCents,
+              }))
+            : g.items.map((it) => ({
+                addonId: it.addonId,
+                name: it.addon.name,
+                priceDeltaCents: it.addon.priceDeltaCents,
+              })),
       })),
       ingredients: [
         ...new Set(

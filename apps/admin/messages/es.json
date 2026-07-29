@@ -1376,7 +1376,6 @@
     "net": "Total",
     "willEarn": "Ganará:",
     "earnPtsUnit": "pts",
-    "viewDetail": "Ver detalle",
     "noDetail": "Sin descripción adicional.",
     "decrease": "Quitar",
     "increase": "Agregar",
@@ -1706,15 +1705,41 @@
     "secAddons": "Adiciones",
     "addonsHint": "Grupos de adiciones del catálogo que el cliente puede sumar a este producto.",
     "addonGroups": {
-      "namePlaceholder": "Nombre del grupo (ej. Toppings)",
-      "single": "Una",
-      "multi": "Varias",
-      "required": "Obligatorio",
-      "singleHint": "El cliente elige solo UNA de estas adiciones (ej. tamaño).",
-      "multiHint": "El cliente puede elegir VARIAS de estas adiciones (ej. toppings).",
-      "requiredHint": "debe elegir al menos una",
       "addGroup": "Agregar grupo",
-      "emptyCatalog": "Todavía no hay adiciones en el catálogo. Creá algunas en"
+      "removeGroup": "Quitar grupo",
+      "namePlaceholder": "Nombre del grupo (ej. Toppings)",
+      "defaultName": "las adiciones",
+      "emptyCatalog": "Todavía no tenés adiciones en el catálogo.",
+      "goToCatalog": "Crear adiciones",
+      "searchAddons": "Buscar adición…",
+      "noneFound": "No se encontró ninguna",
+      "previewLabel": "Así lo va a ver el cliente",
+      "previewRequired": "obligatorio",
+      "previewOptional": "opcional",
+      "resolves": "{n, plural, =0 {No incluye ninguna adición todavía} one {Incluye 1 adición} other {Incluye # adiciones}}",
+      "source": {
+        "label": "¿Qué adiciones ofrece?",
+        "category": "Una categoría entera",
+        "categoryHint": "Se mantiene sola: si después agregás una adición a esa categoría, aparece acá sin tocar el producto.",
+        "manual": "Adiciones específicas",
+        "manualHint": "Elegís exactamente cuáles. No cambia cuando crecen las categorías.",
+        "noCategories": "Todavía no hay categorías de adiciones. Creá una desde el catálogo."
+      },
+      "rule": {
+        "label": "¿Cuántas puede elegir?",
+        "exactlyOne": "Exactamente 1",
+        "upTo": "Hasta",
+        "any": "Las que quiera",
+        "required": "Obligatorio",
+        "impliedRequired": "siempre, al elegir exactamente 1"
+      },
+      "preview": {
+        "exactlyOne": "Elegí 1 de {name} ({required})",
+        "upTo": "Elegí hasta {n} de {name} ({required})",
+        "any": "Agregá las {name} que quieras ({required})"
+      },
+      "nameLabel": "Nombre del grupo",
+      "nameRequired": "Ponele un nombre: es el título que ve el cliente."
     },
     "recipe": {
       "created": "“{name}” creado",
@@ -1739,6 +1764,9 @@
       "applyToAll": "Aplicar a todas las variantes",
       "copyFrom": "Copiar receta de",
       "copyActions": "Copiar receta"
+    },
+    "ingredients": {
+      "title": "Ingredientes"
     }
   },
   "Command": {
@@ -3127,5 +3155,130 @@
     "filters": "Filtros",
     "clearAll": "Limpiar todo",
     "done": "Listo"
+  },
+  "Addons": {
+    "title": "Adiciones",
+    "subtitle": "Extras reutilizables que se suman a un producto en la caja.",
+    "backToProducts": "Volver a productos",
+    "searchPlaceholder": "Buscar adición…",
+    "categoryFilter": "Categoría",
+    "statusFilter": "Estado",
+    "linkedFilter": "Insumo",
+    "empty": "Todavía no hay adiciones",
+    "emptyHint": "Creá la primera para poder ofrecerla en tus productos.",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "rowActions": "Acciones",
+    "derived": "derivado",
+    "saved": "Se guardó {name}",
+    "created": "Se creó {name}",
+    "deleted": "Se eliminó {name}",
+    "saveError": "No se pudo guardar",
+    "deleteTitle": "¿Eliminar {name}?",
+    "deleteHint": "Se quita de los productos que la ofrecen. Las ventas ya registradas no cambian.",
+    "col": {
+      "name": "Adición",
+      "category": "Categoría",
+      "price": "Precio",
+      "cost": "Costo",
+      "ingredient": "Insumo",
+      "status": "Estado"
+    },
+    "status": {
+      "active": "Activa",
+      "inactive": "Inactiva"
+    },
+    "linked": {
+      "yes": "Vinculadas a un insumo",
+      "no": "Sin insumo"
+    },
+    "addon": {
+      "new": "Nueva adición",
+      "edit": "Editar adición",
+      "name": "Nombre",
+      "namePlaceholder": "ej. Perlas",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Opcional",
+      "category": "Categoría",
+      "categoryNone": "Sin categoría",
+      "price": "Precio que se cobra",
+      "cost": "Costo",
+      "ingredient": "Insumo vinculado",
+      "ingredientNone": "Ninguno",
+      "ingredientHint": "Si la adición sale de un insumo del inventario, vinculalo: el costo se calcula solo y no se te desactualiza.",
+      "noneFound": "No se encontró",
+      "qty": "Cantidad que consume ({unit})",
+      "derivedCost": "Costo: {cost} — {qty} {unit} × {unitCost} por unidad",
+      "sku": "SKU",
+      "active": "Activa"
+    },
+    "categories": {
+      "manage": "Categorías",
+      "title": "Categorías de adiciones",
+      "hint": "Agrupá las adiciones (ej. Proteínas, Vegetales) para poder ofrecer un grupo entero en un producto.",
+      "placeholder": "Nombre de la categoría",
+      "empty": "Todavía no hay categorías",
+      "members": "{n, plural, =0 {Sin adiciones} one {1 adición} other {# adiciones}}",
+      "affects": "{n, plural, one {afecta 1 producto} other {afecta # productos}}"
+    }
+  },
+  "Ingredients": {
+    "title": "Ingredientes",
+    "subtitle": "Insumos que componen tus recetas y alimentan el costo.",
+    "backToProducts": "Volver a productos",
+    "searchPlaceholder": "Buscar ingrediente…",
+    "categoryFilter": "Categoría",
+    "unitFilter": "Unidad",
+    "archivedFilter": "Archivados",
+    "showArchived": "Mostrar archivados",
+    "archivedBadge": "Archivado",
+    "categoriesManage": "Categorías",
+    "empty": "Todavía no hay ingredientes",
+    "emptyHint": "Creá el primero para poder armar recetas y calcular el costo.",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "archive": "Archivar",
+    "restore": "Restaurar",
+    "rowActions": "Acciones",
+    "loading": "Cargando…",
+    "usedIn": "{n, plural, one {1 producto} other {# productos}}",
+    "saved": "Se guardó {name}",
+    "created": "Se creó {name}",
+    "deleted": "Se eliminó {name}",
+    "archived": "Se archivó {name}",
+    "restored": "Se restauró {name}",
+    "saveError": "No se pudo guardar",
+    "deleteTitle": "¿Eliminar {name}?",
+    "deleteHint": "No lo usa ninguna receta, así que se puede eliminar.",
+    "deleteBlocked": "Lo usan {n} productos. No se puede eliminar mientras esté en una receta — archivalo para sacarlo de los selectores sin tocar el historial.",
+    "deleteUnlinks": "Hay {n} adiciones vinculadas a este insumo. Si lo eliminás, quedan sin insumo.",
+    "col": {
+      "name": "Ingrediente",
+      "category": "Categoría",
+      "unit": "Unidad",
+      "cost": "Costo",
+      "usage": "Uso"
+    },
+    "usage": {
+      "see": "Ver dónde se usa",
+      "title": "{name} se usa en",
+      "none": "Todavía no lo usa ninguna receta.",
+      "addons": "Adiciones vinculadas"
+    },
+    "ingredient": {
+      "new": "Nuevo ingrediente",
+      "edit": "Editar ingrediente",
+      "name": "Nombre",
+      "namePlaceholder": "ej. Leche",
+      "category": "Categoría",
+      "categoryNone": "Sin categoría",
+      "unit": "Unidad",
+      "cost": "Costo por {unit}",
+      "costHint": "El costo por unidad × la cantidad de la receta es lo que da el costo de cada variante."
+    }
   }
 }

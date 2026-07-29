@@ -1,6 +1,8 @@
 import type { db as Db } from "@loyalty/db";
 import {
+  addon,
   customer,
+  ingredient,
   loyaltyCard,
   type LoyaltyCardRow,
   pointsTransaction,
@@ -9,6 +11,7 @@ import {
   promoRedemption,
   purchase,
   purchaseItem,
+  purchaseItemAddon,
   reward,
   stamp,
 } from "@loyalty/db/schema";
@@ -358,23 +361,74 @@ export class StampsRepository {
 
       // Itemized line items (snapshot) + promo redemption (usage), atomic.
       if (input.items && input.items.length > 0) {
-        await tx.insert(purchaseItem).values(
-          input.items.map((it) => ({
-            purchaseId,
-            productId: it.productId,
-            variantId: it.variantId ?? null,
-            modifierOptionIds: it.modifierOptionIds ?? null,
-            addonIds: it.addonIds && it.addonIds.length > 0 ? it.addonIds : null,
-            removedIngredientIds:
-              it.removedIngredientIds && it.removedIngredientIds.length > 0
-                ? it.removedIngredientIds
-                : null,
-            qty: it.qty,
-            unitAmountCents: it.unitAmountCents,
-            currency: it.currency ?? currency,
-            note: it.note ?? null,
-          })),
-        );
+        const insertedItems = await tx
+          .insert(purchaseItem)
+          .values(
+            input.items.map((it) => ({
+              purchaseId,
+              productId: it.productId,
+              variantId: it.variantId ?? null,
+              modifierOptionIds: it.modifierOptionIds ?? null,
+              addonIds: it.addonIds && it.addonIds.length > 0 ? it.addonIds : null,
+              removedIngredientIds:
+                it.removedIngredientIds && it.removedIngredientIds.length > 0
+                  ? it.removedIngredientIds
+                  : null,
+              qty: it.qty,
+              unitAmountCents: it.unitAmountCents,
+              currency: it.currency ?? currency,
+              note: it.note ?? null,
+            })),
+          )
+          .returning({ id: purchaseItem.id });
+
+        // Freeze the add-ons onto the line. `addon_ids` alone forced the
+        // purchase detail to re-resolve names against the *current* catalog, so
+        // renaming an add-on rewrote old receipts and deleting one dropped the
+        // label. Name/price/cost are captured here and never read back from the
+        // catalog again.
+        const allAddonIds = [
+          ...new Set(input.items.flatMap((it) => it.addonIds ?? [])),
+        ];
+        if (allAddonIds.length > 0) {
+          const catalog = await tx
+            .select({
+              id: addon.id,
+              name: addon.name,
+              priceDeltaCents: addon.priceDeltaCents,
+              costCents: addon.costCents,
+              ingredientQty: addon.ingredientQty,
+              ingredientCost: ingredient.costPerUnitCents,
+            })
+            .from(addon)
+            .leftJoin(ingredient, eq(ingredient.id, addon.ingredientId))
+            .where(inArray(addon.id, allAddonIds));
+          const byId = new Map(catalog.map((a) => [a.id, a]));
+
+          const snapshots = input.items.flatMap((it, i) =>
+            (it.addonIds ?? []).map((addonId, j) => {
+              const a = byId.get(addonId);
+              // A linked add-on's cost is derived; mirror `AddonsRepository
+              // .effectiveCost` so the frozen margin matches the catalog's.
+              const cost =
+                a?.ingredientQty != null && a.ingredientCost != null
+                  ? Math.round(a.ingredientQty * a.ingredientCost)
+                  : (a?.costCents ?? 0);
+              return {
+                purchaseItemId: insertedItems[i]!.id,
+                addonId,
+                name: a?.name ?? "",
+                priceCents: a?.priceDeltaCents ?? 0,
+                costCents: cost,
+                qty: 1,
+                sortOrder: j,
+              };
+            }),
+          ).filter((s) => s.name !== "");
+          if (snapshots.length > 0) {
+            await tx.insert(purchaseItemAddon).values(snapshots);
+          }
+        }
       }
       if (input.appliedPromoId) {
         await tx.insert(promoRedemption).values({

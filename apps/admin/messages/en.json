@@ -1376,7 +1376,6 @@
     "net": "Total",
     "willEarn": "Earns:",
     "earnPtsUnit": "pts",
-    "viewDetail": "View detail",
     "noDetail": "No extra description.",
     "decrease": "Decrease",
     "increase": "Increase",
@@ -1706,15 +1705,41 @@
     "secAddons": "Add-ons",
     "addonsHint": "Catalog add-on groups the customer can add to this product.",
     "addonGroups": {
-      "namePlaceholder": "Group name (e.g. Toppings)",
-      "single": "One",
-      "multi": "Many",
-      "required": "Required",
-      "singleHint": "The customer picks only ONE of these add-ons (e.g. size).",
-      "multiHint": "The customer can pick SEVERAL of these add-ons (e.g. toppings).",
-      "requiredHint": "must pick at least one",
       "addGroup": "Add group",
-      "emptyCatalog": "No add-ons in the catalog yet. Create some in"
+      "removeGroup": "Remove group",
+      "namePlaceholder": "Group name (e.g. Toppings)",
+      "defaultName": "the add-ons",
+      "emptyCatalog": "You don't have any add-ons in the catalog yet.",
+      "goToCatalog": "Create add-ons",
+      "searchAddons": "Search add-on…",
+      "noneFound": "Nothing found",
+      "previewLabel": "This is what the customer sees",
+      "previewRequired": "required",
+      "previewOptional": "optional",
+      "resolves": "{n, plural, =0 {No add-ons included yet} one {Includes 1 add-on} other {Includes # add-ons}}",
+      "source": {
+        "label": "Which add-ons does it offer?",
+        "category": "A whole category",
+        "categoryHint": "Stays in sync: adding an add-on to that category later shows it here without touching the product.",
+        "manual": "Specific add-ons",
+        "manualHint": "You pick exactly which ones. Unaffected when categories grow.",
+        "noCategories": "No add-on categories yet. Create one from the catalog."
+      },
+      "rule": {
+        "label": "How many can they pick?",
+        "exactlyOne": "Exactly 1",
+        "upTo": "Up to",
+        "any": "As many as they want",
+        "required": "Required",
+        "impliedRequired": "always, when picking exactly 1"
+      },
+      "preview": {
+        "exactlyOne": "Pick 1 of {name} ({required})",
+        "upTo": "Pick up to {n} of {name} ({required})",
+        "any": "Add any {name} you want ({required})"
+      },
+      "nameLabel": "Group name",
+      "nameRequired": "Give it a name — it's the heading the customer sees."
     },
     "recipe": {
       "created": "“{name}” created",
@@ -1739,6 +1764,9 @@
       "applyToAll": "Apply to all variants",
       "copyFrom": "Copy recipe from",
       "copyActions": "Copy recipe"
+    },
+    "ingredients": {
+      "title": "Ingredients"
     }
   },
   "Command": {
@@ -3127,5 +3155,130 @@
     "filters": "Filters",
     "clearAll": "Clear all",
     "done": "Done"
+  },
+  "Addons": {
+    "title": "Add-ons",
+    "subtitle": "Reusable extras a customer can add to a product at the register.",
+    "backToProducts": "Back to products",
+    "searchPlaceholder": "Search add-on…",
+    "categoryFilter": "Category",
+    "statusFilter": "Status",
+    "linkedFilter": "Ingredient",
+    "empty": "No add-ons yet",
+    "emptyHint": "Create the first one so you can offer it on your products.",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "save": "Save",
+    "rowActions": "Actions",
+    "derived": "derived",
+    "saved": "Saved {name}",
+    "created": "Created {name}",
+    "deleted": "Deleted {name}",
+    "saveError": "Could not save",
+    "deleteTitle": "Delete {name}?",
+    "deleteHint": "It's removed from the products offering it. Recorded sales are unaffected.",
+    "col": {
+      "name": "Add-on",
+      "category": "Category",
+      "price": "Price",
+      "cost": "Cost",
+      "ingredient": "Ingredient",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "linked": {
+      "yes": "Linked to an ingredient",
+      "no": "Standalone"
+    },
+    "addon": {
+      "new": "New add-on",
+      "edit": "Edit add-on",
+      "name": "Name",
+      "namePlaceholder": "e.g. Pearls",
+      "description": "Description",
+      "descriptionPlaceholder": "Optional",
+      "category": "Category",
+      "categoryNone": "No category",
+      "price": "Price charged",
+      "cost": "Cost",
+      "ingredient": "Linked ingredient",
+      "ingredientNone": "None",
+      "ingredientHint": "If the add-on comes out of a stocked ingredient, link it: the cost is computed for you and can't go stale.",
+      "noneFound": "Nothing found",
+      "qty": "Quantity consumed ({unit})",
+      "derivedCost": "Cost: {cost} — {qty} {unit} × {unitCost} per unit",
+      "sku": "SKU",
+      "active": "Active"
+    },
+    "categories": {
+      "manage": "Categories",
+      "title": "Add-on categories",
+      "hint": "Group add-ons (e.g. Proteins, Vegetables) so a product can offer a whole group at once.",
+      "placeholder": "Category name",
+      "empty": "No categories yet",
+      "members": "{n, plural, =0 {No add-ons} one {1 add-on} other {# add-ons}}",
+      "affects": "{n, plural, one {affects 1 product} other {affects # products}}"
+    }
+  },
+  "Ingredients": {
+    "title": "Ingredients",
+    "subtitle": "The supplies your recipes are made of, and what drives cost.",
+    "backToProducts": "Back to products",
+    "searchPlaceholder": "Search ingredient…",
+    "categoryFilter": "Category",
+    "unitFilter": "Unit",
+    "archivedFilter": "Archived",
+    "showArchived": "Show archived",
+    "archivedBadge": "Archived",
+    "categoriesManage": "Categories",
+    "empty": "No ingredients yet",
+    "emptyHint": "Create the first one so you can build recipes and compute cost.",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "save": "Save",
+    "archive": "Archive",
+    "restore": "Restore",
+    "rowActions": "Actions",
+    "loading": "Loading…",
+    "usedIn": "{n, plural, one {1 product} other {# products}}",
+    "saved": "Saved {name}",
+    "created": "Created {name}",
+    "deleted": "Deleted {name}",
+    "archived": "Archived {name}",
+    "restored": "Restored {name}",
+    "saveError": "Could not save",
+    "deleteTitle": "Delete {name}?",
+    "deleteHint": "No recipe uses it, so it can be deleted.",
+    "deleteBlocked": "{n} products use it. It can't be deleted while it's in a recipe — archive it to remove it from the pickers without touching history.",
+    "deleteUnlinks": "{n} add-ons are linked to this ingredient. Deleting it leaves them without one.",
+    "col": {
+      "name": "Ingredient",
+      "category": "Category",
+      "unit": "Unit",
+      "cost": "Cost",
+      "usage": "Usage"
+    },
+    "usage": {
+      "see": "See where it's used",
+      "title": "{name} is used in",
+      "none": "No recipe uses it yet.",
+      "addons": "Linked add-ons"
+    },
+    "ingredient": {
+      "new": "New ingredient",
+      "edit": "Edit ingredient",
+      "name": "Name",
+      "namePlaceholder": "e.g. Milk",
+      "category": "Category",
+      "categoryNone": "No category",
+      "unit": "Unit",
+      "cost": "Cost per {unit}",
+      "costHint": "Cost per unit × the recipe quantity is what gives each variant its cost."
+    }
   }
 }

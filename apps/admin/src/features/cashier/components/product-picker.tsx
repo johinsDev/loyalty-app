@@ -114,6 +114,10 @@ export function ProductPicker({
     .reduce((s, it) => s + it.priceDeltaCents, 0);
   const unit = basePrice + addonDelta;
 
+  /** How many of a group's add-ons are currently picked. */
+  const pickedIn = (group: DetailAddonGroup, set: Set<string>) =>
+    group.items.filter((it) => set.has(it.addonId)).length;
+
   const toggleAddon = (group: DetailAddonGroup, addonId: string) => {
     setSelectedAddons((prev) => {
       const next = new Set(prev);
@@ -122,6 +126,10 @@ export function ProductPicker({
       } else {
         if (group.selectionType === "single") {
           for (const it of group.items) next.delete(it.addonId); // radio: clear the group
+        } else if (group.maxSelect != null && pickedIn(group, next) >= group.maxSelect) {
+          // "Elegí hasta N" is now expressible, so the register has to enforce
+          // it — `maxSelect` used to always be null and was safe to ignore.
+          return prev;
         }
         next.add(addonId);
       }

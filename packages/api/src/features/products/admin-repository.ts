@@ -1,3 +1,4 @@
+import { marginPct, variantCogsCents } from "../_shared/cogs";
 import type { db as Db } from "@loyalty/db";
 import {
   addonGroup,
@@ -157,13 +158,8 @@ export class ProductsAdminRepository {
           costPerUnitCents: vi.ingredient.costPerUnitCents,
           sortOrder: vi.sortOrder,
         }));
-        const costCents = Math.round(
-          ingredients.reduce((s, i) => s + i.quantity * i.costPerUnitCents, 0),
-        );
-        const marginPct =
-          v.priceCents > 0
-            ? Math.round(((v.priceCents - costCents) / v.priceCents) * 100)
-            : null;
+        const costCents = variantCogsCents(ingredients);
+        const margin = marginPct(v.priceCents, costCents);
         return {
           id: v.id,
           sku: v.sku,
@@ -174,7 +170,7 @@ export class ProductsAdminRepository {
           optionValueIds: v.values.map((vv) => vv.optionValueId),
           ingredients,
           costCents,
-          marginPct,
+          marginPct: margin,
         };
       }),
       modifierGroups: p.modifierGroups.map((g) => ({
@@ -194,6 +190,8 @@ export class ProductsAdminRepository {
         })),
       })),
       addonGroups: p.addonGroups.map((g) => ({
+        source: g.source as "manual" | "category",
+        categoryId: g.categoryId,
         id: g.id,
         name: g.name,
         selectionType: g.selectionType,
@@ -406,6 +404,8 @@ export class ProductsAdminRepository {
         input.addonGroups.map((g) => ({
           id: g.id,
           name: g.name,
+          source: g.source,
+          categoryId: g.categoryId ?? null,
           selectionType: g.selectionType,
           minSelect: g.minSelect,
           maxSelect: g.maxSelect ?? null,
