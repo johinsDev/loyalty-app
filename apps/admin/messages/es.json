@@ -1705,15 +1705,38 @@
     "secAddons": "Adiciones",
     "addonsHint": "Grupos de adiciones del catálogo que el cliente puede sumar a este producto.",
     "addonGroups": {
-      "namePlaceholder": "Nombre del grupo (ej. Toppings)",
-      "single": "Una",
-      "multi": "Varias",
-      "required": "Obligatorio",
-      "singleHint": "El cliente elige solo UNA de estas adiciones (ej. tamaño).",
-      "multiHint": "El cliente puede elegir VARIAS de estas adiciones (ej. toppings).",
-      "requiredHint": "debe elegir al menos una",
       "addGroup": "Agregar grupo",
-      "emptyCatalog": "Todavía no hay adiciones en el catálogo. Creá algunas en"
+      "removeGroup": "Quitar grupo",
+      "namePlaceholder": "Nombre del grupo (ej. Toppings)",
+      "defaultName": "adiciones",
+      "emptyCatalog": "Todavía no tenés adiciones en el catálogo.",
+      "goToCatalog": "Crear adiciones",
+      "searchAddons": "Buscar adición…",
+      "noneFound": "No se encontró ninguna",
+      "previewLabel": "Así lo va a ver el cliente",
+      "previewRequired": "obligatorio",
+      "previewOptional": "opcional",
+      "resolves": "Incluye {n} adiciones",
+      "source": {
+        "label": "¿Qué adiciones ofrece?",
+        "category": "Una categoría entera",
+        "categoryHint": "Se mantiene sola: si después agregás una adición a esa categoría, aparece acá sin tocar el producto.",
+        "manual": "Adiciones específicas",
+        "manualHint": "Elegís exactamente cuáles. No cambia cuando crecen las categorías.",
+        "noCategories": "Todavía no hay categorías de adiciones. Creá una desde el catálogo."
+      },
+      "rule": {
+        "label": "¿Cuántas puede elegir?",
+        "exactlyOne": "Exactamente 1",
+        "upTo": "Hasta",
+        "any": "Las que quiera",
+        "required": "Obligatorio"
+      },
+      "preview": {
+        "exactlyOne": "Elegí 1 de {name} ({required})",
+        "upTo": "Elegí hasta {n} de {name} ({required})",
+        "any": "Agregá las {name} que quieras ({required})"
+      }
     },
     "recipe": {
       "created": "“{name}” creado",

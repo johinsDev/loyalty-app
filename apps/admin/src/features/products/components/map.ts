@@ -98,7 +98,16 @@ export function detailToDraft(d: AdminDetail): {
     addonGroups: d.addonGroups.map((g) => ({
       id: g.id,
       name: g.name,
-      selectionType: g.selectionType as "single" | "multi",
+      source: g.source,
+      categoryId: g.categoryId,
+      // Reconstruct the named mode from the stored min/max.
+      mode:
+        g.selectionType === "single"
+          ? ("exactlyOne" as const)
+          : g.maxSelect != null
+            ? ("upTo" as const)
+            : ("any" as const),
+      maxSelect: g.maxSelect ?? 3,
       required: g.required,
       sortOrder: g.sortOrder,
       addonIds: g.items.map((it) => it.addonId),
@@ -213,21 +222,30 @@ export function draftToUpsert(
     modifierGroups: passthrough.modifierGroups,
     // Persist groups with at least one add-on (name optional); an in-progress
     // group with no add-ons is dropped so it can't fail the save.
+    // Keep groups that actually offer something: a manual group needs add-ons,
+    // a category group needs a category. An in-progress group is dropped so it
+    // can't fail the save.
     addonGroups: draft.addonGroups
-      .filter((g) => g.addonIds.length > 0)
+      .filter((g) => (g.source === "category" ? !!g.categoryId : g.addonIds.length > 0))
       .map((g, i) => ({
         id: g.id,
         name: g.name.trim(),
-        selectionType: g.selectionType,
-        minSelect: g.required ? 1 : 0,
-        maxSelect: null,
-        required: g.required,
+        source: g.source,
+        categoryId: g.source === "category" ? g.categoryId : null,
+        // The named mode compiles to the selection rule the register enforces.
+        selectionType: g.mode === "exactlyOne" ? ("single" as const) : ("multi" as const),
+        minSelect: g.mode === "exactlyOne" || g.required ? 1 : 0,
+        maxSelect: g.mode === "exactlyOne" ? 1 : g.mode === "upTo" ? g.maxSelect : null,
+        required: g.mode === "exactlyOne" ? true : g.required,
         sortOrder: i,
-        items: g.addonIds.map((addonId, j) => ({
-          id: `${g.id}::${addonId}`,
-          addonId,
-          sortOrder: j,
-        })),
+        items:
+          g.source === "category"
+            ? []
+            : g.addonIds.map((addonId, j) => ({
+                id: `${g.id}::${addonId}`,
+                addonId,
+                sortOrder: j,
+              })),
       })),
     // Product photos from the media UI (only uploaded ones have a url) + the
     // preserved variant-scoped images.

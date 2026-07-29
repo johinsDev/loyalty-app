@@ -119,14 +119,27 @@ export type ProductDraft = {
   addonGroups: AddonGroupDraft[];
 };
 
+/** How a group decides which add-ons it offers. `manual` = the explicit
+ *  `addonIds`. `category` = whatever is in `categoryId` at render time. */
+export type AddonGroupSource = "manual" | "category";
+
+/** Named selection rules, in the shop owner's language. They compile down to
+ *  min/max on save — `maxSelect` existed in the schema all along but the old
+ *  editor always wrote null, so "elegí hasta 3" was impossible to express. */
+export type AddonGroupMode = "exactlyOne" | "upTo" | "any";
+
 /** A group attaching reusable catalog add-ons to this product. */
 export type AddonGroupDraft = {
   id: string;
   name: string;
-  selectionType: "single" | "multi";
+  source: AddonGroupSource;
+  categoryId: string | null;
+  mode: AddonGroupMode;
+  /** Only meaningful for `upTo`. */
+  maxSelect: number;
   required: boolean;
   sortOrder: number;
-  /** Catalog add-on ids this group offers. */
+  /** Catalog add-on ids this group offers when `source` is `manual`. */
   addonIds: string[];
 };
 

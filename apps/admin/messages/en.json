@@ -1705,15 +1705,38 @@
     "secAddons": "Add-ons",
     "addonsHint": "Catalog add-on groups the customer can add to this product.",
     "addonGroups": {
-      "namePlaceholder": "Group name (e.g. Toppings)",
-      "single": "One",
-      "multi": "Many",
-      "required": "Required",
-      "singleHint": "The customer picks only ONE of these add-ons (e.g. size).",
-      "multiHint": "The customer can pick SEVERAL of these add-ons (e.g. toppings).",
-      "requiredHint": "must pick at least one",
       "addGroup": "Add group",
-      "emptyCatalog": "No add-ons in the catalog yet. Create some in"
+      "removeGroup": "Remove group",
+      "namePlaceholder": "Group name (e.g. Toppings)",
+      "defaultName": "add-ons",
+      "emptyCatalog": "You don't have any add-ons in the catalog yet.",
+      "goToCatalog": "Create add-ons",
+      "searchAddons": "Search add-on…",
+      "noneFound": "Nothing found",
+      "previewLabel": "This is what the customer sees",
+      "previewRequired": "required",
+      "previewOptional": "optional",
+      "resolves": "Includes {n} add-ons",
+      "source": {
+        "label": "Which add-ons does it offer?",
+        "category": "A whole category",
+        "categoryHint": "Stays in sync: adding an add-on to that category later shows it here without touching the product.",
+        "manual": "Specific add-ons",
+        "manualHint": "You pick exactly which ones. Unaffected when categories grow.",
+        "noCategories": "No add-on categories yet. Create one from the catalog."
+      },
+      "rule": {
+        "label": "How many can they pick?",
+        "exactlyOne": "Exactly 1",
+        "upTo": "Up to",
+        "any": "As many as they want",
+        "required": "Required"
+      },
+      "preview": {
+        "exactlyOne": "Pick 1 of {name} ({required})",
+        "upTo": "Pick up to {n} of {name} ({required})",
+        "any": "Add any {name} you want ({required})"
+      }
     },
     "recipe": {
       "created": "“{name}” created",

@@ -190,6 +190,8 @@ export class ProductsAdminRepository {
         })),
       })),
       addonGroups: p.addonGroups.map((g) => ({
+        source: g.source as "manual" | "category",
+        categoryId: g.categoryId,
         id: g.id,
         name: g.name,
         selectionType: g.selectionType,
@@ -402,6 +404,8 @@ export class ProductsAdminRepository {
         input.addonGroups.map((g) => ({
           id: g.id,
           name: g.name,
+          source: g.source,
+          categoryId: g.categoryId ?? null,
           selectionType: g.selectionType,
           minSelect: g.minSelect,
           maxSelect: g.maxSelect ?? null,
