@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
@@ -31,26 +31,34 @@ export const user = sqliteTable("user", {
     .$defaultFn(() => new Date()),
 });
 
-export const session = sqliteTable("session", {
-  id: text("id").primaryKey(),
-  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
-  token: text("token").notNull().unique(),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  activeOrganizationId: text("active_organization_id"),
-  // Better Auth `admin` plugin: set to the impersonator's user id while an
-  // impersonation session is active. The impersonation banner keys off it.
-  impersonatedBy: text("impersonated_by"),
-});
+export const session = sqliteTable(
+  "session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    activeOrganizationId: text("active_organization_id"),
+    // Better Auth `admin` plugin: set to the impersonator's user id while an
+    // impersonation session is active. The impersonation banner keys off it.
+    impersonatedBy: text("impersonated_by"),
+  },
+  (t) => ({
+    // Listing/revoking a user's sessions scans by user_id; `token` already has
+    // a unique index from the column definition.
+    userIdIdx: index("session_user_id_idx").on(t.userId),
+  }),
+);
 
 export const account = sqliteTable("account", {
   id: text("id").primaryKey(),
@@ -102,25 +110,34 @@ export const organization = sqliteTable("organization", {
   metadata: text("metadata"),
 });
 
-export const member = sqliteTable("member", {
-  id: text("id").primaryKey(),
-  organizationId: text("organization_id")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  role: text("role").notNull().default("member"),
-  // Employee-management fields (the admin "Empleados" feature). Owner-set
-  // performance rating (1–5) + free-text notes; `deletedAt` is the soft-delete
-  // marker (the user row is kept for audit/stats history).
-  rating: integer("rating"),
-  notes: text("notes"),
-  deletedAt: integer("deleted_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const member = sqliteTable(
+  "member",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"),
+    // Employee-management fields (the admin "Empleados" feature). Owner-set
+    // performance rating (1–5) + free-text notes; `deletedAt` is the soft-delete
+    // marker (the user row is kept for audit/stats history).
+    rating: integer("rating"),
+    notes: text("notes"),
+    deletedAt: integer("deleted_at", { mode: "timestamp" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    // `getUserRole` reads by user_id on every role-gated procedure.
+    userIdIdx: index("member_user_id_idx").on(t.userId),
+    // Roster reads (Empleados list, leaderboard) scan by org.
+    organizationIdIdx: index("member_organization_id_idx").on(t.organizationId),
+  }),
+);
 
 export const invitation = sqliteTable("invitation", {
   id: text("id").primaryKey(),
