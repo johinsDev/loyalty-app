@@ -63,7 +63,7 @@ export function RecipeEditor({
 
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
-  const [unit, setUnit] = useState("g");
+  const [unit, setUnit] = useState<(typeof UNITS)[number]>("g");
   const [cost, setCost] = useState<number | undefined>(undefined);
 
   const setVariant = (idx: number, next: Variant) =>
@@ -291,7 +291,10 @@ export function RecipeEditor({
             </div>
             <div className="space-y-2">
               <Label className="text-xs">{t("recipe.unit")}</Label>
-              <Select value={unit} onValueChange={(v) => setUnit(v ?? "u")}>
+              <Select
+                value={unit}
+                onValueChange={(v) => setUnit((v as (typeof UNITS)[number]) ?? "u")}
+              >
                 <SelectTrigger size="lg" className="w-full text-sm">
                   <SelectValue />
                 </SelectTrigger>

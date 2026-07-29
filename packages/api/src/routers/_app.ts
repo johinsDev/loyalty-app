@@ -1,9 +1,12 @@
+import { addonsRouter } from "../features/addons";
 import { bannersRouter } from "../features/banners";
+import { catalogCategoriesRouter } from "../features/catalog-categories";
 import { campaignsRouter } from "../features/campaigns";
 import { dashboardRouter } from "../features/dashboard";
 import { emailOutboxRouter } from "../features/email-outbox";
 import { employeesRouter } from "../features/employees";
 import { flagsRouter } from "../features/flags";
+import { ingredientsRouter } from "../features/ingredients";
 import { menuRouter } from "../features/products";
 import { notificationsRouter } from "../features/notifications";
 import { promocionesRouter } from "../features/promotions";
@@ -37,6 +40,9 @@ export const appRouter = router({
   profile: profileRouter,
   rewards: rewardsRouter,
   menu: menuRouter,
+  addons: addonsRouter,
+  ingredients: ingredientsRouter,
+  catalogCategories: catalogCategoriesRouter,
   banners: bannersRouter,
   campaigns: campaignsRouter,
   dashboard: dashboardRouter,
