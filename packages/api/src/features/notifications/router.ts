@@ -1,13 +1,7 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { type db as Db } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
-import {
-  managerProcedure,
-  protectedProcedure,
-  rateLimit,
-  router,
-  staffProcedure,
-} from "../../trpc";
+import { managerProcedure, orgId, protectedProcedure, rateLimit, router, staffProcedure } from "../../trpc";
 import { NotificationConfigRepository } from "./config-repository";
 import { DrizzleNotificationPreferences } from "./preferences-repository";
 import { NotificationRepository } from "./repository";
@@ -35,19 +29,16 @@ function buildService(db: typeof Db): NotificationService {
 }
 
 /** The single principal org (single-tenant pilot). No env var needed. */
-const orgId = async (): Promise<string> =>
-  (await getPrimaryOrganizationId()) ?? "";
-
 export const notificationsRouter = router({
   // ---- Customer-facing feed -------------------------------------------
   listMine: protectedProcedure
     .input(listMineInputSchema)
     .query(async ({ ctx, input }) =>
-      buildService(ctx.db).listMine(ctx.session.user.id, await orgId(), input),
+      buildService(ctx.db).listMine(ctx.session.user.id, orgId(ctx), input),
     ),
 
   unreadCount: protectedProcedure.query(async ({ ctx }) =>
-    buildService(ctx.db).unreadCount(ctx.session.user.id, await orgId()),
+    buildService(ctx.db).unreadCount(ctx.session.user.id, orgId(ctx)),
   ),
 
   markRead: protectedProcedure
@@ -57,7 +48,7 @@ export const notificationsRouter = router({
     ),
 
   markAllRead: protectedProcedure.mutation(async ({ ctx }) =>
-    buildService(ctx.db).markAllRead(ctx.session.user.id, await orgId()),
+    buildService(ctx.db).markAllRead(ctx.session.user.id, orgId(ctx)),
   ),
 
   delete: protectedProcedure
@@ -67,12 +58,12 @@ export const notificationsRouter = router({
     ),
 
   deleteAll: protectedProcedure.mutation(async ({ ctx }) =>
-    buildService(ctx.db).removeAll(ctx.session.user.id, await orgId()),
+    buildService(ctx.db).removeAll(ctx.session.user.id, orgId(ctx)),
   ),
 
   // ---- Customer-facing preferences ------------------------------------
   getMyPreferences: protectedProcedure.query(async ({ ctx }) =>
-    buildService(ctx.db).getMyPreferences(ctx.session.user.id, await orgId()),
+    buildService(ctx.db).getMyPreferences(ctx.session.user.id, orgId(ctx)),
   ),
 
   setPreference: protectedProcedure
@@ -80,7 +71,7 @@ export const notificationsRouter = router({
     .mutation(async ({ ctx, input }) =>
       buildService(ctx.db).setPreference(
         ctx.session.user.id,
-        await orgId(),
+        orgId(ctx),
         input.channel,
         input.marketingEnabled,
       ),
@@ -90,7 +81,7 @@ export const notificationsRouter = router({
   listCustomers: staffProcedure
     .input(listCustomersInputSchema)
     .query(async ({ ctx, input }) =>
-      buildService(ctx.db).listCustomers(await orgId(), input),
+      buildService(ctx.db).listCustomers(orgId(ctx), input),
     ),
 
   send: managerProcedure
@@ -99,13 +90,13 @@ export const notificationsRouter = router({
     )
     .input(sendInputSchema)
     .mutation(async ({ ctx, input }) =>
-      buildService(ctx.db).send(await orgId(), input),
+      buildService(ctx.db).send(orgId(ctx), input),
     ),
 
   // ---- Automated-trigger config ---------------------------------------
   configList: managerProcedure.query(async ({ ctx }): Promise<NotificationConfigView[]> => {
     const stored = new Map(
-      (await new NotificationConfigRepository(ctx.db).list(await orgId())).map((r) => [
+      (await new NotificationConfigRepository(ctx.db).list(orgId(ctx))).map((r) => [
         r.notificationKey,
         r,
       ]),
@@ -131,7 +122,7 @@ export const notificationsRouter = router({
         });
       }
       await new NotificationConfigRepository(ctx.db).upsert(
-        await orgId(),
+        orgId(ctx),
         input.notificationKey,
         { enabled: input.enabled, channels: input.channels },
       );

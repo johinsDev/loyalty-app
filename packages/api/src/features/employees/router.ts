@@ -1,14 +1,6 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
-import { TRPCError } from "@trpc/server";
+import { type db as Db } from "@loyalty/db";
 
-import {
-  managerProcedure,
-  ownerProcedure,
-  protectedProcedure,
-  publicProcedure,
-  router,
-  staffProcedure,
-} from "../../trpc";
+import { managerProcedure, ownerProcedure, protectedProcedure, publicProcedure, requireOrg, router, staffProcedure } from "../../trpc";
 import { cachedListRead } from "../_shared/list-cache";
 import { EmployeesRepository } from "./repository";
 import {
@@ -36,14 +28,6 @@ function makeService(db: typeof Db): EmployeesService {
   return new EmployeesService(new EmployeesRepository(db));
 }
 
-async function requireOrg(): Promise<string> {
-  const id = await getPrimaryOrganizationId();
-  if (!id) {
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No active organization" });
-  }
-  return id;
-}
-
 function actorOf(ctx: { session: { user: { id: string } }; headers: Headers }): Actor {
   return { userId: ctx.session.user.id, headers: ctx.headers };
 }
@@ -57,14 +41,14 @@ function actorOf(ctx: { session: { user: { id: string } }; headers: Headers }): 
 export const employeesRouter = router({
   // ── Register store-switcher (any staff) ─────────────────────────────────────
   myStores: staffProcedure.query(async ({ ctx }) =>
-    makeService(ctx.db).myStores(await requireOrg(), ctx.session.user.id),
+    makeService(ctx.db).myStores(requireOrg(ctx), ctx.session.user.id),
   ),
 
   // ── Reads (managers + owner) ────────────────────────────────────────────────
   list: managerProcedure
     .input(employeesListInputSchema)
     .query(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       return cachedListRead(ctx, "employees", org, input, () =>
         makeService(ctx.db).list(org, input),
       );
@@ -72,36 +56,36 @@ export const employeesRouter = router({
   listByIds: managerProcedure
     .input(bulkIdsSchema)
     .query(async ({ ctx, input }) =>
-      makeService(ctx.db).listByIds(await requireOrg(), input.ids),
+      makeService(ctx.db).listByIds(requireOrg(ctx), input.ids),
     ),
   get: managerProcedure
     .input(memberIdSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).get(await requireOrg(), input.memberId)),
+    .query(async ({ ctx, input }) => makeService(ctx.db).get(requireOrg(ctx), input.memberId)),
   stats: managerProcedure
     .input(memberIdSchema)
     .query(async ({ ctx, input }) =>
-      makeService(ctx.db).stats(await requireOrg(), input.memberId, STATS_TZ),
+      makeService(ctx.db).stats(requireOrg(ctx), input.memberId, STATS_TZ),
     ),
   activity: managerProcedure
     .input(employeeActivityInputSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).activity(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => makeService(ctx.db).activity(requireOrg(ctx), input)),
   leaderboard: managerProcedure
     .input(leaderboardInputSchema)
     .query(async ({ ctx, input }) =>
-      makeService(ctx.db).leaderboard(await requireOrg(), input, STATS_TZ),
+      makeService(ctx.db).leaderboard(requireOrg(ctx), input, STATS_TZ),
     ),
 
   // ── Sessions (owner-only — needs admin-plugin capability) ───────────────────
   listSessions: ownerProcedure
     .input(memberIdSchema)
     .query(async ({ ctx, input }) =>
-      makeService(ctx.db).listSessions(await requireOrg(), actorOf(ctx), input.memberId),
+      makeService(ctx.db).listSessions(requireOrg(ctx), actorOf(ctx), input.memberId),
     ),
   revokeSessions: ownerProcedure
     .input(revokeSessionSchema)
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).revokeSessions(
-        await requireOrg(),
+        requireOrg(ctx),
         actorOf(ctx),
         input.memberId,
         input.sessionToken,
@@ -112,12 +96,12 @@ export const employeesRouter = router({
   invite: ownerProcedure
     .input(inviteEmployeeSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).invite(await requireOrg(), actorOf(ctx), input),
+      makeService(ctx.db).invite(requireOrg(ctx), actorOf(ctx), input),
     ),
   update: ownerProcedure
     .input(updateEmployeeSchema)
     .mutation(async ({ ctx, input }) => {
-      const targetUserId = await makeService(ctx.db).update(await requireOrg(), actorOf(ctx), input);
+      const targetUserId = await makeService(ctx.db).update(requireOrg(ctx), actorOf(ctx), input);
       // Role resolution is cached in `auth.me` (see `../../trpc#cachedRead`) —
       // bust it so a role change is reflected immediately instead of waiting
       // out the TTL.
@@ -126,38 +110,38 @@ export const employeesRouter = router({
   setRating: ownerProcedure
     .input(setRatingSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).setRating(await requireOrg(), actorOf(ctx), input.memberId, input.rating),
+      makeService(ctx.db).setRating(requireOrg(ctx), actorOf(ctx), input.memberId, input.rating),
     ),
   changeEmail: ownerProcedure
     .input(changeEmailSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).changeEmail(await requireOrg(), actorOf(ctx), input.memberId, input.email),
+      makeService(ctx.db).changeEmail(requireOrg(ctx), actorOf(ctx), input.memberId, input.email),
     ),
   disable: ownerProcedure
     .input(disableEmployeeSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).disable(await requireOrg(), actorOf(ctx), input.memberId, input.reason),
+      makeService(ctx.db).disable(requireOrg(ctx), actorOf(ctx), input.memberId, input.reason),
     ),
   enable: ownerProcedure
     .input(memberIdSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).enable(await requireOrg(), actorOf(ctx), input.memberId),
+      makeService(ctx.db).enable(requireOrg(ctx), actorOf(ctx), input.memberId),
     ),
   remove: ownerProcedure
     .input(memberIdSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).remove(await requireOrg(), actorOf(ctx), input.memberId),
+      makeService(ctx.db).remove(requireOrg(ctx), actorOf(ctx), input.memberId),
     ),
   bulkRemove: ownerProcedure
     .input(bulkIdsSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).bulkRemove(await requireOrg(), actorOf(ctx), input.ids),
+      makeService(ctx.db).bulkRemove(requireOrg(ctx), actorOf(ctx), input.ids),
     ),
   bulkSetDisabled: ownerProcedure
     .input(bulkSetDisabledSchema)
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).bulkSetDisabled(
-        await requireOrg(),
+        requireOrg(ctx),
         actorOf(ctx),
         input.ids,
         input.disabled,
@@ -168,10 +152,10 @@ export const employeesRouter = router({
   impersonate: ownerProcedure
     .input(impersonateSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).impersonate(await requireOrg(), actorOf(ctx), input.userId),
+      makeService(ctx.db).impersonate(requireOrg(ctx), actorOf(ctx), input.userId),
     ),
   logImpersonationStop: ownerProcedure.mutation(async ({ ctx }) =>
-    makeService(ctx.db).logImpersonationStop(await requireOrg(), actorOf(ctx)),
+    makeService(ctx.db).logImpersonationStop(requireOrg(ctx), actorOf(ctx)),
   ),
 
   // ── Accept invitation (public read + any signed-in user) ────────────────────

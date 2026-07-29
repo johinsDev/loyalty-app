@@ -73,6 +73,16 @@ export type Context = {
   db: Database;
   session: Session | null;
   headers: Headers;
+  /**
+   * The principal organization id, resolved ONCE per request (see
+   * `createContext`) instead of per resolver. Routers read this instead of
+   * calling `getPrimaryOrganizationId()` themselves — that call is a full
+   * network round trip to Turso, and it used to run at the head of nearly
+   * every resolver, making it ~90% of all DB time. `null` only on a brand-new
+   * DB with no organization seeded yet; use `requireOrg(ctx)` when a resolver
+   * needs it to exist.
+   */
+  organizationId: string | null;
   rateLimiter?: RateLimiterBinding;
   /**
    * Bound by the app's `createContext` factory. Routers that publish
@@ -173,6 +183,32 @@ export function cachedRead<T>(
   return ctx.cache ? ctx.cache.getOrSet(key, factory, ttlSeconds) : factory();
 }
 
+const PRIMARY_ORG_CACHE_KEY = "org:primary";
+/** The principal org id never changes — cache it for an hour, not the 60s
+ *  aggregates get. Worker isolates recycle far faster than this. */
+const PRIMARY_ORG_TTL_SECONDS = 3600;
+
+/**
+ * The org id, empty string when the DB has no organization yet. Replaces the
+ * per-router `orgId()` helpers that each re-queried the DB; the `?? ""`
+ * fallback preserves their behaviour (such a read matches nothing rather than
+ * throwing). Prefer {@link requireOrg} for anything that writes.
+ */
+export function orgId(ctx: { organizationId: string | null }): string {
+  return ctx.organizationId ?? "";
+}
+
+/**
+ * The org id, or a 4xx when the DB has no organization yet. Replaces the
+ * per-router `requireOrg()` helpers that each re-queried the DB.
+ */
+export function requireOrg(ctx: { organizationId: string | null }): string {
+  if (!ctx.organizationId) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No active organization" });
+  }
+  return ctx.organizationId;
+}
+
 /** Structural slice of the `@loyalty/shortlinks` manager (the `shorten` op). */
 export interface ShortlinksBinding {
   shorten(
@@ -192,12 +228,31 @@ export type CaptureError = (
   context?: { userId?: string; path?: string; type?: string },
 ) => void;
 
-export const createContext = async (opts: { headers: Headers }): Promise<Context> => {
-  const session = await auth.api.getSession({ headers: opts.headers });
+/**
+ * Per-request context. The org id is resolved here — once — and cached across
+ * requests: it is the id of the first organization ever created, so it never
+ * changes. `getOrSet` treats `null` as a miss, which is exactly right on a
+ * fresh/preview DB with no org yet (never cached, retried next request).
+ *
+ * `cache` is optional: apps that bind a store (the Worker → Upstash) skip the
+ * DB entirely on a hit; the Next in-process handlers and CLI/tests pass none
+ * and fall through to the DB read.
+ */
+export const createContext = async (opts: {
+  headers: Headers;
+  cache?: CacheBinding;
+}): Promise<Context> => {
+  const [session, organizationId] = await Promise.all([
+    auth.api.getSession({ headers: opts.headers }),
+    cachedRead({ cache: opts.cache }, PRIMARY_ORG_CACHE_KEY, PRIMARY_ORG_TTL_SECONDS, () =>
+      getPrimaryOrganizationId(),
+    ),
+  ]);
   return {
     db: createDb(),
     session,
     headers: opts.headers,
+    organizationId,
   };
 };
 
@@ -354,7 +409,7 @@ const bustListsOnMutation = t.middleware(async ({ ctx, type, path, next }) => {
     const entity = path.split(".")[0] ?? "";
     if (LIST_CACHED_ENTITIES.has(entity as never)) {
       try {
-        const org = await getPrimaryOrganizationId();
+        const org = ctx.organizationId;
         if (org) await bumpListVersion(ctx, entity, org);
       } catch {
         // fail-open: a failed bust must never break the mutation

@@ -70,7 +70,9 @@ app.all("/trpc/*", (c) =>
     req: c.req.raw,
     router: appRouter,
     createContext: async () => {
-      const ctx = await createContext({ headers: c.req.raw.headers });
+      // `cache` goes in (not just on) so the primary-org lookup resolves from
+      // Upstash instead of a Turso round trip on every request.
+      const ctx = await createContext({ headers: c.req.raw.headers, cache });
       const distinctId = resolveDistinctId(ctx);
       return {
         ...ctx,

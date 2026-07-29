@@ -1,4 +1,4 @@
-import { type db as Db, getPrimaryOrganizationId, phoneNumberInUse } from "@loyalty/db";
+import { type db as Db, phoneNumberInUse } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
@@ -36,14 +36,7 @@ import { PointsService } from "../features/points/service";
 import { tierFor } from "../features/points/tier-calc";
 import { StampsRepository } from "../features/stamps/repository";
 import { StampsService } from "../features/stamps/service";
-import { managerProcedure, ownerProcedure, rateLimit, router, staffProcedure } from "../trpc";
-
-const orgId = async (): Promise<string> => (await getPrimaryOrganizationId()) ?? "";
-async function requireOrg(): Promise<string> {
-  const id = await getPrimaryOrganizationId();
-  if (!id) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No active organization" });
-  return id;
-}
+import { managerProcedure, orgId, ownerProcedure, rateLimit, requireOrg, router, staffProcedure } from "../trpc";
 
 const repo = (db: typeof Db) => new CustomersRepository(db);
 const readSvc = (db: typeof Db) => new CustomersService(repo(db));
@@ -96,14 +89,14 @@ export const customersRouter = router({
   /** Cashier customer picker — search by name / phone / email, org-scoped. */
   search: staffProcedure
     .input(z.object({ query: z.string().default(""), limit: z.number().int().min(1).max(50).default(20) }))
-    .query(async ({ ctx, input }) => repo(ctx.db).search(await orgId(), input.query, input.limit)),
+    .query(async ({ ctx, input }) => repo(ctx.db).search(orgId(ctx), input.query, input.limit)),
 
   /** Cashier register: lean, PII-masked customer detail (complements the wallet).
    *  Staff-safe — masked phone/email, no raw contact ever leaves the server. */
   registerContext: staffProcedure
     .input(customerIdInputSchema)
     .query(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       const raw = await repo(ctx.db).registerContext(org, input.customerId);
       if (!raw) throw new TRPCError({ code: "NOT_FOUND", message: "CUSTOMER_NOT_FOUND" });
       // Windowed tier standing (name / benefits / progress to next).
@@ -149,7 +142,7 @@ export const customersRouter = router({
     .use(rateLimit({ name: "customers.requestRegisterPin", limit: 10, window: "10m", by: "user" }))
     .input(requestRegisterPinInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       // The phone must be free before we bother sending a PIN.
       const available = await repo(ctx.db).checkAvailability(org, {
         field: "phone",
@@ -179,7 +172,7 @@ export const customersRouter = router({
   confirmRegisterPin: staffProcedure
     .input(confirmRegisterPinInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       const cache = requireCache(ctx.cache);
       const pending = await verifyRegisterPin(
         cache,
@@ -200,7 +193,7 @@ export const customersRouter = router({
   adminList: managerProcedure
     .input(customersListInputSchema)
     .query(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       return cachedListRead(ctx, "customers", org, input, () =>
         readSvc(ctx.db).adminList(org, input),
       );
@@ -208,37 +201,37 @@ export const customersRouter = router({
 
   adminListByIds: managerProcedure
     .input(bulkIdsSchema)
-    .query(async ({ ctx, input }) => readSvc(ctx.db).listByIds(await requireOrg(), input.ids)),
+    .query(async ({ ctx, input }) => readSvc(ctx.db).listByIds(requireOrg(ctx), input.ids)),
 
-  adminKpis: managerProcedure.query(async ({ ctx }) => readSvc(ctx.db).adminKpis(await requireOrg())),
+  adminKpis: managerProcedure.query(async ({ ctx }) => readSvc(ctx.db).adminKpis(requireOrg(ctx))),
 
   adminGet: managerProcedure
     .input(customerIdInputSchema)
-    .query(async ({ ctx, input }) => readSvc(ctx.db).adminGet(await requireOrg(), input.customerId)),
+    .query(async ({ ctx, input }) => readSvc(ctx.db).adminGet(requireOrg(ctx), input.customerId)),
 
   stats: managerProcedure
     .input(customerIdInputSchema)
-    .query(async ({ ctx, input }) => readSvc(ctx.db).stats(await requireOrg(), input.customerId)),
+    .query(async ({ ctx, input }) => readSvc(ctx.db).stats(requireOrg(ctx), input.customerId)),
 
   pointsLedger: managerProcedure
     .input(ledgerInputSchema)
-    .query(async ({ ctx, input }) => readSvc(ctx.db).pointsLedger(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => readSvc(ctx.db).pointsLedger(requireOrg(ctx), input)),
 
   stampsHistory: managerProcedure
     .input(ledgerInputSchema)
-    .query(async ({ ctx, input }) => readSvc(ctx.db).stampsHistory(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => readSvc(ctx.db).stampsHistory(requireOrg(ctx), input)),
 
   redemptionsHistory: managerProcedure
     .input(ledgerInputSchema)
-    .query(async ({ ctx, input }) => readSvc(ctx.db).redemptionsHistory(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => readSvc(ctx.db).redemptionsHistory(requireOrg(ctx), input)),
 
   timeline: managerProcedure
     .input(timelineInputSchema)
-    .query(async ({ ctx, input }) => readSvc(ctx.db).timeline(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => readSvc(ctx.db).timeline(requireOrg(ctx), input)),
 
   checkAvailability: managerProcedure
     .input(checkAvailabilityInputSchema)
-    .query(async ({ ctx, input }) => readSvc(ctx.db).checkAvailability(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => readSvc(ctx.db).checkAvailability(requireOrg(ctx), input)),
 
   /** Channels the customer is opted IN to (for the edit wizard). No stored row
    *  means subscribed, so opted-in = all marketing channels minus opt-outs. */
@@ -247,7 +240,7 @@ export const customersRouter = router({
     .query(async ({ ctx, input }): Promise<MarketingChannel[]> => {
       const optedOut = await new DrizzleNotificationPreferences(ctx.db).optedOutChannels(
         input.customerId,
-        await requireOrg(),
+        requireOrg(ctx),
       );
       return MARKETING_CHANNELS.filter((ch) => !optedOut.has(ch));
     }),
@@ -256,7 +249,7 @@ export const customersRouter = router({
   create: managerProcedure
     .input(createCustomerInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       const id = await readSvc(ctx.db).create(org, actorOf(ctx, org), input);
       return { id };
     }),
@@ -264,7 +257,7 @@ export const customersRouter = router({
   update: managerProcedure
     .input(updateCustomerInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       await readSvc(ctx.db).update(org, actorOf(ctx, org), input);
       return { ok: true };
     }),
@@ -272,7 +265,7 @@ export const customersRouter = router({
   ban: ownerProcedure
     .input(banCustomerInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       await readSvc(ctx.db).ban(org, actorOf(ctx, org), input.customerId, input.reason);
       return { ok: true };
     }),
@@ -280,7 +273,7 @@ export const customersRouter = router({
   unban: ownerProcedure
     .input(customerIdInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       await readSvc(ctx.db).unban(org, actorOf(ctx, org), input.customerId);
       return { ok: true };
     }),

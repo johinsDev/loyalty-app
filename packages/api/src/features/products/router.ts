@@ -1,10 +1,11 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { type db as Db } from "@loyalty/db";
 
 import { z } from "zod";
 
 import { loadLocaleContext } from "../_shared/localize";
 import {
   managerProcedure,
+  orgId,
   protectedProcedure,
   publicProcedure,
   rateLimit,
@@ -32,9 +33,6 @@ import {
   productUpsertInputSchema,
 } from "./write-schemas";
 
-const orgId = async (): Promise<string> =>
-  (await getPrimaryOrganizationId()) ?? "";
-
 export function buildMenuService(ctx: { db: typeof Db }): MenuService {
   return new MenuService(new ProductsRepository(ctx.db));
 }
@@ -47,32 +45,32 @@ const legacySearchInput = z
 export const menuRouter = router({
   // ---- Admin CRUD (manager) -------------------------------------------------
   createDraft: managerProcedure.mutation(async ({ ctx }) =>
-    new ProductsAdminRepository(ctx.db).createDraft(await orgId()),
+    new ProductsAdminRepository(ctx.db).createDraft(orgId(ctx)),
   ),
   getAdmin: managerProcedure
     .input(idInput)
     .query(async ({ ctx, input }) =>
-      new ProductsAdminRepository(ctx.db).getAdmin(await orgId(), input.id),
+      new ProductsAdminRepository(ctx.db).getAdmin(orgId(ctx), input.id),
     ),
   upsert: managerProcedure
     .input(productUpsertInputSchema)
     .mutation(async ({ ctx, input }) =>
-      new ProductsAdminRepository(ctx.db).upsert(await orgId(), input),
+      new ProductsAdminRepository(ctx.db).upsert(orgId(ctx), input),
     ),
   setStatus: managerProcedure
     .input(z.object({ id: z.string().min(1), status: productStatusSchema }))
     .mutation(async ({ ctx, input }) =>
-      new ProductsAdminRepository(ctx.db).setStatus(await orgId(), input.id, input.status),
+      new ProductsAdminRepository(ctx.db).setStatus(orgId(ctx), input.id, input.status),
     ),
   remove: managerProcedure
     .input(idInput)
     .mutation(async ({ ctx, input }) =>
-      new ProductsAdminRepository(ctx.db).remove(await orgId(), input.id),
+      new ProductsAdminRepository(ctx.db).remove(orgId(ctx), input.id),
     ),
   adminList: managerProcedure
     .input(productAdminListInputSchema)
     .query(async ({ ctx, input }) =>
-      new ProductsAdminRepository(ctx.db).adminList(await orgId(), input),
+      new ProductsAdminRepository(ctx.db).adminList(orgId(ctx), input),
     ),
 
   // ---- Legacy catalog shims (manager) --------------------------------------
@@ -85,26 +83,26 @@ export const menuRouter = router({
     // client-side. Kept so the legacy call sites still type-check.
     .input(legacySearchInput)
     .query(async ({ ctx }) =>
-      new IngredientsRepository(ctx.db).listForPicker(await orgId()),
+      new IngredientsRepository(ctx.db).listForPicker(orgId(ctx)),
     ),
   ingredientCreate: managerProcedure
     .input(ingredientCreateSchema)
     .mutation(async ({ ctx, input }) =>
-      new IngredientsRepository(ctx.db).create(await orgId(), input),
+      new IngredientsRepository(ctx.db).create(orgId(ctx), input),
     ),
   ingredientUpdate: managerProcedure
     .input(ingredientUpdateSchema)
     .mutation(async ({ ctx, input }) =>
-      new IngredientsRepository(ctx.db).update(await orgId(), input),
+      new IngredientsRepository(ctx.db).update(orgId(ctx), input),
     ),
   ingredientRemove: managerProcedure
     .input(idInput)
     .mutation(async ({ ctx, input }) =>
-      new IngredientsRepository(ctx.db).remove(await orgId(), input.id),
+      new IngredientsRepository(ctx.db).remove(orgId(ctx), input.id),
     ),
 
   addons: managerProcedure.input(legacySearchInput).query(async ({ ctx }) => {
-    const res = await new AddonsRepository(ctx.db).list(await orgId(), {
+    const res = await new AddonsRepository(ctx.db).list(orgId(ctx), {
       q: undefined,
       page: 1,
       perPage: 100,
@@ -118,24 +116,24 @@ export const menuRouter = router({
   addonCreate: managerProcedure
     .input(addonCreateSchema)
     .mutation(async ({ ctx, input }) =>
-      new AddonsRepository(ctx.db).create(await orgId(), input),
+      new AddonsRepository(ctx.db).create(orgId(ctx), input),
     ),
   addonUpdate: managerProcedure
     .input(addonUpdateSchema)
     .mutation(async ({ ctx, input }) =>
-      new AddonsRepository(ctx.db).update(await orgId(), input),
+      new AddonsRepository(ctx.db).update(orgId(ctx), input),
     ),
   addonRemove: managerProcedure
     .input(idInput)
     .mutation(async ({ ctx, input }) =>
-      new AddonsRepository(ctx.db).remove(await orgId(), input.id),
+      new AddonsRepository(ctx.db).remove(orgId(ctx), input.id),
     ),
 
   // ---- Public (cacheable) — gated by the page guard in v1, ready for public --
   list: publicProcedure
     .input(listInputSchema)
     .query(async ({ ctx, input }) => {
-      const id = await orgId();
+      const id = orgId(ctx);
       const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
       return buildMenuService(ctx).list(id, input, lc);
     }),
@@ -143,7 +141,7 @@ export const menuRouter = router({
   productBySlug: publicProcedure
     .input(slugInputSchema)
     .query(async ({ ctx, input }) => {
-      const id = await orgId();
+      const id = orgId(ctx);
       const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
       return buildMenuService(ctx).productBySlug(id, input.slug, lc);
     }),
@@ -151,13 +149,13 @@ export const menuRouter = router({
   sections: publicProcedure
     .input(placementInputSchema)
     .query(async ({ ctx, input }) => {
-      const id = await orgId();
+      const id = orgId(ctx);
       const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
       return buildMenuService(ctx).sections(id, input.placement, lc, input.storeId);
     }),
 
   categories: publicProcedure.query(async ({ ctx }) => {
-    const id = await orgId();
+    const id = orgId(ctx);
     const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
     return buildMenuService(ctx).categories(id, lc);
   }),
@@ -171,11 +169,11 @@ export const menuRouter = router({
 
   // ---- Per-user favorites --------------------------------------------------
   myFavoriteIds: protectedProcedure.query(async ({ ctx }) =>
-    buildMenuService(ctx).myFavoriteIds(await orgId(), ctx.session.user.id),
+    buildMenuService(ctx).myFavoriteIds(orgId(ctx), ctx.session.user.id),
   ),
 
   myFavorites: protectedProcedure.query(async ({ ctx }) => {
-    const id = await orgId();
+    const id = orgId(ctx);
     const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
     return buildMenuService(ctx).myFavorites(id, ctx.session.user.id, lc);
   }),
@@ -185,7 +183,7 @@ export const menuRouter = router({
     .input(productIdInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildMenuService(ctx).toggleFavorite(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.productId,
       ),
