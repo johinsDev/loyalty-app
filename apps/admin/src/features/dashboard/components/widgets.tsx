@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { trpc } from "@/lib/trpc/server";
 
 import type { DashboardPeriod } from "../list-params";
-import { agoOf, deltaStr, fmtCop, fmtNum, initialsOf } from "../lib/format";
+import { agoOf, deltaStr, fmtCop, fmtCopCompact, fmtNum, initialsOf } from "../lib/format";
 import { getOverview, getSeries } from "../lib/queries";
 import { AreaChart, Donut } from "./charts";
 import { AvatarChip, ChartCard, KpiCard, MiniStat } from "./dashboard-primitives";
@@ -357,7 +357,9 @@ export async function CategoryMix({ period, storeId }: WidgetProps) {
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-4">
-      <Donut slices={slices} center={fmtCop(total)} centerSub={t("revenueShort")} />
+      {/* Compact in the hole: a full COP amount spills over the ring. The exact
+          figures are right there in the list beside it. */}
+      <Donut slices={slices} center={fmtCopCompact(total)} centerSub={t("revenueShort")} />
       <ul className="min-w-48 flex-1 space-y-2 text-sm">
         {rows.map((r, i) => (
           <li key={r.categoryId ?? "none"} className="flex items-center gap-2">
