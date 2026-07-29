@@ -14,6 +14,7 @@ import { auth } from "./lib/auth";
 import { cache } from "./lib/cache";
 import { env } from "./lib/env";
 import { flags } from "./lib/feature-flags";
+import { flushLogs } from "./lib/flush-logs";
 import { log } from "./lib/log";
 import { rateLimiter } from "./lib/rate-limit";
 import { realtime } from "./lib/realtime";
@@ -34,6 +35,8 @@ import { storage } from "./lib/storage";
  * (Twilio/web-push) stay in Trigger.dev jobs. See the API-Worker plan + skill.
  */
 const app = new Hono();
+
+app.use("*", flushLogs(log));
 
 // Allowed browser origins for credentialed CORS: the FE subdomains from
 // BETTER_AUTH_TRUSTED_ORIGINS (admin./app.t4diverclub.app, per-PR preview hosts)
