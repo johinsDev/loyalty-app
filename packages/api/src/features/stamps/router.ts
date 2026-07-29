@@ -129,6 +129,18 @@ export const stampsRouter = router({
         lines: input.items,
       }, org);
 
+      // Every reward this request needs, in one round trip: the selected one
+      // plus each row in the "ready to redeem" list. One `getReward` per id ran
+      // on every debounced cart change.
+      const rewardsRepo = new RewardsRepository(ctx.db);
+      const neededRewardIds = [
+        ...new Set([
+          ...(input.rewardIds ?? []),
+          ...(input.inlineReward ? [input.inlineReward.rewardId] : []),
+        ]),
+      ];
+      const rewardsById = await rewardsRepo.getRewardsByIds(org, neededRewardIds);
+
       // Reward first (its units are excluded from the promo remainder).
       let reward: {
         ok: boolean;
@@ -137,10 +149,7 @@ export const stampsRouter = router({
       } | null = null;
       let exclusions: UnitExclusion[] = [];
       if (input.inlineReward) {
-        const rw = await new RewardsRepository(ctx.db).getReward(
-          org,
-          input.inlineReward.rewardId,
-        );
+        const rw = rewardsById.get(input.inlineReward.rewardId);
         if (!rw || rw.status !== "published") {
           reward = { ok: false, discountCents: 0, reason: "reward-not-redeemable" };
         } else {
@@ -198,10 +207,11 @@ export const stampsRouter = router({
 
       // Per-reward line eligibility for the "ready to redeem" list: evaluate each
       // available reward against this cart so the register can gate selection.
-      const rewardsRepo = new RewardsRepository(ctx.db);
+      // `stitchUpgradeDeltas` stays per-reward — it only fires for
+      // `variantUpgrade` benefits, so it's off the common path.
       const rewardEligibility = await Promise.all(
         (input.rewardIds ?? []).map(async (rid) => {
-          const r = await rewardsRepo.getReward(org, rid);
+          const r = rewardsById.get(rid);
           if (!r || r.status !== "published") {
             return { rewardId: rid, eligible: false, reason: "reward-not-redeemable" };
           }

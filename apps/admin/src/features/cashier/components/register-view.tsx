@@ -68,6 +68,19 @@ export function RegisterView({
     );
   }
 
+  // A failed wallet read used to sit on "Buscando…" forever, indistinguishable
+  // from a slow one.
+  if (wallet.isError) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="text-muted-foreground text-sm font-semibold">{t("walletError")}</p>
+        <Button variant="outline" size="sm" className="h-10" onClick={() => void wallet.refetch()}>
+          {t("retry")}
+        </Button>
+      </div>
+    );
+  }
+
   if (!wallet.data) {
     return (
       <div className="text-muted-foreground flex h-full items-center justify-center text-sm font-semibold">
@@ -85,7 +98,13 @@ export function RegisterView({
       customerName={customerName}
       register={register.data}
       wallet={wallet.data}
-      availableRewards={available.data ?? []}
+      availableRewards={{
+        items: available.data?.items ?? [],
+        publishedCount: available.data?.publishedCount ?? 0,
+        isPending: available.isPending,
+        isError: available.isError,
+        refetch: () => void available.refetch(),
+      }}
       preselect={preselect}
       onSuccess={(view) => setSuccess(view)}
       onRewardPending={backToIdentify}

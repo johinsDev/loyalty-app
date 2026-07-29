@@ -220,6 +220,18 @@ export class RewardsRepository {
     return rows[0] ?? null;
   }
 
+  /** Many rewards at once, keyed by id. The register preview evaluates every
+   *  claimable reward against the cart on each change; one `getReward` per id
+   *  is one Turso round trip per id. */
+  async getRewardsByIds(orgId: string, ids: string[]): Promise<Map<string, RewardRow>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .select()
+      .from(reward)
+      .where(and(eq(reward.organizationId, orgId), inArray(reward.id, ids)));
+    return new Map(rows.map((r) => [r.id, r]));
+  }
+
   /** Spendable points balance = SUM of the ledger for the customer/org. */
   async pointsBalance(orgId: string, customerId: string): Promise<number> {
     const rows = await this.db

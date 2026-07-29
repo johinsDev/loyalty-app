@@ -401,6 +401,16 @@ export class StampsRepository {
           ...new Set(input.items.flatMap((it) => it.addonIds ?? [])),
         ];
         if (allAddonIds.length > 0) {
+          // `insertedItems[i]` is matched to `input.items[i]` positionally, which
+          // only holds if RETURNING gave one row per input row. Assert it rather
+          // than trusting it — a mismatch would silently pin add-ons to the wrong
+          // line.
+          if (insertedItems.length !== input.items.length) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: `purchase item insert returned ${insertedItems.length} rows for ${input.items.length} lines`,
+            });
+          }
           const catalog = await tx
             .select({
               id: addon.id,
@@ -412,29 +422,42 @@ export class StampsRepository {
             })
             .from(addon)
             .leftJoin(ingredient, eq(ingredient.id, addon.ingredientId))
-            .where(inArray(addon.id, allAddonIds));
+            // Org-scoped: without it a cart could name an add-on from another
+            // tenant and freeze that tenant's price/cost onto this receipt.
+            .where(and(eq(addon.organizationId, input.orgId), inArray(addon.id, allAddonIds)));
           const byId = new Map(catalog.map((a) => [a.id, a]));
+
+          // An id the catalog doesn't resolve means the customer was charged for
+          // something we can't describe. Dropping it silently under-reports the
+          // receipt and the margin, so refuse the sale instead.
+          const unknown = allAddonIds.filter((id) => !byId.has(id));
+          if (unknown.length > 0) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `unknown add-ons for this organization: ${unknown.join(", ")}`,
+            });
+          }
 
           const snapshots = input.items.flatMap((it, i) =>
             (it.addonIds ?? []).map((addonId, j) => {
-              const a = byId.get(addonId);
+              const a = byId.get(addonId)!;
               // A linked add-on's cost is derived; mirror `AddonsRepository
               // .effectiveCost` so the frozen margin matches the catalog's.
               const cost =
-                a?.ingredientQty != null && a.ingredientCost != null
+                a.ingredientQty != null && a.ingredientCost != null
                   ? Math.round(a.ingredientQty * a.ingredientCost)
-                  : (a?.costCents ?? 0);
+                  : a.costCents;
               return {
                 purchaseItemId: insertedItems[i]!.id,
                 addonId,
-                name: a?.name ?? "",
-                priceCents: a?.priceDeltaCents ?? 0,
+                name: a.name,
+                priceCents: a.priceDeltaCents,
                 costCents: cost,
                 qty: 1,
                 sortOrder: j,
               };
             }),
-          ).filter((s) => s.name !== "");
+          );
           if (snapshots.length > 0) {
             await tx.insert(purchaseItemAddon).values(snapshots);
           }
