@@ -1,6 +1,16 @@
 import { type db as Db } from "@loyalty/db";
 
-import { managerProcedure, ownerProcedure, protectedProcedure, publicProcedure, requireOrg, router, staffProcedure } from "../../trpc";
+import {
+  type CacheBinding,
+  managerProcedure,
+  ownerProcedure,
+  protectedProcedure,
+  publicProcedure,
+  requireOrg,
+  roleCacheKey,
+  router,
+  staffProcedure,
+} from "../../trpc";
 import { cachedListRead } from "../_shared/list-cache";
 import { EmployeesRepository } from "./repository";
 import {
@@ -30,6 +40,15 @@ function makeService(db: typeof Db): EmployeesService {
 
 function actorOf(ctx: { session: { user: { id: string } }; headers: Headers }): Actor {
   return { userId: ctx.session.user.id, headers: ctx.headers };
+}
+
+/**
+ * Drop cached `member.role` entries for the users a mutation just touched.
+ * Both `auth.me` and the `enforceRole` gate read that cache, so skipping this
+ * would leave a demoted or removed employee authorized until the TTL expires.
+ */
+async function bustRoles(ctx: { cache?: CacheBinding }, ...userIds: string[]): Promise<void> {
+  await Promise.all(userIds.map((id) => ctx.cache?.delete(roleCacheKey(id))));
 }
 
 /**
@@ -102,10 +121,9 @@ export const employeesRouter = router({
     .input(updateEmployeeSchema)
     .mutation(async ({ ctx, input }) => {
       const targetUserId = await makeService(ctx.db).update(requireOrg(ctx), actorOf(ctx), input);
-      // Role resolution is cached in `auth.me` (see `../../trpc#cachedRead`) —
-      // bust it so a role change is reflected immediately instead of waiting
-      // out the TTL.
-      if (input.role) await ctx.cache?.delete(`role:${targetUserId}`);
+      // `member.role` is cached (by `auth.me` AND the `enforceRole` gate), so a
+      // demotion would otherwise linger for up to the TTL. Bust it here.
+      if (input.role) await bustRoles(ctx, targetUserId);
     }),
   setRating: ownerProcedure
     .input(setRatingSchema)
@@ -119,34 +137,56 @@ export const employeesRouter = router({
     ),
   disable: ownerProcedure
     .input(disableEmployeeSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).disable(requireOrg(ctx), actorOf(ctx), input.memberId, input.reason),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const userId = await makeService(ctx.db).disable(
+        requireOrg(ctx),
+        actorOf(ctx),
+        input.memberId,
+        input.reason,
+      );
+      await bustRoles(ctx, userId);
+    }),
   enable: ownerProcedure
     .input(memberIdSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).enable(requireOrg(ctx), actorOf(ctx), input.memberId),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const userId = await makeService(ctx.db).enable(
+        requireOrg(ctx),
+        actorOf(ctx),
+        input.memberId,
+      );
+      await bustRoles(ctx, userId);
+    }),
   remove: ownerProcedure
     .input(memberIdSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).remove(requireOrg(ctx), actorOf(ctx), input.memberId),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const userId = await makeService(ctx.db).remove(
+        requireOrg(ctx),
+        actorOf(ctx),
+        input.memberId,
+      );
+      await bustRoles(ctx, userId);
+    }),
   bulkRemove: ownerProcedure
     .input(bulkIdsSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).bulkRemove(requireOrg(ctx), actorOf(ctx), input.ids),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const userIds = await makeService(ctx.db).bulkRemove(
+        requireOrg(ctx),
+        actorOf(ctx),
+        input.ids,
+      );
+      await bustRoles(ctx, ...userIds);
+    }),
   bulkSetDisabled: ownerProcedure
     .input(bulkSetDisabledSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).bulkSetDisabled(
+    .mutation(async ({ ctx, input }) => {
+      const userIds = await makeService(ctx.db).bulkSetDisabled(
         requireOrg(ctx),
         actorOf(ctx),
         input.ids,
         input.disabled,
-      ),
-    ),
+      );
+      await bustRoles(ctx, ...userIds);
+    }),
 
   // ── Impersonation (owner-only; browser mints the session) ───────────────────
   impersonate: ownerProcedure

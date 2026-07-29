@@ -183,6 +183,16 @@ export function cachedRead<T>(
   return ctx.cache ? ctx.cache.getOrSet(key, factory, ttlSeconds) : factory();
 }
 
+/**
+ * Cache key for a user's `member.role`. Shared by `auth.me` and the
+ * `enforceRole` middleware so one lookup serves both, and so a single
+ * `ctx.cache?.delete(roleCacheKey(id))` revokes access through every path.
+ * MUST be busted on any role change, ban, or membership removal.
+ */
+export const roleCacheKey = (userId: string): string => `role:${userId}`;
+/** Short: a stale role is a privilege question, so bound the blast radius. */
+export const ROLE_TTL_SECONDS = 60;
+
 const PRIMARY_ORG_CACHE_KEY = "org:primary";
 /** The principal org id never changes — cache it for an hour, not the 60s
  *  aggregates get. Worker isolates recycle far faster than this. */
@@ -451,7 +461,13 @@ const enforceRole = (allowed: readonly Role[]) =>
     if (!ctx.session?.user) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
-    const role = await getUserRole(ctx.session.user.id);
+    const userId = ctx.session.user.id;
+    // Same key `auth.me` uses, so the two share one entry. Busted explicitly
+    // on every privilege change (see `roleCacheKey` usages) — without those
+    // busts a demotion would linger for up to the TTL.
+    const role = await cachedRead(ctx, roleCacheKey(userId), ROLE_TTL_SECONDS, () =>
+      getUserRole(userId),
+    );
     if (!allowed.includes(role)) {
       throw new TRPCError({ code: "FORBIDDEN" });
     }
