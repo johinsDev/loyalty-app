@@ -60,7 +60,7 @@ async function bustRoles(ctx: { cache?: CacheBinding }, ...userIds: string[]): P
 export const employeesRouter = router({
   // ── Register store-switcher (any staff) ─────────────────────────────────────
   myStores: staffProcedure.query(async ({ ctx }) =>
-    makeService(ctx.db).myStores(requireOrg(ctx), ctx.session.user.id),
+    makeService(ctx.db).myStores(requireOrg(ctx), ctx.session.user.id, ctx.role),
   ),
 
   // ── Reads (managers + owner) ────────────────────────────────────────────────
