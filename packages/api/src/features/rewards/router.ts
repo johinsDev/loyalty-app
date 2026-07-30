@@ -1,15 +1,7 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { type db as Db } from "@loyalty/db";
 import { z } from "zod";
 
-import {
-  type CacheBinding,
-  managerProcedure,
-  protectedProcedure,
-  type RealtimeBinding,
-  rateLimit,
-  router,
-  staffProcedure,
-} from "../../trpc";
+import { managerProcedure, orgId, protectedProcedure, rateLimit, router, staffProcedure, type CacheBinding, type RealtimeBinding } from "../../trpc";
 import { loadLocaleContext } from "../_shared/localize";
 import { cachedListRead } from "../_shared/list-cache";
 import { rewardBenefitSummary } from "./format";
@@ -33,9 +25,6 @@ import {
 } from "./schemas";
 
 /** The single principal org (single-tenant pilot). */
-const orgId = async (): Promise<string> =>
-  (await getPrimaryOrganizationId()) ?? "";
-
 /** Shared builder — the purchase orchestration reuses the repo + newlyReady. */
 export function buildRewardsService(ctx: {
   db: typeof Db;
@@ -56,7 +45,7 @@ export const rewardsRouter = router({
     .input(z.object({ search: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
       const { rows } = await new RewardsRepository(ctx.db).listCatalog(
-        await orgId(),
+        orgId(ctx),
         { search: input?.search, limit: 20 },
       );
       return rows.map((r) => ({ id: r.id, name: r.name }));
@@ -65,7 +54,7 @@ export const rewardsRouter = router({
   /** Cashier catalog — published rewards with cost, type, store scope and a
    *  human benefit summary (what it gives / requires). Staff-safe reference. */
   staffCatalog: staffProcedure.query(async ({ ctx }) => {
-    const { rows } = await new RewardsRepository(ctx.db).listCatalog(await orgId(), {
+    const { rows } = await new RewardsRepository(ctx.db).listCatalog(orgId(ctx), {
       limit: 100,
     });
     return rows.map((r) => ({
@@ -82,7 +71,7 @@ export const rewardsRouter = router({
 
   // ---- Admin wizard / data-table -------------------------------------
   templates: managerProcedure.query(async ({ ctx }) => {
-    const lc = await loadLocaleContext(ctx.db, await orgId(), ctx.headers);
+    const lc = await loadLocaleContext(ctx.db, orgId(ctx), ctx.headers);
     const en = lc.locale === "en";
     return REWARD_TEMPLATES.map((t) => ({
       key: t.key,
@@ -96,7 +85,7 @@ export const rewardsRouter = router({
   create: managerProcedure
     .input(z.object({ templateKey: z.string().optional() }).optional())
     .mutation(async ({ ctx, input }) => {
-      const org = await orgId();
+      const org = orgId(ctx);
       const lc = await loadLocaleContext(ctx.db, org, ctx.headers);
       return buildRewardsService(ctx).createDraft(
         org,
@@ -107,12 +96,12 @@ export const rewardsRouter = router({
     }),
   getState: managerProcedure
     .input(rewardIdSchema)
-    .query(async ({ ctx, input }) => buildRewardsService(ctx).getState(await orgId(), input.id)),
+    .query(async ({ ctx, input }) => buildRewardsService(ctx).getState(orgId(ctx), input.id)),
   advance: managerProcedure
     .input(z.object({ id: z.string().uuid(), step: z.string(), input: z.unknown() }))
     .mutation(async ({ ctx, input }) =>
       buildRewardsService(ctx).advance(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.id,
         input.step,
@@ -122,53 +111,53 @@ export const rewardsRouter = router({
   publish: managerProcedure
     .input(rewardIdSchema)
     .mutation(async ({ ctx, input }) =>
-      buildRewardsService(ctx).publishReward(await orgId(), input.id),
+      buildRewardsService(ctx).publishReward(orgId(ctx), input.id),
     ),
   archive: managerProcedure
     .input(rewardIdSchema)
-    .mutation(async ({ ctx, input }) => buildRewardsService(ctx).archive(await orgId(), input.id)),
+    .mutation(async ({ ctx, input }) => buildRewardsService(ctx).archive(orgId(ctx), input.id)),
   patchContent: managerProcedure
     .input(rewardPatchContentSchema)
-    .mutation(async ({ ctx, input }) => buildRewardsService(ctx).patchContent(await orgId(), input)),
+    .mutation(async ({ ctx, input }) => buildRewardsService(ctx).patchContent(orgId(ctx), input)),
   adminList: managerProcedure
     .input(rewardAdminListInputSchema)
     .query(async ({ ctx, input }) => {
-      const org = await orgId();
+      const org = orgId(ctx);
       return cachedListRead(ctx, "rewards", org, input, () =>
         buildRewardsService(ctx).adminList(org, input),
       );
     }),
   getAdmin: managerProcedure
     .input(rewardIdSchema)
-    .query(async ({ ctx, input }) => buildRewardsService(ctx).getAdmin(await orgId(), input.id)),
+    .query(async ({ ctx, input }) => buildRewardsService(ctx).getAdmin(orgId(ctx), input.id)),
   remove: managerProcedure
     .input(rewardIdSchema)
-    .mutation(async ({ ctx, input }) => buildRewardsService(ctx).remove(await orgId(), input.id)),
+    .mutation(async ({ ctx, input }) => buildRewardsService(ctx).remove(orgId(ctx), input.id)),
 
   // ---- Customer (self) ------------------------------------------------
   list: protectedProcedure
     .input(listInputSchema)
     .query(async ({ ctx, input }) =>
-      buildRewardsService(ctx).list(await orgId(), ctx.session.user.id, input),
+      buildRewardsService(ctx).list(orgId(ctx), ctx.session.user.id, input),
     ),
 
   detail: protectedProcedure
     .input(rewardIdInputSchema)
     .query(async ({ ctx, input }) =>
       buildRewardsService(ctx).detail(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.rewardId,
       ),
     ),
 
   levels: protectedProcedure.query(async ({ ctx }) =>
-    buildRewardsService(ctx).levels(await orgId(), ctx.session.user.id),
+    buildRewardsService(ctx).levels(orgId(ctx), ctx.session.user.id),
   ),
 
   recentRedemptions: protectedProcedure.query(async ({ ctx }) =>
     buildRewardsService(ctx).recentRedemptions(
-      await orgId(),
+      orgId(ctx),
       ctx.session.user.id,
     ),
   ),
@@ -176,14 +165,14 @@ export const rewardsRouter = router({
   history: protectedProcedure
     .input(historyInputSchema)
     .query(async ({ ctx, input }) =>
-      buildRewardsService(ctx).history(await orgId(), ctx.session.user.id, input),
+      buildRewardsService(ctx).history(orgId(ctx), ctx.session.user.id, input),
     ),
 
   issueClaimToken: protectedProcedure
     .input(issueClaimTokenInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildRewardsService(ctx).issueClaimToken(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.rewardId,
         input.currency,
@@ -227,7 +216,7 @@ export const rewardsRouter = router({
     )
     .input(claimInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const org = await orgId();
+      const org = orgId(ctx);
       return buildRewardsService(ctx).resolveClaim(org, input.token);
     }),
 
@@ -250,7 +239,7 @@ export const rewardsRouter = router({
     .input(requestClaimInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildRewardsService(ctx).requestClaim(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.customerId,
         input.rewardId,
@@ -272,7 +261,7 @@ export const rewardsRouter = router({
     .input(confirmClaimWithCodeInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildRewardsService(ctx).resolveClaimWithCode(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.pendingId,
         input.code,
@@ -282,6 +271,6 @@ export const rewardsRouter = router({
   availableForCustomer: staffProcedure
     .input(customerIdInputSchema)
     .query(async ({ ctx, input }) =>
-      buildRewardsService(ctx).availableForCustomer(await orgId(), input.customerId),
+      buildRewardsService(ctx).availableForCustomer(orgId(ctx), input.customerId),
     ),
 });

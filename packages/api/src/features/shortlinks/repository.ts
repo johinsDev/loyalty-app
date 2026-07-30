@@ -136,18 +136,16 @@ export class ShortlinkRepository {
         )
       : eq(shortlink.organizationId, organizationId);
 
-    const rows = await this.db
-      .select()
-      .from(shortlink)
-      .where(where)
-      .orderBy(desc(shortlink.createdAt))
-      .limit(input.pageSize)
-      .offset(offset);
-
-    const countRows = await this.db
-      .select({ value: sql<number>`count(*)` })
-      .from(shortlink)
-      .where(where);
+    const [rows, countRows] = await Promise.all([
+      this.db
+        .select()
+        .from(shortlink)
+        .where(where)
+        .orderBy(desc(shortlink.createdAt))
+        .limit(input.pageSize)
+        .offset(offset),
+      this.db.select({ value: sql<number>`count(*)` }).from(shortlink).where(where),
+    ]);
     return { rows, total: countRows[0]?.value ?? 0 };
   }
 

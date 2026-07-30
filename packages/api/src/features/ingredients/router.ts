@@ -1,7 +1,6 @@
-import { getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
-import { managerProcedure, router } from "../../trpc";
+import { managerProcedure, orgId, router } from "../../trpc";
 import { IngredientsRepository } from "./repository";
 import {
   ingredientArchiveSchema,
@@ -11,43 +10,42 @@ import {
   ingredientUpdateSchema,
 } from "./schemas";
 
-const orgId = async (): Promise<string> => (await getPrimaryOrganizationId()) ?? "";
 
 export const ingredientsRouter = router({
   adminList: managerProcedure
     .input(ingredientListInputSchema)
     .query(async ({ ctx, input }) =>
-      new IngredientsRepository(ctx.db).list(await orgId(), input),
+      new IngredientsRepository(ctx.db).list(orgId(ctx), input),
     ),
   picker: managerProcedure.query(async ({ ctx }) =>
-    new IngredientsRepository(ctx.db).listForPicker(await orgId()),
+    new IngredientsRepository(ctx.db).listForPicker(orgId(ctx)),
   ),
   get: managerProcedure
     .input(ingredientIdSchema)
     .query(async ({ ctx, input }) =>
-      new IngredientsRepository(ctx.db).get(await orgId(), input.id),
+      new IngredientsRepository(ctx.db).get(orgId(ctx), input.id),
     ),
   /** Which products/variants use it + linked add-ons. Drives the detail drawer
    *  and the pre-delete confirmation. */
   usage: managerProcedure
     .input(ingredientIdSchema)
     .query(async ({ ctx, input }) =>
-      new IngredientsRepository(ctx.db).usage(await orgId(), input.id),
+      new IngredientsRepository(ctx.db).usage(orgId(ctx), input.id),
     ),
   create: managerProcedure
     .input(ingredientCreateSchema)
     .mutation(async ({ ctx, input }) =>
-      new IngredientsRepository(ctx.db).create(await orgId(), input),
+      new IngredientsRepository(ctx.db).create(orgId(ctx), input),
     ),
   update: managerProcedure
     .input(ingredientUpdateSchema)
     .mutation(async ({ ctx, input }) =>
-      new IngredientsRepository(ctx.db).update(await orgId(), input),
+      new IngredientsRepository(ctx.db).update(orgId(ctx), input),
     ),
   setArchived: managerProcedure
     .input(ingredientArchiveSchema)
     .mutation(async ({ ctx, input }) =>
-      new IngredientsRepository(ctx.db).setArchived(await orgId(), input.id, input.archived),
+      new IngredientsRepository(ctx.db).setArchived(orgId(ctx), input.id, input.archived),
     ),
   /**
    * Hard delete, refused while any recipe references it. The DB would raise a
@@ -58,7 +56,7 @@ export const ingredientsRouter = router({
     .input(ingredientIdSchema)
     .mutation(async ({ ctx, input }) => {
       const repo = new IngredientsRepository(ctx.db);
-      const org = await orgId();
+      const org = orgId(ctx);
       const usage = await repo.usage(org, input.id);
       if (!usage.canDelete) {
         throw new TRPCError({

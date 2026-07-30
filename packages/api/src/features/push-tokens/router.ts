@@ -1,14 +1,8 @@
-import { getPrimaryOrganizationId } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 
-import {
-  ownerProcedure,
-  protectedProcedure,
-  rateLimit,
-  router,
-} from "../../trpc";
+import { orgId, ownerProcedure, protectedProcedure, rateLimit, router } from "../../trpc";
 import { PushTokenRepository } from "./repository";
 import {
   listForCustomerInputSchema,
@@ -40,15 +34,14 @@ const sendTestInputSchema = z
  * client never supplies either (it can't be trusted to), so a token
  * is always scoped to the caller. Throws until an org is provisioned.
  */
-async function resolvePushIdentity(customerId: string) {
-  const organizationId = await getPrimaryOrganizationId();
-  if (!organizationId) {
+function resolvePushIdentity(ctx: { organizationId: string | null }, customerId: string) {
+  if (!ctx.organizationId) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "No organization provisioned yet.",
     });
   }
-  return { customerId, organizationId };
+  return { customerId, organizationId: ctx.organizationId };
 }
 
 /**
@@ -68,7 +61,7 @@ export const pushTokensRouter = router({
     )
     .input(registerInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const identity = await resolvePushIdentity(ctx.session.user.id);
+      const identity = resolvePushIdentity(ctx, ctx.session.user.id);
       const service = new PushTokenService(new PushTokenRepository(ctx.db));
       return service.register(input, identity);
     }),
@@ -83,7 +76,7 @@ export const pushTokensRouter = router({
   revoke: protectedProcedure
     .input(revokeInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const identity = await resolvePushIdentity(ctx.session.user.id);
+      const identity = resolvePushIdentity(ctx, ctx.session.user.id);
       const service = new PushTokenService(new PushTokenRepository(ctx.db));
       return service.revoke(input.token, identity);
     }),
@@ -119,7 +112,7 @@ export const pushTokensRouter = router({
       const service = new PushTokenService(new PushTokenRepository(ctx.db));
       const tokens = await service.list({
         customerId: ctx.session.user.id,
-        organizationId: (await getPrimaryOrganizationId()) ?? "",
+        organizationId: orgId(ctx),
       });
       if (tokens.length === 0) {
         throw new TRPCError({

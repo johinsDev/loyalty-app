@@ -106,16 +106,18 @@ export function getBranding(db: typeof Db, orgId: string): Promise<Branding> {
   return cache.getOrSet(
     brandingKey(orgId),
     async () => {
-      const [orgRow] = await db
-        .select({ name: organization.name, logo: organization.logo })
-        .from(organization)
-        .where(eq(organization.id, orgId))
-        .limit(1);
-      const [s] = await db
-        .select()
-        .from(organizationSettings)
-        .where(eq(organizationSettings.organizationId, orgId))
-        .limit(1);
+      const [[orgRow], [s]] = await Promise.all([
+        db
+          .select({ name: organization.name, logo: organization.logo })
+          .from(organization)
+          .where(eq(organization.id, orgId))
+          .limit(1),
+        db
+          .select()
+          .from(organizationSettings)
+          .where(eq(organizationSettings.organizationId, orgId))
+          .limit(1),
+      ]);
       return {
         name: orgRow?.name ?? "",
         description: s?.description ?? null,

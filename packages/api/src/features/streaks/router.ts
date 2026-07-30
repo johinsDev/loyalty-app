@@ -1,13 +1,6 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { type db as Db } from "@loyalty/db";
 
-import {
-  type CacheBinding,
-  protectedProcedure,
-  type RealtimeBinding,
-  rateLimit,
-  router,
-  staffProcedure,
-} from "../../trpc";
+import { orgId, protectedProcedure, rateLimit, router, staffProcedure, type CacheBinding, type RealtimeBinding } from "../../trpc";
 import { StreaksRepository } from "./repository";
 import {
   cancelClaimInputSchema,
@@ -19,9 +12,6 @@ import {
 import { StreaksService } from "./service";
 
 /** The single principal org (single-tenant pilot). */
-const orgId = async (): Promise<string> =>
-  (await getPrimaryOrganizationId()) ?? "";
-
 /** Shared builder — the stamps router reuses this to advance the streak on a
  *  purchase. */
 export function buildStreaksService(ctx: {
@@ -41,7 +31,7 @@ export const streaksRouter = router({
   streakForCustomer: staffProcedure
     .input(customerIdInputSchema)
     .query(async ({ ctx, input }) =>
-      buildStreaksService(ctx).streakForCustomer(await orgId(), input.customerId),
+      buildStreaksService(ctx).streakForCustomer(orgId(ctx), input.customerId),
     ),
 
   claimReward: staffProcedure
@@ -51,7 +41,7 @@ export const streaksRouter = router({
     .input(claimInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildStreaksService(ctx).claimReward(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.token,
       ),
@@ -75,7 +65,7 @@ export const streaksRouter = router({
     .input(requestClaimInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildStreaksService(ctx).requestClaim(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.customerId,
       ),
@@ -93,7 +83,7 @@ export const streaksRouter = router({
     .input(confirmClaimWithCodeInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildStreaksService(ctx).confirmClaimWithCode(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.pendingId,
         input.code,
@@ -102,15 +92,15 @@ export const streaksRouter = router({
 
   // ---- Customer (self) ------------------------------------------------
   myStreak: protectedProcedure.query(async ({ ctx }) =>
-    buildStreaksService(ctx).myStreak(await orgId(), ctx.session.user.id),
+    buildStreaksService(ctx).myStreak(orgId(ctx), ctx.session.user.id),
   ),
 
   myHistory: protectedProcedure.query(async ({ ctx }) =>
-    buildStreaksService(ctx).myHistory(await orgId(), ctx.session.user.id),
+    buildStreaksService(ctx).myHistory(orgId(ctx), ctx.session.user.id),
   ),
 
   issueClaimToken: protectedProcedure.mutation(async ({ ctx }) =>
-    buildStreaksService(ctx).issueClaimToken(await orgId(), ctx.session.user.id),
+    buildStreaksService(ctx).issueClaimToken(orgId(ctx), ctx.session.user.id),
   ),
 
   // Customer revoke of a pending code-based streak claim — bound to the
