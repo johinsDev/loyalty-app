@@ -1,4 +1,5 @@
 import { auth } from "@loyalty/auth/server";
+import type { Role } from "@loyalty/auth/server";
 import { recordAudit } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 import { tasks } from "@trigger.dev/sdk/v3";
@@ -240,12 +241,15 @@ export class EmployeesService {
     };
   }
 
-  /** The stores a cashier can operate the register for. Their assignments, or —
-   *  when unassigned — every store so they can still work. */
-  async myStores(orgId: string, userId: string) {
-    const assigned = await this.repo.assignedStoresFor(orgId, userId);
-    if (assigned.length > 0) return assigned;
-    return this.repo.allStores(orgId);
+  /**
+   * The stores this user can operate the register for. Staff get exactly their
+   * assignments — the old "no assignments ⇒ every store" fallback meant an
+   * unassigned cashier could ring up sales against any location. Managers and
+   * owners supervise the whole operation, so they keep the full list.
+   */
+  async myStores(orgId: string, userId: string, role: Role) {
+    if (role !== "staff") return this.repo.allStores(orgId);
+    return this.repo.assignedStoresFor(orgId, userId);
   }
 
   async listByIds(orgId: string, ids: string[]): Promise<EmployeeListItem[]> {

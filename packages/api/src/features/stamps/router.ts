@@ -269,6 +269,7 @@ export const stampsRouter = router({
         org,
         ctx.session.user.id,
         input.storeId,
+        ctx.role,
       );
 
       // Org loyalty config (cached) + the customer's persisted tier discount %
