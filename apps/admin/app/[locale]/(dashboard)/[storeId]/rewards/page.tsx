@@ -40,9 +40,8 @@ export default function RewardsPage({ params, searchParams }: Props) {
 }
 
 async function RewardsTableSection({ params, searchParams }: Props) {
-  const { locale, storeId: segment } = await params;
+  const [{ locale, storeId: segment }, sp] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  const sp = await searchParams;
   const { scope } = await loadStoreScope(segment);
   return <RewardsTable searchParams={sp} storeId={scope?.storeId ?? null} />;
 }

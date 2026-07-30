@@ -49,6 +49,9 @@ export default function StoreLayout({ children, params }: Props) {
       }
     >
       <ImpersonationBanner />
+      {/* `RoleGate` no longer awaits (it passes the role down as a promise), so
+          the page renders straight away; the Suspense here only covers whatever
+          holes the page itself opens. */}
       <Suspense fallback={<PageSkeleton />}>
         <RoleGate>{children}</RoleGate>
       </Suspense>

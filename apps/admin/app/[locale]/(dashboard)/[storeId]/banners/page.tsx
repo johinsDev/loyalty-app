@@ -9,7 +9,7 @@ import { BannersBulkBar } from "@/features/banners/components/banners-bulk-bar";
 import { BannersListHeader } from "@/features/banners/components/banners-list-header";
 import { BannersTable } from "@/features/banners/components/banners-table";
 import { BannersToolbar } from "@/features/banners/components/banners-toolbar";
-import { loadStoreScope } from "@/lib/store-scope-server";
+import { loadStores, loadStoreScope } from "@/lib/store-scope-server";
 
 type Props = {
   params: Promise<{ locale: string; storeId: string }>;
@@ -45,10 +45,12 @@ export default function BannersPage({ params, searchParams }: Props) {
 }
 
 async function BannersTableSection({ params, searchParams }: Props) {
-  const { locale, storeId: segment } = await params;
+  const [{ locale, storeId: segment }, sp] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  const sp = await searchParams;
-  const { scope, stores } = await loadStoreScope(segment);
+  // `multiStore` only drives a column, so it rides along with the store list the
+  // shell already fetches (`loadStores`, request-deduped) rather than gating the
+  // rows on it.
+  const [{ scope }, stores] = await Promise.all([loadStoreScope(segment), loadStores()]);
   return (
     <BannersTable
       searchParams={sp}

@@ -40,9 +40,8 @@ export default function PromotionsPage({ params, searchParams }: Props) {
 }
 
 async function PromotionsTableSection({ params, searchParams }: Props) {
-  const { locale, storeId: segment } = await params;
+  const [{ locale, storeId: segment }, sp] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  const sp = await searchParams;
   const { scope } = await loadStoreScope(segment);
   return <PromotionsTable searchParams={sp} storeId={scope?.storeId ?? null} />;
 }

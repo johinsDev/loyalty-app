@@ -49,9 +49,8 @@ export default function ProductsPage({ params, searchParams }: Props) {
 }
 
 async function ProductsTableSection({ params, searchParams }: Props) {
-  const { locale, storeId: segment } = await params;
+  const [{ locale, storeId: segment }, sp] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  const sp = await searchParams;
   const { scope } = await loadStoreScope(segment);
   return (
     <Suspense key={filterKey(sp)} fallback={<DataTableSkeleton columns={6} />}>
