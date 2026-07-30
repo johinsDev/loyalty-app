@@ -10,6 +10,8 @@
     "lint": "oxlint app src proxy.ts",
     "format": "oxlint app src proxy.ts --fix",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "clean": "rm -rf .next .turbo node_modules"
   },
   "dependencies": {
@@ -55,13 +57,16 @@
   },
   "devDependencies": {
     "@loyalty/tsconfig": "workspace:*",
+    "@loyalty/vitest-config": "workspace:*",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vitest/coverage-v8": "^2.1.0",
     "oxlint": "^0.15.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
   }
 }
