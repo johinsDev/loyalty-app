@@ -609,7 +609,7 @@ export class EmployeesService {
     });
   }
 
-  async disable(orgId: string, actor: Actor, memberId: string, reason?: string): Promise<void> {
+  async disable(orgId: string, actor: Actor, memberId: string, reason?: string): Promise<string> {
     const row = await this.requireTarget(orgId, memberId, actor);
     await adminApi.banUser({
       body: { userId: row.user.id, banReason: reason },
@@ -622,9 +622,10 @@ export class EmployeesService {
       type: "disable",
       metadata: { reason: reason ?? null },
     });
+    return row.user.id;
   }
 
-  async enable(orgId: string, actor: Actor, memberId: string): Promise<void> {
+  async enable(orgId: string, actor: Actor, memberId: string): Promise<string> {
     const row = await this.requireTarget(orgId, memberId, actor);
     await adminApi.unbanUser({ body: { userId: row.user.id }, headers: actor.headers });
     await recordAudit({
@@ -633,9 +634,10 @@ export class EmployeesService {
       targetUserId: row.user.id,
       type: "enable",
     });
+    return row.user.id;
   }
 
-  async remove(orgId: string, actor: Actor, memberId: string): Promise<void> {
+  async remove(orgId: string, actor: Actor, memberId: string): Promise<string> {
     const row = await this.requireTarget(orgId, memberId, actor);
     if (row.member.role === "owner") {
       throw new TRPCError({ code: "FORBIDDEN", message: "No se puede eliminar al dueño." });
@@ -652,18 +654,21 @@ export class EmployeesService {
       targetUserId: row.user.id,
       type: "delete",
     });
+    return row.user.id;
   }
 
   /** Best-effort bulk delete over selected roster ids (member ids; invitation
    *  ids and guarded rows — owner/self — are skipped). */
-  async bulkRemove(orgId: string, actor: Actor, ids: string[]): Promise<void> {
+  async bulkRemove(orgId: string, actor: Actor, ids: string[]): Promise<string[]> {
+    const affected: string[] = [];
     for (const id of ids) {
       try {
-        await this.remove(orgId, actor, id);
+        affected.push(await this.remove(orgId, actor, id));
       } catch {
         // skip non-members / owner / self
       }
     }
+    return affected;
   }
 
   async bulkSetDisabled(
@@ -671,15 +676,20 @@ export class EmployeesService {
     actor: Actor,
     ids: string[],
     disabled: boolean,
-  ): Promise<void> {
+  ): Promise<string[]> {
+    const affected: string[] = [];
     for (const id of ids) {
       try {
-        if (disabled) await this.disable(orgId, actor, id);
-        else await this.enable(orgId, actor, id);
+        affected.push(
+          disabled
+            ? await this.disable(orgId, actor, id)
+            : await this.enable(orgId, actor, id),
+        );
       } catch {
         // skip non-members / owner / self
       }
     }
+    return affected;
   }
 
   async listSessions(

@@ -1,7 +1,7 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { type db as Db } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 
-import { ownerProcedure, router, staffProcedure } from "../../trpc";
+import { orgId, ownerProcedure, router, staffProcedure } from "../../trpc";
 import { ShortlinkRepository } from "./repository";
 import {
   analyticsInputSchema,
@@ -12,9 +12,6 @@ import {
 import { ShortlinkService } from "./service";
 
 /** The single principal org (single-tenant pilot). No env var needed. */
-const orgId = async (): Promise<string> =>
-  (await getPrimaryOrganizationId()) ?? "";
-
 function buildService(db: typeof Db, baseUrl: string): ShortlinkService {
   return new ShortlinkService(new ShortlinkRepository(db), baseUrl);
 }
@@ -36,7 +33,7 @@ export const shortlinksRouter = router({
           message: "shortlinks provider is not configured on this server",
         });
       }
-      const organizationId = await orgId();
+      const organizationId = orgId(ctx);
       const result = await ctx.shortlinks.shorten(input.targetUrl, {
         organizationId,
         slug: input.slug,
@@ -58,7 +55,7 @@ export const shortlinksRouter = router({
     .input(listInputSchema)
     .query(async ({ ctx, input }) =>
       buildService(ctx.db, ctx.shortlinkBaseUrl ?? "").list(
-        await orgId(),
+        orgId(ctx),
         input,
       ),
     ),
@@ -67,7 +64,7 @@ export const shortlinksRouter = router({
     .input(idInputSchema)
     .query(async ({ ctx, input }) =>
       buildService(ctx.db, ctx.shortlinkBaseUrl ?? "").get(
-        await orgId(),
+        orgId(ctx),
         input.id,
       ),
     ),
@@ -76,7 +73,7 @@ export const shortlinksRouter = router({
     .input(analyticsInputSchema)
     .query(async ({ ctx, input }) =>
       buildService(ctx.db, ctx.shortlinkBaseUrl ?? "").analytics(
-        await orgId(),
+        orgId(ctx),
         input,
       ),
     ),
@@ -85,7 +82,7 @@ export const shortlinksRouter = router({
     .input(idInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildService(ctx.db, ctx.shortlinkBaseUrl ?? "").deactivate(
-        await orgId(),
+        orgId(ctx),
         input.id,
       ),
     ),

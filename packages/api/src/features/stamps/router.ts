@@ -1,4 +1,4 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { type db as Db } from "@loyalty/db";
 import {
   pointsAccount,
   type PromoItemRef,
@@ -8,14 +8,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import {
-  ownerProcedure,
-  protectedProcedure,
-  type RealtimeBinding,
-  rateLimit,
-  router,
-  staffProcedure,
-} from "../../trpc";
+import { orgId, ownerProcedure, protectedProcedure, rateLimit, router, staffProcedure, type RealtimeBinding } from "../../trpc";
 import { tasks } from "@trigger.dev/sdk/v3";
 
 import {
@@ -49,9 +42,6 @@ import {
 import { StampsService } from "./service";
 
 /** The single principal org (single-tenant pilot). */
-const orgId = async (): Promise<string> =>
-  (await getPrimaryOrganizationId()) ?? "";
-
 /** Whether a cart line falls within a reward's item-ref scope ([] = any). */
 function lineInScope(line: CartLine, refs: PromoItemRef[]): boolean {
   if (refs.length === 0) return true;
@@ -128,7 +118,7 @@ export const stampsRouter = router({
     )
     .input(previewPurchaseInputSchema)
     .query(async ({ ctx, input }) => {
-      const org = await orgId();
+      const org = orgId(ctx);
       const subtotalCents = input.items.reduce(
         (s, it) => s + it.unitAmountCents * it.qty,
         0,
@@ -262,7 +252,7 @@ export const stampsRouter = router({
     )
     .input(recordPurchaseInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const org = await orgId();
+      const org = orgId(ctx);
       // The store this sale is attributed to (register store-switcher).
       const storeId = await resolveActiveStoreId(
         ctx.db,
@@ -508,7 +498,7 @@ export const stampsRouter = router({
   walletForCustomer: staffProcedure
     .input(customerIdInputSchema)
     .query(async ({ ctx, input }) => {
-      const org = await orgId();
+      const org = orgId(ctx);
       return buildService(ctx).walletForCustomer(
         org,
         input.customerId,
@@ -536,7 +526,7 @@ export const stampsRouter = router({
   adjustForCustomer: ownerProcedure
     .input(adjustStampsForCustomerInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const org = await orgId();
+      const org = orgId(ctx);
       return buildService(ctx).adjustForCustomer(
         org,
         input.customerId,
@@ -551,7 +541,7 @@ export const stampsRouter = router({
   // `paused` rides along so the card can show the redeem-only state (mode
   // gates EARNING only; collected stamps stay spendable).
   myWallet: protectedProcedure.query(async ({ ctx }) => {
-    const org = await orgId();
+    const org = orgId(ctx);
     const loyalty = await getLoyaltyConfig(ctx.db, org);
     const wallet = await buildService(ctx).myWallet(
       org,
@@ -564,6 +554,6 @@ export const stampsRouter = router({
   myHistory: protectedProcedure
     .input(historyInputSchema)
     .query(async ({ ctx, input }) =>
-      buildService(ctx).myHistory(await orgId(), ctx.session.user.id, input),
+      buildService(ctx).myHistory(orgId(ctx), ctx.session.user.id, input),
     ),
 });

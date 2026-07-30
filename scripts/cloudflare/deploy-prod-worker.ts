@@ -76,6 +76,15 @@ workers_dev = false
 [observability]
 enabled = true
 
+# Run the Worker near the origin instead of near the user. This app is
+# origin-heavy: a request makes several sequential round trips to Turso
+# (aws-us-east-1) and Upstash, and each one costs the full edge→us-east-1 RTT.
+# Cloudflare only relocates when it predicts a win, and this is reversible —
+# drop the stanza and redeploy. Watch the /r/:slug redirect and /img latency
+# for Colombian users, which this trades against.
+[placement]
+mode = "smart"
+
 [[routes]]
 pattern = "${apiHost}"
 custom_domain = true

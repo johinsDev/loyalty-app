@@ -1,13 +1,6 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
-import { TRPCError } from "@trpc/server";
+import { type db as Db } from "@loyalty/db";
 
-import {
-  managerProcedure,
-  ownerProcedure,
-  protectedProcedure,
-  rateLimit,
-  router,
-} from "../../trpc";
+import { managerProcedure, orgId, ownerProcedure, protectedProcedure, rateLimit, requireOrg, router } from "../../trpc";
 import { cachedListRead } from "../_shared/list-cache";
 import { buildPointsService } from "../points/router";
 import { PurchasesRepository } from "./repository";
@@ -24,17 +17,6 @@ import {
 import { PurchasesService } from "./service";
 
 /** The single principal org (single-tenant pilot). */
-const orgId = async (): Promise<string> =>
-  (await getPrimaryOrganizationId()) ?? "";
-
-async function requireOrg(): Promise<string> {
-  const id = await getPrimaryOrganizationId();
-  if (!id) {
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No active organization" });
-  }
-  return id;
-}
-
 function buildService(ctx: { db: typeof Db }): PurchasesService {
   return new PurchasesService(new PurchasesRepository(ctx.db));
 }
@@ -44,14 +26,14 @@ export const purchasesRouter = router({
   myPurchases: protectedProcedure
     .input(myPurchasesInputSchema)
     .query(async ({ ctx, input }) =>
-      buildService(ctx).myPurchases(await orgId(), ctx.session.user.id, input),
+      buildService(ctx).myPurchases(orgId(ctx), ctx.session.user.id, input),
     ),
 
   purchaseDetail: protectedProcedure
     .input(purchaseIdInputSchema)
     .query(async ({ ctx, input }) =>
       buildService(ctx).purchaseDetail(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.id,
       ),
@@ -61,7 +43,7 @@ export const purchasesRouter = router({
     .input(recentPurchasesInputSchema)
     .query(async ({ ctx, input }) =>
       buildService(ctx).recentPurchases(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input,
       ),
@@ -70,14 +52,14 @@ export const purchasesRouter = router({
   usuals: protectedProcedure
     .input(usualsInputSchema)
     .query(async ({ ctx, input }) =>
-      buildService(ctx).usuals(await orgId(), ctx.session.user.id, input),
+      buildService(ctx).usuals(orgId(ctx), ctx.session.user.id, input),
     ),
 
   // ---- Admin (managers) -----------------------------------------------
   adminList: managerProcedure
     .input(purchasesAdminListInputSchema)
     .query(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       return cachedListRead(ctx, "purchases", org, input, () =>
         buildService(ctx).adminList(org, input),
       );
@@ -86,29 +68,29 @@ export const purchasesRouter = router({
   adminListByIds: managerProcedure
     .input(bulkIdsSchema)
     .query(async ({ ctx, input }) =>
-      buildService(ctx).listByIds(await requireOrg(), input.ids),
+      buildService(ctx).listByIds(requireOrg(ctx), input.ids),
     ),
 
   adminKpis: managerProcedure
     .input(purchasesAdminListInputSchema)
-    .query(async ({ ctx, input }) => buildService(ctx).adminKpis(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => buildService(ctx).adminKpis(requireOrg(ctx), input)),
 
   adminGet: managerProcedure
     .input(purchaseAdminIdSchema)
-    .query(async ({ ctx, input }) => buildService(ctx).adminGet(await requireOrg(), input.id)),
+    .query(async ({ ctx, input }) => buildService(ctx).adminGet(requireOrg(ctx), input.id)),
 
   resendReceipt: managerProcedure
     .use(rateLimit({ name: "purchases.resendReceipt", limit: 20, window: "1m", by: "user" }))
     .input(purchaseAdminIdSchema)
     .mutation(async ({ ctx, input }) =>
-      buildService(ctx).resendReceipt(await requireOrg(), input.id),
+      buildService(ctx).resendReceipt(requireOrg(ctx), input.id),
     ),
 
   voidPurchase: ownerProcedure
     .use(rateLimit({ name: "purchases.voidPurchase", limit: 20, window: "1m", by: "user" }))
     .input(voidPurchaseInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       return buildService(ctx).voidPurchase(org, input.id, input.reason, ctx.session.user.id, (cid) =>
         buildPointsService(ctx).recompute(org, cid, { silent: true }).then(() => undefined),
       );

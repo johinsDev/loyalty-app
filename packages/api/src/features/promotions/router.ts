@@ -1,10 +1,9 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
-import { TRPCError } from "@trpc/server";
+import { type db as Db } from "@loyalty/db";
 import { z } from "zod";
 
 import { loadLocaleContext } from "../_shared/localize";
 import { cachedListRead } from "../_shared/list-cache";
-import { managerProcedure, publicProcedure, router, staffProcedure } from "../../trpc";
+import { managerProcedure, orgId, publicProcedure, requireOrg, router, staffProcedure } from "../../trpc";
 import { PromoRepository } from "./repository";
 import {
   adminListInputSchema,
@@ -23,13 +22,6 @@ import { PROMO_TEMPLATES } from "./templates";
 function makeService(db: typeof Db): PromoService {
   return new PromoService(db, new PromoRepository(db));
 }
-const orgId = async (): Promise<string> => (await getPrimaryOrganizationId()) ?? "";
-async function requireOrg(): Promise<string> {
-  const id = await getPrimaryOrganizationId();
-  if (!id) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No active organization" });
-  return id;
-}
-
 /**
  * Promotions. Public localized reads (home rail + /promos hub + detail), the
  * manager server-driven wizard (create → getState/advance → publish → archive),
@@ -39,31 +31,31 @@ async function requireOrg(): Promise<string> {
 export const promocionesRouter = router({
   // ── Public (cacheable, localized) ──────────────────────────────────────────
   homePromos: publicProcedure.input(homePromosInputSchema).query(async ({ ctx, input }) => {
-    const id = await orgId();
+    const id = orgId(ctx);
     const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
     return makeService(ctx.db).homePromos(id, lc, input.storeId);
   }),
   listPublic: publicProcedure.input(publicListInputSchema).query(async ({ ctx, input }) => {
-    const id = await orgId();
+    const id = orgId(ctx);
     const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
     return makeService(ctx.db).listPromos(id, lc, input);
   }),
   bySlug: publicProcedure.input(slugInputSchema).query(async ({ ctx, input }) => {
-    const id = await orgId();
+    const id = orgId(ctx);
     const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
     return makeService(ctx.db).promoBySlug(id, input.slug, lc);
   }),
 
   // Cashier catalog — active promos with store scope + exclusivity (staff).
   staffCatalog: staffProcedure.query(async ({ ctx }) => {
-    const id = await orgId();
+    const id = orgId(ctx);
     const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
     return makeService(ctx.db).staffCatalog(id, lc);
   }),
 
   // ── Admin wizard (managers + owners) ───────────────────────────────────────
   templates: managerProcedure.query(async ({ ctx }) => {
-    const id = await requireOrg();
+    const id = requireOrg(ctx);
     const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
     const en = lc.locale === "en";
     return PROMO_TEMPLATES.map((t) => ({
@@ -78,18 +70,18 @@ export const promocionesRouter = router({
   create: managerProcedure
     .input(z.object({ templateKey: z.string().optional() }).optional())
     .mutation(async ({ ctx, input }) => {
-      const id = await requireOrg();
+      const id = requireOrg(ctx);
       const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
       return makeService(ctx.db).create(id, ctx.session.user.id, input?.templateKey, lc);
     }),
   getState: managerProcedure
     .input(idInputSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).getState(await requireOrg(), input.id)),
+    .query(async ({ ctx, input }) => makeService(ctx.db).getState(requireOrg(ctx), input.id)),
   advance: managerProcedure
     .input(z.object({ id: z.string().uuid(), step: z.string(), input: z.unknown() }))
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).advance(
-        await requireOrg(),
+        requireOrg(ctx),
         ctx.session.user.id,
         input.id,
         input.step,
@@ -98,52 +90,52 @@ export const promocionesRouter = router({
     ),
   publish: managerProcedure
     .input(idInputSchema)
-    .mutation(async ({ ctx, input }) => makeService(ctx.db).publish(await requireOrg(), input.id)),
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).publish(requireOrg(ctx), input.id)),
   archive: managerProcedure
     .input(idInputSchema)
-    .mutation(async ({ ctx, input }) => makeService(ctx.db).archive(await requireOrg(), input.id)),
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).archive(requireOrg(ctx), input.id)),
   patchContent: managerProcedure
     .input(patchContentSchema)
-    .mutation(async ({ ctx, input }) => makeService(ctx.db).patchContent(await requireOrg(), input)),
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).patchContent(requireOrg(ctx), input)),
   get: managerProcedure
     .input(idInputSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).get(await requireOrg(), input.id)),
+    .query(async ({ ctx, input }) => makeService(ctx.db).get(requireOrg(ctx), input.id)),
   refOptions: managerProcedure
     .input(z.object({ productId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
-      await requireOrg();
+      requireOrg(ctx);
       return new PromoRepository(ctx.db).productRefOptions(input.productId);
     }),
   refLabels: managerProcedure
     .input(z.object({ refs: z.array(itemRefSchema).max(100) }))
     .query(async ({ ctx, input }) => {
-      await requireOrg();
+      requireOrg(ctx);
       const map = await new PromoRepository(ctx.db).refNames(input.refs);
       return Object.fromEntries(map);
     }),
   adminList: managerProcedure
     .input(adminListInputSchema)
     .query(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       return cachedListRead(ctx, "promotions", org, input, () =>
         makeService(ctx.db).adminList(org, input),
       );
     }),
   analytics: managerProcedure
     .input(promoAnalyticsInputSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).analytics(await requireOrg(), input.from)),
+    .query(async ({ ctx, input }) => makeService(ctx.db).analytics(requireOrg(ctx), input.from)),
   promoStats: managerProcedure
     .input(promoAnalyticsInputSchema.extend({ id: idInputSchema.shape.id }))
     .query(async ({ ctx, input }) =>
-      makeService(ctx.db).promoStats(await requireOrg(), input.id, input.from),
+      makeService(ctx.db).promoStats(requireOrg(ctx), input.id, input.from),
     ),
   remove: managerProcedure
     .input(idInputSchema)
-    .mutation(async ({ ctx, input }) => makeService(ctx.db).remove(await requireOrg(), input.id)),
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).remove(requireOrg(ctx), input.id)),
 
   // ── Checkout (cashier) ─────────────────────────────────────────────────────
   applicable: staffProcedure.input(applicableInputSchema).query(async ({ ctx, input }) => {
-    const id = await requireOrg();
+    const id = requireOrg(ctx);
     const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
     return makeService(ctx.db).applicable(id, input.customerId, input.cart, lc);
   }),

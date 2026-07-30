@@ -1,12 +1,6 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { type db as Db } from "@loyalty/db";
 
-import {
-  ownerProcedure,
-  protectedProcedure,
-  type RealtimeBinding,
-  router,
-  staffProcedure,
-} from "../../trpc";
+import { orgId, ownerProcedure, protectedProcedure, router, staffProcedure, type RealtimeBinding } from "../../trpc";
 import { earnsPoints, getLoyaltyConfig } from "../_shared/localize";
 import { PointsRepository } from "./repository";
 import {
@@ -17,9 +11,6 @@ import {
   transactionsInputSchema,
 } from "./schemas";
 import { PointsService } from "./service";
-
-const orgId = async (): Promise<string> =>
-  (await getPrimaryOrganizationId()) ?? "";
 
 /** Shared builder — the stamps router reuses this to earn points on a purchase. */
 export function buildPointsService(ctx: {
@@ -36,7 +27,7 @@ export const pointsRouter = router({
   summaryForCustomer: staffProcedure
     .input(customerIdInputSchema)
     .query(async ({ ctx, input }) =>
-      buildPointsService(ctx).summaryForCustomer(await orgId(), input.customerId),
+      buildPointsService(ctx).summaryForCustomer(orgId(ctx), input.customerId),
     ),
 
   // ---- Admin (owner) --------------------------------------------------
@@ -47,7 +38,7 @@ export const pointsRouter = router({
     .input(adjustForPurchaseInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildPointsService(ctx).adjustForPurchase(
-        await orgId(),
+        orgId(ctx),
         input.purchaseId,
         input.points,
         input.reason,
@@ -60,7 +51,7 @@ export const pointsRouter = router({
     .input(adjustForCustomerInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildPointsService(ctx).adjustForCustomer(
-        await orgId(),
+        orgId(ctx),
         input.customerId,
         input.points,
         input.reason,
@@ -72,7 +63,7 @@ export const pointsRouter = router({
   // `paused` rides along so the card can show the redeem-only state (mode
   // gates EARNING only; the balance stays spendable).
   mySummary: protectedProcedure.query(async ({ ctx }) => {
-    const org = await orgId();
+    const org = orgId(ctx);
     const [summary, loyalty] = await Promise.all([
       buildPointsService(ctx).mySummary(org, ctx.session.user.id),
       getLoyaltyConfig(ctx.db, org),
@@ -83,7 +74,7 @@ export const pointsRouter = router({
   myHistory: protectedProcedure
     .input(historyInputSchema)
     .query(async ({ ctx, input }) =>
-      buildPointsService(ctx).myHistory(await orgId(), ctx.session.user.id, input),
+      buildPointsService(ctx).myHistory(orgId(ctx), ctx.session.user.id, input),
     ),
 
   // Cursor-paginated, UI-friendly ledger (date-range + infinite scroll) for the
@@ -92,7 +83,7 @@ export const pointsRouter = router({
     .input(transactionsInputSchema)
     .query(async ({ ctx, input }) =>
       buildPointsService(ctx).myTransactions(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input,
       ),

@@ -1061,27 +1061,29 @@ export class CampaignsRepository {
   /** Per-campaign time-series (+ drip per-attempt breakdown). */
   async campaignTimeseries(orgId: string, camp: CampaignRow): Promise<CampaignTimeseries> {
     const now = new Date();
-    const sent = await this.db
-      .select({ customerId: campaignSend.customerId, sentAt: campaignSend.sentAt })
-      .from(campaignSend)
-      .where(
-        and(
-          eq(campaignSend.organizationId, orgId),
-          eq(campaignSend.campaignId, camp.id),
-          eq(campaignSend.status, "sent"),
+    const [sent, clicks] = await Promise.all([
+      this.db
+        .select({ customerId: campaignSend.customerId, sentAt: campaignSend.sentAt })
+        .from(campaignSend)
+        .where(
+          and(
+            eq(campaignSend.organizationId, orgId),
+            eq(campaignSend.campaignId, camp.id),
+            eq(campaignSend.status, "sent"),
+          ),
         ),
-      );
-    const clicks = await this.db
-      .select({ customerId: shortlink.customerId, clickedAt: shortlinkClick.clickedAt })
-      .from(shortlinkClick)
-      .innerJoin(shortlink, eq(shortlink.id, shortlinkClick.shortlinkId))
-      .where(
-        and(
-          eq(shortlink.organizationId, orgId),
-          eq(shortlink.campaignId, camp.id),
-          isNotNull(shortlink.customerId),
+      this.db
+        .select({ customerId: shortlink.customerId, clickedAt: shortlinkClick.clickedAt })
+        .from(shortlinkClick)
+        .innerJoin(shortlink, eq(shortlink.id, shortlinkClick.shortlinkId))
+        .where(
+          and(
+            eq(shortlink.organizationId, orgId),
+            eq(shortlink.campaignId, camp.id),
+            isNotNull(shortlink.customerId),
+          ),
         ),
-      );
+    ]);
 
     let first: Date | null = null;
     const seriesMap = new Map<string, DayTally>();

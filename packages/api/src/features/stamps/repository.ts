@@ -172,18 +172,20 @@ export class StampsRepository {
     storeId: string,
     since: Date,
   ): Promise<{ stampsToday: number; pointsToday: number }> {
-    const [s] = await this.db
-      .select({
-        total: sql<number>`coalesce(sum(case when ${stamp.amount} > 0 then ${stamp.amount} else 0 end), 0)`,
-      })
-      .from(stamp)
-      .where(and(eq(stamp.storeId, storeId), gte(stamp.createdAt, since)));
-    const [p] = await this.db
-      .select({
-        total: sql<number>`coalesce(sum(case when ${pointsTransaction.points} > 0 then ${pointsTransaction.points} else 0 end), 0)`,
-      })
-      .from(pointsTransaction)
-      .where(and(eq(pointsTransaction.storeId, storeId), gte(pointsTransaction.createdAt, since)));
+    const [[s], [p]] = await Promise.all([
+      this.db
+        .select({
+          total: sql<number>`coalesce(sum(case when ${stamp.amount} > 0 then ${stamp.amount} else 0 end), 0)`,
+        })
+        .from(stamp)
+        .where(and(eq(stamp.storeId, storeId), gte(stamp.createdAt, since))),
+      this.db
+        .select({
+          total: sql<number>`coalesce(sum(case when ${pointsTransaction.points} > 0 then ${pointsTransaction.points} else 0 end), 0)`,
+        })
+        .from(pointsTransaction)
+        .where(and(eq(pointsTransaction.storeId, storeId), gte(pointsTransaction.createdAt, since))),
+    ]);
     return { stampsToday: Number(s?.total ?? 0), pointsToday: Number(p?.total ?? 0) };
   }
 
