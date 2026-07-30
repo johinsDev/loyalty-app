@@ -1,6 +1,7 @@
 import "server-only";
 
-import { type AppRouter, appRouter } from "@loyalty/api";
+import type { AppRouter, appRouter } from "@loyalty/api";
+import { PROCEDURE_TYPES } from "@loyalty/api/procedure-types";
 import { createTRPCUntypedClient, httpBatchLink } from "@trpc/client";
 import { headers } from "next/headers";
 import superjson from "superjson";
@@ -9,17 +10,12 @@ import { getTrpcUrl } from "./shared";
 
 type ServerCaller = ReturnType<typeof appRouter.createCaller>;
 
-// Procedure path ("clientes.list") → "query" | "mutation", read once from the
-// router so the HTTP proxy below can dispatch to .query / .mutation.
-const procedureTypes = new Map(
-  Object.entries(
-    (
-      appRouter as unknown as {
-        _def: { procedures: Record<string, { _def: { type: string } }> };
-      }
-    )._def.procedures,
-  ).map(([path, proc]) => [path, proc._def.type]),
-);
+// Procedure path ("clientes.list") → "query" | "mutation", so the HTTP proxy below
+// can dispatch to .query / .mutation. Read from the GENERATED literal, never
+// from `appRouter` itself: a value import of the router would pull the whole
+// backend (better-auth, drizzle, the DB client) into this serverless function.
+// `packages/api` has a test that fails if the literal drifts from the router.
+const procedureTypes = new Map(Object.entries(PROCEDURE_TYPES));
 
 /**
  * Caller-shaped proxy (`api.foo.bar(input)`) backed by an HTTP tRPC client, so

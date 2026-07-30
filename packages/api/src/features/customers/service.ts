@@ -31,7 +31,11 @@ interface AdminApi {
   unbanUser(args: { body: { userId: string }; headers: Headers }): Promise<unknown>;
   revokeUserSessions(args: { body: { userId: string }; headers: Headers }): Promise<unknown>;
 }
-const adminApi = auth.api as unknown as AdminApi;
+/** Lazy on purpose: reading `auth.api` builds the Better Auth instance (it needs
+ *  BETTER_AUTH_SECRET). At module scope that ran on *import*, so any consumer of
+ *  this module — including the FE, which imports `appRouter` — booted Better
+ *  Auth and crashed without the secret. Resolve it at call time instead. */
+const adminApi = (): AdminApi => auth.api as unknown as AdminApi;
 
 /** The signed-in operator; `headers` authorize the Better Auth admin calls.
  *  The optional writers let create/update reach loyalty + notification
@@ -110,9 +114,9 @@ export class CustomersService extends CustomersReadService {
 
   async ban(orgId: string, actor: Actor, customerId: string, reason: string): Promise<void> {
     await this.requireCustomer(orgId, customerId);
-    await adminApi.banUser({ body: { userId: customerId, banReason: reason }, headers: actor.headers });
+    await adminApi().banUser({ body: { userId: customerId, banReason: reason }, headers: actor.headers });
     // Revoke active sessions so a banned customer is kicked out immediately.
-    await adminApi.revokeUserSessions({ body: { userId: customerId }, headers: actor.headers });
+    await adminApi().revokeUserSessions({ body: { userId: customerId }, headers: actor.headers });
     await recordAudit({
       organizationId: orgId,
       actorUserId: actor.userId,
@@ -124,7 +128,7 @@ export class CustomersService extends CustomersReadService {
 
   async unban(orgId: string, actor: Actor, customerId: string): Promise<void> {
     await this.requireCustomer(orgId, customerId);
-    await adminApi.unbanUser({ body: { userId: customerId }, headers: actor.headers });
+    await adminApi().unbanUser({ body: { userId: customerId }, headers: actor.headers });
     await recordAudit({
       organizationId: orgId,
       actorUserId: actor.userId,

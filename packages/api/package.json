@@ -48,14 +48,16 @@
     "./features/promotions/templates": "./src/features/promotions/templates.ts",
     "./features/rewards/schemas": "./src/features/rewards/schemas.ts",
     "./features/rewards/format": "./src/features/rewards/format.ts",
-    "./features/rewards/templates": "./src/features/rewards/templates.ts"
+    "./features/rewards/templates": "./src/features/rewards/templates.ts",
+    "./procedure-types": "./src/procedure-types.ts"
   },
   "scripts": {
     "lint": "oxlint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "clean": "rm -rf .turbo node_modules"
+    "clean": "rm -rf .turbo node_modules",
+    "gen:procedure-types": "bun run scripts/gen-procedure-types.ts"
   },
   "dependencies": {
     "@loyalty/address": "workspace:*",

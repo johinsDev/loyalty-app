@@ -56,7 +56,11 @@ interface AdminApi {
   }): Promise<unknown>;
 }
 
-const adminApi = auth.api as unknown as AdminApi;
+/** Lazy on purpose: reading `auth.api` builds the Better Auth instance (it needs
+ *  BETTER_AUTH_SECRET). At module scope that ran on *import*, so any consumer of
+ *  this module — including the FE, which imports `appRouter` — booted Better
+ *  Auth and crashed without the secret. Resolve it at call time instead. */
+const adminApi = (): AdminApi => auth.api as unknown as AdminApi;
 
 /** The signed-in operator performing the action. `headers` carry their session
  *  so the Better Auth admin endpoints authorize the call (owner = user.role
@@ -611,7 +615,7 @@ export class EmployeesService {
 
   async disable(orgId: string, actor: Actor, memberId: string, reason?: string): Promise<void> {
     const row = await this.requireTarget(orgId, memberId, actor);
-    await adminApi.banUser({
+    await adminApi().banUser({
       body: { userId: row.user.id, banReason: reason },
       headers: actor.headers,
     });
@@ -626,7 +630,7 @@ export class EmployeesService {
 
   async enable(orgId: string, actor: Actor, memberId: string): Promise<void> {
     const row = await this.requireTarget(orgId, memberId, actor);
-    await adminApi.unbanUser({ body: { userId: row.user.id }, headers: actor.headers });
+    await adminApi().unbanUser({ body: { userId: row.user.id }, headers: actor.headers });
     await recordAudit({
       organizationId: orgId,
       actorUserId: actor.userId,
@@ -641,7 +645,7 @@ export class EmployeesService {
       throw new TRPCError({ code: "FORBIDDEN", message: "No se puede eliminar al dueño." });
     }
     // Revoke sessions + ban so a deleted employee can't keep working.
-    await adminApi.banUser({
+    await adminApi().banUser({
       body: { userId: row.user.id, banReason: "deleted" },
       headers: actor.headers,
     });
@@ -688,7 +692,7 @@ export class EmployeesService {
     memberId: string,
   ): Promise<EmployeeSessionInfo[]> {
     const row = await this.requireTarget(orgId, memberId, actor);
-    const { sessions } = await adminApi.listUserSessions({
+    const { sessions } = await adminApi().listUserSessions({
       body: { userId: row.user.id },
       headers: actor.headers,
     });
@@ -712,12 +716,12 @@ export class EmployeesService {
   ): Promise<void> {
     const row = await this.requireTarget(orgId, memberId, actor);
     if (sessionToken) {
-      await adminApi.revokeUserSession({
+      await adminApi().revokeUserSession({
         body: { sessionToken },
         headers: actor.headers,
       });
     } else {
-      await adminApi.revokeUserSessions({
+      await adminApi().revokeUserSessions({
         body: { userId: row.user.id },
         headers: actor.headers,
       });
