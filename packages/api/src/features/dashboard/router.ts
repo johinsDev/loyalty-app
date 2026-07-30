@@ -124,7 +124,7 @@ export const dashboardRouter = router({
   categoryMix: managerProcedure
     .input(categoryMixInputSchema)
     .query(async ({ ctx, input }) => {
-      const org = await orgId();
+      const org = orgId(ctx);
       return cachedRead(
         ctx,
         `dash:categoryMix:${org}:${scope(input.storeId)}:${input.period}:${input.limit}`,

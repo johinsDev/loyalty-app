@@ -162,7 +162,7 @@ export const menuRouter = router({
 
   /** Roots with their sub-categories — the customer menu's two-row chip strip. */
   categoryTree: publicProcedure.query(async ({ ctx }) => {
-    const id = await orgId();
+    const id = orgId(ctx);
     const lc = await loadLocaleContext(ctx.db, id, ctx.headers);
     return buildMenuService(ctx).categoryTree(id, lc);
   }),
