@@ -1420,7 +1420,20 @@
     "rewardNotApplicable": "Doesn't apply to this cart",
     "rewardClaimedBadge": "Claimed",
     "rewardFulfillmentLabel": "Hand to customer",
-    "rewardResolvedToast": "Reward ready — complete it in the sale"
+    "rewardResolvedToast": "Reward ready — complete it in the sale",
+    "retry": "Try again",
+    "rewardsLoadError": "We couldn't load the member's rewards.",
+    "rewardsNoneForMember": "None of the {count, plural, one {# published reward} other {# published rewards}} is available for this member right now.",
+    "rewardsCatalogLink": "View reward catalog",
+    "rewardsAddItemsHint": "Add products to see which rewards apply.",
+    "rewardEvalError": "We couldn't evaluate rewards against this cart. The indicators are out of date.",
+    "rewardEvalPending": "Evaluating the cart…",
+    "rewardScannedBadge": "Scanned",
+    "rewardScannedFallback": "Scanned reward",
+    "rewardScannedUnavailable": "This reward is no longer available. Remove it to continue.",
+    "removeReward": "Remove reward",
+    "rewardTotalModeWarning": "A reward is selected, but it can't be redeemed in \"By total\" mode. Switch to \"By products\" or remove the reward.",
+    "switchToItemsMode": "Switch to by products"
   },
   "Admin": {
     "menu": "Menu",

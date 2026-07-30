@@ -1420,7 +1420,20 @@
     "rewardNotApplicable": "No aplica a este carrito",
     "rewardClaimedBadge": "Reclamada",
     "rewardFulfillmentLabel": "Entregar al cliente",
-    "rewardResolvedToast": "Recompensa lista — complétala en la venta"
+    "rewardResolvedToast": "Recompensa lista — complétala en la venta",
+    "retry": "Reintentar",
+    "rewardsLoadError": "No pudimos cargar los premios del socio.",
+    "rewardsNoneForMember": "Ninguno de los {count, plural, one {# premio publicado} other {# premios publicados}} está disponible para este socio ahora.",
+    "rewardsCatalogLink": "Ver catálogo de premios",
+    "rewardsAddItemsHint": "Agregá productos para ver qué premios aplican.",
+    "rewardEvalError": "No pudimos evaluar los premios contra este carrito. Los indicadores no están actualizados.",
+    "rewardEvalPending": "Evaluando el carrito…",
+    "rewardScannedBadge": "Escaneado",
+    "rewardScannedFallback": "Premio escaneado",
+    "rewardScannedUnavailable": "Este premio ya no está disponible. Quitalo para continuar.",
+    "removeReward": "Quitar premio",
+    "rewardTotalModeWarning": "Hay un premio seleccionado, pero en modo \"Por total\" no se puede canjear. Cambiá a \"Por productos\" o quitá el premio.",
+    "switchToItemsMode": "Cambiar a por productos"
   },
   "Admin": {
     "menu": "Menú",

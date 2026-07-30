@@ -196,7 +196,7 @@ describe("RewardsService.availableForCustomer", () => {
     ];
     repo.balancesValue = { stamps: 3, points: 80 };
     const { service } = build(repo);
-    const items = await service.availableForCustomer(ORG, CUSTOMER);
+    const { items } = await service.availableForCustomer(ORG, CUSTOMER);
     expect(items).toHaveLength(1);
     expect(items[0]!.affordableWith).toEqual(["points"]);
   });
@@ -207,7 +207,7 @@ describe("RewardsService.availableForCustomer", () => {
     ];
     repo.balancesValue = { stamps: 9, points: 80 };
     const { service } = build(repo);
-    const items = await service.availableForCustomer(ORG, CUSTOMER);
+    const { items } = await service.availableForCustomer(ORG, CUSTOMER);
     expect(items[0]!.affordableWith).toEqual(["stamps", "points"]);
   });
 
@@ -217,7 +217,7 @@ describe("RewardsService.availableForCustomer", () => {
     ];
     repo.balancesValue = { stamps: 9, points: 80 };
     const { service } = build(repo);
-    const items = await service.availableForCustomer(ORG, CUSTOMER);
+    const { items } = await service.availableForCustomer(ORG, CUSTOMER);
     expect(items[0]!.affordableWith).toEqual(["stamps", "points"]);
   });
 
@@ -225,8 +225,38 @@ describe("RewardsService.availableForCustomer", () => {
     repo.catalog = [reward({ id: "s", stampsRequired: 9, pointsCost: null })];
     repo.balancesValue = { stamps: 9, points: 0 };
     const { service } = build(repo);
-    const items = await service.availableForCustomer(ORG, CUSTOMER);
+    const { items } = await service.availableForCustomer(ORG, CUSTOMER);
     expect(items[0]!.affordableWith).toEqual(["stamps"]);
+  });
+
+  it("reports publishedCount even when nothing is claimable, so the cashier can tell an empty catalog from an unaffordable one", async () => {
+    repo.catalog = [
+      reward({ id: "a", stampsRequired: 9 }),
+      reward({ id: "b", stampsRequired: 12 }),
+    ];
+    repo.balancesValue = { stamps: 1, points: 0 };
+    const { service } = build(repo);
+    const { items, publishedCount } = await service.availableForCustomer(ORG, CUSTOMER);
+    expect(items).toHaveLength(0);
+    expect(publishedCount).toBe(2);
+  });
+
+  it("carries the benefit summary, description and fulfillment note for the detail view", async () => {
+    repo.catalog = [
+      reward({
+        id: "up",
+        stampsRequired: 5,
+        description: "Solo bebidas frías",
+        fulfillmentNote: "Entregar en barra",
+        benefit: { type: "variantUpgrade", toValueLabel: "Grande" } as RewardRow["benefit"],
+      }),
+    ];
+    repo.balancesValue = { stamps: 9, points: 0 };
+    const { service } = build(repo);
+    const { items } = await service.availableForCustomer(ORG, CUSTOMER);
+    expect(items[0]!.benefitSummary).toBe("Sube a Grande gratis");
+    expect(items[0]!.description).toBe("Solo bebidas frías");
+    expect(items[0]!.fulfillmentNote).toBe("Entregar en barra");
   });
 });
 

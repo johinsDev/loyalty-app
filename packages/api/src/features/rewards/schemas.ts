@@ -283,6 +283,22 @@ export interface AvailableRewardItem {
    *  `["stamps","points"]` (paid as "both"). The reward only appears here when
    *  this is non-empty, so the cashier can present an affordable default. */
   affordableWith: RewardCurrency[];
+  /** Auto-generated "what it gives" copy. Null when no benefit is configured. */
+  benefitSummary: string | null;
+  /** The operator's own customer-facing copy from the reward wizard. */
+  description: string | null;
+  /** Hand-over instruction for the cashier (experience rewards). */
+  fulfillmentNote: string | null;
+}
+
+/** `availableForCustomer` — the claimable set plus why it may be empty. Without
+ *  `publishedCount` the cashier can't tell "the org has no rewards" from "none
+ *  apply to this socio", and both rendered as a blank panel. */
+export interface AvailableRewardsView {
+  items: AvailableRewardItem[];
+  /** Published rewards in the org, before the per-customer tier / limit /
+   *  affordability filters. */
+  publishedCount: number;
 }
 
 /** Result of a `requestClaim` — the cashier hands the customer nothing; the
