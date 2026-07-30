@@ -73,6 +73,16 @@ export type Context = {
   db: Database;
   session: Session | null;
   headers: Headers;
+  /**
+   * The principal organization id, resolved ONCE per request (see
+   * `createContext`) instead of per resolver. Routers read this instead of
+   * calling `getPrimaryOrganizationId()` themselves — that call is a full
+   * network round trip to Turso, and it used to run at the head of nearly
+   * every resolver, making it ~90% of all DB time. `null` only on a brand-new
+   * DB with no organization seeded yet; use `requireOrg(ctx)` when a resolver
+   * needs it to exist.
+   */
+  organizationId: string | null;
   rateLimiter?: RateLimiterBinding;
   /**
    * Bound by the app's `createContext` factory. Routers that publish
@@ -164,13 +174,64 @@ export interface CacheBinding {
  * an entry. Fails open (runs `factory` uncached) when no store is bound
  * (CLI/tests). Short TTLs → aggregates tolerate ≤`ttlSeconds` of staleness.
  */
-export function cachedRead<T>(
-  ctx: { cache?: CacheBinding },
+export async function cachedRead<T>(
+  ctx: { cache?: CacheBinding; log?: LoggerBinding },
   key: string,
   ttlSeconds: number,
   factory: () => Promise<T>,
 ): Promise<T> {
-  return ctx.cache ? ctx.cache.getOrSet(key, factory, ttlSeconds) : factory();
+  if (!ctx.cache) return factory();
+  try {
+    return await ctx.cache.getOrSet(key, factory, ttlSeconds);
+  } catch (error) {
+    // Fail OPEN, never closed. `CacheStore.get` doesn't swallow provider
+    // errors, so an Upstash blip would otherwise throw — and since the org
+    // resolution (`createContext`) and the role gate (`enforceRole`) both run
+    // on the critical path of every request, that would take the whole app
+    // down rather than degrade it. A read-through cache must never be a hard
+    // dependency for a read.
+    ctx.log?.warn(
+      { event: "cache.error", key, err: error instanceof Error ? error.message : String(error) },
+      "cache read failed — falling back to the source",
+    );
+    return factory();
+  }
+}
+
+/**
+ * Cache key for a user's `member.role`. Shared by `auth.me` and the
+ * `enforceRole` middleware so one lookup serves both, and so a single
+ * `ctx.cache?.delete(roleCacheKey(id))` revokes access through every path.
+ * MUST be busted on any role change, ban, or membership removal.
+ */
+export const roleCacheKey = (userId: string): string => `role:${userId}`;
+/** Short: a stale role is a privilege question, so bound the blast radius. */
+export const ROLE_TTL_SECONDS = 60;
+
+const PRIMARY_ORG_CACHE_KEY = "org:primary";
+/** The principal org id never changes — cache it for an hour, not the 60s
+ *  aggregates get. Worker isolates recycle far faster than this. */
+const PRIMARY_ORG_TTL_SECONDS = 3600;
+
+/**
+ * The org id, empty string when the DB has no organization yet. Replaces the
+ * per-router `orgId()` helpers that each re-queried the DB; the `?? ""`
+ * fallback preserves their behaviour (such a read matches nothing rather than
+ * throwing). Prefer {@link requireOrg} for anything that writes.
+ */
+export function orgId(ctx: { organizationId: string | null }): string {
+  return ctx.organizationId ?? "";
+}
+
+/**
+ * The org id, or a 4xx when the DB has no organization yet. Replaces the
+ * per-router `requireOrg()` helpers that each re-queried the DB.
+ */
+export function requireOrg(ctx: { organizationId: string | null }): string {
+  if (!ctx.organizationId) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No active organization" });
+  }
+  return ctx.organizationId;
 }
 
 /** Structural slice of the `@loyalty/shortlinks` manager (the `shorten` op). */
@@ -192,12 +253,31 @@ export type CaptureError = (
   context?: { userId?: string; path?: string; type?: string },
 ) => void;
 
-export const createContext = async (opts: { headers: Headers }): Promise<Context> => {
-  const session = await auth.api.getSession({ headers: opts.headers });
+/**
+ * Per-request context. The org id is resolved here — once — and cached across
+ * requests: it is the id of the first organization ever created, so it never
+ * changes. `getOrSet` treats `null` as a miss, which is exactly right on a
+ * fresh/preview DB with no org yet (never cached, retried next request).
+ *
+ * `cache` is optional: apps that bind a store (the Worker → Upstash) skip the
+ * DB entirely on a hit; the Next in-process handlers and CLI/tests pass none
+ * and fall through to the DB read.
+ */
+export const createContext = async (opts: {
+  headers: Headers;
+  cache?: CacheBinding;
+}): Promise<Context> => {
+  const [session, organizationId] = await Promise.all([
+    auth.api.getSession({ headers: opts.headers }),
+    cachedRead({ cache: opts.cache }, PRIMARY_ORG_CACHE_KEY, PRIMARY_ORG_TTL_SECONDS, () =>
+      getPrimaryOrganizationId(),
+    ),
+  ]);
   return {
     db: createDb(),
     session,
     headers: opts.headers,
+    organizationId,
   };
 };
 
@@ -354,7 +434,7 @@ const bustListsOnMutation = t.middleware(async ({ ctx, type, path, next }) => {
     const entity = path.split(".")[0] ?? "";
     if (LIST_CACHED_ENTITIES.has(entity as never)) {
       try {
-        const org = await getPrimaryOrganizationId();
+        const org = ctx.organizationId;
         if (org) await bumpListVersion(ctx, entity, org);
       } catch {
         // fail-open: a failed bust must never break the mutation
@@ -396,7 +476,13 @@ const enforceRole = (allowed: readonly Role[]) =>
     if (!ctx.session?.user) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
-    const role = await getUserRole(ctx.session.user.id);
+    const userId = ctx.session.user.id;
+    // Same key `auth.me` uses, so the two share one entry. Busted explicitly
+    // on every privilege change (see `roleCacheKey` usages) — without those
+    // busts a demotion would linger for up to the TTL.
+    const role = await cachedRead(ctx, roleCacheKey(userId), ROLE_TTL_SECONDS, () =>
+      getUserRole(userId),
+    );
     if (!allowed.includes(role)) {
       throw new TRPCError({ code: "FORBIDDEN" });
     }

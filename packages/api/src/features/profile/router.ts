@@ -1,12 +1,7 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { type db as Db } from "@loyalty/db";
 
 import { buildPointsService } from "../points";
-import {
-  protectedProcedure,
-  type RealtimeBinding,
-  rateLimit,
-  router,
-} from "../../trpc";
+import { orgId, protectedProcedure, rateLimit, router, type RealtimeBinding } from "../../trpc";
 import { ProfileRepository } from "./repository";
 import {
   checkNicknameInputSchema,
@@ -16,9 +11,6 @@ import {
   updateNicknameInputSchema,
 } from "./schemas";
 import { ProfileService } from "./service";
-
-const orgId = async (): Promise<string> =>
-  (await getPrimaryOrganizationId()) ?? "";
 
 function buildProfileService(ctx: {
   db: typeof Db;
@@ -35,14 +27,14 @@ function buildProfileService(ctx: {
 
 export const profileRouter = router({
   me: protectedProcedure.query(async ({ ctx }) =>
-    buildProfileService(ctx).me(await orgId(), ctx.session.user.id),
+    buildProfileService(ctx).me(orgId(ctx), ctx.session.user.id),
   ),
 
   checkNickname: protectedProcedure
     .input(checkNicknameInputSchema)
     .query(async ({ ctx, input }) =>
       buildProfileService(ctx).checkNickname(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.nickname,
       ),
@@ -52,7 +44,7 @@ export const profileRouter = router({
     .input(updateNameInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildProfileService(ctx).updateName(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.name,
       ),
@@ -63,7 +55,7 @@ export const profileRouter = router({
     .input(updateNicknameInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildProfileService(ctx).updateNickname(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.nickname,
       ),
@@ -73,7 +65,7 @@ export const profileRouter = router({
     .input(updateAvatarInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildProfileService(ctx).updateAvatar(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input,
       ),
@@ -84,7 +76,7 @@ export const profileRouter = router({
     .input(confirmPhoneChangeInputSchema)
     .mutation(async ({ ctx, input }) =>
       buildProfileService(ctx).confirmPhoneChange(
-        await orgId(),
+        orgId(ctx),
         ctx.session.user.id,
         input.newPhone,
       ),
@@ -92,7 +84,7 @@ export const profileRouter = router({
 
   syncEmail: protectedProcedure.mutation(async ({ ctx }) =>
     buildProfileService(ctx).syncEmail(
-      await orgId(),
+      orgId(ctx),
       ctx.session.user.id,
       ctx.session.user.email,
     ),

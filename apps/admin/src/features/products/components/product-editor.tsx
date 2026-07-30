@@ -70,9 +70,15 @@ import {
   type StockMode,
 } from "../data";
 import { CategoryPickerModal } from "./category-picker-modal";
-import { detailToDraft, draftToUpsert, type ProductPassthrough } from "./map";
+import {
+  detailToDraft,
+  draftToUpsert,
+  type ProductPassthrough,
+  removeMediaFromDraft,
+} from "./map";
 import { AddonGroupsEditor } from "./addon-groups-editor";
 import { RecipeEditor } from "./recipe-editor";
+import { VariantImagePicker } from "./variant-image-picker";
 
 const slugify = (s: string) =>
   s
@@ -111,7 +117,6 @@ export function ProductEditor({ id }: { id?: string }) {
   const [status, setStatus] = useState<ProductStatus>("active");
   const [passthrough, setPassthrough] = useState<ProductPassthrough>({
     modifierGroups: [],
-    images: [],
   });
   const [stepIndex, setStepIndex] = useState(0);
   const [library, setLibrary] = useState<OptionPreset[]>(optionLibrary);
@@ -237,31 +242,33 @@ export function ProductEditor({ id }: { id?: string }) {
     e.target.value = "";
   };
 
-  // ── Variant image picker (modal): pick from the product's images, upload a
-  //    custom one, or clear it. `image` references a media id. ────────────────
+  // Drop a photo from the product and unlink the variants using it, with an
+  // undo toast. The blob stays in storage so undo can restore the reference.
+  const deleteMedia = (mediaId: string) => {
+    const previous = draft;
+    setDraft((d) => removeMediaFromDraft(d, mediaId));
+    toast.success(t("mediaDeleted"), {
+      action: { label: t("undo"), onClick: () => setDraft(previous) },
+    });
+  };
+
+  // ── Variant image picker (modal): pick from the product's photos, upload a
+  //    custom one, or unlink it. `image` references a media id. ──────────────
   const [variantImgIdx, setVariantImgIdx] = useState<number | null>(null);
   const setVariantImage = (idx: number, mediaId: string | null) =>
     setDraft((d) => ({
       ...d,
       variants: d.variants.map((v, n) => (n === idx ? { ...v, image: mediaId } : v)),
     }));
-  const uploadVariantImage = async (idx: number, file: File) => {
-    setUploading(true);
-    try {
-      const url = await uploadImage(file);
-      if (!url) {
-        toast.error(t("mediaUploadError"));
-        return;
-      }
-      const mid = crypto.randomUUID();
-      setDraft((d) => ({
-        ...d,
-        media: [...d.media, { id: mid, emoji: "", url }],
-        variants: d.variants.map((v, n) => (n === idx ? { ...v, image: mid } : v)),
-      }));
-    } finally {
-      setUploading(false);
-    }
+  // An image uploaded from the picker becomes a product photo too (appended, so
+  // the main photo doesn't change) and is selected for the open variant.
+  const addVariantImage = (idx: number, url: string) => {
+    const mid = crypto.randomUUID();
+    setDraft((d) => ({
+      ...d,
+      media: [...d.media, { id: mid, emoji: "", url }],
+      variants: d.variants.map((v, n) => (n === idx ? { ...v, image: mid } : v)),
+    }));
   };
 
   // ── Reusable options ──────────────────────────────────────────────────────
@@ -427,9 +434,7 @@ export function ProductEditor({ id }: { id?: string }) {
                   <button
                     type="button"
                     aria-label={t("delete")}
-                    onClick={() =>
-                      set("media", draft.media.filter((x) => x.id !== m.id))
-                    }
+                    onClick={() => deleteMedia(m.id)}
                     className="bg-card text-destructive absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full border opacity-0 group-hover:opacity-100"
                   >
                     <X className="size-3" />
@@ -1128,76 +1133,24 @@ export function ProductEditor({ id }: { id?: string }) {
         }}
       />
 
-      {/* Variant image picker — pick a product image, upload a custom one, or clear */}
-      <ResponsiveModal
+      {/* Variant image picker — upload a photo, pick one of the product's, or unlink */}
+      <VariantImagePicker
         open={variantImgIdx !== null}
         onOpenChange={(o) => !o && setVariantImgIdx(null)}
-      >
-        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
-          <div className="flex flex-col px-6 pt-2 pb-6">
-            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
-              {t("variantImageTitle")}
-            </ResponsiveModalTitle>
-            <div className="mt-4 grid grid-cols-4 gap-2.5">
-              {/* Upload */}
-              <label className="border-primary/40 text-primary hover:bg-primary/5 flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed text-[0.625rem] font-bold">
-                <ImagePlus className="size-5" />
-                {uploading ? t("uploading") : t("variantImageUpload")}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f != null && variantImgIdx !== null) void uploadVariantImage(variantImgIdx, f);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-              {/* No image */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (variantImgIdx !== null) setVariantImage(variantImgIdx, null);
-                  setVariantImgIdx(null);
-                }}
-                className="border-border text-muted-foreground hover:bg-muted flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border text-[0.625rem] font-bold"
-              >
-                <X className="size-5" />
-                {t("noImage")}
-              </button>
-              {/* Existing product images */}
-              {draft.media.map((m) => {
-                const active =
-                  variantImgIdx !== null && draft.variants[variantImgIdx]?.image === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => {
-                      if (variantImgIdx !== null) setVariantImage(variantImgIdx, m.id);
-                      setVariantImgIdx(null);
-                    }}
-                    className={`grid aspect-square place-items-center overflow-hidden rounded-xl border text-2xl ${active ? "border-primary border-2" : "border-border"}`}
-                  >
-                    {m.url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={m.url} alt="" className="size-full object-cover" />
-                    ) : (
-                      <span>{m.emoji || "🖼️"}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {draft.media.length === 0 ? (
-              <p className="text-muted-foreground mt-3 text-xs font-semibold">
-                {t("variantImageEmpty")}
-              </p>
-            ) : null}
-          </div>
-        </ResponsiveModalContent>
-      </ResponsiveModal>
+        photos={draft.media.flatMap((m) => (m.url ? [{ id: m.id, url: m.url }] : []))}
+        selectedId={
+          variantImgIdx === null ? null : draft.variants[variantImgIdx]?.image ?? null
+        }
+        onSelect={(mediaId) => {
+          if (variantImgIdx === null) return;
+          setVariantImage(variantImgIdx, mediaId);
+          if (mediaId !== null) setVariantImgIdx(null);
+        }}
+        onUploaded={(url) => {
+          if (variantImgIdx !== null) addVariantImage(variantImgIdx, url);
+        }}
+        onDeletePhoto={deleteMedia}
+      />
 
       {/* Featured-sections picker — searchable + create new */}
       <ResponsiveModal open={sectionsOpen} onOpenChange={setSectionsOpen}>

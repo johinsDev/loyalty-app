@@ -1,4 +1,4 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
+import { type db as Db } from "@loyalty/db";
 import {
   pointsAccount,
   type PromoItemRef,
@@ -8,14 +8,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import {
-  ownerProcedure,
-  protectedProcedure,
-  type RealtimeBinding,
-  rateLimit,
-  router,
-  staffProcedure,
-} from "../../trpc";
+import { orgId, ownerProcedure, protectedProcedure, rateLimit, router, staffProcedure, type RealtimeBinding } from "../../trpc";
 import { tasks } from "@trigger.dev/sdk/v3";
 
 import {
@@ -49,9 +42,6 @@ import {
 import { StampsService } from "./service";
 
 /** The single principal org (single-tenant pilot). */
-const orgId = async (): Promise<string> =>
-  (await getPrimaryOrganizationId()) ?? "";
-
 /** Whether a cart line falls within a reward's item-ref scope ([] = any). */
 function lineInScope(line: CartLine, refs: PromoItemRef[]): boolean {
   if (refs.length === 0) return true;
@@ -128,7 +118,7 @@ export const stampsRouter = router({
     )
     .input(previewPurchaseInputSchema)
     .query(async ({ ctx, input }) => {
-      const org = await orgId();
+      const org = orgId(ctx);
       const subtotalCents = input.items.reduce(
         (s, it) => s + it.unitAmountCents * it.qty,
         0,
@@ -139,6 +129,18 @@ export const stampsRouter = router({
         lines: input.items,
       }, org);
 
+      // Every reward this request needs, in one round trip: the selected one
+      // plus each row in the "ready to redeem" list. One `getReward` per id ran
+      // on every debounced cart change.
+      const rewardsRepo = new RewardsRepository(ctx.db);
+      const neededRewardIds = [
+        ...new Set([
+          ...(input.rewardIds ?? []),
+          ...(input.inlineReward ? [input.inlineReward.rewardId] : []),
+        ]),
+      ];
+      const rewardsById = await rewardsRepo.getRewardsByIds(org, neededRewardIds);
+
       // Reward first (its units are excluded from the promo remainder).
       let reward: {
         ok: boolean;
@@ -147,10 +149,7 @@ export const stampsRouter = router({
       } | null = null;
       let exclusions: UnitExclusion[] = [];
       if (input.inlineReward) {
-        const rw = await new RewardsRepository(ctx.db).getReward(
-          org,
-          input.inlineReward.rewardId,
-        );
+        const rw = rewardsById.get(input.inlineReward.rewardId);
         if (!rw || rw.status !== "published") {
           reward = { ok: false, discountCents: 0, reason: "reward-not-redeemable" };
         } else {
@@ -208,10 +207,11 @@ export const stampsRouter = router({
 
       // Per-reward line eligibility for the "ready to redeem" list: evaluate each
       // available reward against this cart so the register can gate selection.
-      const rewardsRepo = new RewardsRepository(ctx.db);
+      // `stitchUpgradeDeltas` stays per-reward — it only fires for
+      // `variantUpgrade` benefits, so it's off the common path.
       const rewardEligibility = await Promise.all(
         (input.rewardIds ?? []).map(async (rid) => {
-          const r = await rewardsRepo.getReward(org, rid);
+          const r = rewardsById.get(rid);
           if (!r || r.status !== "published") {
             return { rewardId: rid, eligible: false, reason: "reward-not-redeemable" };
           }
@@ -262,13 +262,14 @@ export const stampsRouter = router({
     )
     .input(recordPurchaseInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const org = await orgId();
+      const org = orgId(ctx);
       // The store this sale is attributed to (register store-switcher).
       const storeId = await resolveActiveStoreId(
         ctx.db,
         org,
         ctx.session.user.id,
         input.storeId,
+        ctx.role,
       );
 
       // Org loyalty config (cached) + the customer's persisted tier discount %
@@ -508,7 +509,7 @@ export const stampsRouter = router({
   walletForCustomer: staffProcedure
     .input(customerIdInputSchema)
     .query(async ({ ctx, input }) => {
-      const org = await orgId();
+      const org = orgId(ctx);
       return buildService(ctx).walletForCustomer(
         org,
         input.customerId,
@@ -536,7 +537,7 @@ export const stampsRouter = router({
   adjustForCustomer: ownerProcedure
     .input(adjustStampsForCustomerInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const org = await orgId();
+      const org = orgId(ctx);
       return buildService(ctx).adjustForCustomer(
         org,
         input.customerId,
@@ -551,7 +552,7 @@ export const stampsRouter = router({
   // `paused` rides along so the card can show the redeem-only state (mode
   // gates EARNING only; collected stamps stay spendable).
   myWallet: protectedProcedure.query(async ({ ctx }) => {
-    const org = await orgId();
+    const org = orgId(ctx);
     const loyalty = await getLoyaltyConfig(ctx.db, org);
     const wallet = await buildService(ctx).myWallet(
       org,
@@ -564,6 +565,6 @@ export const stampsRouter = router({
   myHistory: protectedProcedure
     .input(historyInputSchema)
     .query(async ({ ctx, input }) =>
-      buildService(ctx).myHistory(await orgId(), ctx.session.user.id, input),
+      buildService(ctx).myHistory(orgId(ctx), ctx.session.user.id, input),
     ),
 });

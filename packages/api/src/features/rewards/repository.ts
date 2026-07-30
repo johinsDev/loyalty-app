@@ -148,17 +148,16 @@ export class RewardsRepository {
       [asc(reward.sortOrder), desc(reward.updatedAt)],
     );
 
-    const rows = await this.db
-      .select({ ...getTableColumns(reward), redemptions: usesExpr })
-      .from(reward)
-      .where(where)
-      .orderBy(...orderBy)
-      .limit(input.perPage)
-      .offset(pageOffset(input.page, input.perPage));
-    const totalRows = await this.db
-      .select({ value: sql<number>`count(*)` })
-      .from(reward)
-      .where(where);
+    const [rows, totalRows] = await Promise.all([
+      this.db
+        .select({ ...getTableColumns(reward), redemptions: usesExpr })
+        .from(reward)
+        .where(where)
+        .orderBy(...orderBy)
+        .limit(input.perPage)
+        .offset(pageOffset(input.page, input.perPage)),
+      this.db.select({ value: sql<number>`count(*)` }).from(reward).where(where),
+    ]);
     const total = Number(totalRows[0]?.value ?? 0);
     return {
       rows: rows.map((r) => ({ ...r, redemptions: Number(r.redemptions) })),
@@ -219,6 +218,18 @@ export class RewardsRepository {
       .where(and(eq(reward.organizationId, orgId), eq(reward.id, rewardId)))
       .limit(1);
     return rows[0] ?? null;
+  }
+
+  /** Many rewards at once, keyed by id. The register preview evaluates every
+   *  claimable reward against the cart on each change; one `getReward` per id
+   *  is one Turso round trip per id. */
+  async getRewardsByIds(orgId: string, ids: string[]): Promise<Map<string, RewardRow>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .select()
+      .from(reward)
+      .where(and(eq(reward.organizationId, orgId), inArray(reward.id, ids)));
+    return new Map(rows.map((r) => [r.id, r]));
   }
 
   /** Spendable points balance = SUM of the ledger for the customer/org. */

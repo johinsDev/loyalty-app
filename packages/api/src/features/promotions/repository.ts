@@ -235,43 +235,44 @@ export class PromoRepository {
   async orgAnalytics(orgId: string, since: Date, now = new Date()): Promise<PromoAnalytics> {
     const scope = and(eq(promo.organizationId, orgId), gte(promoRedemption.appliedAt, since));
 
-    const perPromo = await this.db
-      .select({
-        promoId: promoRedemption.promoId,
-        name: promo.name,
-        slug: promo.slug,
-        uses: sql<number>`count(*)`,
-        discount: sql<number>`coalesce(sum(${promoRedemption.discountCents}), 0)`,
-        customers: sql<number>`count(distinct ${promoRedemption.customerId})`,
-      })
-      .from(promoRedemption)
-      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
-      .where(scope)
-      .groupBy(promoRedemption.promoId);
-
-    const [rev] = await this.db
-      .select({ revenue: sql<number>`coalesce(sum(${purchase.priceCents}), 0)` })
-      .from(promoRedemption)
-      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
-      .innerJoin(purchase, eq(purchase.id, promoRedemption.purchaseId))
-      .where(scope);
-
-    const [uniq] = await this.db
-      .select({ customers: sql<number>`count(distinct ${promoRedemption.customerId})` })
-      .from(promoRedemption)
-      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
-      .where(scope);
-
-    const rows = await this.db
-      .select({
-        appliedAt: promoRedemption.appliedAt,
-        discountCents: promoRedemption.discountCents,
-        priceCents: purchase.priceCents,
-      })
-      .from(promoRedemption)
-      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
-      .innerJoin(purchase, eq(purchase.id, promoRedemption.purchaseId))
-      .where(scope);
+    // Four independent aggregates over the same scope — issue them together so
+    // the widget costs one round trip instead of four.
+    const [perPromo, [rev], [uniq], rows] = await Promise.all([
+      this.db
+        .select({
+          promoId: promoRedemption.promoId,
+          name: promo.name,
+          slug: promo.slug,
+          uses: sql<number>`count(*)`,
+          discount: sql<number>`coalesce(sum(${promoRedemption.discountCents}), 0)`,
+          customers: sql<number>`count(distinct ${promoRedemption.customerId})`,
+        })
+        .from(promoRedemption)
+        .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+        .where(scope)
+        .groupBy(promoRedemption.promoId),
+      this.db
+        .select({ revenue: sql<number>`coalesce(sum(${purchase.priceCents}), 0)` })
+        .from(promoRedemption)
+        .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+        .innerJoin(purchase, eq(purchase.id, promoRedemption.purchaseId))
+        .where(scope),
+      this.db
+        .select({ customers: sql<number>`count(distinct ${promoRedemption.customerId})` })
+        .from(promoRedemption)
+        .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+        .where(scope),
+      this.db
+        .select({
+          appliedAt: promoRedemption.appliedAt,
+          discountCents: promoRedemption.discountCents,
+          priceCents: purchase.priceCents,
+        })
+        .from(promoRedemption)
+        .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+        .innerJoin(purchase, eq(purchase.id, promoRedemption.purchaseId))
+        .where(scope),
+    ]);
 
     const series = buildSeries(rows, since, now);
 
@@ -311,34 +312,34 @@ export class PromoRepository {
       gte(promoRedemption.appliedAt, since),
     );
 
-    const [tot] = await this.db
-      .select({
-        uses: sql<number>`count(*)`,
-        discount: sql<number>`coalesce(sum(${promoRedemption.discountCents}), 0)`,
-        customers: sql<number>`count(distinct ${promoRedemption.customerId})`,
-        lastUsed: sql<number | null>`max(${promoRedemption.appliedAt})`,
-      })
-      .from(promoRedemption)
-      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
-      .where(scope);
-
-    const [rev] = await this.db
-      .select({ revenue: sql<number>`coalesce(sum(${purchase.priceCents}), 0)` })
-      .from(promoRedemption)
-      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
-      .innerJoin(purchase, eq(purchase.id, promoRedemption.purchaseId))
-      .where(scope);
-
-    const rows = await this.db
-      .select({
-        appliedAt: promoRedemption.appliedAt,
-        discountCents: promoRedemption.discountCents,
-        priceCents: purchase.priceCents,
-      })
-      .from(promoRedemption)
-      .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
-      .innerJoin(purchase, eq(purchase.id, promoRedemption.purchaseId))
-      .where(scope);
+    const [[tot], [rev], rows] = await Promise.all([
+      this.db
+        .select({
+          uses: sql<number>`count(*)`,
+          discount: sql<number>`coalesce(sum(${promoRedemption.discountCents}), 0)`,
+          customers: sql<number>`count(distinct ${promoRedemption.customerId})`,
+          lastUsed: sql<number | null>`max(${promoRedemption.appliedAt})`,
+        })
+        .from(promoRedemption)
+        .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+        .where(scope),
+      this.db
+        .select({ revenue: sql<number>`coalesce(sum(${purchase.priceCents}), 0)` })
+        .from(promoRedemption)
+        .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+        .innerJoin(purchase, eq(purchase.id, promoRedemption.purchaseId))
+        .where(scope),
+      this.db
+        .select({
+          appliedAt: promoRedemption.appliedAt,
+          discountCents: promoRedemption.discountCents,
+          priceCents: purchase.priceCents,
+        })
+        .from(promoRedemption)
+        .innerJoin(promo, eq(promo.id, promoRedemption.promoId))
+        .innerJoin(purchase, eq(purchase.id, promoRedemption.purchaseId))
+        .where(scope),
+    ]);
 
     const lastUsed = tot?.lastUsed;
     return {
@@ -390,17 +391,16 @@ export class PromoRepository {
       [asc(promo.sortOrder), desc(promo.updatedAt)],
     );
 
-    const rows = await this.db
-      .select({ ...getTableColumns(promo), uses: usesExpr })
-      .from(promo)
-      .where(where)
-      .orderBy(...orderBy)
-      .limit(input.perPage)
-      .offset(pageOffset(input.page, input.perPage));
-    const totalRows = await this.db
-      .select({ value: sql<number>`count(*)` })
-      .from(promo)
-      .where(where);
+    const [rows, totalRows] = await Promise.all([
+      this.db
+        .select({ ...getTableColumns(promo), uses: usesExpr })
+        .from(promo)
+        .where(where)
+        .orderBy(...orderBy)
+        .limit(input.perPage)
+        .offset(pageOffset(input.page, input.perPage)),
+      this.db.select({ value: sql<number>`count(*)` }).from(promo).where(where),
+    ]);
     const total = Number(totalRows[0]?.value ?? 0);
     return {
       rows: rows.map((r) => ({ ...r, uses: Number(r.uses) })),
@@ -514,20 +514,22 @@ export class PromoRepository {
     orgId: string,
     customerId: string,
   ): Promise<{ tierKey: string | null; purchaseCount: number; lastPurchaseAt: Date | null }> {
-    const [acc] = await this.db
-      .select({ tierKey: pointsAccount.currentTierKey })
-      .from(pointsAccount)
-      .where(
-        and(eq(pointsAccount.organizationId, orgId), eq(pointsAccount.customerId, customerId)),
-      )
-      .limit(1);
-    const [cnt] = await this.db
-      .select({
-        value: sql<number>`count(*)`,
-        last: sql<number | null>`max(${purchase.createdAt})`,
-      })
-      .from(purchase)
-      .where(and(eq(purchase.organizationId, orgId), eq(purchase.customerId, customerId)));
+    const [[acc], [cnt]] = await Promise.all([
+      this.db
+        .select({ tierKey: pointsAccount.currentTierKey })
+        .from(pointsAccount)
+        .where(
+          and(eq(pointsAccount.organizationId, orgId), eq(pointsAccount.customerId, customerId)),
+        )
+        .limit(1),
+      this.db
+        .select({
+          value: sql<number>`count(*)`,
+          last: sql<number | null>`max(${purchase.createdAt})`,
+        })
+        .from(purchase)
+        .where(and(eq(purchase.organizationId, orgId), eq(purchase.customerId, customerId))),
+    ]);
     const last = cnt?.last;
     return {
       tierKey: acc?.tierKey ?? null,
@@ -543,21 +545,23 @@ export class PromoRepository {
     const map = new Map<string, { total: number; byCustomer: number }>();
     if (promoIds.length === 0) return map;
     for (const id of promoIds) map.set(id, { total: 0, byCustomer: 0 });
-    const totals = await this.db
-      .select({ promoId: promoRedemption.promoId, n: sql<number>`count(*)` })
-      .from(promoRedemption)
-      .where(inArray(promoRedemption.promoId, promoIds))
-      .groupBy(promoRedemption.promoId);
-    const mine = await this.db
-      .select({ promoId: promoRedemption.promoId, n: sql<number>`count(*)` })
-      .from(promoRedemption)
-      .where(
-        and(
-          inArray(promoRedemption.promoId, promoIds),
-          eq(promoRedemption.customerId, customerId),
-        ),
-      )
-      .groupBy(promoRedemption.promoId);
+    const [totals, mine] = await Promise.all([
+      this.db
+        .select({ promoId: promoRedemption.promoId, n: sql<number>`count(*)` })
+        .from(promoRedemption)
+        .where(inArray(promoRedemption.promoId, promoIds))
+        .groupBy(promoRedemption.promoId),
+      this.db
+        .select({ promoId: promoRedemption.promoId, n: sql<number>`count(*)` })
+        .from(promoRedemption)
+        .where(
+          and(
+            inArray(promoRedemption.promoId, promoIds),
+            eq(promoRedemption.customerId, customerId),
+          ),
+        )
+        .groupBy(promoRedemption.promoId),
+    ]);
     for (const t of totals) map.get(t.promoId)!.total = Number(t.n);
     for (const m of mine) map.get(m.promoId)!.byCustomer = Number(m.n);
     return map;

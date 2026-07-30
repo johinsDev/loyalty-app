@@ -1,4 +1,5 @@
 import { auth } from "@loyalty/auth/server";
+import type { Role } from "@loyalty/auth/server";
 import { recordAudit } from "@loyalty/db";
 import { TRPCError } from "@trpc/server";
 import { tasks } from "@trigger.dev/sdk/v3";
@@ -244,12 +245,15 @@ export class EmployeesService {
     };
   }
 
-  /** The stores a cashier can operate the register for. Their assignments, or —
-   *  when unassigned — every store so they can still work. */
-  async myStores(orgId: string, userId: string) {
-    const assigned = await this.repo.assignedStoresFor(orgId, userId);
-    if (assigned.length > 0) return assigned;
-    return this.repo.allStores(orgId);
+  /**
+   * The stores this user can operate the register for. Staff get exactly their
+   * assignments — the old "no assignments ⇒ every store" fallback meant an
+   * unassigned cashier could ring up sales against any location. Managers and
+   * owners supervise the whole operation, so they keep the full list.
+   */
+  async myStores(orgId: string, userId: string, role: Role) {
+    if (role !== "staff") return this.repo.allStores(orgId);
+    return this.repo.assignedStoresFor(orgId, userId);
   }
 
   async listByIds(orgId: string, ids: string[]): Promise<EmployeeListItem[]> {
@@ -613,7 +617,7 @@ export class EmployeesService {
     });
   }
 
-  async disable(orgId: string, actor: Actor, memberId: string, reason?: string): Promise<void> {
+  async disable(orgId: string, actor: Actor, memberId: string, reason?: string): Promise<string> {
     const row = await this.requireTarget(orgId, memberId, actor);
     await adminApi().banUser({
       body: { userId: row.user.id, banReason: reason },
@@ -626,9 +630,10 @@ export class EmployeesService {
       type: "disable",
       metadata: { reason: reason ?? null },
     });
+    return row.user.id;
   }
 
-  async enable(orgId: string, actor: Actor, memberId: string): Promise<void> {
+  async enable(orgId: string, actor: Actor, memberId: string): Promise<string> {
     const row = await this.requireTarget(orgId, memberId, actor);
     await adminApi().unbanUser({ body: { userId: row.user.id }, headers: actor.headers });
     await recordAudit({
@@ -637,9 +642,10 @@ export class EmployeesService {
       targetUserId: row.user.id,
       type: "enable",
     });
+    return row.user.id;
   }
 
-  async remove(orgId: string, actor: Actor, memberId: string): Promise<void> {
+  async remove(orgId: string, actor: Actor, memberId: string): Promise<string> {
     const row = await this.requireTarget(orgId, memberId, actor);
     if (row.member.role === "owner") {
       throw new TRPCError({ code: "FORBIDDEN", message: "No se puede eliminar al dueño." });
@@ -656,18 +662,21 @@ export class EmployeesService {
       targetUserId: row.user.id,
       type: "delete",
     });
+    return row.user.id;
   }
 
   /** Best-effort bulk delete over selected roster ids (member ids; invitation
    *  ids and guarded rows — owner/self — are skipped). */
-  async bulkRemove(orgId: string, actor: Actor, ids: string[]): Promise<void> {
+  async bulkRemove(orgId: string, actor: Actor, ids: string[]): Promise<string[]> {
+    const affected: string[] = [];
     for (const id of ids) {
       try {
-        await this.remove(orgId, actor, id);
+        affected.push(await this.remove(orgId, actor, id));
       } catch {
         // skip non-members / owner / self
       }
     }
+    return affected;
   }
 
   async bulkSetDisabled(
@@ -675,15 +684,20 @@ export class EmployeesService {
     actor: Actor,
     ids: string[],
     disabled: boolean,
-  ): Promise<void> {
+  ): Promise<string[]> {
+    const affected: string[] = [];
     for (const id of ids) {
       try {
-        if (disabled) await this.disable(orgId, actor, id);
-        else await this.enable(orgId, actor, id);
+        affected.push(
+          disabled
+            ? await this.disable(orgId, actor, id)
+            : await this.enable(orgId, actor, id),
+        );
       } catch {
         // skip non-members / owner / self
       }
     }
+    return affected;
   }
 
   async listSessions(

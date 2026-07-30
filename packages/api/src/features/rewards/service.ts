@@ -37,7 +37,7 @@ import {
   type RewardsRepository,
 } from "./repository";
 import type {
-  AvailableRewardItem,
+  AvailableRewardsView,
   HistoryInput,
   LevelsView,
   ListInput,
@@ -635,14 +635,14 @@ export class RewardsService {
   async availableForCustomer(
     organizationId: string,
     customerId: string,
-  ): Promise<AvailableRewardItem[]> {
+  ): Promise<AvailableRewardsView> {
     const { rows } = await this.repo.listCatalog(organizationId, { limit: 500 });
     const [balances, tierKey, claimed] = await Promise.all([
       this.repo.balances(organizationId, customerId),
       this.repo.tierKey(organizationId, customerId),
       this.repo.claimedRewardIds(organizationId, customerId),
     ]);
-    return rows
+    const items = rows
       .filter((rw) => {
         if (rw.allowedTiers && !rw.allowedTiers.includes(tierKey)) return false;
         if (rw.limitPerCustomer === "once" && claimed.has(rw.id)) return false;
@@ -657,7 +657,14 @@ export class RewardsService {
         // Only the currencies the customer can actually pay with right now, so
         // the cashier shows affordable options and defaults to the first.
         affordableWith: affordableWith(rw, balances),
+        // The register used to show cost only, so the detail modal read "9
+        // sellos" and nothing about what the socio actually gets. `rows` are
+        // full reward rows, so this costs no extra query.
+        benefitSummary: rewardBenefitSummary(rw.benefit, "es"),
+        description: rw.description,
+        fulfillmentNote: rw.fulfillmentNote,
       }));
+    return { items, publishedCount: rows.length };
   }
 
   /**

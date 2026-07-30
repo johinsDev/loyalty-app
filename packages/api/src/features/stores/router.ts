@@ -1,13 +1,6 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
-import { TRPCError } from "@trpc/server";
+import { type db as Db } from "@loyalty/db";
 
-import {
-  cachedRead,
-  managerProcedure,
-  publicProcedure,
-  router,
-  staffProcedure,
-} from "../../trpc";
+import { cachedRead, managerProcedure, orgId, publicProcedure, requireOrg, router, staffProcedure } from "../../trpc";
 import type { MapDeps } from "./service";
 import { StoresRepository } from "./repository";
 import {
@@ -22,13 +15,6 @@ import { StoresService } from "./service";
 
 function makeService(db: typeof Db): StoresService {
   return new StoresService(db, new StoresRepository(db));
-}
-
-const orgId = async (): Promise<string> => (await getPrimaryOrganizationId()) ?? "";
-async function requireOrg(): Promise<string> {
-  const id = await getPrimaryOrganizationId();
-  if (!id) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No active organization" });
-  return id;
 }
 
 /** Static-map deps from the request ctx (default disk + server-side Maps key).
@@ -47,15 +33,15 @@ function mapDeps(ctx: { storage?: { disk(name?: string): unknown } }): MapDeps {
  */
 export const storesRouter = router({
   // ── Public (customer) ──────────────────────────────────────────────────────
-  listPublic: publicProcedure.query(async ({ ctx }) => makeService(ctx.db).publicList(await orgId())),
-  primary: publicProcedure.query(async ({ ctx }) => makeService(ctx.db).primary(await orgId())),
+  listPublic: publicProcedure.query(async ({ ctx }) => makeService(ctx.db).publicList(orgId(ctx))),
+  primary: publicProcedure.query(async ({ ctx }) => makeService(ctx.db).primary(orgId(ctx))),
 
   // ── Admin (managers) ───────────────────────────────────────────────────────
   list: managerProcedure
     .input(storesListInputSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).adminList(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => makeService(ctx.db).adminList(requireOrg(ctx), input)),
   switcherList: staffProcedure.query(async ({ ctx }) => {
-    const org = await requireOrg();
+    const org = requireOrg(ctx);
     // Hit on every admin nav (loadStoreScope resolves the [storeId] segment).
     return cachedRead(ctx, `stores:switcher:${org}`, 60, () =>
       makeService(ctx.db).switcherList(org),
@@ -63,38 +49,38 @@ export const storesRouter = router({
   }),
   listByIds: managerProcedure
     .input(bulkIdsSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).listByIds(await requireOrg(), input.ids)),
+    .query(async ({ ctx, input }) => makeService(ctx.db).listByIds(requireOrg(ctx), input.ids)),
   primaryRow: managerProcedure.query(async ({ ctx }) =>
-    makeService(ctx.db).primaryRow(await requireOrg()),
+    makeService(ctx.db).primaryRow(requireOrg(ctx)),
   ),
   get: managerProcedure
     .input(idInputSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).get(await requireOrg(), input.id)),
+    .query(async ({ ctx, input }) => makeService(ctx.db).get(requireOrg(ctx), input.id)),
   create: managerProcedure
     .input(createStoreInputSchema.optional())
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).create(await requireOrg(), input?.name),
+      makeService(ctx.db).create(requireOrg(ctx), input?.name),
     ),
   update: managerProcedure
     .input(updateStoreInputSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).update(await requireOrg(), input, mapDeps(ctx)),
+      makeService(ctx.db).update(requireOrg(ctx), input, mapDeps(ctx)),
     ),
   publish: managerProcedure
     .input(idInputSchema)
-    .mutation(async ({ ctx, input }) => makeService(ctx.db).publish(await requireOrg(), input.id)),
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).publish(requireOrg(ctx), input.id)),
   setPrimary: managerProcedure
     .input(idInputSchema)
-    .mutation(async ({ ctx, input }) => makeService(ctx.db).setPrimary(await requireOrg(), input.id)),
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).setPrimary(requireOrg(ctx), input.id)),
   remove: managerProcedure
     .input(idInputSchema)
-    .mutation(async ({ ctx, input }) => makeService(ctx.db).remove(await requireOrg(), input.id)),
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).remove(requireOrg(ctx), input.id)),
   bulkRemove: managerProcedure
     .input(bulkIdsSchema)
-    .mutation(async ({ ctx, input }) => makeService(ctx.db).bulkRemove(await requireOrg(), input.ids)),
+    .mutation(async ({ ctx, input }) => makeService(ctx.db).bulkRemove(requireOrg(ctx), input.ids)),
   bulkSetPublished: managerProcedure
     .input(bulkSetPublishedSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).bulkSetPublished(await requireOrg(), input.ids, input.isPublished),
+      makeService(ctx.db).bulkSetPublished(requireOrg(ctx), input.ids, input.isPublished),
     ),
 });

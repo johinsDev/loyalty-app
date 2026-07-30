@@ -1,11 +1,13 @@
-import { type db as Db, getPrimaryOrganizationId } from "@loyalty/db";
-import { TRPCError } from "@trpc/server";
+import { type db as Db } from "@loyalty/db";
 
 import {
+  type CacheBinding,
   managerProcedure,
   ownerProcedure,
   protectedProcedure,
   publicProcedure,
+  requireOrg,
+  roleCacheKey,
   router,
   staffProcedure,
 } from "../../trpc";
@@ -36,16 +38,17 @@ function makeService(db: typeof Db): EmployeesService {
   return new EmployeesService(new EmployeesRepository(db));
 }
 
-async function requireOrg(): Promise<string> {
-  const id = await getPrimaryOrganizationId();
-  if (!id) {
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No active organization" });
-  }
-  return id;
-}
-
 function actorOf(ctx: { session: { user: { id: string } }; headers: Headers }): Actor {
   return { userId: ctx.session.user.id, headers: ctx.headers };
+}
+
+/**
+ * Drop cached `member.role` entries for the users a mutation just touched.
+ * Both `auth.me` and the `enforceRole` gate read that cache, so skipping this
+ * would leave a demoted or removed employee authorized until the TTL expires.
+ */
+async function bustRoles(ctx: { cache?: CacheBinding }, ...userIds: string[]): Promise<void> {
+  await Promise.all(userIds.map((id) => ctx.cache?.delete(roleCacheKey(id))));
 }
 
 /**
@@ -57,14 +60,14 @@ function actorOf(ctx: { session: { user: { id: string } }; headers: Headers }): 
 export const employeesRouter = router({
   // ── Register store-switcher (any staff) ─────────────────────────────────────
   myStores: staffProcedure.query(async ({ ctx }) =>
-    makeService(ctx.db).myStores(await requireOrg(), ctx.session.user.id),
+    makeService(ctx.db).myStores(requireOrg(ctx), ctx.session.user.id, ctx.role),
   ),
 
   // ── Reads (managers + owner) ────────────────────────────────────────────────
   list: managerProcedure
     .input(employeesListInputSchema)
     .query(async ({ ctx, input }) => {
-      const org = await requireOrg();
+      const org = requireOrg(ctx);
       return cachedListRead(ctx, "employees", org, input, () =>
         makeService(ctx.db).list(org, input),
       );
@@ -72,36 +75,36 @@ export const employeesRouter = router({
   listByIds: managerProcedure
     .input(bulkIdsSchema)
     .query(async ({ ctx, input }) =>
-      makeService(ctx.db).listByIds(await requireOrg(), input.ids),
+      makeService(ctx.db).listByIds(requireOrg(ctx), input.ids),
     ),
   get: managerProcedure
     .input(memberIdSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).get(await requireOrg(), input.memberId)),
+    .query(async ({ ctx, input }) => makeService(ctx.db).get(requireOrg(ctx), input.memberId)),
   stats: managerProcedure
     .input(memberIdSchema)
     .query(async ({ ctx, input }) =>
-      makeService(ctx.db).stats(await requireOrg(), input.memberId, STATS_TZ),
+      makeService(ctx.db).stats(requireOrg(ctx), input.memberId, STATS_TZ),
     ),
   activity: managerProcedure
     .input(employeeActivityInputSchema)
-    .query(async ({ ctx, input }) => makeService(ctx.db).activity(await requireOrg(), input)),
+    .query(async ({ ctx, input }) => makeService(ctx.db).activity(requireOrg(ctx), input)),
   leaderboard: managerProcedure
     .input(leaderboardInputSchema)
     .query(async ({ ctx, input }) =>
-      makeService(ctx.db).leaderboard(await requireOrg(), input, STATS_TZ),
+      makeService(ctx.db).leaderboard(requireOrg(ctx), input, STATS_TZ),
     ),
 
   // ── Sessions (owner-only — needs admin-plugin capability) ───────────────────
   listSessions: ownerProcedure
     .input(memberIdSchema)
     .query(async ({ ctx, input }) =>
-      makeService(ctx.db).listSessions(await requireOrg(), actorOf(ctx), input.memberId),
+      makeService(ctx.db).listSessions(requireOrg(ctx), actorOf(ctx), input.memberId),
     ),
   revokeSessions: ownerProcedure
     .input(revokeSessionSchema)
     .mutation(async ({ ctx, input }) =>
       makeService(ctx.db).revokeSessions(
-        await requireOrg(),
+        requireOrg(ctx),
         actorOf(ctx),
         input.memberId,
         input.sessionToken,
@@ -112,66 +115,87 @@ export const employeesRouter = router({
   invite: ownerProcedure
     .input(inviteEmployeeSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).invite(await requireOrg(), actorOf(ctx), input),
+      makeService(ctx.db).invite(requireOrg(ctx), actorOf(ctx), input),
     ),
   update: ownerProcedure
     .input(updateEmployeeSchema)
     .mutation(async ({ ctx, input }) => {
-      const targetUserId = await makeService(ctx.db).update(await requireOrg(), actorOf(ctx), input);
-      // Role resolution is cached in `auth.me` (see `../../trpc#cachedRead`) —
-      // bust it so a role change is reflected immediately instead of waiting
-      // out the TTL.
-      if (input.role) await ctx.cache?.delete(`role:${targetUserId}`);
+      const targetUserId = await makeService(ctx.db).update(requireOrg(ctx), actorOf(ctx), input);
+      // `member.role` is cached (by `auth.me` AND the `enforceRole` gate), so a
+      // demotion would otherwise linger for up to the TTL. Bust it here.
+      if (input.role) await bustRoles(ctx, targetUserId);
     }),
   setRating: ownerProcedure
     .input(setRatingSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).setRating(await requireOrg(), actorOf(ctx), input.memberId, input.rating),
+      makeService(ctx.db).setRating(requireOrg(ctx), actorOf(ctx), input.memberId, input.rating),
     ),
   changeEmail: ownerProcedure
     .input(changeEmailSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).changeEmail(await requireOrg(), actorOf(ctx), input.memberId, input.email),
+      makeService(ctx.db).changeEmail(requireOrg(ctx), actorOf(ctx), input.memberId, input.email),
     ),
   disable: ownerProcedure
     .input(disableEmployeeSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).disable(await requireOrg(), actorOf(ctx), input.memberId, input.reason),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const userId = await makeService(ctx.db).disable(
+        requireOrg(ctx),
+        actorOf(ctx),
+        input.memberId,
+        input.reason,
+      );
+      await bustRoles(ctx, userId);
+    }),
   enable: ownerProcedure
     .input(memberIdSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).enable(await requireOrg(), actorOf(ctx), input.memberId),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const userId = await makeService(ctx.db).enable(
+        requireOrg(ctx),
+        actorOf(ctx),
+        input.memberId,
+      );
+      await bustRoles(ctx, userId);
+    }),
   remove: ownerProcedure
     .input(memberIdSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).remove(await requireOrg(), actorOf(ctx), input.memberId),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const userId = await makeService(ctx.db).remove(
+        requireOrg(ctx),
+        actorOf(ctx),
+        input.memberId,
+      );
+      await bustRoles(ctx, userId);
+    }),
   bulkRemove: ownerProcedure
     .input(bulkIdsSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).bulkRemove(await requireOrg(), actorOf(ctx), input.ids),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const userIds = await makeService(ctx.db).bulkRemove(
+        requireOrg(ctx),
+        actorOf(ctx),
+        input.ids,
+      );
+      await bustRoles(ctx, ...userIds);
+    }),
   bulkSetDisabled: ownerProcedure
     .input(bulkSetDisabledSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).bulkSetDisabled(
-        await requireOrg(),
+    .mutation(async ({ ctx, input }) => {
+      const userIds = await makeService(ctx.db).bulkSetDisabled(
+        requireOrg(ctx),
         actorOf(ctx),
         input.ids,
         input.disabled,
-      ),
-    ),
+      );
+      await bustRoles(ctx, ...userIds);
+    }),
 
   // ── Impersonation (owner-only; browser mints the session) ───────────────────
   impersonate: ownerProcedure
     .input(impersonateSchema)
     .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).impersonate(await requireOrg(), actorOf(ctx), input.userId),
+      makeService(ctx.db).impersonate(requireOrg(ctx), actorOf(ctx), input.userId),
     ),
   logImpersonationStop: ownerProcedure.mutation(async ({ ctx }) =>
-    makeService(ctx.db).logImpersonationStop(await requireOrg(), actorOf(ctx)),
+    makeService(ctx.db).logImpersonationStop(requireOrg(ctx), actorOf(ctx)),
   ),
 
   // ── Accept invitation (public read + any signed-in user) ────────────────────
@@ -182,7 +206,16 @@ export const employeesRouter = router({
     ),
   acceptInvitation: protectedProcedure
     .input(acceptInviteSchema)
-    .mutation(async ({ ctx, input }) =>
-      makeService(ctx.db).acceptInvitation(actorOf(ctx), input.invitationId),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const result = await makeService(ctx.db).acceptInvitation(
+        actorOf(ctx),
+        input.invitationId,
+      );
+      // Accepting creates the `member` row, i.e. the caller stops being a plain
+      // customer. They were signed in to get here, so the auth guard has almost
+      // certainly cached their old role already — without this bust they'd be
+      // locked out of staff routes until it expired.
+      await bustRoles(ctx, ctx.session.user.id);
+      return result;
+    }),
 });

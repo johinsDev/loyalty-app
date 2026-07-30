@@ -32,6 +32,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { Link } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { CATALOG_STALE_MS } from "../catalog-cache";
@@ -42,7 +43,17 @@ import { StorelessConfirm } from "./storeless-confirm";
 
 type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
 type AvailableReward =
-  inferRouterOutputs<AppRouter>["rewards"]["availableForCustomer"][number];
+  inferRouterOutputs<AppRouter>["rewards"]["availableForCustomer"]["items"][number];
+
+/** The reward list plus the query's own state. Passing only the rows made an
+ *  error, an empty catalog and "none affordable" render identically as nothing. */
+export type AvailableRewardsState = {
+  items: AvailableReward[];
+  publishedCount: number;
+  isPending: boolean;
+  isError: boolean;
+  refetch: () => void;
+};
 type RegisterContext = inferRouterOutputs<AppRouter>["customers"]["registerContext"];
 
 export type PreselectReward = {
@@ -109,7 +120,7 @@ export function RegisterBoard({
   customerName: string;
   register: RegisterContext | undefined;
   wallet: WalletView;
-  availableRewards: AvailableReward[];
+  availableRewards: AvailableRewardsState;
   preselect?: PreselectReward;
   onSuccess: (wallet: WalletView) => void;
   onRewardPending: () => void;
@@ -160,7 +171,15 @@ export function RegisterBoard({
     () => cart.reduce((sum, i) => sum + i.unitAmountCents * i.qty, 0),
     [cart],
   );
-  const rewards = availableRewards;
+  const rewards = availableRewards.items;
+  // A reward scanned at identify time that isn't in the claimable list (archived
+  // since the QR was minted, tier-locked, already claimed) was still applied but
+  // rendered nowhere, so the cashier couldn't see or remove it.
+  const pinnedPreselect =
+    preselect && !rewards.some((r) => r.rewardId === preselect.rewardId) ? preselect : null;
+  const previewRewardIds = pinnedPreselect
+    ? [...rewards.map((r) => r.rewardId), pinnedPreselect.rewardId]
+    : rewards.map((r) => r.rewardId);
   const rewardCostText = (rw: AvailableReward): string => {
     const parts: string[] = [];
     if (rw.stampsRequired != null) parts.push(`${rw.stampsRequired} ${t("stampMany")}`);
@@ -195,7 +214,7 @@ export function RegisterBoard({
           unitAmountCents: i.unitAmountCents,
         })),
         inlineReward,
-        rewardIds: rewards.map((r) => r.rewardId),
+        rewardIds: previewRewardIds,
         appliedPromoId: chosenPromoId ?? undefined,
       },
       { enabled: cart.length > 0 },
@@ -211,6 +230,10 @@ export function RegisterBoard({
     () => new Map((preview.data?.rewardEligibility ?? []).map((e) => [e.rewardId, e])),
     [preview.data],
   );
+  // Eligibility marks are only trustworthy when a preview actually succeeded for
+  // this cart. Without this guard a failed or in-flight preview leaves
+  // `eligByReward` empty, which read as "everything applies".
+  const cartEvaluated = cart.length > 0 && preview.isSuccess;
   const rewardsScrollRef = useRef<HTMLDivElement>(null);
   const [detailView, setDetailView] = useState<{ title: string; lines: string[] } | null>(null);
 
@@ -362,7 +385,10 @@ export function RegisterBoard({
 
   const cartCount = cart.reduce((n, i) => n + i.qty, 0);
   const recordDisabled =
-    recordPurchase.isPending || (mode === "total" ? priceCop === undefined : cart.length === 0);
+    recordPurchase.isPending ||
+    (mode === "total" ? priceCop === undefined : cart.length === 0) ||
+    // Recording now would drop the reward server-side without a trace.
+    (mode === "total" && inlineRewardId != null);
 
   return (
     <div className="flex flex-col gap-3 p-3 sm:p-4 lg:h-full lg:min-h-0">
@@ -696,7 +722,37 @@ export function RegisterBoard({
 
             {mode === "total" ? (
               <div className="flex-1 py-8 text-center text-sm font-semibold text-white/40">
-                {t("totalModeCart")}
+                {/* A reward can't be redeemed on a cartless sale: recordPurchase
+                    evaluates `inlineReward` only inside its items branch, so the
+                    server silently dropped it — the socio lost the sellos and
+                    nobody saw it. Block the sale until it's resolved. */}
+                {inlineRewardId != null ? (
+                  <div className="mx-auto max-w-xs space-y-3 rounded-2xl bg-amber-400/10 p-4 text-left">
+                    <p className="text-xs font-semibold text-amber-200">
+                      {t("rewardTotalModeWarning")}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-10 border-white/20 bg-transparent text-white hover:bg-white/10"
+                        onClick={() => setMode("items")}
+                      >
+                        {t("switchToItemsMode")}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-10 text-white hover:bg-white/10"
+                        onClick={() => setInlineRewardId(null)}
+                      >
+                        {t("removeReward")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  t("totalModeCart")
+                )}
               </div>
             ) : cart.length === 0 ? (
               <div className="flex-1 py-10 text-center text-sm font-semibold text-white/40">
@@ -825,31 +881,130 @@ export function RegisterBoard({
             </div>
           </div>
 
-          {/* Listos para canjear */}
-          {mode === "items" && rewards.length > 0 ? (
+          {/* Listos para canjear. The panel stays mounted whenever the cart is
+              itemized: an empty list is now a message, not an absence. Every
+              state renders INSIDE the max-h-60 scroller below — the panel is
+              `flex-none` next to a `flex-1` cart, so height added outside that
+              box pushes the cart's total and Record button off screen. */}
+          {mode === "items" ? (
             <div className="bg-card border-border flex-none rounded-3xl border p-4 shadow-sm">
               <div className="text-primary mb-2 flex items-center gap-1.5 text-xs font-extrabold">
                 <Gift className="size-4" />
                 {t("readyToRedeem")}
-                <span className="bg-primary/10 text-primary ml-auto rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold">
-                  {rewards.length}
-                </span>
+                {rewards.length > 0 ? (
+                  <span className="bg-primary/10 text-primary ml-auto rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold">
+                    {rewards.length}
+                  </span>
+                ) : null}
               </div>
               <div className="relative">
                 <div
                   ref={rewardsScrollRef}
                   className="scrollbar-hide max-h-60 space-y-2 overflow-y-auto pb-1"
                 >
+                  {availableRewards.isError ? (
+                    <div className="space-y-2 py-3">
+                      <p className="text-muted-foreground text-xs font-semibold">
+                        {t("rewardsLoadError")}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-10"
+                        onClick={availableRewards.refetch}
+                      >
+                        {t("retry")}
+                      </Button>
+                    </div>
+                  ) : availableRewards.isPending ? (
+                    <p className="text-muted-foreground py-3 text-xs font-semibold">
+                      {t("searching")}
+                    </p>
+                  ) : rewards.length === 0 && pinnedPreselect == null ? (
+                    availableRewards.publishedCount === 0 ? (
+                      <div className="space-y-2 py-3">
+                        <p className="text-muted-foreground text-xs font-semibold">
+                          {t("rewardsEmpty")}
+                        </p>
+                        <Link
+                          href="/register/rewards"
+                          className="text-primary text-xs font-extrabold underline"
+                        >
+                          {t("rewardsCatalogLink")}
+                        </Link>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground py-3 text-xs font-semibold">
+                        {t("rewardsNoneForMember", { count: availableRewards.publishedCount })}
+                      </p>
+                    )
+                  ) : null}
+
+                  {/* Why the eligibility marks are missing, when they are. */}
+                  {!availableRewards.isError &&
+                  (rewards.length > 0 || pinnedPreselect != null) ? (
+                    cart.length === 0 ? (
+                      <p className="text-muted-foreground/70 pb-1 text-xs font-semibold">
+                        {t("rewardsAddItemsHint")}
+                      </p>
+                    ) : preview.isError ? (
+                      <div className="space-y-2 pb-1">
+                        <p className="text-muted-foreground text-xs font-semibold">
+                          {t("rewardEvalError")}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-10"
+                          onClick={() => void preview.refetch()}
+                        >
+                          {t("retry")}
+                        </Button>
+                      </div>
+                    ) : preview.isPending ? (
+                      <p className="text-muted-foreground/70 pb-1 text-xs font-semibold">
+                        {t("rewardEvalPending")}
+                      </p>
+                    ) : null
+                  ) : null}
+
+                  {pinnedPreselect ? (
+                    <PinnedPreselectRow
+                      preselect={pinnedPreselect}
+                      active={inlineRewardId === pinnedPreselect.rewardId}
+                      elig={eligByReward.get(pinnedPreselect.rewardId)}
+                      evaluated={cartEvaluated}
+                      onToggle={() =>
+                        setInlineRewardId(
+                          inlineRewardId === pinnedPreselect.rewardId
+                            ? null
+                            : pinnedPreselect.rewardId,
+                        )
+                      }
+                      onDetail={setDetailView}
+                    />
+                  ) : null}
+
                   {rewards.map((rw) => {
                     const active = rw.rewardId === inlineRewardId;
                     const elig = eligByReward.get(rw.rewardId);
-                    // Ineligible only once we've evaluated a non-empty cart; the
-                    // selected reward stays clickable so it can be deselected.
-                    const ineligible = cart.length > 0 && elig != null && !elig.eligible;
+                    // Ineligible only once a preview actually succeeded for this
+                    // cart; the selected reward stays clickable so it can be
+                    // deselected.
+                    const ineligible = cartEvaluated && elig != null && !elig.eligible;
                     const blocked = ineligible && !active;
                     const rewardDetail = () => {
-                      const lines = [rewardCostText(rw)];
-                      if (ineligible) lines.push(reasonLabel(elig?.reason, t));
+                      // Cost alone made the detail modal read "9 sellos" and say
+                      // nothing about what the socio actually gets.
+                      const lines = [
+                        rw.benefitSummary,
+                        rw.description,
+                        rewardCostText(rw),
+                        rw.fulfillmentNote
+                          ? `${t("rewardFulfillmentLabel")}: ${rw.fulfillmentNote}`
+                          : null,
+                        ineligible ? reasonLabel(elig?.reason, t) : null,
+                      ].filter((l): l is string => Boolean(l?.trim()));
                       setDetailView({ title: rw.name, lines });
                     };
                     return (
@@ -1034,8 +1189,11 @@ export function RegisterBoard({
             </ResponsiveModalTitle>
             <div className="mt-3 space-y-2">
               {(detailView?.lines ?? []).length > 0 ? (
-                detailView?.lines.map((l) => (
-                  <p key={l} className="text-foreground text-sm font-semibold">
+                // Index-keyed: two lines can legitimately be the same string
+                // (a benefit summary that matches the operator's description),
+                // and a bare `key={l}` dropped the duplicate.
+                detailView?.lines.map((l, i) => (
+                  <p key={`${i}-${l}`} className="text-foreground text-sm font-semibold">
                     {l}
                   </p>
                 ))
@@ -1075,7 +1233,90 @@ function reasonLabel(
   reason: string | null | undefined,
   t: ReturnType<typeof useTranslations>,
 ): string {
-  return reason === "reward-item-not-in-cart" ? t("rewardAddItemHint") : t("rewardNotApplicable");
+  if (reason === "reward-item-not-in-cart") return t("rewardAddItemHint");
+  // An archived / deleted reward is a different problem for the cashier than one
+  // that simply doesn't match the cart.
+  if (reason === "reward-not-redeemable") return t("rewardScannedUnavailable");
+  return t("rewardNotApplicable");
+}
+
+/**
+ * The reward that arrived on the URL from a scanned QR but isn't in the
+ * claimable list — archived since the code was minted, tier-locked, or already
+ * claimed. It was still applied to the sale while rendering nowhere, so the
+ * cashier had no way to see it, read its note, or take it off. Pinned above the
+ * list and never auto-cleared: silent self-healing is what hid this.
+ */
+function PinnedPreselectRow({
+  preselect,
+  active,
+  elig,
+  evaluated,
+  onToggle,
+  onDetail,
+}: {
+  preselect: PreselectReward;
+  active: boolean;
+  elig: { eligible: boolean; reason: string | null } | undefined;
+  evaluated: boolean;
+  onToggle: () => void;
+  onDetail: (v: { title: string; lines: string[] }) => void;
+}) {
+  const t = useTranslations("Cashier");
+  const name = preselect.name.trim() || t("rewardScannedFallback");
+  const ineligible = evaluated && elig != null && !elig.eligible;
+  const currencyLabel =
+    preselect.currency === "points"
+      ? t("earnPtsUnit")
+      : preselect.currency === "both"
+        ? `${t("stampMany")} + ${t("earnPtsUnit")}`
+        : t("stampMany");
+
+  return (
+    <div className="flex items-stretch gap-1">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`border-primary/40 bg-primary/5 flex flex-1 items-center justify-between gap-2 rounded-2xl border p-3.5 text-left ${
+          active ? "border-primary border-2" : ""
+        }`}
+      >
+        <div className="min-w-0">
+          <span className="flex items-center gap-1.5">
+            <span className="truncate text-sm font-bold">{name}</span>
+            <span className="bg-primary/10 text-primary flex-none rounded-full px-1.5 py-0.5 text-[0.625rem] font-extrabold">
+              {t("rewardScannedBadge")}
+            </span>
+          </span>
+          {preselect.note ? (
+            <span className="text-muted-foreground/70 mt-0.5 block truncate text-xs font-semibold">
+              {preselect.note}
+            </span>
+          ) : null}
+          {ineligible ? (
+            <span className="text-muted-foreground mt-0.5 block truncate text-xs font-semibold">
+              {reasonLabel(elig?.reason, t)}
+            </span>
+          ) : null}
+        </div>
+        {active ? <Check className="text-primary size-5 flex-none" /> : null}
+      </button>
+      <button
+        type="button"
+        aria-label={t("viewDetail")}
+        onClick={() =>
+          onDetail({
+            title: name,
+            lines: [currencyLabel, preselect.note, ineligible ? reasonLabel(elig?.reason, t) : null]
+              .filter((l): l is string => Boolean(l?.trim())),
+          })
+        }
+        className="border-border text-muted-foreground hover:text-foreground grid w-10 flex-none place-items-center rounded-2xl border"
+      >
+        <Info className="size-4" />
+      </button>
+    </div>
+  );
 }
 
 function Balance({ label, value }: { label: string; value: string }) {
