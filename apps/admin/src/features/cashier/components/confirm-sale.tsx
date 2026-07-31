@@ -9,7 +9,16 @@ import {
 import { Store } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-export type ConfirmLine = { key: string; name: string; qty: number; amountCents: number };
+export type ConfirmLine = {
+  key: string;
+  name: string;
+  qty: number;
+  amountCents: number;
+  /** What the reward does to THIS line. The cashier has to hand over a
+   *  different drink than the one written above it, so the sheet says so on
+   *  the line itself rather than only as a total at the bottom. */
+  note?: string | null;
+};
 export type ConfirmDiscount = { label: string; amountCents: number };
 
 /**
@@ -69,14 +78,21 @@ export function ConfirmSale({
           {lines.length > 0 ? (
             <ul className="border-border mt-4 max-h-52 space-y-1 overflow-y-auto border-t pt-3 text-sm">
               {lines.map((l) => (
-                <li key={l.key} className="flex items-baseline gap-2">
-                  <span className="text-muted-foreground w-6 flex-none font-bold tabular-nums">
-                    {l.qty}×
-                  </span>
-                  <span className="min-w-0 flex-1 truncate font-semibold">{l.name}</span>
-                  <span className="flex-none font-semibold tabular-nums">
-                    {formatMoney(l.amountCents)}
-                  </span>
+                <li key={l.key}>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-muted-foreground w-6 flex-none font-bold tabular-nums">
+                      {l.qty}×
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-semibold">{l.name}</span>
+                    <span className="flex-none font-semibold tabular-nums">
+                      {formatMoney(l.amountCents)}
+                    </span>
+                  </div>
+                  {l.note ? (
+                    <div className="mt-1 mb-1.5 ml-8 rounded-lg border border-dashed border-violet-400/60 bg-violet-500/5 px-2.5 py-1.5 text-xs font-bold text-violet-700 dark:text-violet-300">
+                      {l.note}
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>

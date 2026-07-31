@@ -263,7 +263,15 @@ export function RegisterBoard({
         amountCents: promoDiscount,
       });
     if (rewardDiscount > 0)
-      confirmDiscounts.push({ label: t("rewardDiscountShort"), amountCents: rewardDiscount });
+      confirmDiscounts.push({
+        // Name the drink the reward lands on. "Recompensa − $2.000" left the
+        // cashier guessing which of three lines it belonged to.
+        label:
+          upgrade && cart[upgrade.sourceLineIndex]
+            ? t("rewardDiscountOn", { item: cart[upgrade.sourceLineIndex]!.name })
+            : t("rewardDiscountShort"),
+        amountCents: rewardDiscount,
+      });
     if (tierDiscount > 0)
       confirmDiscounts.push({
         label:
@@ -1252,11 +1260,18 @@ export function RegisterBoard({
         customerName={customerName}
         lines={
           mode === "items"
-            ? cart.map((i) => ({
+            ? cart.map((i, idx) => ({
                 key: i.key,
                 name: i.name,
                 qty: i.qty,
                 amountCents: i.unitAmountCents * i.qty,
+                note:
+                  upgrade?.sourceLineIndex === idx
+                    ? t("confirmUpgradeNote", {
+                        to: upgrade.toLabel,
+                        amount: formatCop(upgrade.deltaCents),
+                      })
+                    : null,
               }))
             : []
         }

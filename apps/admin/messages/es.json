@@ -1476,7 +1476,9 @@
     "switchToItemsMode": "Cambiar a por productos",
     "rewardUpgradeMissingSource": "Agregá un {from} para subirlo a {to}.",
     "rewardUpgradeLine": "Entregá 1 {to}",
-    "rewardUpgradeNoPromo": "Premio: cubre la diferencia · esta unidad no acumula promo"
+    "rewardUpgradeNoPromo": "Premio: cubre la diferencia · esta unidad no acumula promo",
+    "confirmUpgradeNote": "Entregá 1 {to}: el premio cubre {amount}. Esa unidad no lleva promo.",
+    "rewardDiscountOn": "Premio en {item}"
   },
   "Admin": {
     "menu": "Menú",

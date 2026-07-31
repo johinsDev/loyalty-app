@@ -1476,7 +1476,9 @@
     "switchToItemsMode": "Switch to by products",
     "rewardUpgradeMissingSource": "Add a {from} to upgrade it to {to}.",
     "rewardUpgradeLine": "Hand over 1 {to}",
-    "rewardUpgradeNoPromo": "Reward: covers the difference · this unit doesn't stack with promos"
+    "rewardUpgradeNoPromo": "Reward: covers the difference · this unit doesn't stack with promos",
+    "confirmUpgradeNote": "Hand over 1 {to}: the reward covers {amount}. That unit gets no promo.",
+    "rewardDiscountOn": "Reward on {item}"
   },
   "Admin": {
     "menu": "Menu",
