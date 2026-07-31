@@ -605,8 +605,14 @@ export class PromoRepository {
     return map;
   }
 
-  /** Every variant (id + base price) of each product, for the register upsell
-   *  engine to price a hypothetical variant swap. Keyed by productId. */
+  /** Every variant (id + effective price) of each product, for the register
+   *  upsell engine to price a hypothetical variant swap. Keyed by productId.
+   *
+   *  Price is `COALESCE(promo_price_cents, price_cents)`, matching what the
+   *  register charges. The upsell derives a line's modifier delta as
+   *  `unitAmountCents - priceCents`; quoting the list price for a variant sold
+   *  at a promo price invents a phantom negative modifier that then rides into
+   *  every sibling's quote. */
   async variantPrices(
     productIds: string[],
   ): Promise<Record<string, { variantId: string; priceCents: number }[]>> {
@@ -616,12 +622,15 @@ export class PromoRepository {
       .select({
         productId: productVariant.productId,
         variantId: productVariant.id,
-        priceCents: productVariant.priceCents,
+        priceCents: sql<number>`coalesce(${productVariant.promoPriceCents}, ${productVariant.priceCents})`,
       })
       .from(productVariant)
       .where(inArray(productVariant.productId, productIds));
     for (const r of rows) {
-      (out[r.productId] ??= []).push({ variantId: r.variantId, priceCents: r.priceCents });
+      (out[r.productId] ??= []).push({
+        variantId: r.variantId,
+        priceCents: Number(r.priceCents),
+      });
     }
     return out;
   }
