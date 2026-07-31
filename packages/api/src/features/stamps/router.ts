@@ -1,5 +1,5 @@
 import { type db as Db } from "@loyalty/db";
-import { pointsAccount } from "@loyalty/db/schema";
+import { pointsAccount, type RewardBenefitConfig } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -22,7 +22,7 @@ import { buildPointsService, pointsForPrice } from "../points";
 import { tierDiscountPct } from "../points/tier-calc";
 import { PromoRepository, PromoService, type UnitExclusion } from "../promotions";
 import { enrichCart } from "../promotions/stitch";
-import { resolveRewardOnCart } from "../rewards/pos-upgrade";
+import { resolveRewardOnCart, type AppliedUpgradeInfo } from "../rewards/pos-upgrade";
 import { buildRewardsService, RewardsRepository } from "../rewards";
 import { buildStreaksService } from "../streaks";
 import { evaluateStampEligibility } from "./eligibility";
@@ -35,6 +35,63 @@ import {
   recordPurchaseInputSchema,
 } from "./schemas";
 import { StampsService } from "./service";
+
+/** What the register needs to draw the split line and explain it. */
+interface RewardUpgradeView {
+  /** Index into the CLIENT's items — pre-split, so the badge pins to the line
+   *  the cashier is looking at. */
+  sourceLineIndex: number;
+  toVariantId: string;
+  optionName: string;
+  fromLabel: string;
+  toLabel: string;
+  deltaCents: number;
+  remainingQty: number;
+  upgradedUnitAmountCents: number;
+}
+
+/** Mirror the resolver's split onto the raw purchase lines, so the recorded
+ *  ticket states what the customer receives: 2 Medianos and 1 Grande. */
+function splitPurchaseLine<T extends { qty: number; unitAmountCents: number; variantId?: string | null }>(
+  items: T[],
+  upgrade: AppliedUpgradeInfo,
+): T[] {
+  const source = items[upgrade.sourceLineIndex]!;
+  const upgraded = {
+    ...source,
+    qty: 1,
+    variantId: upgrade.toVariantId,
+    unitAmountCents: upgrade.upgradedUnitAmountCents,
+  };
+  if (source.qty === 1) {
+    return items.map((it, i) => (i === upgrade.sourceLineIndex ? upgraded : it));
+  }
+  return [
+    ...items.slice(0, upgrade.sourceLineIndex),
+    { ...source, qty: source.qty - 1 },
+    upgraded,
+    ...items.slice(upgrade.sourceLineIndex + 1),
+  ];
+}
+
+/** Labels come straight off the benefit config and the product name is already
+ *  in the client's cart, so this costs no extra query. */
+function toUpgradeView(
+  upgrade: AppliedUpgradeInfo,
+  benefit: RewardBenefitConfig | null,
+): RewardUpgradeView | null {
+  if (benefit?.type !== "variantUpgrade") return null;
+  return {
+    sourceLineIndex: upgrade.sourceLineIndex,
+    toVariantId: upgrade.toVariantId,
+    optionName: benefit.optionName,
+    fromLabel: benefit.fromValueLabel,
+    toLabel: benefit.toValueLabel,
+    deltaCents: upgrade.deltaCents,
+    remainingQty: upgrade.remainingQty,
+    upgradedUnitAmountCents: upgrade.upgradedUnitAmountCents,
+  };
+}
 
 /** The UTC instant of org-local midnight today — the "today" boundary for the
  *  register shift reads. */
@@ -75,10 +132,6 @@ export const stampsRouter = router({
     .input(previewPurchaseInputSchema)
     .query(async ({ ctx, input }) => {
       const org = orgId(ctx);
-      const subtotalCents = input.items.reduce(
-        (s, it) => s + it.unitAmountCents * it.qty,
-        0,
-      );
       const promoRepo = new PromoRepository(ctx.db);
       const enriched = await enrichCart(promoRepo, {
         currency: input.currency ?? "COP",
@@ -104,6 +157,12 @@ export const stampsRouter = router({
         reason: string | null;
       } | null = null;
       let exclusions: UnitExclusion[] = [];
+      // A `variantUpgrade` reward CHANGES the cart, so everything downstream —
+      // the subtotal, the promo remainder, the upsell — has to price the swapped
+      // one. Default to the untouched cart for every other benefit.
+      let pricedCart = enriched;
+      let pricedItems = input.items;
+      let rewardUpgrade: RewardUpgradeView | null = null;
       if (input.inlineReward) {
         const rw = rewardsById.get(input.inlineReward.rewardId);
         if (!rw || rw.status !== "published") {
@@ -112,17 +171,30 @@ export const stampsRouter = router({
           const res = await resolveRewardOnCart(promoRepo, rw, enriched);
           reward = { ok: res.ok, discountCents: res.discountCents, reason: res.reason };
           exclusions = res.exclusions;
+          if (res.upgrade) {
+            pricedCart = res.cart;
+            pricedItems = splitPurchaseLine(input.items, res.upgrade);
+            rewardUpgrade = toUpgradeView(res.upgrade, rw.benefit);
+          }
         }
       }
+      const subtotalCents = pricedItems.reduce(
+        (s, it) => s + it.unitAmountCents * it.qty,
+        0,
+      );
 
       const lc = await loadLocaleContext(ctx.db, org, ctx.headers);
       const promoSvc = new PromoService(ctx.db, promoRepo);
-      const cart = { currency: input.currency ?? "COP", lines: input.items };
+      const cart = { currency: input.currency ?? "COP", lines: pricedItems };
       const [{ applicable, hints }, upsell] = await Promise.all([
-        promoSvc.applicable(org, input.customerId, cart, lc, { exclusions, enriched }),
+        promoSvc.applicable(org, input.customerId, cart, lc, {
+          exclusions,
+          enriched: pricedCart,
+        }),
         // Actionable nudges for promos that don't yet apply (add-item, spend-to-
-        // threshold, variant-swap) — same enriched cart + reward exclusions.
-        promoSvc.upsell(org, input.customerId, cart, lc, { exclusions, enriched }),
+        // threshold, variant-swap) — same cart, so the upsell can't offer to
+        // upsize the very unit the reward just upsized.
+        promoSvc.upsell(org, input.customerId, cart, lc, { exclusions, enriched: pricedCart }),
       ]);
 
       // Combine layers with the org stacking policy so the shown total equals
@@ -164,7 +236,21 @@ export const stampsRouter = router({
             return { rewardId: rid, eligible: false, reason: "reward-not-redeemable" };
           }
           const res = await resolveRewardOnCart(promoRepo, r, enriched);
-          return { rewardId: rid, eligible: res.ok, reason: res.reason };
+          return {
+            rewardId: rid,
+            eligible: res.ok,
+            reason: res.reason,
+            // Lets the register say WHICH size to add instead of a generic
+            // "add the product", which is a lie when the product is right there.
+            upgrade:
+              r.benefit?.type === "variantUpgrade"
+                ? {
+                    optionName: r.benefit.optionName,
+                    fromLabel: r.benefit.fromValueLabel,
+                    toLabel: r.benefit.toValueLabel,
+                  }
+                : null,
+          };
         }),
       );
 
@@ -186,6 +272,9 @@ export const stampsRouter = router({
         upsell,
         reward,
         rewardEligibility,
+        // Null when the stacking policy suppressed the reward — the swap didn't
+        // happen, so the register must not draw it.
+        rewardUpgrade: net.suppressed.reward ? null : rewardUpgrade,
         earn: { points: earnPoints, stamps: earnStamps },
         net: {
           ...net,
@@ -246,7 +335,6 @@ export const stampsRouter = router({
       let pointsMultiplier = 1;
       let isRedemptionOnly = false;
       if (input.items && input.items.length > 0) {
-        const subtotal = input.items.reduce((s, it) => s + it.unitAmountCents * it.qty, 0);
         const promoRepo = new PromoRepository(ctx.db);
         const enriched = await enrichCart(promoRepo, {
           currency: input.currency ?? "COP",
@@ -256,6 +344,9 @@ export const stampsRouter = router({
         // Reward first: evaluate + exclude its units.
         let rewardDiscount = 0;
         let exclusions: UnitExclusion[] = [];
+        // A `variantUpgrade` reward rewrites the ticket, so the persisted lines
+        // and the subtotal must be the swapped ones.
+        let pricedItems = input.items;
         if (input.inlineReward) {
           const rw = await new RewardsRepository(ctx.db).getReward(
             org,
@@ -275,6 +366,7 @@ export const stampsRouter = router({
           }
           rewardDiscount = evalResult.discountCents;
           exclusions = evalResult.exclusions;
+          if (evalResult.upgrade) pricedItems = splitPurchaseLine(input.items, evalResult.upgrade);
         }
 
         // Promo on the remainder (reward-consumed units excluded).
@@ -287,7 +379,7 @@ export const stampsRouter = router({
           const { applicable } = await promoSvc.applicable(
             org,
             input.customerId,
-            { currency: input.currency ?? "COP", lines: input.items },
+            { currency: input.currency ?? "COP", lines: pricedItems },
             lc,
             { exclusions, enriched },
           );
@@ -304,6 +396,7 @@ export const stampsRouter = router({
         // Combine the three layers per the org stacking policy: reward → promo →
         // tier %, exclusive-promo suppression, and the max-total-discount cap.
         // Server-authoritative — the previewed total equals the charged total.
+        const subtotal = pricedItems.reduce((acc, it) => acc + it.unitAmountCents * it.qty, 0);
         const net = resolveNet(
           {
             subtotalCents: subtotal,
@@ -332,6 +425,7 @@ export const stampsRouter = router({
         isRedemptionOnly = netPrice === 0 && Boolean(input.inlineReward);
         resolved = {
           ...input,
+          items: pricedItems,
           priceCents: netPrice,
           subtotalCents: subtotal,
           discountCents: net.totalDiscountCents,

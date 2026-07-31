@@ -4,6 +4,7 @@ import { unitsMatching } from "../promotions/engine";
 import type { Cart, UnitExclusion } from "../promotions/engine";
 import type { PromoRepository } from "../promotions";
 import { evaluateRewardForCart } from "./pos-evaluate";
+import { applyUpgrade } from "./variant-swap";
 
 /**
  * A reward resolved against a cart: the cart the rest of the checkout should
@@ -17,13 +18,29 @@ import { evaluateRewardForCart } from "./pos-evaluate";
  * apart. One function, three callers.
  */
 export interface RewardOnCart {
-  /** The cart to price. Identical to the input unless the benefit changed it. */
+  /** The cart to price. Identical to the input unless the benefit changed it —
+   *  `variantUpgrade` moves one unit up and splits its line. */
   cart: Cart;
   discountCents: number;
   /** Units the reward consumed, withheld from the promo remainder. */
   exclusions: UnitExclusion[];
+  /** Set when the cart was changed, so callers can mirror the split onto the
+   *  raw purchase lines and the register can explain what happened. */
+  upgrade: AppliedUpgradeInfo | null;
   ok: boolean;
   reason: string | null;
+}
+
+export interface AppliedUpgradeInfo {
+  /** Index in the ORIGINAL cart — the line the cashier is looking at. */
+  sourceLineIndex: number;
+  /** Index in the returned cart, where the upgraded unit lives. */
+  upgradedIndex: number;
+  toVariantId: string;
+  deltaCents: number;
+  /** Units left behind on the original line (qty − 1). */
+  remainingQty: number;
+  upgradedUnitAmountCents: number;
 }
 
 /** Cart lines a reward's `refs` cover. `[]` refs = the whole menu.
@@ -47,7 +64,7 @@ async function stitchUpgradeDeltas(
   const variantIds = [
     ...new Set(cart.lines.map((l) => l.variantId).filter((v): v is string => v != null)),
   ];
-  const deltas = await repo.variantUpgradeDeltas(
+  const targets = await repo.variantUpgradeTargets(
     variantIds,
     benefit.optionName,
     benefit.fromValueLabel,
@@ -58,8 +75,7 @@ async function stitchUpgradeDeltas(
     ...cart,
     lines: cart.lines.map((l, i) => ({
       ...l,
-      upgradeDeltaCents:
-        l.variantId && inScope.has(i) ? (deltas.get(l.variantId) ?? null) : null,
+      upgradeTo: l.variantId && inScope.has(i) ? (targets.get(l.variantId) ?? null) : null,
     })),
   };
 }
@@ -77,12 +93,41 @@ export async function resolveRewardOnCart(
 
   const res = evaluateRewardForCart(reward, cart);
   if (!res.ok) {
-    return { cart, discountCents: 0, exclusions: [], ok: false, reason: res.reason };
+    return {
+      cart,
+      discountCents: 0,
+      exclusions: [],
+      upgrade: null,
+      ok: false,
+      reason: res.reason,
+    };
   }
+
+  if (res.upgrade) {
+    const source = cart.lines[res.upgrade.lineIndex]!;
+    const applied = applyUpgrade(cart, res.upgrade);
+    return {
+      cart: applied.cart,
+      discountCents: res.discountCents,
+      exclusions: applied.exclusions,
+      upgrade: {
+        sourceLineIndex: res.upgrade.lineIndex,
+        upgradedIndex: applied.upgradedIndex,
+        toVariantId: res.upgrade.toVariantId,
+        deltaCents: res.upgrade.deltaCents,
+        remainingQty: source.qty - 1,
+        upgradedUnitAmountCents: source.unitAmountCents + res.upgrade.deltaCents,
+      },
+      ok: true,
+      reason: null,
+    };
+  }
+
   return {
     cart,
     discountCents: res.discountCents,
     exclusions: res.exclusions,
+    upgrade: null,
     ok: true,
     reason: null,
   };

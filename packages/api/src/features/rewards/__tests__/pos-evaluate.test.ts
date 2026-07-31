@@ -131,34 +131,51 @@ describe("evaluateRewardForCart", () => {
     toValueLabel: "Grande",
   };
 
-  it("variantUpgrade covers the smallest eligible line delta", () => {
+  // These three used to assert the opposite: the line had to already BE the
+  // expensive variant, and the reward covered the SMALLEST delta.
+  it("variantUpgrade takes the biggest step up, not the smallest", () => {
     const c = cart(
-      line({ productId: "milk", unitAmountCents: 19000, upgradeDeltaCents: 2000 }),
-      line({ productId: "tea", unitAmountCents: 21000, upgradeDeltaCents: 3000 }),
+      line({
+        productId: "milk",
+        unitAmountCents: 19000,
+        upgradeTo: { variantId: "milk_gra", deltaCents: 2000 },
+      }),
+      line({
+        productId: "tea",
+        unitAmountCents: 21000,
+        upgradeTo: { variantId: "tea_gra", deltaCents: 3000 },
+      }),
     );
     expect(evaluateRewardForCart(rw(upgrade), c)).toEqual({
       ok: true,
-      discountCents: 2000,
+      discountCents: 3000,
       exclusions: [],
+      upgrade: { lineIndex: 1, toVariantId: "tea_gra", deltaCents: 3000 },
     });
   });
 
-  it("variantUpgrade with no eligible line (none at target) → reward-item-not-in-cart", () => {
+  it("variantUpgrade with nothing to upgrade → reward-no-upgrade-available", () => {
     const c = cart(
-      line({ productId: "milk", unitAmountCents: 16500, upgradeDeltaCents: null }),
+      line({ productId: "milk", unitAmountCents: 16500, upgradeTo: null }),
       line({ productId: "tea", unitAmountCents: 16500 }),
     );
     expect(evaluateRewardForCart(rw(upgrade), c)).toEqual({
       ok: false,
-      reason: "reward-item-not-in-cart",
+      reason: "reward-no-upgrade-available",
     });
   });
 
-  it("variantUpgrade ignores non-positive deltas (already largest)", () => {
-    const c = cart(line({ productId: "milk", unitAmountCents: 21000, upgradeDeltaCents: 0 }));
+  it("variantUpgrade ignores a non-positive delta", () => {
+    const c = cart(
+      line({
+        productId: "milk",
+        unitAmountCents: 21000,
+        upgradeTo: { variantId: "milk_gra", deltaCents: 0 },
+      }),
+    );
     expect(evaluateRewardForCart(rw(upgrade), c)).toEqual({
       ok: false,
-      reason: "reward-item-not-in-cart",
+      reason: "reward-no-upgrade-available",
     });
   });
 });

@@ -30,6 +30,7 @@ import { availableAtStore } from "../_shared/store-availability";
 import { slugify, slugSuffix } from "../_shared/slugify";
 import { benefitSummary, type SummaryLocale } from "./format";
 import type { ItemRef } from "./schemas";
+import { upgradeTargets, type UpgradeTarget, type VariantNode } from "./variant-graph";
 import type {
   AdminListInput,
   PromoAnalytics,
@@ -630,85 +631,78 @@ export class PromoRepository {
   }
 
   /**
-   * variantId → the cost to upgrade it one step on `optionName` (from
-   * `fromValueLabel` to `toValueLabel`). A variant qualifies when it IS at the
-   * target value and a sibling (same other options, at the from-value) exists;
-   * the delta is the price difference (>0). Powers the `variantUpgrade` reward.
+   * Load the option graph for every variant of `productIds`. The combo maths
+   * lives in `variant-graph.ts` so it can be tested without a database.
+   *
+   * Price is `COALESCE(promo_price_cents, price_cents)`: the register charges
+   * the promotional price when one is set, so computing a delta off the list
+   * price would forgive money that was never charged.
    */
-  async variantUpgradeDeltas(
+  async variantNodes(productIds: string[]): Promise<VariantNode[]> {
+    if (productIds.length === 0) return [];
+    const [variants, optRows] = await Promise.all([
+      this.db
+        .select({
+          id: productVariant.id,
+          productId: productVariant.productId,
+          priceCents: sql<number>`coalesce(${productVariant.promoPriceCents}, ${productVariant.priceCents})`,
+        })
+        .from(productVariant)
+        .where(inArray(productVariant.productId, productIds)),
+      this.db
+        .select({
+          variantId: productVariantValue.variantId,
+          optionName: productOption.name,
+          label: productOptionValue.label,
+        })
+        .from(productVariantValue)
+        .innerJoin(productOptionValue, eq(productVariantValue.optionValueId, productOptionValue.id))
+        .innerJoin(productOption, eq(productOptionValue.optionId, productOption.id))
+        .innerJoin(productVariant, eq(productVariantValue.variantId, productVariant.id))
+        .where(inArray(productVariant.productId, productIds)),
+    ]);
+
+    const optionsByVariant = new Map<string, Map<string, string>>();
+    for (const r of optRows) {
+      const m = optionsByVariant.get(r.variantId) ?? new Map<string, string>();
+      m.set(r.optionName, r.label);
+      optionsByVariant.set(r.variantId, m);
+    }
+    return variants.map((v) => ({
+      variantId: v.id,
+      productId: v.productId,
+      priceCents: Number(v.priceCents),
+      options: optionsByVariant.get(v.id) ?? new Map<string, string>(),
+    }));
+  }
+
+  /** The products those variants belong to. */
+  async productsOfVariants(variantIds: string[]): Promise<string[]> {
+    if (variantIds.length === 0) return [];
+    const rows = await this.db
+      .select({ productId: productVariant.productId })
+      .from(productVariant)
+      .where(inArray(productVariant.id, variantIds));
+    return [...new Set(rows.map((r) => r.productId))];
+  }
+
+  /**
+   * sourceVariantId → the sibling to upgrade it to, and what the step costs.
+   *
+   * Keyed by the variant the customer ALREADY has. It used to be keyed by the
+   * target, so the reward only applied once the cashier had already rung up the
+   * expensive size — it read as "not applicable" at exactly the moment someone
+   * would want to offer it.
+   */
+  async variantUpgradeTargets(
     variantIds: string[],
     optionName: string,
     fromValueLabel: string,
     toValueLabel: string,
-  ): Promise<Map<string, number>> {
-    const out = new Map<string, number>();
-    if (variantIds.length === 0) return out;
-
-    const productIds = [
-      ...new Set(
-        (
-          await this.db
-            .select({ productId: productVariant.productId })
-            .from(productVariant)
-            .where(inArray(productVariant.id, variantIds))
-        ).map((r) => r.productId),
-      ),
-    ];
-    if (productIds.length === 0) return out;
-
-    const variants = await this.db
-      .select({
-        id: productVariant.id,
-        productId: productVariant.productId,
-        priceCents: productVariant.priceCents,
-      })
-      .from(productVariant)
-      .where(inArray(productVariant.productId, productIds));
-
-    const optRows = await this.db
-      .select({
-        variantId: productVariantValue.variantId,
-        optionName: productOption.name,
-        label: productOptionValue.label,
-      })
-      .from(productVariantValue)
-      .innerJoin(productOptionValue, eq(productVariantValue.optionValueId, productOptionValue.id))
-      .innerJoin(productOption, eq(productOptionValue.optionId, productOption.id))
-      .innerJoin(productVariant, eq(productVariantValue.variantId, productVariant.id))
-      .where(inArray(productVariant.productId, productIds));
-
-    const optsByVariant = new Map<string, Map<string, string>>();
-    for (const r of optRows) {
-      const m = optsByVariant.get(r.variantId) ?? new Map<string, string>();
-      m.set(r.optionName, r.label);
-      optsByVariant.set(r.variantId, m);
-    }
-    const priceById = new Map(variants.map((v) => [v.id, v.priceCents]));
-    const productOf = new Map(variants.map((v) => [v.id, v.productId]));
-
-    const sig = (m: Map<string, string>): string =>
-      [...m.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([k, v]) => `${k}=${v}`)
-        .join("|");
-    // product||signature → variantId (to find the from-value sibling).
-    const byProductSig = new Map<string, string>();
-    for (const v of variants) {
-      byProductSig.set(`${v.productId}||${sig(optsByVariant.get(v.id) ?? new Map())}`, v.id);
-    }
-
-    for (const vid of new Set(variantIds)) {
-      const opts = optsByVariant.get(vid);
-      const productId = productOf.get(vid);
-      if (!opts || !productId || opts.get(optionName) !== toValueLabel) continue;
-      const siblingOpts = new Map(opts);
-      siblingOpts.set(optionName, fromValueLabel);
-      const siblingId = byProductSig.get(`${productId}||${sig(siblingOpts)}`);
-      if (!siblingId) continue;
-      const delta = (priceById.get(vid) ?? 0) - (priceById.get(siblingId) ?? 0);
-      if (delta > 0) out.set(vid, delta);
-    }
-    return out;
+  ): Promise<Map<string, UpgradeTarget>> {
+    const productIds = await this.productsOfVariants(variantIds);
+    const nodes = await this.variantNodes(productIds);
+    return upgradeTargets(nodes, optionName, fromValueLabel, toValueLabel);
   }
 
   /** addonId → its catalog price delta (for reward add-on waiving at POS). */

@@ -10,10 +10,18 @@ import {
   type UnitExclusion,
 } from "../promotions/engine";
 import { compileRewardRule } from "./benefit";
+import { pickUpgrade, type UpgradePlan } from "./variant-swap";
 
 export type RewardCartEvaluation =
-  | { ok: true; discountCents: number; exclusions: UnitExclusion[] }
-  | { ok: false; reason: "reward-item-not-in-cart" };
+  | {
+      ok: true;
+      discountCents: number;
+      exclusions: UnitExclusion[];
+      /** `variantUpgrade` only: the unit to move up. The caller applies it —
+       *  exclusions have to be expressed against post-split line indices. */
+      upgrade?: UpgradePlan;
+    }
+  | { ok: false; reason: "reward-item-not-in-cart" | "reward-no-upgrade-available" };
 
 /**
  * Compute a reward's discount over the (enriched) cart and the units it
@@ -59,14 +67,16 @@ export function evaluateRewardForCart(
   }
 
   if (benefit.type === "variantUpgrade") {
-    // Per-line upgrade deltas are pre-resolved by the service (needs the variant
-    // graph). Eligible = a line is at the target variant with a cheaper sibling;
-    // the cashier picks the size, this covers the smallest delta. No exclusions.
-    const deltas = cart.lines
-      .map((l) => l.upgradeDeltaCents)
-      .filter((d): d is number => d != null && d > 0);
-    if (deltas.length === 0) return { ok: false, reason: "reward-item-not-in-cart" };
-    return { ok: true, discountCents: Math.min(...deltas), exclusions: [] };
+    // Upgrade targets are pre-resolved onto the lines by the service (it needs
+    // the variant graph). Eligible = a line is at the SOURCE variant and a
+    // pricier sibling exists — the reward then moves it up, so the customer
+    // brings the Mediano rather than being expected to have ordered the Grande.
+    //
+    // The plan is returned rather than applied: the split changes line indices,
+    // so exclusions can only be built after the caller applies it.
+    const plan = pickUpgrade(cart);
+    if (!plan) return { ok: false, reason: "reward-no-upgrade-available" };
+    return { ok: true, discountCents: plan.deltaCents, exclusions: [], upgrade: plan };
   }
 
   const rule = compileRewardRule(benefit);
