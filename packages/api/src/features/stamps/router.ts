@@ -1,9 +1,5 @@
 import { type db as Db } from "@loyalty/db";
-import {
-  pointsAccount,
-  type PromoItemRef,
-  type RewardBenefitConfig,
-} from "@loyalty/db/schema";
+import { pointsAccount } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -24,10 +20,9 @@ import { resolveActiveStoreId } from "../_shared/store-context";
 import { ORG_UTC_OFFSET_MINUTES } from "../promotions/engine";
 import { buildPointsService, pointsForPrice } from "../points";
 import { tierDiscountPct } from "../points/tier-calc";
-import { type Cart, type CartLine } from "../promotions/engine";
 import { PromoRepository, PromoService, type UnitExclusion } from "../promotions";
 import { enrichCart } from "../promotions/stitch";
-import { evaluateRewardForCart } from "../rewards/pos-evaluate";
+import { resolveRewardOnCart } from "../rewards/pos-upgrade";
 import { buildRewardsService, RewardsRepository } from "../rewards";
 import { buildStreaksService } from "../streaks";
 import { evaluateStampEligibility } from "./eligibility";
@@ -40,45 +35,6 @@ import {
   recordPurchaseInputSchema,
 } from "./schemas";
 import { StampsService } from "./service";
-
-/** The single principal org (single-tenant pilot). */
-/** Whether a cart line falls within a reward's item-ref scope ([] = any). */
-function lineInScope(line: CartLine, refs: PromoItemRef[]): boolean {
-  if (refs.length === 0) return true;
-  return refs.some(
-    (r) =>
-      (r.kind === "product" && r.id === line.productId) ||
-      (r.kind === "category" && (line.categoryIds ?? []).includes(r.id)) ||
-      (r.kind === "variant" && r.id === line.variantId),
-  );
-}
-
-/** Stitch each in-scope line's variant-upgrade delta onto the cart so the pure
- *  reward evaluator can pick the cheapest eligible upgrade. Reward-specific
- *  (needs the variant graph), so it runs only for `variantUpgrade`. */
-async function stitchUpgradeDeltas(
-  repo: PromoRepository,
-  cart: Cart,
-  benefit: Extract<RewardBenefitConfig, { type: "variantUpgrade" }>,
-): Promise<Cart> {
-  const variantIds = [
-    ...new Set(cart.lines.map((l) => l.variantId).filter((v): v is string => v != null)),
-  ];
-  const deltas = await repo.variantUpgradeDeltas(
-    variantIds,
-    benefit.optionName,
-    benefit.fromValueLabel,
-    benefit.toValueLabel,
-  );
-  return {
-    ...cart,
-    lines: cart.lines.map((l) => ({
-      ...l,
-      upgradeDeltaCents:
-        l.variantId && lineInScope(l, benefit.refs) ? (deltas.get(l.variantId) ?? null) : null,
-    })),
-  };
-}
 
 /** The UTC instant of org-local midnight today — the "today" boundary for the
  *  register shift reads. */
@@ -153,17 +109,9 @@ export const stampsRouter = router({
         if (!rw || rw.status !== "published") {
           reward = { ok: false, discountCents: 0, reason: "reward-not-redeemable" };
         } else {
-          const cartForReward =
-            rw.benefit?.type === "variantUpgrade"
-              ? await stitchUpgradeDeltas(promoRepo, enriched, rw.benefit)
-              : enriched;
-          const res = evaluateRewardForCart(rw, cartForReward);
-          if (res.ok) {
-            reward = { ok: true, discountCents: res.discountCents, reason: null };
-            exclusions = res.exclusions;
-          } else {
-            reward = { ok: false, discountCents: 0, reason: res.reason };
-          }
+          const res = await resolveRewardOnCart(promoRepo, rw, enriched);
+          reward = { ok: res.ok, discountCents: res.discountCents, reason: res.reason };
+          exclusions = res.exclusions;
         }
       }
 
@@ -207,20 +155,16 @@ export const stampsRouter = router({
 
       // Per-reward line eligibility for the "ready to redeem" list: evaluate each
       // available reward against this cart so the register can gate selection.
-      // `stitchUpgradeDeltas` stays per-reward — it only fires for
-      // `variantUpgrade` benefits, so it's off the common path.
+      // The variant-graph read inside the resolver only fires for
+      // `variantUpgrade` benefits, so the common path pays nothing.
       const rewardEligibility = await Promise.all(
         (input.rewardIds ?? []).map(async (rid) => {
           const r = rewardsById.get(rid);
           if (!r || r.status !== "published") {
             return { rewardId: rid, eligible: false, reason: "reward-not-redeemable" };
           }
-          const cartForR =
-            r.benefit?.type === "variantUpgrade"
-              ? await stitchUpgradeDeltas(promoRepo, enriched, r.benefit)
-              : enriched;
-          const res = evaluateRewardForCart(r, cartForR);
-          return { rewardId: rid, eligible: res.ok, reason: res.ok ? null : res.reason };
+          const res = await resolveRewardOnCart(promoRepo, r, enriched);
+          return { rewardId: rid, eligible: res.ok, reason: res.reason };
         }),
       );
 
@@ -320,15 +264,13 @@ export const stampsRouter = router({
           if (!rw || rw.status !== "published") {
             throw new TRPCError({ code: "PRECONDITION_FAILED", message: "reward-not-redeemable" });
           }
-          const cartForReward =
-            rw.benefit?.type === "variantUpgrade"
-              ? await stitchUpgradeDeltas(promoRepo, enriched, rw.benefit)
-              : enriched;
-          const evalResult = evaluateRewardForCart(rw, cartForReward);
+          const evalResult = await resolveRewardOnCart(promoRepo, rw, enriched);
           if (!evalResult.ok) {
+            // Surface the evaluator's own reason — it was hardcoded here, so a
+            // reward that failed for any other cause still blamed the cart.
             throw new TRPCError({
               code: "PRECONDITION_FAILED",
-              message: "reward-item-not-in-cart",
+              message: evalResult.reason ?? "reward-item-not-in-cart",
             });
           }
           rewardDiscount = evalResult.discountCents;
