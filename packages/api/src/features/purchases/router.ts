@@ -18,7 +18,7 @@ import { PurchasesService } from "./service";
 
 /** The single principal org (single-tenant pilot). */
 function buildService(ctx: { db: typeof Db }): PurchasesService {
-  return new PurchasesService(new PurchasesRepository(ctx.db));
+  return new PurchasesService(new PurchasesRepository(ctx.db), ctx.db);
 }
 
 export const purchasesRouter = router({

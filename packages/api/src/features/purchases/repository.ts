@@ -44,6 +44,7 @@ import {
 import { buildOrderBy, type ListResult, pageCountOf, pageOffset } from "../_shared/list";
 import type {
   PurchaseAdminCustomer,
+  LoyaltyModeFlags,
   PurchaseAdminDetail,
   PurchaseAdminListItem,
   PurchaseDetail,
@@ -324,7 +325,10 @@ export class PurchasesRepository {
   }
 
   /** Full "radiografía" for the admin detail (org-scoped, any customer). */
-  async adminGet(orgId: string, id: string): Promise<PurchaseAdminDetail | null> {
+  async adminGet(
+    orgId: string,
+    id: string,
+  ): Promise<Omit<PurchaseAdminDetail, keyof LoyaltyModeFlags> | null> {
     const rows = await this.db
       .select({
         id: purchase.id,
@@ -1200,6 +1204,9 @@ export class PurchasesRepository {
         currency: redemption.currency,
         stampsSpent: redemption.stampsSpent,
         pointsSpent: redemption.pointsSpent,
+        // The reward's own share. `purchase.discountCents` is the TOTAL, so
+        // without this the detail can't tell a reward from a tier benefit.
+        discountCents: redemption.discountCents,
         name: reward.name,
         imageUrl: reward.imageUrl,
       })
@@ -1212,6 +1219,7 @@ export class PurchasesRepository {
     return {
       redemptionId: r.id,
       rewardId: r.rewardId,
+      discountCents: r.discountCents ?? 0,
       name: r.name ?? null,
       imageUrl: r.imageUrl ?? null,
       currency: r.currency as "stamps" | "points",

@@ -1449,8 +1449,8 @@
     "rewardTotalModeWarning": "A reward is selected, but it can't be redeemed in \"By total\" mode. Switch to \"By products\" or remove the reward.",
     "switchToItemsMode": "Switch to by products",
     "rewardUpgradeMissingSource": "Add a {from} to upgrade it to {to}.",
-    "rewardUpgradeLine": "1 upgraded to {to} (reward)",
-    "rewardUpgradeNoPromo": "This unit uses the reward, so it doesn't get the promo."
+    "rewardUpgradeLine": "Hand over 1 {to}",
+    "rewardUpgradeNoPromo": "Reward: covers the difference · this unit doesn't stack with promos"
   },
   "Admin": {
     "menu": "Menu",

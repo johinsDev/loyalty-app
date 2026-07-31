@@ -766,7 +766,11 @@ export function RegisterBoard({
                   <div key={i.key} className="rounded-2xl bg-white/5 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="line-clamp-2 text-sm font-bold">{i.name}</div>
+                        <div className="line-clamp-2 text-sm font-bold">
+                          {upgrade?.sourceLineIndex === idx && upgrade.remainingQty > 0
+                            ? `${upgrade.remainingQty} × ${i.name}`
+                            : i.name}
+                        </div>
                         {i.note ? (
                           <div className="mt-0.5 truncate text-xs font-semibold text-amber-300 italic">
                             ✎ {i.note}
@@ -787,17 +791,21 @@ export function RegisterBoard({
                     {/* The server split this line; render the result rather than
                         mutating the cart, or the next preview would upgrade a
                         second unit. */}
+                    {/* Written as an instruction, not a status: the cashier has
+                        to hand over a drink, and the line above still reads
+                        "Mediano". Violet-300 rather than the brand primary —
+                        that purple on this near-black card sits around 3:1. */}
                     {upgrade?.sourceLineIndex === idx ? (
-                      <div className="border-primary/40 mt-2 rounded-xl border border-dashed px-2.5 py-2">
+                      <div className="mt-2 rounded-xl border border-dashed border-violet-400/50 bg-violet-400/5 px-2.5 py-2">
                         <div className="flex items-start justify-between gap-2">
-                          <div className="text-primary text-xs font-extrabold">
+                          <div className="min-w-0 text-sm font-extrabold text-violet-200">
                             {t("rewardUpgradeLine", { to: upgrade.toLabel })}
                           </div>
-                          <div className="flex-none text-xs font-extrabold">
+                          <div className="flex-none text-sm font-extrabold">
                             {formatCop(upgrade.upgradedUnitAmountCents)}
                           </div>
                         </div>
-                        <div className="mt-0.5 text-[0.6875rem] font-semibold text-white/50">
+                        <div className="mt-0.5 text-[0.6875rem] font-semibold text-white/60">
                           {t("rewardUpgradeNoPromo")}
                         </div>
                       </div>
@@ -1062,7 +1070,7 @@ export function RegisterBoard({
                           type="button"
                           aria-label={t("viewDetail")}
                           onClick={rewardDetail}
-                          className="border-border text-muted-foreground hover:text-foreground grid w-10 flex-none place-items-center rounded-2xl border"
+                          className="border-border text-muted-foreground hover:text-foreground grid size-10 shrink-0 self-center place-items-center rounded-2xl border"
                         >
                           <Info className="size-4" />
                         </button>
@@ -1353,7 +1361,7 @@ function PinnedPreselectRow({
               .filter((l): l is string => Boolean(l?.trim())),
           })
         }
-        className="border-border text-muted-foreground hover:text-foreground grid w-10 flex-none place-items-center rounded-2xl border"
+        className="border-border text-muted-foreground hover:text-foreground grid size-10 shrink-0 self-center place-items-center rounded-2xl border"
       >
         <Info className="size-4" />
       </button>
@@ -1407,8 +1415,10 @@ function Row({
 }) {
   return (
     <div className="flex justify-between font-semibold">
-      <span className={muted ? "text-white/50" : good ? "text-primary" : ""}>{label}</span>
-      <span className={good ? "text-primary font-bold" : "font-bold"}>{value}</span>
+      {/* violet-300, not the brand primary: that purple on this near-black
+          panel is about 3:1 and unreadable at this size. */}
+      <span className={muted ? "text-white/50" : good ? "text-violet-300" : ""}>{label}</span>
+      <span className={good ? "font-bold text-violet-300" : "font-bold"}>{value}</span>
     </div>
   );
 }

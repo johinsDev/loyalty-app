@@ -65,7 +65,10 @@ export function PurchaseDetailView({
   );
 
   const promoShare = detail.promo?.discountCents ?? 0;
-  const rewardShare = Math.max(0, detail.discountCents - promoShare);
+  // The reward's OWN share, not "everything that isn't the promo" — that
+  // swallowed the tier benefit, so a $2.000 upgrade plus a $1.650 tier discount
+  // was reported as a $3.650 reward and the tier line below never rendered.
+  const rewardShare = detail.reward?.discountCents ?? 0;
   const amountOnly = detail.items.length === 0;
 
   const customerBlock = <CustomerBlock detail={detail} />;
@@ -477,17 +480,24 @@ function LoyaltyBlock({ detail }: { detail: PurchaseAdminDetail }) {
 
   return (
     <Section icon={<Gift className="size-3.5" />} label={t("loyaltyImpact")}>
+      {/* Only the currencies this org actually runs. A points-only shop was
+          shown "+0 sellos", which reads as a failed grant rather than a mode it
+          doesn't use. */}
       <div className="flex gap-3">
-        <div className={`${tileBg} flex-1 rounded-2xl p-3.5 text-center`}>
-          <div className={`font-display text-2xl font-semibold ${tileValue}`}>
-            🧋 +{stampsShown}
+        {detail.usesStamps ? (
+          <div className={`${tileBg} flex-1 rounded-2xl p-3.5 text-center`}>
+            <div className={`font-display text-2xl font-semibold ${tileValue}`}>
+              🧋 +{stampsShown}
+            </div>
+            <div className={`mt-1 text-xs font-bold ${tileLabel}`}>{t("stampsEarned")}</div>
           </div>
-          <div className={`mt-1 text-xs font-bold ${tileLabel}`}>{t("stampsEarned")}</div>
-        </div>
-        <div className={`${tileBg} flex-1 rounded-2xl p-3.5 text-center`}>
-          <div className={`font-display text-2xl font-semibold ${tileValue}`}>+{pointsShown}</div>
-          <div className={`mt-1 text-xs font-bold ${tileLabel}`}>{t("pointsEarned")}</div>
-        </div>
+        ) : null}
+        {detail.usesPoints ? (
+          <div className={`${tileBg} flex-1 rounded-2xl p-3.5 text-center`}>
+            <div className={`font-display text-2xl font-semibold ${tileValue}`}>+{pointsShown}</div>
+            <div className={`mt-1 text-xs font-bold ${tileLabel}`}>{t("pointsEarned")}</div>
+          </div>
+        ) : null}
       </div>
       {voided ? (
         <p className="text-destructive flex items-center gap-1.5 text-xs font-semibold">

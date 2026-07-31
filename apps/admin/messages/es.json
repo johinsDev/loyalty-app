@@ -1449,8 +1449,8 @@
     "rewardTotalModeWarning": "Hay un premio seleccionado, pero en modo \"Por total\" no se puede canjear. Cambiá a \"Por productos\" o quitá el premio.",
     "switchToItemsMode": "Cambiar a por productos",
     "rewardUpgradeMissingSource": "Agregá un {from} para subirlo a {to}.",
-    "rewardUpgradeLine": "1 sube a {to} (premio)",
-    "rewardUpgradeNoPromo": "Esta unidad usa el premio, por eso no lleva la promo."
+    "rewardUpgradeLine": "Entregá 1 {to}",
+    "rewardUpgradeNoPromo": "Premio: cubre la diferencia · esta unidad no acumula promo"
   },
   "Admin": {
     "menu": "Menú",

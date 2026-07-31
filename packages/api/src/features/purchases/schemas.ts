@@ -119,11 +119,22 @@ export interface PurchaseDetailPromo {
 export interface PurchaseDetailReward {
   redemptionId: string;
   rewardId: string;
+  /** What THIS reward took off the ticket. `purchase.discountCents` is the
+   *  total, so the breakdown needs the reward's own share to separate it from a
+   *  tier benefit or a promo. */
+  discountCents: number;
   name: string | null;
   imageUrl: string | null;
   currency: "stamps" | "points";
   stampsSpent: number;
   pointsSpent: number;
+}
+
+/** Whether the org grants stamps / points at all, so the detail can hide a
+ *  counter that will always read zero instead of implying a failure. */
+export interface LoyaltyModeFlags {
+  usesStamps: boolean;
+  usesPoints: boolean;
 }
 
 /** Full purchase composition for the detail screen. */
@@ -215,7 +226,7 @@ export interface PurchaseAdminCustomer {
 }
 
 /** The admin "radiografía": the customer detail plus who/where/attribution. */
-export interface PurchaseAdminDetail extends PurchaseDetail {
+export interface PurchaseAdminDetail extends PurchaseDetail, LoyaltyModeFlags {
   customer: PurchaseAdminCustomer;
   storeId: string | null;
   /** Marketing attribution: "campaign" | "shortlink" | "organic" (null legacy). */
