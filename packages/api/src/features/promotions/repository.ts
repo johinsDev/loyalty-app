@@ -32,6 +32,7 @@ import { benefitSummary, type SummaryLocale } from "./format";
 import type { ItemRef } from "./schemas";
 import {
   axisSummaries,
+  bestPair,
   pairOutcomes,
   upgradeTargets,
   type UpgradeTarget,
@@ -790,8 +791,14 @@ export class PromoRepository {
     pair?: { optionName: string; fromValueLabel: string; toValueLabel: string },
   ): Promise<VariantAxesView> {
     const { productIds, unknownRefs } = await this.productsForRefs(orgId, refs);
+    // One or two ref names read better in the headline than "productos
+    // seleccionados"; more than that and the sentence stops being a sentence.
+    const scopeLabel =
+      refs.length === 0 || refs.length > 2
+        ? null
+        : [...(await this.refNames(refs)).values()].join(" y ") || null;
     if (productIds.length === 0) {
-      return { productCount: 0, unknownRefs, axes: [], pair: null };
+      return { productCount: 0, scopeLabel, unknownRefs, axes: [], suggestedPair: null, pair: null };
     }
 
     const [nodes, names] = await Promise.all([
@@ -811,7 +818,16 @@ export class PromoRepository {
       missing: a.missingProductIds.map(named),
     }));
 
-    if (!pair) return { productCount: productIds.length, unknownRefs, axes, pair: null };
+    if (!pair) {
+      return {
+        productCount: productIds.length,
+        scopeLabel,
+        unknownRefs,
+        axes,
+        suggestedPair: null,
+        pair: null,
+      };
+    }
 
     const outcomes = pairOutcomes(
       nodes,
@@ -825,8 +841,12 @@ export class PromoRepository {
       .filter((d): d is number => d != null);
     return {
       productCount: productIds.length,
+      scopeLabel,
       unknownRefs,
       axes,
+      // Only worth computing when the chosen pair helps nobody.
+      suggestedPair:
+        deltas.length === 0 ? bestPair(nodes, productIds, pair.optionName) : null,
       pair: {
         ...pair,
         eligibleCount: deltas.length,

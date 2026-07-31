@@ -120,23 +120,9 @@ export function RewardBenefitFields({
     case "freeAddon":
       return <FreeAddonField value={value} onChange={onChange} />;
     case "variantUpgrade":
-      return (
-        <div className="space-y-4">
-          {/* Scope first — the axes on offer are derived from what's in it. */}
-          <Field label={t("appliesTo")} hint={t("upgradeScopeHint")}>
-            <RefsField
-              value={value.refs}
-              onChange={(refs) => onChange({ ...value, refs })}
-              anyLabel={t("upgradeAnyProduct")}
-              // Narrowing to one variant does nothing here — the axis below
-              // decides the sizes, and the server resolves a variant ref back to
-              // its product. Offering it would only imply otherwise.
-              allowVariantRefine={false}
-            />
-          </Field>
-          <VariantAxisField value={value} onChange={onChange} />
-        </div>
-      );
+      // The field owns the scope as well: coverage ("1 de 4 productos") only
+      // means anything sitting against the choice that produced it.
+      return <VariantAxisField value={value} onChange={onChange} />;
     case "experience":
       return (
         <div className="border-primary/20 bg-primary/5 rounded-2xl border px-4 py-3">

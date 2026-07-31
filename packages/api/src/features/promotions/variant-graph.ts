@@ -181,6 +181,9 @@ export function pairOutcomes(
 /** Wire shape for the admin's axis picker. */
 export interface VariantAxesView {
   productCount: number;
+  /** Short human name for the scope, for the headline sentence: one or two ref
+   *  names, else null so the caller says "productos seleccionados". */
+  scopeLabel: string | null;
   unknownRefs: { kind: string; id: string }[];
   axes: {
     optionName: string;
@@ -188,6 +191,10 @@ export interface VariantAxesView {
     coveredCount: number;
     missing: { id: string; name: string }[];
   }[];
+  /** A from→to on the chosen axis that at least one product can satisfy. Lets
+   *  the form offer a way out when the admin picks a pair nobody has, instead of
+   *  only telling them they're stuck. */
+  suggestedPair: { fromValueLabel: string; toValueLabel: string; eligibleCount: number } | null;
   pair: null | {
     optionName: string;
     fromValueLabel: string;
@@ -203,4 +210,27 @@ export interface VariantAxesView {
       reason: AxisMissReason | null;
     }[];
   };
+}
+
+/** The from→to on `optionName` that the most products can satisfy. */
+export function bestPair(
+  nodes: VariantNode[],
+  productIds: string[],
+  optionName: string,
+): { fromValueLabel: string; toValueLabel: string; eligibleCount: number } | null {
+  const axis = axisSummaries(nodes, productIds).find((a) => a.optionName === optionName);
+  if (!axis) return null;
+  let best: { fromValueLabel: string; toValueLabel: string; eligibleCount: number } | null = null;
+  for (const from of axis.values) {
+    for (const to of axis.values) {
+      if (from.label === to.label) continue;
+      const n = pairOutcomes(nodes, productIds, optionName, from.label, to.label).filter(
+        (o) => o.deltaCents != null,
+      ).length;
+      if (n > 0 && (!best || n > best.eligibleCount)) {
+        best = { fromValueLabel: from.label, toValueLabel: to.label, eligibleCount: n };
+      }
+    }
+  }
+  return best;
 }

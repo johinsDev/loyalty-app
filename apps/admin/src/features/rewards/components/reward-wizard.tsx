@@ -444,7 +444,9 @@ export function RewardWizard({ id }: { id: string }) {
         ) : step === "benefit" ? (
           <div className="space-y-4">
             <RewardBenefitFields value={form.config} onChange={(config) => set("config", config)} />
-            {summary ? (
+            {/* The variant-upgrade field leads with the sentence itself, so this
+                box would just say it twice. */}
+            {summary && form.config.type !== "variantUpgrade" ? (
               <div className="border-primary/20 bg-primary/5 flex items-center gap-2.5 rounded-2xl border px-4 py-3">
                 <Sparkles className="text-primary size-4 shrink-0" />
                 <div>
