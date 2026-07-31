@@ -91,6 +91,25 @@ describe("PointsService.earnForPurchase", () => {
     );
   });
 
+  // The grace date reaches this service from a cached loyalty config. A cache
+  // HIT round-trips through JSON, so it arrived as a string and `grace.getTime()`
+  // threw — after the earn row was already written. The router's catch turned
+  // that into "this sale earned 0 points" while the DB said otherwise, and took
+  // the tier recompute down with it. Fixed at the cache boundary; pinned here
+  // because this is where it blew up.
+  it("survives a grace date that arrives as a string, not a Date", async () => {
+    repo.tierPointsValue = 40;
+    const { service } = build(repo);
+    const res = await service.earnForPurchase(ORG, CUSTOMER, 100_000, "p1", STORE, {
+      loyalty: {
+        enabled: true,
+        rate: { per: 100, points: 4 },
+        tierGraceUntil: new Date(Date.now() + 86_400_000).toISOString() as unknown as Date,
+      },
+    });
+    expect(res.earned).toBe(40);
+  });
+
   it("is idempotent — a duplicate purchase earns nothing, no side effects", async () => {
     repo.earnInserted = false;
     const { service, realtime, enqueue } = build(repo);
