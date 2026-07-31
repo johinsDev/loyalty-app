@@ -172,4 +172,22 @@ bun run lint && bun run typecheck && bun run test  # full validate suite locally
 bun run db:generate && bun run db:migrate          # DB schema change → migration
 bunx shadcn@latest add <component>       # add a new UI component to packages/ui
 gh pr create --fill-first                # PR with auto-filled title from commits
+bun run cache:prune --force              # cap the build caches now (see below)
 ```
+
+### Build caches grow without bound
+
+Neither turbo nor Next evicts its own on-disk cache — `turbo --help` offers only
+`--cache-dir` and `--no-cache`, no TTL and no size limit. Left alone, `.turbo/cache`
+reached **283 GB across 23,535 entries** here, and the `.next` caches another 70 GB;
+the checkout was 367 GB.
+
+`scripts/dev/prune-caches.sh` is the missing eviction policy: drop entries older
+than 14 days, then trim oldest-first to 10 GB (turbo) / 5 GB per app (Next). It runs
+from the `post-merge` and `post-checkout` hooks and no-ops in ~20 ms unless a day
+has passed, so it never sits in front of your work. It covers every worktree, not
+just the main checkout. Tune with `TURBO_CACHE_MAX_GB` / `NEXT_CACHE_MAX_GB` /
+`MAX_AGE_DAYS`; `--dry-run` reports without deleting.
+
+Deleting a cache entry only costs a rebuild, so when the disk is tight all of
+`.turbo/cache` and `apps/*/.next` is always safe to remove outright.

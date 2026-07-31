@@ -17,3 +17,17 @@ commit-msg:
   commands:
     commitlint:
       run: bunx commitlint --edit {1}
+
+# Neither turbo nor Next evicts its own on-disk cache, so both grow forever —
+# `.turbo/cache` reached 283 GB here. These hooks fire on the infrequent
+# operations (pull, branch switch); the script itself no-ops in milliseconds
+# unless a day has passed, so it never sits in front of your work.
+post-merge:
+  commands:
+    prune-caches:
+      run: bash scripts/dev/prune-caches.sh
+
+post-checkout:
+  commands:
+    prune-caches:
+      run: bash scripts/dev/prune-caches.sh
