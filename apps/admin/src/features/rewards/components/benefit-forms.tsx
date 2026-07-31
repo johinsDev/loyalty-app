@@ -16,6 +16,8 @@ import { useTranslations } from "next-intl";
 import { RefsField } from "@/components/refs-field";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { VariantAxisField } from "./variant-axis-field";
+
 type FreeAddonConfig = Extract<RewardBenefitConfigInput, { type: "freeAddon" }>;
 
 const centsToUnits = (c: number | undefined): number | undefined =>
@@ -35,7 +37,9 @@ export function defaultConfigFor(type: RewardType): RewardBenefitConfigInput {
     case "freeAddon":
       return { type, addonId: null };
     case "variantUpgrade":
-      return { type, refs: [], optionName: "Tamaño", fromValueLabel: "", toValueLabel: "" };
+      // All three empty: the picker fills them from the catalog. Pre-seeding
+      // "Tamaño" looked half-filled while being an invalid config.
+      return { type, refs: [], optionName: "", fromValueLabel: "", toValueLabel: "" };
     case "experience":
       return { type };
     default:
@@ -116,43 +120,9 @@ export function RewardBenefitFields({
     case "freeAddon":
       return <FreeAddonField value={value} onChange={onChange} />;
     case "variantUpgrade":
-      return (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label={t("upgradeOption")}>
-              <input
-                value={value.optionName}
-                onChange={(e) => onChange({ ...value, optionName: e.target.value })}
-                placeholder="Tamaño"
-                className="border-input bg-background h-10 w-full rounded-lg border px-3 text-sm outline-none"
-              />
-            </Field>
-            <Field label={t("upgradeFrom")}>
-              <input
-                value={value.fromValueLabel}
-                onChange={(e) => onChange({ ...value, fromValueLabel: e.target.value })}
-                placeholder="Mediano"
-                className="border-input bg-background h-10 w-full rounded-lg border px-3 text-sm outline-none"
-              />
-            </Field>
-            <Field label={t("upgradeTo")}>
-              <input
-                value={value.toValueLabel}
-                onChange={(e) => onChange({ ...value, toValueLabel: e.target.value })}
-                placeholder="Grande"
-                className="border-input bg-background h-10 w-full rounded-lg border px-3 text-sm outline-none"
-              />
-            </Field>
-          </div>
-          <Field label={t("appliesTo")} hint={t("upgradeScopeHint")}>
-            <RefsField
-              value={value.refs}
-              onChange={(refs) => onChange({ ...value, refs })}
-              anyLabel={t("upgradeAnyProduct")}
-            />
-          </Field>
-        </div>
-      );
+      // The field owns the scope as well: coverage ("1 de 4 productos") only
+      // means anything sitting against the choice that produced it.
+      return <VariantAxisField value={value} onChange={onChange} />;
     case "experience":
       return (
         <div className="border-primary/20 bg-primary/5 rounded-2xl border px-4 py-3">

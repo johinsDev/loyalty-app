@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { WizardStep, type WizardContext } from "../_shared/wizard";
+import { PromoRepository } from "../promotions";
 import { compileRewardRule } from "./benefit";
 import type { RewardsRepository } from "./repository";
 import {
@@ -15,6 +16,9 @@ import {
 
 export interface RewardStepServices {
   repo: RewardsRepository;
+  /** Reads the catalog's option graph, so the benefit step can prove a size
+   *  upgrade resolves to at least one real product before persisting it. */
+  promoRepo: PromoRepository;
 }
 type Ctx = WizardContext<RewardStepServices>;
 
@@ -54,7 +58,12 @@ export class BenefitStep extends WizardStep<RewardRow, RewardBenefitConfigInput,
   }
 
   isComplete(draft: RewardRow): boolean {
-    return draft.benefit !== null;
+    // Not just "present": `createDraft` writes a template's benefit straight to
+    // the column without Zod, and the `freeProduct` templates carry `refs: []`,
+    // which the schema rejects. Checking presence alone let the wizard skip this
+    // step and publish a reward with no product picked — and empty refs match
+    // ANY product unit.
+    return draft.benefit !== null && rewardBenefitConfigSchema.safeParse(draft.benefit).success;
   }
 
   async persist(ctx: Ctx, draft: RewardRow, input: RewardBenefitConfigInput): Promise<RewardRow> {
@@ -66,6 +75,20 @@ export class BenefitStep extends WizardStep<RewardRow, RewardBenefitConfigInput,
     }
     // Validate the config compiles (experience → null is fine).
     compileRewardRule(input);
+    // A size upgrade is three labels matched against a free-text, per-product
+    // vocabulary — so prove against the catalog that at least one product can
+    // actually be upgraded, rather than persisting a reward that silently never
+    // applies.
+    if (input.type === "variantUpgrade") {
+      const view = await ctx.services.promoRepo.variantAxes(ctx.organizationId, input.refs, {
+        optionName: input.optionName,
+        fromValueLabel: input.fromValueLabel,
+        toValueLabel: input.toValueLabel,
+      });
+      if (!view.pair || view.pair.eligibleCount === 0) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "upgrade-no-eligible-product" });
+      }
+    }
     return ctx.services.repo.patch(ctx.organizationId, draft.id, { benefit: input });
   }
 }

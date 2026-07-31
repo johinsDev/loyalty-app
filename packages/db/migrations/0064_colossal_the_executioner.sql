@@ -1,0 +1,1 @@
+ALTER TABLE `purchase_item` ADD `reward_upgraded_from_variant_id` text;

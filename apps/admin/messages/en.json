@@ -598,7 +598,7 @@
       "amountOff": "$5,000 flat discount",
       "percentOff": "10% off a category, product or the whole order",
       "freeAddon": "A courtesy add-on (pearls, topping…); the cashier applies it at the register",
-      "variantUpgrade": "Free upsize (Medium → Large); the cashier picks the size at the register",
+      "variantUpgrade": "Bring a Medium and we upgrade it to Large; the reward covers the difference.",
       "experience": "A non-monetary perk (skip the line, premium packaging…)"
     },
     "step": {
@@ -629,7 +629,44 @@
       "maxDiscount": "Discount cap ($)",
       "optional": "optional",
       "experienceTitle": "Experience reward",
-      "experienceHint": "No effect on price. The cashier note is set in the Design step."
+      "experienceHint": "No effect on price. The cashier note is set in the Design step.",
+      "upgradeLoading": "Reading the menu…",
+      "upgradePickAxis": "Pick the option",
+      "upgradePickFrom": "From",
+      "upgradePickTo": "To",
+      "upgradeCoverage": "{covered} of {total} products",
+      "upgradeMissing": "Without this option: {names}",
+      "upgradeMissingMore": "and {n} more",
+      "upgradeNoAxes": "None of the selected products has variant options.",
+      "upgradeNoAxesCta": "View products",
+      "upgradeCost": "You cover {amount} per redemption",
+      "upgradeCostRange": "You cover between {min} and {max} per redemption",
+      "upgradeNoneEligible": "No product in scope can be upgraded with this pair.",
+      "upgradeStackingNote": "The upgraded unit doesn't stack with promos: a promo discount applies to the rest of the ticket.",
+      "upgradeUnknownRefs": "{n} product(s) in scope no longer exist — remove them.",
+      "upgradeHeadlinePending": "Choose which products the reward applies to.",
+      "upgradeHeadline": "Free {from} → {to} upgrade.",
+      "upgradeHeadlineScoped": "Free {from} → {to} upgrade on {scope}.",
+      "upgradeHeadlineNoAxes": "Pick products with options to complete the reward.",
+      "upgradeHeadlineNoneEligible": "No product in scope offers the {from} → {to} step.",
+      "upgradeCostLabel": "Cost per redemption",
+      "upgradeCostNone": "Not set",
+      "upgradeCoverageHeader": "{axis} — {covered} of {total} products",
+      "upgradeNoVariantsHeader": "No product has variants",
+      "upgradeRowOk": "",
+      "upgradeRowNa": "n/a",
+      "upgradePartial": "{out} of the {total} products don't have this option: the reward can't be redeemed on them.",
+      "upgradeKeepOnlyEligible": "Keep only the ones that apply",
+      "upgradeUseSuggested": "Use {from} → {to}",
+      "upgradeAxisSettled": "Axis {axis} · {from} → {to} · auto-filled",
+      "upgradeAxisChange": "Change axis",
+      "upgradeAxisDone": "Done",
+      "upgradeReason": {
+        "no-axis": "no such option",
+        "no-from": "no {from}",
+        "no-to": "no {to}",
+        "not-pricier": "not pricier"
+      }
     },
     "cost": {
       "stamps": "{n} stamps",
@@ -1433,7 +1470,10 @@
     "rewardScannedUnavailable": "This reward is no longer available. Remove it to continue.",
     "removeReward": "Remove reward",
     "rewardTotalModeWarning": "A reward is selected, but it can't be redeemed in \"By total\" mode. Switch to \"By products\" or remove the reward.",
-    "switchToItemsMode": "Switch to by products"
+    "switchToItemsMode": "Switch to by products",
+    "rewardUpgradeMissingSource": "Add a {from} to upgrade it to {to}.",
+    "rewardUpgradeLine": "Hand over 1 {to}",
+    "rewardUpgradeNoPromo": "Reward: covers the difference · this unit doesn't stack with promos"
   },
   "Admin": {
     "menu": "Menu",
@@ -2793,7 +2833,8 @@
     "timelineVoid": "Purchase voided · loyalty reversed",
     "timelineVoidBy": "Voided by {name} · loyalty reversed",
     "searchCustomer": "Search customer…",
-    "noCustomers": "No results"
+    "noCustomers": "No results",
+    "upgradedFrom": "Upgraded from {from} with the reward"
   },
   "Stores": {
     "title": "Stores",

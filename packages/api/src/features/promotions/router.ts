@@ -15,6 +15,7 @@ import {
   promoAnalyticsInputSchema,
   publicListInputSchema,
   slugInputSchema,
+  variantAxesInputSchema,
 } from "./schemas";
 import { PromoService } from "./service";
 import { PROMO_TEMPLATES } from "./templates";
@@ -112,6 +113,24 @@ export const promocionesRouter = router({
       requireOrg(ctx);
       const map = await new PromoRepository(ctx.db).refNames(input.refs);
       return Object.fromEntries(map);
+    }),
+  /** Powers the variant-swap reward's axis picker: which option axes exist
+   *  across the products in scope, how many carry each, and what a chosen
+   *  from→to pair costs per product. Uncached — it reads a catalog the admin
+   *  may be editing in another tab, and stale coverage would mislead. */
+  variantAxes: managerProcedure
+    .input(variantAxesInputSchema)
+    .query(async ({ ctx, input }) => {
+      const org = requireOrg(ctx);
+      const pair =
+        input.optionName && input.fromValueLabel && input.toValueLabel
+          ? {
+              optionName: input.optionName,
+              fromValueLabel: input.fromValueLabel,
+              toValueLabel: input.toValueLabel,
+            }
+          : undefined;
+      return new PromoRepository(ctx.db).variantAxes(org, input.refs, pair);
     }),
   adminList: managerProcedure
     .input(adminListInputSchema)

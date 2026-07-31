@@ -63,7 +63,7 @@ class FakeRepo {
 }
 
 function build(repo: FakeRepo) {
-  return new PurchasesService(repo as unknown as PurchasesRepository);
+  return new PurchasesService(repo as unknown as PurchasesRepository, {} as never);
 }
 
 describe("PurchasesService.myPurchases", () => {
@@ -167,6 +167,7 @@ describe("PurchasesService.purchaseDetail", () => {
       reward: {
         redemptionId: "red_1",
         rewardId: "rw_1",
+        discountCents: 0,
         name: "Bebida gratis",
         imageUrl: "https://img/x.png",
         currency: "stamps",
@@ -178,6 +179,7 @@ describe("PurchasesService.purchaseDetail", () => {
     expect(res.reward).toMatchObject({
       name: "Bebida gratis",
       currency: "stamps",
+      discountCents: 0,
       stampsSpent: 9,
     });
   });

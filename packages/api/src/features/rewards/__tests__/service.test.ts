@@ -248,13 +248,19 @@ describe("RewardsService.availableForCustomer", () => {
         stampsRequired: 5,
         description: "Solo bebidas frías",
         fulfillmentNote: "Entregar en barra",
-        benefit: { type: "variantUpgrade", toValueLabel: "Grande" } as RewardRow["benefit"],
+        benefit: {
+          type: "variantUpgrade",
+          refs: [],
+          optionName: "Tamaño",
+          fromValueLabel: "Mediano",
+          toValueLabel: "Grande",
+        } as RewardRow["benefit"],
       }),
     ];
     repo.balancesValue = { stamps: 9, points: 0 };
     const { service } = build(repo);
     const { items } = await service.availableForCustomer(ORG, CUSTOMER);
-    expect(items[0]!.benefitSummary).toBe("Sube a Grande gratis");
+    expect(items[0]!.benefitSummary).toBe("Sube de Mediano a Grande gratis");
     expect(items[0]!.description).toBe("Solo bebidas frías");
     expect(items[0]!.fulfillmentNote).toBe("Entregar en barra");
   });

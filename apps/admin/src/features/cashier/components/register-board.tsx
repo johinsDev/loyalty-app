@@ -221,6 +221,8 @@ export function RegisterBoard({
     ),
   );
   const promos = preview.data?.applicable ?? [];
+  /** The server's swap, rendered as a derived view of the cart. */
+  const upgrade = preview.data?.rewardUpgrade ?? null;
   const upsell = preview.data?.upsell ?? [];
   const rewardPreview = preview.data?.reward ?? null;
   const net = preview.data?.net ?? null;
@@ -532,7 +534,10 @@ export function RegisterBoard({
                             <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
                               <Tag className="size-3" />
                             </span>
-                            <span className="min-w-0 flex-1 truncate text-xs font-bold">
+                            {/* Two lines rather than truncating: "Segunda unidad
+                                al 5…" cuts off the very number the cashier
+                                needs. The amount stays pinned on the right. */}
+                            <span className="line-clamp-2 min-w-0 flex-1 text-xs font-bold">
                               {a.promo.name}
                             </span>
                             <span
@@ -553,7 +558,7 @@ export function RegisterBoard({
                                 ) as string[],
                               })
                             }
-                            className="border-border text-muted-foreground hover:text-foreground grid w-8 flex-none place-items-center rounded-xl border"
+                            className="border-border text-muted-foreground hover:text-foreground grid aspect-square shrink-0 self-stretch place-items-center rounded-xl border"
                           >
                             <Info className="size-3.5" />
                           </button>
@@ -760,11 +765,15 @@ export function RegisterBoard({
               </div>
             ) : (
               <div className="scrollbar-hide my-3 flex-1 space-y-2 overflow-y-auto">
-                {cart.map((i) => (
+                {cart.map((i, idx) => (
                   <div key={i.key} className="rounded-2xl bg-white/5 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="line-clamp-2 text-sm font-bold">{i.name}</div>
+                        <div className="line-clamp-2 text-sm font-bold">
+                          {upgrade?.sourceLineIndex === idx && upgrade.remainingQty > 0
+                            ? `${upgrade.remainingQty} × ${i.name}`
+                            : i.name}
+                        </div>
                         {i.note ? (
                           <div className="mt-0.5 truncate text-xs font-semibold text-amber-300 italic">
                             ✎ {i.note}
@@ -772,9 +781,38 @@ export function RegisterBoard({
                         ) : null}
                       </div>
                       <div className="flex-none text-sm font-extrabold">
-                        {formatCop(i.unitAmountCents * i.qty)}
+                        {/* qty 1 ⇒ the whole line moved up; its price lives on
+                            the upgraded row below, so showing "$0" here just
+                            reads as broken. */}
+                        {upgrade?.sourceLineIndex === idx
+                          ? upgrade.remainingQty > 0
+                            ? formatCop(i.unitAmountCents * upgrade.remainingQty)
+                            : ""
+                          : formatCop(i.unitAmountCents * i.qty)}
                       </div>
                     </div>
+                    {/* The server split this line; render the result rather than
+                        mutating the cart, or the next preview would upgrade a
+                        second unit. */}
+                    {/* Written as an instruction, not a status: the cashier has
+                        to hand over a drink, and the line above still reads
+                        "Mediano". Violet-300 rather than the brand primary —
+                        that purple on this near-black card sits around 3:1. */}
+                    {upgrade?.sourceLineIndex === idx ? (
+                      <div className="mt-2 rounded-xl border border-dashed border-violet-400/50 bg-violet-400/5 px-2.5 py-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 text-sm font-extrabold text-violet-200">
+                            {t("rewardUpgradeLine", { to: upgrade.toLabel })}
+                          </div>
+                          <div className="flex-none text-sm font-extrabold">
+                            {formatCop(upgrade.upgradedUnitAmountCents)}
+                          </div>
+                        </div>
+                        <div className="mt-0.5 text-[0.6875rem] font-semibold text-white/60">
+                          {t("rewardUpgradeNoPromo")}
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="mt-2 flex items-center gap-1.5">
                       <div className="flex-1" />
                       <button
@@ -821,7 +859,7 @@ export function RegisterBoard({
             <div className="flex-none border-t border-white/10 pt-3 text-sm">
               {mode === "items" && cart.length > 0 ? (
                 <>
-                  <Row label={t("subtotal")} value={formatCop(subtotal)} muted />
+                  <Row label={t("subtotal")} value={formatCop(preview.data?.subtotalCents ?? subtotal)} muted />
                   {promoDiscount > 0 ? (
                     <Row
                       label={appliedPromo?.promo.name ?? t("promoDiscount")}
@@ -1003,7 +1041,7 @@ export function RegisterBoard({
                         rw.fulfillmentNote
                           ? `${t("rewardFulfillmentLabel")}: ${rw.fulfillmentNote}`
                           : null,
-                        ineligible ? reasonLabel(elig?.reason, t) : null,
+                        ineligible ? reasonLabel(elig?.reason, t, elig?.upgrade) : null,
                       ].filter((l): l is string => Boolean(l?.trim()));
                       setDetailView({ title: rw.name, lines });
                     };
@@ -1025,7 +1063,7 @@ export function RegisterBoard({
                             <span className="block truncate text-sm font-bold">{rw.name}</span>
                             {ineligible ? (
                               <span className="text-muted-foreground/70 mt-0.5 block truncate text-xs font-semibold">
-                                {reasonLabel(elig?.reason, t)}
+                                {reasonLabel(elig?.reason, t, elig?.upgrade)}
                               </span>
                             ) : null}
                           </div>
@@ -1035,7 +1073,7 @@ export function RegisterBoard({
                           type="button"
                           aria-label={t("viewDetail")}
                           onClick={rewardDetail}
-                          className="border-border text-muted-foreground hover:text-foreground grid w-10 flex-none place-items-center rounded-2xl border"
+                          className="border-border text-muted-foreground hover:text-foreground grid aspect-square shrink-0 self-stretch place-items-center rounded-2xl border"
                         >
                           <Info className="size-4" />
                         </button>
@@ -1232,8 +1270,17 @@ function sameConfig(i: CartItem, line: PickedLine): boolean {
 function reasonLabel(
   reason: string | null | undefined,
   t: ReturnType<typeof useTranslations>,
+  /** Present for a size-upgrade reward, so the hint can name the size. */
+  upgrade?: { fromLabel: string; toLabel: string } | null,
 ): string {
   if (reason === "reward-item-not-in-cart") return t("rewardAddItemHint");
+  // "Add the product" is a lie for an upgrade reward — the product is right
+  // there, it's the size that's wrong. Say which one to add.
+  if (reason === "reward-no-upgrade-available") {
+    return upgrade
+      ? t("rewardUpgradeMissingSource", { from: upgrade.fromLabel, to: upgrade.toLabel })
+      : t("rewardNotApplicable");
+  }
   // An archived / deleted reward is a different problem for the cashier than one
   // that simply doesn't match the cart.
   if (reason === "reward-not-redeemable") return t("rewardScannedUnavailable");
@@ -1257,7 +1304,13 @@ function PinnedPreselectRow({
 }: {
   preselect: PreselectReward;
   active: boolean;
-  elig: { eligible: boolean; reason: string | null } | undefined;
+  elig:
+    | {
+        eligible: boolean;
+        reason: string | null;
+        upgrade?: { optionName: string; fromLabel: string; toLabel: string } | null;
+      }
+    | undefined;
   evaluated: boolean;
   onToggle: () => void;
   onDetail: (v: { title: string; lines: string[] }) => void;
@@ -1295,7 +1348,7 @@ function PinnedPreselectRow({
           ) : null}
           {ineligible ? (
             <span className="text-muted-foreground mt-0.5 block truncate text-xs font-semibold">
-              {reasonLabel(elig?.reason, t)}
+              {reasonLabel(elig?.reason, t, elig?.upgrade)}
             </span>
           ) : null}
         </div>
@@ -1307,11 +1360,11 @@ function PinnedPreselectRow({
         onClick={() =>
           onDetail({
             title: name,
-            lines: [currencyLabel, preselect.note, ineligible ? reasonLabel(elig?.reason, t) : null]
+            lines: [currencyLabel, preselect.note, ineligible ? reasonLabel(elig?.reason, t, elig?.upgrade) : null]
               .filter((l): l is string => Boolean(l?.trim())),
           })
         }
-        className="border-border text-muted-foreground hover:text-foreground grid w-10 flex-none place-items-center rounded-2xl border"
+        className="border-border text-muted-foreground hover:text-foreground grid aspect-square shrink-0 self-stretch place-items-center rounded-2xl border"
       >
         <Info className="size-4" />
       </button>
@@ -1365,8 +1418,10 @@ function Row({
 }) {
   return (
     <div className="flex justify-between font-semibold">
-      <span className={muted ? "text-white/50" : good ? "text-primary" : ""}>{label}</span>
-      <span className={good ? "text-primary font-bold" : "font-bold"}>{value}</span>
+      {/* violet-300, not the brand primary: that purple on this near-black
+          panel is about 3:1 and unreadable at this size. */}
+      <span className={muted ? "text-white/50" : good ? "text-violet-300" : ""}>{label}</span>
+      <span className={good ? "font-bold text-violet-300" : "font-bold"}>{value}</span>
     </div>
   );
 }

@@ -44,6 +44,7 @@ import {
 import { buildOrderBy, type ListResult, pageCountOf, pageOffset } from "../_shared/list";
 import type {
   PurchaseAdminCustomer,
+  LoyaltyModeFlags,
   PurchaseAdminDetail,
   PurchaseAdminListItem,
   PurchaseDetail,
@@ -324,7 +325,10 @@ export class PurchasesRepository {
   }
 
   /** Full "radiografía" for the admin detail (org-scoped, any customer). */
-  async adminGet(orgId: string, id: string): Promise<PurchaseAdminDetail | null> {
+  async adminGet(
+    orgId: string,
+    id: string,
+  ): Promise<Omit<PurchaseAdminDetail, keyof LoyaltyModeFlags> | null> {
     const rows = await this.db
       .select({
         id: purchase.id,
@@ -991,6 +995,7 @@ export class PurchasesRepository {
         id: purchaseItem.id,
         productId: purchaseItem.productId,
         variantId: purchaseItem.variantId,
+        rewardUpgradedFromVariantId: purchaseItem.rewardUpgradedFromVariantId,
         modifierOptionIds: purchaseItem.modifierOptionIds,
         addonIds: purchaseItem.addonIds,
         removedIngredientIds: purchaseItem.removedIngredientIds,
@@ -1008,7 +1013,10 @@ export class PurchasesRepository {
     // removed-ingredient names.
     const variantIds = [
       ...new Set(
-        rows.map((r) => r.variantId).filter((v): v is string => v != null),
+        rows
+          // The upgrade's source variant resolves through the same batch.
+          .flatMap((r) => [r.variantId, r.rewardUpgradedFromVariantId])
+          .filter((v): v is string => v != null),
       ),
     ];
     const modifierIds = [
@@ -1032,6 +1040,9 @@ export class PurchasesRepository {
       name: r.name ?? null,
       slug: r.slug ?? null,
       variantLabel: r.variantId ? (variantLabels.get(r.variantId) ?? null) : null,
+      upgradedFromLabel: r.rewardUpgradedFromVariantId
+        ? (variantLabels.get(r.rewardUpgradedFromVariantId) ?? null)
+        : null,
       modifierLabels: (r.modifierOptionIds ?? [])
         .map((mid) => modifierLabels.get(mid))
         .filter((l): l is string => l != null),
@@ -1200,6 +1211,9 @@ export class PurchasesRepository {
         currency: redemption.currency,
         stampsSpent: redemption.stampsSpent,
         pointsSpent: redemption.pointsSpent,
+        // The reward's own share. `purchase.discountCents` is the TOTAL, so
+        // without this the detail can't tell a reward from a tier benefit.
+        discountCents: redemption.discountCents,
         name: reward.name,
         imageUrl: reward.imageUrl,
       })
@@ -1212,6 +1226,7 @@ export class PurchasesRepository {
     return {
       redemptionId: r.id,
       rewardId: r.rewardId,
+      discountCents: r.discountCents ?? 0,
       name: r.name ?? null,
       imageUrl: r.imageUrl ?? null,
       currency: r.currency as "stamps" | "points",

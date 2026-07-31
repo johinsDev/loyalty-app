@@ -277,6 +277,10 @@ export class StampsRepository {
     items?: {
       productId: string;
       variantId?: string | null;
+      /** Set by the router when a `variantUpgrade` reward moved this line up.
+       *  Server-only — it is deliberately absent from the input schema so a
+       *  client can't claim an upgrade that didn't happen. */
+      rewardUpgradedFromVariantId?: string | null;
       modifierOptionIds?: string[];
       addonIds?: string[];
       removedIngredientIds?: string[];
@@ -378,6 +382,7 @@ export class StampsRepository {
               purchaseId,
               productId: it.productId,
               variantId: it.variantId ?? null,
+              rewardUpgradedFromVariantId: it.rewardUpgradedFromVariantId ?? null,
               modifierOptionIds: it.modifierOptionIds ?? null,
               addonIds: it.addonIds && it.addonIds.length > 0 ? it.addonIds : null,
               removedIngredientIds:

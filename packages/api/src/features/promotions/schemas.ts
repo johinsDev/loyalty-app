@@ -294,3 +294,13 @@ export interface PromoStats {
   series: PromoStatPoint[];
   lastUsedAt: string | null;
 }
+
+/** Input for the variant-swap axis picker. The three label fields travel
+ *  together — a partial triple just means "no pair chosen yet". */
+export const variantAxesInputSchema = z.object({
+  refs: z.array(itemRefSchema).max(50),
+  optionName: z.string().min(1).optional(),
+  fromValueLabel: z.string().min(1).optional(),
+  toValueLabel: z.string().min(1).optional(),
+});
+export type VariantAxesInput = z.infer<typeof variantAxesInputSchema>;

@@ -63,10 +63,22 @@ export function rewardBenefitSummary(
     }
     case "freeAddon":
       return es ? "Adición gratis" : "Free add-on";
-    case "variantUpgrade":
-      return es
-        ? `Sube a ${benefit.toValueLabel} gratis`
-        : `Free upgrade to ${benefit.toValueLabel}`;
+    case "variantUpgrade": {
+      // Name the SOURCE too. The reward now moves a line up, so the customer's
+      // job is to bring a Mediano — "Sube a Grande gratis" read as if the Grande
+      // itself were free, and never said what to order.
+      // `benefit` is JSON from the DB with no runtime validation, so a legacy
+      // or hand-edited row can lack `refs` entirely.
+      const refs = benefit.refs ?? [];
+      const what = refNames(refs, names, locale);
+      const scope =
+        refs.length === 0 ? null : (what ?? (es ? "productos seleccionados" : "selected items"));
+      const base = es
+        ? `Sube de ${benefit.fromValueLabel} a ${benefit.toValueLabel} gratis`
+        : `Free ${benefit.fromValueLabel} → ${benefit.toValueLabel} upgrade`;
+      if (!scope) return base;
+      return es ? `${base} en ${scope}` : `${base} on ${scope}`;
+    }
     case "experience":
       return es ? "Experiencia" : "Experience";
     default:

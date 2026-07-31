@@ -208,6 +208,7 @@ export const PROCEDURE_TYPES: Record<string, ProcedureKind> = {
   "promociones.remove": "mutation",
   "promociones.staffCatalog": "query",
   "promociones.templates": "query",
+  "promociones.variantAxes": "query",
   "purchases.adminGet": "query",
   "purchases.adminKpis": "query",
   "purchases.adminList": "query",

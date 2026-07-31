@@ -1,6 +1,9 @@
 import { tasks } from "@trigger.dev/sdk/v3";
 import { TRPCError } from "@trpc/server";
 
+import type { db as Db } from "@loyalty/db";
+
+import { earnsPoints, earnsStamps, getLoyaltyConfig } from "../_shared/localize";
 import type { ListResult } from "../_shared/list";
 import type { PurchasesRepository } from "./repository";
 import type {
@@ -23,7 +26,10 @@ import type {
  * narrowing (ISO date strings → Date).
  */
 export class PurchasesService {
-  constructor(private readonly repo: PurchasesRepository) {}
+  constructor(
+    private readonly repo: PurchasesRepository,
+    private readonly db: typeof Db,
+  ) {}
 
   myPurchases(
     organizationId: string,
@@ -87,11 +93,17 @@ export class PurchasesService {
   }
 
   async adminGet(organizationId: string, id: string): Promise<PurchaseAdminDetail> {
-    const detail = await this.repo.adminGet(organizationId, id);
+    // The loyalty config is cached, so this rides along cheaply. Without it the
+    // detail can't tell "granted no stamps" from "this org doesn't do stamps",
+    // and shows a meaningless "+0 sellos" to a points-only shop.
+    const [detail, loyalty] = await Promise.all([
+      this.repo.adminGet(organizationId, id),
+      getLoyaltyConfig(this.db, organizationId),
+    ]);
     if (!detail) {
       throw new TRPCError({ code: "NOT_FOUND", message: "PURCHASE_NOT_FOUND" });
     }
-    return detail;
+    return { ...detail, usesStamps: earnsStamps(loyalty.mode), usesPoints: earnsPoints(loyalty.mode) };
   }
 
   /** Re-send the customer a full WhatsApp + in-app receipt of the purchase.

@@ -1,9 +1,5 @@
 import { type db as Db } from "@loyalty/db";
-import {
-  pointsAccount,
-  type PromoItemRef,
-  type RewardBenefitConfig,
-} from "@loyalty/db/schema";
+import { pointsAccount, type RewardBenefitConfig } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -24,10 +20,9 @@ import { resolveActiveStoreId } from "../_shared/store-context";
 import { ORG_UTC_OFFSET_MINUTES } from "../promotions/engine";
 import { buildPointsService, pointsForPrice } from "../points";
 import { tierDiscountPct } from "../points/tier-calc";
-import { type Cart, type CartLine } from "../promotions/engine";
 import { PromoRepository, PromoService, type UnitExclusion } from "../promotions";
 import { enrichCart } from "../promotions/stitch";
-import { evaluateRewardForCart } from "../rewards/pos-evaluate";
+import { resolveRewardOnCart, type AppliedUpgradeInfo } from "../rewards/pos-upgrade";
 import { buildRewardsService, RewardsRepository } from "../rewards";
 import { buildStreaksService } from "../streaks";
 import { evaluateStampEligibility } from "./eligibility";
@@ -41,42 +36,63 @@ import {
 } from "./schemas";
 import { StampsService } from "./service";
 
-/** The single principal org (single-tenant pilot). */
-/** Whether a cart line falls within a reward's item-ref scope ([] = any). */
-function lineInScope(line: CartLine, refs: PromoItemRef[]): boolean {
-  if (refs.length === 0) return true;
-  return refs.some(
-    (r) =>
-      (r.kind === "product" && r.id === line.productId) ||
-      (r.kind === "category" && (line.categoryIds ?? []).includes(r.id)) ||
-      (r.kind === "variant" && r.id === line.variantId),
-  );
+/** What the register needs to draw the split line and explain it. */
+interface RewardUpgradeView {
+  /** Index into the CLIENT's items — pre-split, so the badge pins to the line
+   *  the cashier is looking at. */
+  sourceLineIndex: number;
+  toVariantId: string;
+  optionName: string;
+  fromLabel: string;
+  toLabel: string;
+  deltaCents: number;
+  remainingQty: number;
+  upgradedUnitAmountCents: number;
 }
 
-/** Stitch each in-scope line's variant-upgrade delta onto the cart so the pure
- *  reward evaluator can pick the cheapest eligible upgrade. Reward-specific
- *  (needs the variant graph), so it runs only for `variantUpgrade`. */
-async function stitchUpgradeDeltas(
-  repo: PromoRepository,
-  cart: Cart,
-  benefit: Extract<RewardBenefitConfig, { type: "variantUpgrade" }>,
-): Promise<Cart> {
-  const variantIds = [
-    ...new Set(cart.lines.map((l) => l.variantId).filter((v): v is string => v != null)),
+/** Mirror the resolver's split onto the raw purchase lines, so the recorded
+ *  ticket states what the customer receives: 2 Medianos and 1 Grande. */
+function splitPurchaseLine<T extends { qty: number; unitAmountCents: number; variantId?: string | null }>(
+  items: T[],
+  upgrade: AppliedUpgradeInfo,
+): (T & { rewardUpgradedFromVariantId?: string | null })[] {
+  const source = items[upgrade.sourceLineIndex]!;
+  const upgraded = {
+    ...source,
+    qty: 1,
+    variantId: upgrade.toVariantId,
+    unitAmountCents: upgrade.upgradedUnitAmountCents,
+    // What the customer ordered, so the ticket can still name the drink the
+    // reward was spent on once every line reads "Grande".
+    rewardUpgradedFromVariantId: source.variantId ?? null,
+  };
+  if (source.qty === 1) {
+    return items.map((it, i) => (i === upgrade.sourceLineIndex ? upgraded : it));
+  }
+  return [
+    ...items.slice(0, upgrade.sourceLineIndex),
+    { ...source, qty: source.qty - 1 },
+    upgraded,
+    ...items.slice(upgrade.sourceLineIndex + 1),
   ];
-  const deltas = await repo.variantUpgradeDeltas(
-    variantIds,
-    benefit.optionName,
-    benefit.fromValueLabel,
-    benefit.toValueLabel,
-  );
+}
+
+/** Labels come straight off the benefit config and the product name is already
+ *  in the client's cart, so this costs no extra query. */
+function toUpgradeView(
+  upgrade: AppliedUpgradeInfo,
+  benefit: RewardBenefitConfig | null,
+): RewardUpgradeView | null {
+  if (benefit?.type !== "variantUpgrade") return null;
   return {
-    ...cart,
-    lines: cart.lines.map((l) => ({
-      ...l,
-      upgradeDeltaCents:
-        l.variantId && lineInScope(l, benefit.refs) ? (deltas.get(l.variantId) ?? null) : null,
-    })),
+    sourceLineIndex: upgrade.sourceLineIndex,
+    toVariantId: upgrade.toVariantId,
+    optionName: benefit.optionName,
+    fromLabel: benefit.fromValueLabel,
+    toLabel: benefit.toValueLabel,
+    deltaCents: upgrade.deltaCents,
+    remainingQty: upgrade.remainingQty,
+    upgradedUnitAmountCents: upgrade.upgradedUnitAmountCents,
   };
 }
 
@@ -119,10 +135,6 @@ export const stampsRouter = router({
     .input(previewPurchaseInputSchema)
     .query(async ({ ctx, input }) => {
       const org = orgId(ctx);
-      const subtotalCents = input.items.reduce(
-        (s, it) => s + it.unitAmountCents * it.qty,
-        0,
-      );
       const promoRepo = new PromoRepository(ctx.db);
       const enriched = await enrichCart(promoRepo, {
         currency: input.currency ?? "COP",
@@ -148,33 +160,44 @@ export const stampsRouter = router({
         reason: string | null;
       } | null = null;
       let exclusions: UnitExclusion[] = [];
+      // A `variantUpgrade` reward CHANGES the cart, so everything downstream —
+      // the subtotal, the promo remainder, the upsell — has to price the swapped
+      // one. Default to the untouched cart for every other benefit.
+      let pricedCart = enriched;
+      let pricedItems = input.items;
+      let rewardUpgrade: RewardUpgradeView | null = null;
       if (input.inlineReward) {
         const rw = rewardsById.get(input.inlineReward.rewardId);
         if (!rw || rw.status !== "published") {
           reward = { ok: false, discountCents: 0, reason: "reward-not-redeemable" };
         } else {
-          const cartForReward =
-            rw.benefit?.type === "variantUpgrade"
-              ? await stitchUpgradeDeltas(promoRepo, enriched, rw.benefit)
-              : enriched;
-          const res = evaluateRewardForCart(rw, cartForReward);
-          if (res.ok) {
-            reward = { ok: true, discountCents: res.discountCents, reason: null };
-            exclusions = res.exclusions;
-          } else {
-            reward = { ok: false, discountCents: 0, reason: res.reason };
+          const res = await resolveRewardOnCart(promoRepo, rw, enriched);
+          reward = { ok: res.ok, discountCents: res.discountCents, reason: res.reason };
+          exclusions = res.exclusions;
+          if (res.upgrade) {
+            pricedCart = res.cart;
+            pricedItems = splitPurchaseLine(input.items, res.upgrade);
+            rewardUpgrade = toUpgradeView(res.upgrade, rw.benefit);
           }
         }
       }
+      const subtotalCents = pricedItems.reduce(
+        (s, it) => s + it.unitAmountCents * it.qty,
+        0,
+      );
 
       const lc = await loadLocaleContext(ctx.db, org, ctx.headers);
       const promoSvc = new PromoService(ctx.db, promoRepo);
-      const cart = { currency: input.currency ?? "COP", lines: input.items };
+      const cart = { currency: input.currency ?? "COP", lines: pricedItems };
       const [{ applicable, hints }, upsell] = await Promise.all([
-        promoSvc.applicable(org, input.customerId, cart, lc, { exclusions, enriched }),
+        promoSvc.applicable(org, input.customerId, cart, lc, {
+          exclusions,
+          enriched: pricedCart,
+        }),
         // Actionable nudges for promos that don't yet apply (add-item, spend-to-
-        // threshold, variant-swap) — same enriched cart + reward exclusions.
-        promoSvc.upsell(org, input.customerId, cart, lc, { exclusions, enriched }),
+        // threshold, variant-swap) — same cart, so the upsell can't offer to
+        // upsize the very unit the reward just upsized.
+        promoSvc.upsell(org, input.customerId, cart, lc, { exclusions, enriched: pricedCart }),
       ]);
 
       // Combine layers with the org stacking policy so the shown total equals
@@ -207,20 +230,30 @@ export const stampsRouter = router({
 
       // Per-reward line eligibility for the "ready to redeem" list: evaluate each
       // available reward against this cart so the register can gate selection.
-      // `stitchUpgradeDeltas` stays per-reward — it only fires for
-      // `variantUpgrade` benefits, so it's off the common path.
+      // The variant-graph read inside the resolver only fires for
+      // `variantUpgrade` benefits, so the common path pays nothing.
       const rewardEligibility = await Promise.all(
         (input.rewardIds ?? []).map(async (rid) => {
           const r = rewardsById.get(rid);
           if (!r || r.status !== "published") {
             return { rewardId: rid, eligible: false, reason: "reward-not-redeemable" };
           }
-          const cartForR =
-            r.benefit?.type === "variantUpgrade"
-              ? await stitchUpgradeDeltas(promoRepo, enriched, r.benefit)
-              : enriched;
-          const res = evaluateRewardForCart(r, cartForR);
-          return { rewardId: rid, eligible: res.ok, reason: res.ok ? null : res.reason };
+          const res = await resolveRewardOnCart(promoRepo, r, enriched);
+          return {
+            rewardId: rid,
+            eligible: res.ok,
+            reason: res.reason,
+            // Lets the register say WHICH size to add instead of a generic
+            // "add the product", which is a lie when the product is right there.
+            upgrade:
+              r.benefit?.type === "variantUpgrade"
+                ? {
+                    optionName: r.benefit.optionName,
+                    fromLabel: r.benefit.fromValueLabel,
+                    toLabel: r.benefit.toValueLabel,
+                  }
+                : null,
+          };
         }),
       );
 
@@ -242,6 +275,9 @@ export const stampsRouter = router({
         upsell,
         reward,
         rewardEligibility,
+        // Null when the stacking policy suppressed the reward — the swap didn't
+        // happen, so the register must not draw it.
+        rewardUpgrade: net.suppressed.reward ? null : rewardUpgrade,
         earn: { points: earnPoints, stamps: earnStamps },
         net: {
           ...net,
@@ -302,7 +338,6 @@ export const stampsRouter = router({
       let pointsMultiplier = 1;
       let isRedemptionOnly = false;
       if (input.items && input.items.length > 0) {
-        const subtotal = input.items.reduce((s, it) => s + it.unitAmountCents * it.qty, 0);
         const promoRepo = new PromoRepository(ctx.db);
         const enriched = await enrichCart(promoRepo, {
           currency: input.currency ?? "COP",
@@ -312,6 +347,9 @@ export const stampsRouter = router({
         // Reward first: evaluate + exclude its units.
         let rewardDiscount = 0;
         let exclusions: UnitExclusion[] = [];
+        // A `variantUpgrade` reward rewrites the ticket, so the persisted lines
+        // and the subtotal must be the swapped ones.
+        let pricedItems = input.items;
         if (input.inlineReward) {
           const rw = await new RewardsRepository(ctx.db).getReward(
             org,
@@ -320,19 +358,18 @@ export const stampsRouter = router({
           if (!rw || rw.status !== "published") {
             throw new TRPCError({ code: "PRECONDITION_FAILED", message: "reward-not-redeemable" });
           }
-          const cartForReward =
-            rw.benefit?.type === "variantUpgrade"
-              ? await stitchUpgradeDeltas(promoRepo, enriched, rw.benefit)
-              : enriched;
-          const evalResult = evaluateRewardForCart(rw, cartForReward);
+          const evalResult = await resolveRewardOnCart(promoRepo, rw, enriched);
           if (!evalResult.ok) {
+            // Surface the evaluator's own reason — it was hardcoded here, so a
+            // reward that failed for any other cause still blamed the cart.
             throw new TRPCError({
               code: "PRECONDITION_FAILED",
-              message: "reward-item-not-in-cart",
+              message: evalResult.reason ?? "reward-item-not-in-cart",
             });
           }
           rewardDiscount = evalResult.discountCents;
           exclusions = evalResult.exclusions;
+          if (evalResult.upgrade) pricedItems = splitPurchaseLine(input.items, evalResult.upgrade);
         }
 
         // Promo on the remainder (reward-consumed units excluded).
@@ -345,7 +382,7 @@ export const stampsRouter = router({
           const { applicable } = await promoSvc.applicable(
             org,
             input.customerId,
-            { currency: input.currency ?? "COP", lines: input.items },
+            { currency: input.currency ?? "COP", lines: pricedItems },
             lc,
             { exclusions, enriched },
           );
@@ -362,6 +399,7 @@ export const stampsRouter = router({
         // Combine the three layers per the org stacking policy: reward → promo →
         // tier %, exclusive-promo suppression, and the max-total-discount cap.
         // Server-authoritative — the previewed total equals the charged total.
+        const subtotal = pricedItems.reduce((acc, it) => acc + it.unitAmountCents * it.qty, 0);
         const net = resolveNet(
           {
             subtotalCents: subtotal,
@@ -390,6 +428,7 @@ export const stampsRouter = router({
         isRedemptionOnly = netPrice === 0 && Boolean(input.inlineReward);
         resolved = {
           ...input,
+          items: pricedItems,
           priceCents: netPrice,
           subtotalCents: subtotal,
           discountCents: net.totalDiscountCents,

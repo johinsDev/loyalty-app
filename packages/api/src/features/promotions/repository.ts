@@ -21,15 +21,24 @@ import {
   type PromoTranslationRow,
 } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, getTableColumns, gt, gte, inArray, isNull, like, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, gt, gte, inArray, isNull, like, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
 
-import { loadCategoryAncestry, withAncestors } from "../_shared/category-tree";
+import { loadCategoryAncestry, withAncestors, withDescendants } from "../_shared/category-tree";
 import { buildOrderBy, pageCountOf, pageOffset, type ListResult } from "../_shared/list";
 import type { LocaleContext } from "../_shared/localize";
 import { availableAtStore } from "../_shared/store-availability";
 import { slugify, slugSuffix } from "../_shared/slugify";
 import { benefitSummary, type SummaryLocale } from "./format";
 import type { ItemRef } from "./schemas";
+import {
+  axisSummaries,
+  bestPair,
+  pairOutcomes,
+  upgradeTargets,
+  type UpgradeTarget,
+  type VariantAxesView,
+  type VariantNode,
+} from "./variant-graph";
 import type {
   AdminListInput,
   PromoAnalytics,
@@ -630,85 +639,222 @@ export class PromoRepository {
   }
 
   /**
-   * variantId → the cost to upgrade it one step on `optionName` (from
-   * `fromValueLabel` to `toValueLabel`). A variant qualifies when it IS at the
-   * target value and a sibling (same other options, at the from-value) exists;
-   * the delta is the price difference (>0). Powers the `variantUpgrade` reward.
+   * Load the option graph for every variant of `productIds`. The combo maths
+   * lives in `variant-graph.ts` so it can be tested without a database.
+   *
+   * Price is `COALESCE(promo_price_cents, price_cents)`: the register charges
+   * the promotional price when one is set, so computing a delta off the list
+   * price would forgive money that was never charged.
    */
-  async variantUpgradeDeltas(
+  async variantNodes(productIds: string[]): Promise<VariantNode[]> {
+    if (productIds.length === 0) return [];
+    const [variants, optRows] = await Promise.all([
+      this.db
+        .select({
+          id: productVariant.id,
+          productId: productVariant.productId,
+          priceCents: sql<number>`coalesce(${productVariant.promoPriceCents}, ${productVariant.priceCents})`,
+        })
+        .from(productVariant)
+        .where(inArray(productVariant.productId, productIds)),
+      this.db
+        .select({
+          variantId: productVariantValue.variantId,
+          optionName: productOption.name,
+          label: productOptionValue.label,
+        })
+        .from(productVariantValue)
+        .innerJoin(productOptionValue, eq(productVariantValue.optionValueId, productOptionValue.id))
+        .innerJoin(productOption, eq(productOptionValue.optionId, productOption.id))
+        .innerJoin(productVariant, eq(productVariantValue.variantId, productVariant.id))
+        .where(inArray(productVariant.productId, productIds)),
+    ]);
+
+    const optionsByVariant = new Map<string, Map<string, string>>();
+    for (const r of optRows) {
+      const m = optionsByVariant.get(r.variantId) ?? new Map<string, string>();
+      m.set(r.optionName, r.label);
+      optionsByVariant.set(r.variantId, m);
+    }
+    return variants.map((v) => ({
+      variantId: v.id,
+      productId: v.productId,
+      priceCents: Number(v.priceCents),
+      options: optionsByVariant.get(v.id) ?? new Map<string, string>(),
+    }));
+  }
+
+  /**
+   * The products a set of item refs covers, for authoring a variant-swap reward.
+   *
+   * `[]` refs means the whole menu — the coverage panel is what keeps that from
+   * being a blind choice. A `variant` ref resolves to its PRODUCT: under swap
+   * semantics, scoping to "Classic · Grande" would mean no Mediano is ever in
+   * scope, i.e. a reward that can never fire. The axis decides the variants.
+   */
+  async productsForRefs(
+    orgId: string,
+    refs: ItemRef[],
+  ): Promise<{ productIds: string[]; unknownRefs: ItemRef[] }> {
+    const productRefs = refs.filter((r) => r.kind === "product").map((r) => r.id);
+    const variantRefs = refs.filter((r) => r.kind === "variant").map((r) => r.id);
+    const categoryRefs = refs.filter((r) => r.kind === "category").map((r) => r.id);
+
+    if (refs.length === 0) {
+      const all = await this.db
+        .select({ id: product.id })
+        .from(product)
+        .where(and(eq(product.organizationId, orgId), ne(product.status, "archived")));
+      return { productIds: all.map((p) => p.id), unknownRefs: [] };
+    }
+
+    const [fromVariants, fromCategories] = await Promise.all([
+      this.productsOfVariants(variantRefs),
+      categoryRefs.length === 0
+        ? Promise.resolve<string[]>([])
+        : (async () => {
+            const ancestry = await loadCategoryAncestry(this.db, orgId, {
+              includeArchived: true,
+            });
+            const rows = await this.db
+              .select({ productId: productCategory.productId })
+              .from(productCategory)
+              .where(inArray(productCategory.categoryId, withDescendants(ancestry, categoryRefs)));
+            return rows.map((r) => r.productId);
+          })(),
+    ]);
+
+    const candidates = [...new Set([...productRefs, ...fromVariants, ...fromCategories])];
+    const live =
+      candidates.length === 0
+        ? []
+        : await this.db
+            .select({ id: product.id })
+            .from(product)
+            .where(
+              and(
+                eq(product.organizationId, orgId),
+                ne(product.status, "archived"),
+                inArray(product.id, candidates),
+              ),
+            );
+    const liveIds = new Set(live.map((p) => p.id));
+    // A ref whose product is gone would otherwise sit in the config invisibly.
+    const unknownRefs = refs.filter(
+      (r) => r.kind === "product" && !liveIds.has(r.id),
+    );
+    return { productIds: [...liveIds], unknownRefs };
+  }
+
+  /** The products those variants belong to. */
+  async productsOfVariants(variantIds: string[]): Promise<string[]> {
+    if (variantIds.length === 0) return [];
+    const rows = await this.db
+      .select({ productId: productVariant.productId })
+      .from(productVariant)
+      .where(inArray(productVariant.id, variantIds));
+    return [...new Set(rows.map((r) => r.productId))];
+  }
+
+  /**
+   * sourceVariantId → the sibling to upgrade it to, and what the step costs.
+   *
+   * Keyed by the variant the customer ALREADY has. It used to be keyed by the
+   * target, so the reward only applied once the cashier had already rung up the
+   * expensive size — it read as "not applicable" at exactly the moment someone
+   * would want to offer it.
+   */
+  async variantUpgradeTargets(
     variantIds: string[],
     optionName: string,
     fromValueLabel: string,
     toValueLabel: string,
-  ): Promise<Map<string, number>> {
-    const out = new Map<string, number>();
-    if (variantIds.length === 0) return out;
+  ): Promise<Map<string, UpgradeTarget>> {
+    const productIds = await this.productsOfVariants(variantIds);
+    const nodes = await this.variantNodes(productIds);
+    return upgradeTargets(nodes, optionName, fromValueLabel, toValueLabel);
+  }
 
-    const productIds = [
-      ...new Set(
-        (
-          await this.db
-            .select({ productId: productVariant.productId })
-            .from(productVariant)
-            .where(inArray(productVariant.id, variantIds))
-        ).map((r) => r.productId),
-      ),
-    ];
-    if (productIds.length === 0) return out;
-
-    const variants = await this.db
-      .select({
-        id: productVariant.id,
-        productId: productVariant.productId,
-        priceCents: productVariant.priceCents,
-      })
-      .from(productVariant)
-      .where(inArray(productVariant.productId, productIds));
-
-    const optRows = await this.db
-      .select({
-        variantId: productVariantValue.variantId,
-        optionName: productOption.name,
-        label: productOptionValue.label,
-      })
-      .from(productVariantValue)
-      .innerJoin(productOptionValue, eq(productVariantValue.optionValueId, productOptionValue.id))
-      .innerJoin(productOption, eq(productOptionValue.optionId, productOption.id))
-      .innerJoin(productVariant, eq(productVariantValue.variantId, productVariant.id))
-      .where(inArray(productVariant.productId, productIds));
-
-    const optsByVariant = new Map<string, Map<string, string>>();
-    for (const r of optRows) {
-      const m = optsByVariant.get(r.variantId) ?? new Map<string, string>();
-      m.set(r.optionName, r.label);
-      optsByVariant.set(r.variantId, m);
-    }
-    const priceById = new Map(variants.map((v) => [v.id, v.priceCents]));
-    const productOf = new Map(variants.map((v) => [v.id, v.productId]));
-
-    const sig = (m: Map<string, string>): string =>
-      [...m.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([k, v]) => `${k}=${v}`)
-        .join("|");
-    // product||signature → variantId (to find the from-value sibling).
-    const byProductSig = new Map<string, string>();
-    for (const v of variants) {
-      byProductSig.set(`${v.productId}||${sig(optsByVariant.get(v.id) ?? new Map())}`, v.id);
+  /**
+   * What the admin needs to author a variant-swap reward against the real
+   * catalog instead of typing three strings and hoping.
+   *
+   * Returns the option axes that actually exist across the products in scope,
+   * how many of them carry each one, which are left out, and — once a from→to
+   * pair is chosen — what it would cost per product or why it doesn't apply.
+   * Partial coverage is the normal case, not an error: in this catalog the
+   * "Frutales" category has variants on 1 of its 4 products.
+   */
+  async variantAxes(
+    orgId: string,
+    refs: ItemRef[],
+    pair?: { optionName: string; fromValueLabel: string; toValueLabel: string },
+  ): Promise<VariantAxesView> {
+    const { productIds, unknownRefs } = await this.productsForRefs(orgId, refs);
+    // One or two ref names read better in the headline than "productos
+    // seleccionados"; more than that and the sentence stops being a sentence.
+    const scopeLabel =
+      refs.length === 0 || refs.length > 2
+        ? null
+        : [...(await this.refNames(refs)).values()].join(" y ") || null;
+    if (productIds.length === 0) {
+      return { productCount: 0, scopeLabel, unknownRefs, axes: [], suggestedPair: null, pair: null };
     }
 
-    for (const vid of new Set(variantIds)) {
-      const opts = optsByVariant.get(vid);
-      const productId = productOf.get(vid);
-      if (!opts || !productId || opts.get(optionName) !== toValueLabel) continue;
-      const siblingOpts = new Map(opts);
-      siblingOpts.set(optionName, fromValueLabel);
-      const siblingId = byProductSig.get(`${productId}||${sig(siblingOpts)}`);
-      if (!siblingId) continue;
-      const delta = (priceById.get(vid) ?? 0) - (priceById.get(siblingId) ?? 0);
-      if (delta > 0) out.set(vid, delta);
+    const [nodes, names] = await Promise.all([
+      this.variantNodes(productIds),
+      this.db
+        .select({ id: product.id, name: product.name })
+        .from(product)
+        .where(inArray(product.id, productIds)),
+    ]);
+    const nameById = new Map(names.map((n) => [n.id, n.name]));
+    const named = (id: string) => ({ id, name: nameById.get(id) ?? id });
+
+    const axes = axisSummaries(nodes, productIds).map((a) => ({
+      optionName: a.optionName,
+      values: a.values,
+      coveredCount: a.coveredCount,
+      missing: a.missingProductIds.map(named),
+    }));
+
+    if (!pair) {
+      return {
+        productCount: productIds.length,
+        scopeLabel,
+        unknownRefs,
+        axes,
+        suggestedPair: null,
+        pair: null,
+      };
     }
-    return out;
+
+    const outcomes = pairOutcomes(
+      nodes,
+      productIds,
+      pair.optionName,
+      pair.fromValueLabel,
+      pair.toValueLabel,
+    );
+    const deltas = outcomes
+      .map((o) => o.deltaCents)
+      .filter((d): d is number => d != null);
+    return {
+      productCount: productIds.length,
+      scopeLabel,
+      unknownRefs,
+      axes,
+      // Only worth computing when the chosen pair helps nobody.
+      suggestedPair:
+        deltas.length === 0 ? bestPair(nodes, productIds, pair.optionName) : null,
+      pair: {
+        ...pair,
+        eligibleCount: deltas.length,
+        minDeltaCents: deltas.length ? Math.min(...deltas) : 0,
+        maxDeltaCents: deltas.length ? Math.max(...deltas) : 0,
+        products: outcomes.map((o) => ({ ...named(o.productId), ...o })),
+      },
+    };
   }
 
   /** addonId → its catalog price delta (for reward add-on waiving at POS). */

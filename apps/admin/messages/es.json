@@ -598,7 +598,7 @@
       "amountOff": "$5.000 de descuento directo",
       "percentOff": "10% en una categoría, producto o toda la compra",
       "freeAddon": "Una adición de cortesía (perlas, topping…); el cajero la aplica en caja",
-      "variantUpgrade": "Agranda gratis (Mediano → Grande); el cajero elige el tamaño en caja",
+      "variantUpgrade": "Traé un Mediano y lo subimos a Grande; el premio cubre la diferencia.",
       "experience": "Un beneficio sin valor monetario (sáltate la fila, empaque premium…)"
     },
     "step": {
@@ -629,7 +629,44 @@
       "maxDiscount": "Tope de descuento ($)",
       "optional": "opcional",
       "experienceTitle": "Recompensa de experiencia",
-      "experienceHint": "No tiene efecto en el precio. La nota para el cajero se define en el paso de Diseño."
+      "experienceHint": "No tiene efecto en el precio. La nota para el cajero se define en el paso de Diseño.",
+      "upgradeLoading": "Leyendo la carta…",
+      "upgradePickAxis": "Elegí la opción",
+      "upgradePickFrom": "Desde",
+      "upgradePickTo": "Hasta",
+      "upgradeCoverage": "{covered} de {total} productos",
+      "upgradeMissing": "Sin esta opción: {names}",
+      "upgradeMissingMore": "y {n} más",
+      "upgradeNoAxes": "Ninguno de los productos elegidos tiene opciones de variante.",
+      "upgradeNoAxesCta": "Ver productos",
+      "upgradeCost": "Cubrís {amount} por canje",
+      "upgradeCostRange": "Cubrís entre {min} y {max} por canje",
+      "upgradeNoneEligible": "Ningún producto del alcance puede subir con este par.",
+      "upgradeStackingNote": "La unidad mejorada no acumula promociones: el descuento de una promo se calcula sobre el resto del ticket.",
+      "upgradeUnknownRefs": "{n} producto(s) del alcance ya no existen — quitalos.",
+      "upgradeHeadlinePending": "Elegí a qué productos aplica el premio.",
+      "upgradeHeadline": "Sube de {from} a {to} gratis.",
+      "upgradeHeadlineScoped": "Sube de {from} a {to} gratis en {scope}.",
+      "upgradeHeadlineNoAxes": "Elegí productos con opciones para completar el premio.",
+      "upgradeHeadlineNoneEligible": "Ningún producto del alcance ofrece el paso {from} → {to}.",
+      "upgradeCostLabel": "Costo por canje",
+      "upgradeCostNone": "Sin definir",
+      "upgradeCoverageHeader": "{axis} — {covered} de {total} productos",
+      "upgradeNoVariantsHeader": "Ningún producto tiene variantes",
+      "upgradeRowOk": "",
+      "upgradeRowNa": "no aplica",
+      "upgradePartial": "{out} de los {total} productos no tienen esta opción: en ellos el premio no se puede canjear.",
+      "upgradeKeepOnlyEligible": "Dejar solo los que aplican",
+      "upgradeUseSuggested": "Usar {from} → {to}",
+      "upgradeAxisSettled": "Eje {axis} · {from} → {to} · autocompletado",
+      "upgradeAxisChange": "Cambiar eje",
+      "upgradeAxisDone": "Listo",
+      "upgradeReason": {
+        "no-axis": "sin esta opción",
+        "no-from": "sin {from}",
+        "no-to": "sin {to}",
+        "not-pricier": "no es más caro"
+      }
     },
     "cost": {
       "stamps": "{n} sellos",
@@ -1433,7 +1470,10 @@
     "rewardScannedUnavailable": "Este premio ya no está disponible. Quitalo para continuar.",
     "removeReward": "Quitar premio",
     "rewardTotalModeWarning": "Hay un premio seleccionado, pero en modo \"Por total\" no se puede canjear. Cambiá a \"Por productos\" o quitá el premio.",
-    "switchToItemsMode": "Cambiar a por productos"
+    "switchToItemsMode": "Cambiar a por productos",
+    "rewardUpgradeMissingSource": "Agregá un {from} para subirlo a {to}.",
+    "rewardUpgradeLine": "Entregá 1 {to}",
+    "rewardUpgradeNoPromo": "Premio: cubre la diferencia · esta unidad no acumula promo"
   },
   "Admin": {
     "menu": "Menú",
@@ -2793,7 +2833,8 @@
     "timelineVoid": "Compra anulada · lealtad revertida",
     "timelineVoidBy": "Compra anulada por {name} · lealtad revertida",
     "searchCustomer": "Buscar cliente…",
-    "noCustomers": "Sin resultados"
+    "noCustomers": "Sin resultados",
+    "upgradedFrom": "Subido desde {from} con el premio"
   },
   "Stores": {
     "title": "Tiendas",
