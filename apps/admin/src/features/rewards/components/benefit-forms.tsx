@@ -128,6 +128,10 @@ export function RewardBenefitFields({
               value={value.refs}
               onChange={(refs) => onChange({ ...value, refs })}
               anyLabel={t("upgradeAnyProduct")}
+              // Narrowing to one variant does nothing here — the axis below
+              // decides the sizes, and the server resolves a variant ref back to
+              // its product. Offering it would only imply otherwise.
+              allowVariantRefine={false}
             />
           </Field>
           <VariantAxisField value={value} onChange={onChange} />

@@ -41,11 +41,16 @@ export function RefsField({
   value,
   onChange,
   anyLabel,
+  allowVariantRefine = true,
 }: {
   value: ItemRef[];
   onChange: (refs: ItemRef[]) => void;
   /** Shown when empty (e.g. "cualquier producto de la carta"). */
   anyLabel?: string;
+  /** Off where narrowing a product to one variant has no effect — the size
+   *  upgrade reward resolves a variant ref back to its product, so offering the
+   *  choice would only suggest it does something. */
+  allowVariantRefine?: boolean;
 }) {
   const t = useTranslations("Promotions.refs");
   const trpc = useTRPC();
@@ -95,7 +100,11 @@ export function RefsField({
                 itemRef={r}
                 label={labels.current[r.id] ?? "…"}
                 productId={
-                  r.kind === "product" ? r.id : (parentProduct.current[r.id] ?? null)
+                  allowVariantRefine
+                    ? r.kind === "product"
+                      ? r.id
+                      : (parentProduct.current[r.id] ?? null)
+                    : null
                 }
                 onSwap={(to, label) => {
                   if (to.kind === "variant" && r.kind === "product")
