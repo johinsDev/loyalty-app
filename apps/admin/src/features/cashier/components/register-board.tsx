@@ -774,11 +774,14 @@ export function RegisterBoard({
                         ) : null}
                       </div>
                       <div className="flex-none text-sm font-extrabold">
-                        {formatCop(
-                          upgrade?.sourceLineIndex === idx
-                            ? i.unitAmountCents * upgrade.remainingQty
-                            : i.unitAmountCents * i.qty,
-                        )}
+                        {/* qty 1 ⇒ the whole line moved up; its price lives on
+                            the upgraded row below, so showing "$0" here just
+                            reads as broken. */}
+                        {upgrade?.sourceLineIndex === idx
+                          ? upgrade.remainingQty > 0
+                            ? formatCop(i.unitAmountCents * upgrade.remainingQty)
+                            : ""
+                          : formatCop(i.unitAmountCents * i.qty)}
                       </div>
                     </div>
                     {/* The server split this line; render the result rather than
