@@ -534,7 +534,10 @@ export function RegisterBoard({
                             <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
                               <Tag className="size-3" />
                             </span>
-                            <span className="min-w-0 flex-1 truncate text-xs font-bold">
+                            {/* Two lines rather than truncating: "Segunda unidad
+                                al 5…" cuts off the very number the cashier
+                                needs. The amount stays pinned on the right. */}
+                            <span className="line-clamp-2 min-w-0 flex-1 text-xs font-bold">
                               {a.promo.name}
                             </span>
                             <span
@@ -555,7 +558,7 @@ export function RegisterBoard({
                                 ) as string[],
                               })
                             }
-                            className="border-border text-muted-foreground hover:text-foreground grid w-8 flex-none place-items-center rounded-xl border"
+                            className="border-border text-muted-foreground hover:text-foreground grid aspect-square shrink-0 self-stretch place-items-center rounded-xl border"
                           >
                             <Info className="size-3.5" />
                           </button>
@@ -1070,7 +1073,7 @@ export function RegisterBoard({
                           type="button"
                           aria-label={t("viewDetail")}
                           onClick={rewardDetail}
-                          className="border-border text-muted-foreground hover:text-foreground grid size-10 shrink-0 self-center place-items-center rounded-2xl border"
+                          className="border-border text-muted-foreground hover:text-foreground grid aspect-square shrink-0 self-stretch place-items-center rounded-2xl border"
                         >
                           <Info className="size-4" />
                         </button>
@@ -1361,7 +1364,7 @@ function PinnedPreselectRow({
               .filter((l): l is string => Boolean(l?.trim())),
           })
         }
-        className="border-border text-muted-foreground hover:text-foreground grid size-10 shrink-0 self-center place-items-center rounded-2xl border"
+        className="border-border text-muted-foreground hover:text-foreground grid aspect-square shrink-0 self-stretch place-items-center rounded-2xl border"
       >
         <Info className="size-4" />
       </button>
