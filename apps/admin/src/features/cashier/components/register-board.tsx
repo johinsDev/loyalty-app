@@ -586,7 +586,7 @@ export function RegisterBoard({
                                 ) as string[],
                               })
                             }
-                            className="border-border text-muted-foreground hover:text-foreground grid aspect-square shrink-0 self-stretch place-items-center rounded-xl border"
+                            className="border-border text-muted-foreground hover:text-foreground grid w-10 shrink-0 self-stretch place-items-center rounded-xl border"
                           >
                             <Info className="size-3.5" />
                           </button>
@@ -1097,11 +1097,15 @@ export function RegisterBoard({
                           </div>
                           {active ? <Check className="text-primary size-5 flex-none" /> : null}
                         </button>
+                        {/* Explicit width, not `aspect-square`: a flex item sizes
+                            its width from content before `self-stretch` sets the
+                            height, so the ratio had nothing to square against and
+                            it rendered as a tall, narrow pill. */}
                         <button
                           type="button"
                           aria-label={t("viewDetail")}
                           onClick={rewardDetail}
-                          className="border-border text-muted-foreground hover:text-foreground grid aspect-square shrink-0 self-stretch place-items-center rounded-2xl border"
+                          className="border-border text-muted-foreground hover:text-foreground grid w-12 shrink-0 self-stretch place-items-center rounded-2xl border"
                         >
                           <Info className="size-4" />
                         </button>
