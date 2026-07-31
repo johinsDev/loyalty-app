@@ -126,6 +126,45 @@ describe("detectPromoUpsell", () => {
     expect(detectPromoUpsell(c, view({ rule }), facts(), NOW, [], variants)).toBeNull();
   });
 
+  it("prices the swap off what the register charged, not the list price", () => {
+    // The small sells at a promo 2000 (list 3000), so the line was charged 2000
+    // with no modifier. The catalog must carry that same effective price:
+    // 5000 - 2000 = 3000 extra. Feed it the list price instead and the engine
+    // derives a phantom -1000 modifier, promising the upgrade for 2000 — while
+    // the register goes on to charge the full 3000.
+    const rule = compileRule({
+      type: "nxm",
+      refs: [{ kind: "variant", id: "large" }],
+      buyQty: 2,
+      payQty: 1,
+    });
+    const c = cart(
+      line({ productId: "milktea", variantId: "large", unitAmountCents: 5000 }),
+      line({ productId: "milktea", variantId: "small", unitAmountCents: 2000 }),
+    );
+    const effective: VariantCatalog = {
+      milktea: [
+        { variantId: "large", priceCents: 5000 },
+        { variantId: "small", priceCents: 2000 },
+      ],
+    };
+    expect(detectPromoUpsell(c, view({ rule }), facts(), NOW, [], effective)).toMatchObject({
+      kind: "variant-swap",
+      toVariantId: "large",
+      extraCents: 3000,
+    });
+
+    const listPriced: VariantCatalog = {
+      milktea: [
+        { variantId: "large", priceCents: 5000 },
+        { variantId: "small", priceCents: 3000 },
+      ],
+    };
+    expect(detectPromoUpsell(c, view({ rule }), facts(), NOW, [], listPriced)).toMatchObject({
+      extraCents: 2000,
+    });
+  });
+
   it("no swap for a product with no sibling variants", () => {
     const rule = compileRule({
       type: "nxm",
