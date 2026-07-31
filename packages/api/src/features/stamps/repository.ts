@@ -24,8 +24,15 @@ import { applyStampProgress } from "./eligibility";
 import type { PurchaseHistoryItem, StampsAccrual, WalletView } from "./schemas";
 
 export type RecordResult =
-  | { kind: "recorded"; wallet: WalletView; purchaseId: string }
-  | { kind: "idempotent"; wallet: WalletView; purchaseId: string };
+  | {
+      kind: "recorded";
+      wallet: WalletView;
+      purchaseId: string;
+      /** Stamps this sale actually granted. Not `stampEligible`: with
+       *  `purchasesPerStamp > 1` an eligible sale only advances the counter. */
+      stampsEarned: number;
+    }
+  | { kind: "idempotent"; wallet: WalletView; purchaseId: string; stampsEarned: number };
 
 function toView(card: LoyaltyCardRow | null, acc: StampsAccrual): WalletView {
   return {
@@ -319,6 +326,8 @@ export class StampsRepository {
           kind: "idempotent",
           wallet: toView(card[0] ?? null, input.acc),
           purchaseId: existing[0].id,
+          // A replay grants nothing; the first call already did.
+          stampsEarned: 0,
         };
       }
 
@@ -482,11 +491,13 @@ export class StampsRepository {
       // completes. An ineligible purchase (paused / redemption-only / below-min
       // / category) moves neither the counter nor the balance.
       let wallet = toView(active, input.acc);
+      let stampsEarned = 0;
       if (input.stampEligible) {
         const progress = applyStampProgress(
           active.pendingPurchases,
           input.acc.purchasesPerStamp,
         );
+        stampsEarned = progress.grant ? 1 : 0;
         if (progress.grant) {
           await tx.insert(stamp).values({
             cardId: active.id,
@@ -555,6 +566,7 @@ export class StampsRepository {
         kind: "recorded",
         wallet,
         purchaseId,
+        stampsEarned,
       };
     });
   }

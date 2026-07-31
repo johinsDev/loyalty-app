@@ -30,6 +30,7 @@ class FakeRepo {
     kind: "recorded",
     wallet: view(),
     purchaseId: "p1",
+    stampsEarned: 1,
   };
 
   recordPurchase = vi.fn(async () => this.recordResult);
@@ -81,6 +82,7 @@ describe("StampsService.recordPurchase", () => {
       kind: "recorded",
       wallet: view({ currentStamps: 2 }),
       purchaseId: "p2",
+      stampsEarned: 1,
     };
     const { service, realtime, enqueue } = build(repo);
     await service.recordPurchase(ORG, STAFF, STORE, {
@@ -104,6 +106,7 @@ describe("StampsService.recordPurchase", () => {
       kind: "recorded",
       wallet: view({ currentStamps: 15 }),
       purchaseId: "p15",
+      stampsEarned: 1,
     };
     const { service, realtime, enqueue } = build(repo);
     const { wallet } = await service.recordPurchase(ORG, STAFF, STORE, {
@@ -128,6 +131,7 @@ describe("StampsService.recordPurchase", () => {
       kind: "idempotent",
       wallet: view({ currentStamps: 1 }),
       purchaseId: "p1",
+      stampsEarned: 0,
     };
     const { service, realtime, enqueue } = build(repo);
     const { wallet } = await service.recordPurchase(ORG, STAFF, STORE, {

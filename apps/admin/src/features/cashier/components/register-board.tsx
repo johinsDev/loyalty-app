@@ -39,9 +39,10 @@ import { CATALOG_STALE_MS } from "../catalog-cache";
 import { useActiveStoreId } from "../use-active-store";
 
 import { ProductPicker, type PickedLine } from "./product-picker";
-import { StorelessConfirm } from "./storeless-confirm";
+import { ConfirmSale, type ConfirmDiscount } from "./confirm-sale";
 
 type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
+export type SaleResult = inferRouterOutputs<AppRouter>["stamps"]["recordPurchase"];
 type AvailableReward =
   inferRouterOutputs<AppRouter>["rewards"]["availableForCustomer"]["items"][number];
 
@@ -122,7 +123,7 @@ export function RegisterBoard({
   wallet: WalletView;
   availableRewards: AvailableRewardsState;
   preselect?: PreselectReward;
-  onSuccess: (wallet: WalletView) => void;
+  onSuccess: (result: SaleResult) => void;
   onRewardPending: () => void;
   onCancel: () => void;
   onScan: () => void;
@@ -146,7 +147,7 @@ export function RegisterBoard({
   );
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [promoFilter, setPromoFilter] = useState<"customer" | "all">("customer");
-  const [storelessOpen, setStorelessOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // ── Catalog (middle) ────────────────────────────────────────────────────────
   const debouncedQuery = useDebounce(query.trim(), { wait: 250 });
@@ -252,6 +253,27 @@ export function RegisterBoard({
   const tierPct = net?.tierDiscountPct ?? 0;
   const total = net ? net.netPriceCents : Math.max(0, subtotal - promoDiscount - rewardDiscount);
 
+  // Same three discounts the cart draws, so the review sheet can't disagree
+  // with the line the cashier just read.
+  const confirmDiscounts: ConfirmDiscount[] = [];
+  if (mode === "items") {
+    if (promoDiscount > 0)
+      confirmDiscounts.push({
+        label: appliedPromo?.promo.name ?? t("promoDiscount"),
+        amountCents: promoDiscount,
+      });
+    if (rewardDiscount > 0)
+      confirmDiscounts.push({ label: t("rewardDiscountShort"), amountCents: rewardDiscount });
+    if (tierDiscount > 0)
+      confirmDiscounts.push({
+        label:
+          register?.tier && tierPct > 0
+            ? t("tierDiscountPct", { tier: register.tier.name, pct: tierPct })
+            : t("tierDiscountShort"),
+        amountCents: tierDiscount,
+      });
+  }
+
   const recordPurchase = useMutation(trpc.stamps.recordPurchase.mutationOptions());
 
   // Static promos catalog (left panel).
@@ -290,17 +312,15 @@ export function RegisterBoard({
     );
   const removeLine = (key: string) => setCart((c) => c.filter((i) => i.key !== key));
 
+  // A sale can't be voided, so it goes through a review sheet instead of firing
+  // on the button. The storeless warning rides inside that sheet.
   const onRecord = () => {
     if (mode === "total" ? priceCop === undefined : cart.length === 0) return;
-    if (!activeStoreId) {
-      setStorelessOpen(true);
-      return;
-    }
-    void submit();
+    setConfirmOpen(true);
   };
 
   const submit = async () => {
-    setStorelessOpen(false);
+    setConfirmOpen(false);
     try {
       const view = await recordPurchase.mutateAsync(
         mode === "total"
@@ -333,6 +353,14 @@ export function RegisterBoard({
             },
       );
       onSuccess(view);
+      // The success used to replace this whole view, so the cart died with the
+      // unmount. It's a modal now and the board stays mounted underneath —
+      // leaving a charged cart sitting behind it, one tap from being charged
+      // again. Clear the sale's state explicitly instead of relying on unmount.
+      setCart([]);
+      setOrderNote("");
+      setPriceCop(undefined);
+      setChosenPromoId(null);
       setInlineRewardId(null);
       toast.success(t("purchaseRecorded"));
     } catch (err) {
@@ -1212,10 +1240,30 @@ export function RegisterBoard({
         />
       ) : null}
 
-      <StorelessConfirm
-        open={storelessOpen}
-        onOpenChange={setStorelessOpen}
+      <ConfirmSale
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
         onConfirm={() => void submit()}
+        pending={recordPurchase.isPending}
+        customerName={customerName}
+        lines={
+          mode === "items"
+            ? cart.map((i) => ({
+                key: i.key,
+                name: i.name,
+                qty: i.qty,
+                amountCents: i.unitAmountCents * i.qty,
+              }))
+            : []
+        }
+        subtotalCents={
+          mode === "items" ? (preview.data?.subtotalCents ?? subtotal) : null
+        }
+        discounts={confirmDiscounts}
+        totalCents={mode === "total" ? Math.round((priceCop ?? 0) * 100) : total}
+        earned={mode === "items" ? earn : null}
+        hasStore={Boolean(activeStoreId)}
+        formatMoney={formatCop}
       />
 
       {/* Promo / reward detail — what it is + the condition to meet. */}

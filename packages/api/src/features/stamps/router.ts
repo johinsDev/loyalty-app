@@ -33,6 +33,7 @@ import {
   historyInputSchema,
   previewPurchaseInputSchema,
   recordPurchaseInputSchema,
+  type SaleResultView,
 } from "./schemas";
 import { StampsService } from "./service";
 
@@ -482,7 +483,7 @@ export const stampsRouter = router({
 
       // Stamps always records now (no completion / no block). Single purchase
       // advances every loyalty track.
-      const { wallet, purchaseId } = await buildService(ctx).recordPurchase(
+      const { wallet, purchaseId, stampsEarned } = await buildService(ctx).recordPurchase(
         org,
         ctx.session.user.id,
         storeId,
@@ -504,7 +505,14 @@ export const stampsRouter = router({
             tierGraceUntil: loyalty.tierGraceUntil,
           },
         })
-        .catch(() => ({ earned: 0, balance: 0, tierUp: null }));
+        // Best-effort, but never silent: this swallowed a live `TypeError` for
+        // who knows how long, reporting 0 points on sales that had already
+        // credited them — and taking the tier recompute and the recap's points
+        // line down with it.
+        .catch((e: unknown) => {
+          console.error("points.earnForPurchase failed", e);
+          return { earned: 0, balance: 0, tierUp: null };
+        });
       // Streaks track visits, not stamps: any real purchase advances while the
       // stamps track is on — immune to min/category/per-N accrual rules.
       if (stampsOn && !isRedemptionOnly) {
@@ -542,7 +550,18 @@ export const stampsRouter = router({
         { tierUp: points.tierUp ?? null },
       );
 
-      return wallet;
+      // The register's success summary states what THIS sale earned. Returning
+      // only the wallet made it print the stamp balance even when the sale
+      // earned no stamp — the one number that hadn't moved — while hiding the
+      // points it did earn. Everything here was already computed above.
+      return {
+        wallet,
+        purchaseId,
+        totalCents: netPrice,
+        earned: { stamps: stampsEarned, points: points.earned },
+        pointsBalance: points.balance,
+        tierUp: points.tierUp ?? null,
+      } satisfies SaleResultView;
     }),
 
   walletForCustomer: staffProcedure

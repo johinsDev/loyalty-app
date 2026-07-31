@@ -112,6 +112,19 @@ export interface WalletView {
   sequence: number;
 }
 
+/** What `recordPurchase` hands back to the register, so the success summary can
+ *  state what THIS sale did rather than the customer's standing balances.
+ *  `earned` is per-sale and may be 0 on a track that is enabled but didn't
+ *  accrue (below the minimum ticket, or mid-way through `purchasesPerStamp`). */
+export interface SaleResultView {
+  wallet: WalletView;
+  purchaseId: string;
+  totalCents: number;
+  earned: { stamps: number; points: number };
+  pointsBalance: number;
+  tierUp: { tierName: string } | null;
+}
+
 export interface PurchaseHistoryItem {
   id: string;
   priceCents: number;
