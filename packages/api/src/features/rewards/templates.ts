@@ -14,7 +14,8 @@ export interface RewardTemplate {
   icon: string;
   backgroundCss: string;
   description: { es: string; en: string };
-  benefit: RewardBenefitConfig;
+  /** Null when the config can only be made against the catalog. */
+  benefit: RewardBenefitConfig | null;
   costPreset?: { stampsRequired?: number; pointsCost?: number };
   fulfillmentNote?: string;
 }
@@ -42,12 +43,20 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   },
   {
     key: "upsize",
-    type: "freeProduct",
+    // Was a `freeProduct` aimed at a size MODIFIER — the older way of modelling
+    // sizes. This catalog models them as variants, so the template steered
+    // admins at the wrong mechanism for their own data.
+    type: "variantUpgrade",
     name: { es: "Agranda tu bebida", en: "Upsize your drink" },
     icon: "⬆️",
     backgroundCss: "linear-gradient(135deg, #7c5cff, #4527a0)",
-    description: { es: "El agrandado va por nuestra cuenta (elige el adicional de tamaño).", en: "The upsize is on us (pick the size modifier)." },
-    benefit: { type: "freeProduct", refs: [] },
+    description: {
+      es: "Traé tu bebida mediana y te la subimos a grande; el premio cubre la diferencia.",
+      en: "Bring your medium drink and we'll upgrade it; the reward covers the difference.",
+    },
+    // Null so the wizard lands on the benefit step and the picker forces a
+    // catalog-backed choice, instead of persisting a config that can't parse.
+    benefit: null,
     costPreset: { stampsRequired: 3 },
   },
   {

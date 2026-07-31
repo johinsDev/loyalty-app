@@ -598,7 +598,7 @@
       "amountOff": "$5,000 flat discount",
       "percentOff": "10% off a category, product or the whole order",
       "freeAddon": "A courtesy add-on (pearls, topping…); the cashier applies it at the register",
-      "variantUpgrade": "Free upsize (Medium → Large); the cashier picks the size at the register",
+      "variantUpgrade": "Bring a Medium and we upgrade it to Large; the reward covers the difference.",
       "experience": "A non-monetary perk (skip the line, premium packaging…)"
     },
     "step": {
@@ -1447,7 +1447,10 @@
     "rewardScannedUnavailable": "This reward is no longer available. Remove it to continue.",
     "removeReward": "Remove reward",
     "rewardTotalModeWarning": "A reward is selected, but it can't be redeemed in \"By total\" mode. Switch to \"By products\" or remove the reward.",
-    "switchToItemsMode": "Switch to by products"
+    "switchToItemsMode": "Switch to by products",
+    "rewardUpgradeMissingSource": "Add a {from} to upgrade it to {to}.",
+    "rewardUpgradeLine": "1 upgraded to {to} (reward)",
+    "rewardUpgradeNoPromo": "This unit uses the reward, so it doesn't get the promo."
   },
   "Admin": {
     "menu": "Menu",

@@ -49,7 +49,16 @@ export function compileRewardRule(config: RewardBenefitConfig): PromoRule | null
     }
     case "experience":
       return null;
-    default:
+    case "freeAddon":
+    case "variantUpgrade":
+      // Evaluated directly against the cart (`pos-evaluate`), not through the
+      // rule engine — there is no rule to compile. Named explicitly because
+      // `BenefitStep` calls this to prove a config is sound, and a silent
+      // `default` made that check a no-op for exactly these two types.
       return null;
+    default: {
+      const never: never = config;
+      return never;
+    }
   }
 }

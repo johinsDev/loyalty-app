@@ -598,7 +598,7 @@
       "amountOff": "$5.000 de descuento directo",
       "percentOff": "10% en una categoría, producto o toda la compra",
       "freeAddon": "Una adición de cortesía (perlas, topping…); el cajero la aplica en caja",
-      "variantUpgrade": "Agranda gratis (Mediano → Grande); el cajero elige el tamaño en caja",
+      "variantUpgrade": "Traé un Mediano y lo subimos a Grande; el premio cubre la diferencia.",
       "experience": "Un beneficio sin valor monetario (sáltate la fila, empaque premium…)"
     },
     "step": {
@@ -1447,7 +1447,10 @@
     "rewardScannedUnavailable": "Este premio ya no está disponible. Quitalo para continuar.",
     "removeReward": "Quitar premio",
     "rewardTotalModeWarning": "Hay un premio seleccionado, pero en modo \"Por total\" no se puede canjear. Cambiá a \"Por productos\" o quitá el premio.",
-    "switchToItemsMode": "Cambiar a por productos"
+    "switchToItemsMode": "Cambiar a por productos",
+    "rewardUpgradeMissingSource": "Agregá un {from} para subirlo a {to}.",
+    "rewardUpgradeLine": "1 sube a {to} (premio)",
+    "rewardUpgradeNoPromo": "Esta unidad usa el premio, por eso no lleva la promo."
   },
   "Admin": {
     "menu": "Menú",

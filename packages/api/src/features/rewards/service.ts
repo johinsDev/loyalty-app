@@ -29,6 +29,7 @@ import {
   verifyRewardClaimToken,
 } from "./claim-token";
 import { affordableWith, deriveItem } from "./derive";
+import { PromoRepository } from "../promotions";
 import { rewardBenefitSummary } from "./format";
 import {
   type Balances,
@@ -265,7 +266,7 @@ export class RewardsService {
         message: "Published rewards are immutable — archive and create a new one",
       });
     const { draft, state } = await rewardWizard.advance(
-      { db: this.repo.db, organizationId: orgId, userId, services: { repo: this.repo } },
+      { db: this.repo.db, organizationId: orgId, userId, services: { repo: this.repo, promoRepo: new PromoRepository(this.repo.db) } },
       current,
       step,
       input,
