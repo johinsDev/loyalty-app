@@ -108,18 +108,18 @@ export function VariantAxisField({
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-display text-lg leading-snug font-semibold tracking-tight">
+          <p className="font-display text-xl leading-snug font-semibold tracking-tight">
             {headline}
           </p>
-          <p className="text-muted-foreground/70 mt-0.5 text-xs font-semibold">
+          <p className="text-muted-foreground/70 mt-0.5 text-sm font-semibold">
             {t("upgradeScopeHint")}
           </p>
         </div>
         <div className="flex-none text-right">
-          <p className="text-muted-foreground/70 text-[0.625rem] font-extrabold tracking-wider uppercase">
+          <p className="text-muted-foreground/70 text-xs font-extrabold tracking-wider uppercase">
             {t("upgradeCostLabel")}
           </p>
-          <p className="text-base font-extrabold">{cost}</p>
+          <p className="text-lg font-extrabold">{cost}</p>
         </div>
       </div>
 
@@ -133,7 +133,7 @@ export function VariantAxisField({
           />
         </div>
         {isPending ? (
-          <p className="text-muted-foreground border-border border-t px-3.5 py-3 text-xs font-semibold">
+          <p className="text-muted-foreground border-border border-t px-3.5 py-3 text-sm font-semibold">
             {t("upgradeLoading")}
           </p>
         ) : (
@@ -171,7 +171,7 @@ export function VariantAxisField({
       ) : null}
 
       {/* A confirmation, not a question — settled unless the admin opens it. */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold">
         {editingAxis ? (
           <AxisEditor value={value} axes={axes} onChange={onChange} />
         ) : (
@@ -196,7 +196,7 @@ export function VariantAxisField({
         ) : null}
       </div>
 
-      <p className="text-muted-foreground/70 text-xs font-semibold">{t("upgradeStackingNote")}</p>
+      <p className="text-muted-foreground/70 text-sm font-semibold">{t("upgradeStackingNote")}</p>
     </div>
   );
 }
@@ -240,7 +240,7 @@ function CoverageBlock({
   return (
     <div className="border-border border-t">
       <div className="flex items-center gap-2 px-3.5 pt-2.5">
-        <span className="text-muted-foreground text-[0.625rem] font-extrabold tracking-wider uppercase">
+        <span className="text-muted-foreground text-xs font-extrabold tracking-wider uppercase">
           {hasAxes
             ? t("upgradeCoverageHeader", { axis: axisName, covered, total })
             : t("upgradeNoVariantsHeader")}
@@ -256,7 +256,7 @@ function CoverageBlock({
       </div>
       <ul className="space-y-0.5 px-3.5 py-2">
         {rows.slice(0, 8).map((p) => (
-          <li key={p.id} className="flex items-center gap-2 text-xs font-semibold">
+          <li key={p.id} className="flex items-center gap-2 text-sm font-semibold">
             <span
               className={`size-1.5 flex-none rounded-full ${p.deltaCents != null ? "bg-emerald-500" : "bg-amber-500"}`}
             />
@@ -268,13 +268,13 @@ function CoverageBlock({
                 ? t("upgradeRowOk")
                 : t(`upgradeReason.${p.reason ?? "no-axis"}`)}
             </span>
-            <span className="w-16 flex-none text-right tabular-nums">
+            <span className="w-20 flex-none text-right tabular-nums">
               {p.deltaCents != null ? fmtCop(p.deltaCents) : t("upgradeRowNa")}
             </span>
           </li>
         ))}
         {rows.length > 8 ? (
-          <li className="text-muted-foreground/70 text-xs font-semibold">
+          <li className="text-muted-foreground/70 text-sm font-semibold">
             {t("upgradeMissingMore", { n: rows.length - 8 })}
           </li>
         ) : null}
@@ -309,7 +309,7 @@ function Callout({
   if (axes === 0) {
     return (
       <Box tone="danger" text={t("upgradeNoAxes")}>
-        <Link href="/products" className="text-xs font-extrabold underline">
+        <Link href="/products" className="text-sm font-extrabold underline">
           {t("upgradeNoAxesCta")}
         </Link>
       </Box>
@@ -363,7 +363,7 @@ function Box({
       : "border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400";
   return (
     <div className={`flex flex-wrap items-center gap-3 rounded-xl border px-3.5 py-2.5 ${cls}`}>
-      <p className="min-w-0 flex-1 text-xs font-semibold">{text}</p>
+      <p className="min-w-0 flex-1 text-sm font-semibold">{text}</p>
       {children}
     </div>
   );
@@ -415,7 +415,7 @@ function AxisEditor({
           ))}
         </SelectContent>
       </Select>
-      <span className="text-muted-foreground text-xs font-semibold">→</span>
+      <span className="text-muted-foreground text-sm font-semibold">→</span>
       <Select
         value={value.toValueLabel || undefined}
         onValueChange={(v) => v && onChange({ ...value, toValueLabel: v })}
