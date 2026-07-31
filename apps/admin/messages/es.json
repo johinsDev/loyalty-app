@@ -629,7 +629,21 @@
       "maxDiscount": "Tope de descuento ($)",
       "optional": "opcional",
       "experienceTitle": "Recompensa de experiencia",
-      "experienceHint": "No tiene efecto en el precio. La nota para el cajero se define en el paso de Diseño."
+      "experienceHint": "No tiene efecto en el precio. La nota para el cajero se define en el paso de Diseño.",
+      "upgradeLoading": "Leyendo la carta…",
+      "upgradePickAxis": "Elegí la opción",
+      "upgradePickFrom": "Desde",
+      "upgradePickTo": "Hasta",
+      "upgradeCoverage": "{covered} de {total} productos",
+      "upgradeMissing": "Sin esta opción: {names}",
+      "upgradeMissingMore": "y {n} más",
+      "upgradeNoAxes": "Ninguno de los productos elegidos tiene opciones de variante.",
+      "upgradeNoAxesCta": "Ver productos",
+      "upgradeCost": "Cubrís {amount} por canje",
+      "upgradeCostRange": "Cubrís entre {min} y {max} por canje",
+      "upgradeNoneEligible": "Ningún producto del alcance puede subir con este par. Elegí otros valores o cambiá el alcance.",
+      "upgradeStackingNote": "La unidad mejorada no acumula promociones: el descuento de una promo se calcula sobre el resto del ticket.",
+      "upgradeUnknownRefs": "{n} producto(s) del alcance ya no existen — quitalos."
     },
     "cost": {
       "stamps": "{n} sellos",

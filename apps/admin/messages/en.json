@@ -629,7 +629,21 @@
       "maxDiscount": "Discount cap ($)",
       "optional": "optional",
       "experienceTitle": "Experience reward",
-      "experienceHint": "No effect on price. The cashier note is set in the Design step."
+      "experienceHint": "No effect on price. The cashier note is set in the Design step.",
+      "upgradeLoading": "Reading the menu…",
+      "upgradePickAxis": "Pick the option",
+      "upgradePickFrom": "From",
+      "upgradePickTo": "To",
+      "upgradeCoverage": "{covered} of {total} products",
+      "upgradeMissing": "Without this option: {names}",
+      "upgradeMissingMore": "and {n} more",
+      "upgradeNoAxes": "None of the selected products has variant options.",
+      "upgradeNoAxesCta": "View products",
+      "upgradeCost": "You cover {amount} per redemption",
+      "upgradeCostRange": "You cover between {min} and {max} per redemption",
+      "upgradeNoneEligible": "No product in scope can be upgraded with this pair. Pick other values or change the scope.",
+      "upgradeStackingNote": "The upgraded unit doesn't stack with promos: a promo discount applies to the rest of the ticket.",
+      "upgradeUnknownRefs": "{n} product(s) in scope no longer exist — remove them."
     },
     "cost": {
       "stamps": "{n} stamps",
