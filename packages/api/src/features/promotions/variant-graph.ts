@@ -177,3 +177,30 @@ export function pairOutcomes(
     return { productId, deltaCents: null, reason: "not-pricier" };
   });
 }
+
+/** Wire shape for the admin's axis picker. */
+export interface VariantAxesView {
+  productCount: number;
+  unknownRefs: { kind: string; id: string }[];
+  axes: {
+    optionName: string;
+    values: AxisValue[];
+    coveredCount: number;
+    missing: { id: string; name: string }[];
+  }[];
+  pair: null | {
+    optionName: string;
+    fromValueLabel: string;
+    toValueLabel: string;
+    eligibleCount: number;
+    minDeltaCents: number;
+    maxDeltaCents: number;
+    products: {
+      id: string;
+      name: string;
+      productId: string;
+      deltaCents: number | null;
+      reason: AxisMissReason | null;
+    }[];
+  };
+}

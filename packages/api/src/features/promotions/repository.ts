@@ -21,16 +21,23 @@ import {
   type PromoTranslationRow,
 } from "@loyalty/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, getTableColumns, gt, gte, inArray, isNull, like, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, gt, gte, inArray, isNull, like, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
 
-import { loadCategoryAncestry, withAncestors } from "../_shared/category-tree";
+import { loadCategoryAncestry, withAncestors, withDescendants } from "../_shared/category-tree";
 import { buildOrderBy, pageCountOf, pageOffset, type ListResult } from "../_shared/list";
 import type { LocaleContext } from "../_shared/localize";
 import { availableAtStore } from "../_shared/store-availability";
 import { slugify, slugSuffix } from "../_shared/slugify";
 import { benefitSummary, type SummaryLocale } from "./format";
 import type { ItemRef } from "./schemas";
-import { upgradeTargets, type UpgradeTarget, type VariantNode } from "./variant-graph";
+import {
+  axisSummaries,
+  pairOutcomes,
+  upgradeTargets,
+  type UpgradeTarget,
+  type VariantAxesView,
+  type VariantNode,
+} from "./variant-graph";
 import type {
   AdminListInput,
   PromoAnalytics,
@@ -676,6 +683,68 @@ export class PromoRepository {
     }));
   }
 
+  /**
+   * The products a set of item refs covers, for authoring a variant-swap reward.
+   *
+   * `[]` refs means the whole menu — the coverage panel is what keeps that from
+   * being a blind choice. A `variant` ref resolves to its PRODUCT: under swap
+   * semantics, scoping to "Classic · Grande" would mean no Mediano is ever in
+   * scope, i.e. a reward that can never fire. The axis decides the variants.
+   */
+  async productsForRefs(
+    orgId: string,
+    refs: ItemRef[],
+  ): Promise<{ productIds: string[]; unknownRefs: ItemRef[] }> {
+    const productRefs = refs.filter((r) => r.kind === "product").map((r) => r.id);
+    const variantRefs = refs.filter((r) => r.kind === "variant").map((r) => r.id);
+    const categoryRefs = refs.filter((r) => r.kind === "category").map((r) => r.id);
+
+    if (refs.length === 0) {
+      const all = await this.db
+        .select({ id: product.id })
+        .from(product)
+        .where(and(eq(product.organizationId, orgId), ne(product.status, "archived")));
+      return { productIds: all.map((p) => p.id), unknownRefs: [] };
+    }
+
+    const [fromVariants, fromCategories] = await Promise.all([
+      this.productsOfVariants(variantRefs),
+      categoryRefs.length === 0
+        ? Promise.resolve<string[]>([])
+        : (async () => {
+            const ancestry = await loadCategoryAncestry(this.db, orgId, {
+              includeArchived: true,
+            });
+            const rows = await this.db
+              .select({ productId: productCategory.productId })
+              .from(productCategory)
+              .where(inArray(productCategory.categoryId, withDescendants(ancestry, categoryRefs)));
+            return rows.map((r) => r.productId);
+          })(),
+    ]);
+
+    const candidates = [...new Set([...productRefs, ...fromVariants, ...fromCategories])];
+    const live =
+      candidates.length === 0
+        ? []
+        : await this.db
+            .select({ id: product.id })
+            .from(product)
+            .where(
+              and(
+                eq(product.organizationId, orgId),
+                ne(product.status, "archived"),
+                inArray(product.id, candidates),
+              ),
+            );
+    const liveIds = new Set(live.map((p) => p.id));
+    // A ref whose product is gone would otherwise sit in the config invisibly.
+    const unknownRefs = refs.filter(
+      (r) => r.kind === "product" && !liveIds.has(r.id),
+    );
+    return { productIds: [...liveIds], unknownRefs };
+  }
+
   /** The products those variants belong to. */
   async productsOfVariants(variantIds: string[]): Promise<string[]> {
     if (variantIds.length === 0) return [];
@@ -703,6 +772,69 @@ export class PromoRepository {
     const productIds = await this.productsOfVariants(variantIds);
     const nodes = await this.variantNodes(productIds);
     return upgradeTargets(nodes, optionName, fromValueLabel, toValueLabel);
+  }
+
+  /**
+   * What the admin needs to author a variant-swap reward against the real
+   * catalog instead of typing three strings and hoping.
+   *
+   * Returns the option axes that actually exist across the products in scope,
+   * how many of them carry each one, which are left out, and — once a from→to
+   * pair is chosen — what it would cost per product or why it doesn't apply.
+   * Partial coverage is the normal case, not an error: in this catalog the
+   * "Frutales" category has variants on 1 of its 4 products.
+   */
+  async variantAxes(
+    orgId: string,
+    refs: ItemRef[],
+    pair?: { optionName: string; fromValueLabel: string; toValueLabel: string },
+  ): Promise<VariantAxesView> {
+    const { productIds, unknownRefs } = await this.productsForRefs(orgId, refs);
+    if (productIds.length === 0) {
+      return { productCount: 0, unknownRefs, axes: [], pair: null };
+    }
+
+    const [nodes, names] = await Promise.all([
+      this.variantNodes(productIds),
+      this.db
+        .select({ id: product.id, name: product.name })
+        .from(product)
+        .where(inArray(product.id, productIds)),
+    ]);
+    const nameById = new Map(names.map((n) => [n.id, n.name]));
+    const named = (id: string) => ({ id, name: nameById.get(id) ?? id });
+
+    const axes = axisSummaries(nodes, productIds).map((a) => ({
+      optionName: a.optionName,
+      values: a.values,
+      coveredCount: a.coveredCount,
+      missing: a.missingProductIds.map(named),
+    }));
+
+    if (!pair) return { productCount: productIds.length, unknownRefs, axes, pair: null };
+
+    const outcomes = pairOutcomes(
+      nodes,
+      productIds,
+      pair.optionName,
+      pair.fromValueLabel,
+      pair.toValueLabel,
+    );
+    const deltas = outcomes
+      .map((o) => o.deltaCents)
+      .filter((d): d is number => d != null);
+    return {
+      productCount: productIds.length,
+      unknownRefs,
+      axes,
+      pair: {
+        ...pair,
+        eligibleCount: deltas.length,
+        minDeltaCents: deltas.length ? Math.min(...deltas) : 0,
+        maxDeltaCents: deltas.length ? Math.max(...deltas) : 0,
+        products: outcomes.map((o) => ({ ...named(o.productId), ...o })),
+      },
+    };
   }
 
   /** addonId → its catalog price delta (for reward add-on waiving at POS). */
