@@ -1478,7 +1478,10 @@
     "rewardUpgradeLine": "Entregá 1 {to}",
     "rewardUpgradeNoPromo": "Premio: cubre la diferencia · esta unidad no acumula promo",
     "confirmUpgradeNote": "Entregá 1 {to}: el premio cubre {amount}. Esa unidad no lleva promo.",
-    "rewardDiscountOn": "Premio en {item}"
+    "rewardDiscountOn": "Premio en {item}",
+    "rewardApply": "Aplicar este premio",
+    "rewardRemove": "Quitar el premio",
+    "rewardScopeLabel": "Aplica en"
   },
   "Admin": {
     "menu": "Menú",

@@ -238,7 +238,14 @@ export function RegisterBoard({
   // `eligByReward` empty, which read as "everything applies".
   const cartEvaluated = cart.length > 0 && preview.isSuccess;
   const rewardsScrollRef = useRef<HTMLDivElement>(null);
-  const [detailView, setDetailView] = useState<{ title: string; lines: string[] } | null>(null);
+  // `apply` turns the detail sheet into a decision instead of a dead end: the
+  // cashier reads what the reward does and redeems it without hunting back for
+  // the row. Absent for promo details, which have no equivalent commit step.
+  const [detailView, setDetailView] = useState<{
+    title: string;
+    lines: string[];
+    apply?: { label: string; disabled?: boolean; run: () => void };
+  } | null>(null);
 
   // Track the promo the server actually applied (best-of + exclusivity), so the
   // cart line and the promos panel agree with the total.
@@ -561,10 +568,10 @@ export function RegisterBoard({
                           <button
                             type="button"
                             onClick={() => setChosenPromoId(active ? null : a.promo.id)}
-                            className={`flex flex-1 items-center gap-2 rounded-xl p-2 text-left transition ${
+                            className={`flex flex-1 items-center gap-2 rounded-xl border p-2 text-left transition-colors ${
                               active
-                                ? "border-primary bg-primary/5 border"
-                                : "bg-muted/50 hover:bg-muted"
+                                ? "border-primary bg-primary/5"
+                                : "border-transparent bg-muted/50 hover:bg-muted"
                             }`}
                           >
                             <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
@@ -635,6 +642,218 @@ export function RegisterBoard({
               )}
             </div>
           </div>
+
+          {/* Listos para canjear. Sits beside Promos because both answer the
+              same question — what can I offer this customer — and because this
+              column scrolls on its own. Under the cart it was boxed into a
+              240px scroller: 2.5 of 11 rewards visible, detail buttons clipped
+              against the panel edge. The panel stays mounted whenever the cart
+              is itemized: an empty list is a message, not an absence. */}
+          {mode === "items" ? (
+            <div className="bg-card border-border rounded-3xl border p-4 shadow-sm">
+              <div className="text-primary mb-2 flex items-center gap-1.5 text-xs font-extrabold">
+                <Gift className="size-4" />
+                {t("readyToRedeem")}
+                {rewards.length > 0 ? (
+                  <span className="bg-primary/10 text-primary ml-auto rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold">
+                    {rewards.length}
+                  </span>
+                ) : null}
+              </div>
+              <div className="relative">
+                <div
+                  ref={rewardsScrollRef}
+                  className="scrollbar-hide max-h-[26rem] space-y-2 overflow-y-auto pb-1"
+                >
+                  {availableRewards.isError ? (
+                    <div className="space-y-2 py-3">
+                      <p className="text-muted-foreground text-xs font-semibold">
+                        {t("rewardsLoadError")}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-10"
+                        onClick={availableRewards.refetch}
+                      >
+                        {t("retry")}
+                      </Button>
+                    </div>
+                  ) : availableRewards.isPending ? (
+                    <p className="text-muted-foreground py-3 text-xs font-semibold">
+                      {t("searching")}
+                    </p>
+                  ) : rewards.length === 0 && pinnedPreselect == null ? (
+                    availableRewards.publishedCount === 0 ? (
+                      <div className="space-y-2 py-3">
+                        <p className="text-muted-foreground text-xs font-semibold">
+                          {t("rewardsEmpty")}
+                        </p>
+                        <Link
+                          href="/register/rewards"
+                          className="text-primary text-xs font-extrabold underline"
+                        >
+                          {t("rewardsCatalogLink")}
+                        </Link>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground py-3 text-xs font-semibold">
+                        {t("rewardsNoneForMember", { count: availableRewards.publishedCount })}
+                      </p>
+                    )
+                  ) : null}
+
+                  {/* Why the eligibility marks are missing, when they are. */}
+                  {!availableRewards.isError &&
+                  (rewards.length > 0 || pinnedPreselect != null) ? (
+                    cart.length === 0 ? (
+                      <p className="text-muted-foreground/70 pb-1 text-xs font-semibold">
+                        {t("rewardsAddItemsHint")}
+                      </p>
+                    ) : preview.isError ? (
+                      <div className="space-y-2 pb-1">
+                        <p className="text-muted-foreground text-xs font-semibold">
+                          {t("rewardEvalError")}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-10"
+                          onClick={() => void preview.refetch()}
+                        >
+                          {t("retry")}
+                        </Button>
+                      </div>
+                    ) : preview.isPending ? (
+                      <p className="text-muted-foreground/70 pb-1 text-xs font-semibold">
+                        {t("rewardEvalPending")}
+                      </p>
+                    ) : null
+                  ) : null}
+
+                  {pinnedPreselect ? (
+                    <PinnedPreselectRow
+                      preselect={pinnedPreselect}
+                      active={inlineRewardId === pinnedPreselect.rewardId}
+                      elig={eligByReward.get(pinnedPreselect.rewardId)}
+                      evaluated={cartEvaluated}
+                      onToggle={() =>
+                        setInlineRewardId(
+                          inlineRewardId === pinnedPreselect.rewardId
+                            ? null
+                            : pinnedPreselect.rewardId,
+                        )
+                      }
+                      onDetail={setDetailView}
+                    />
+                  ) : null}
+
+                  {rewards.map((rw) => {
+                    const active = rw.rewardId === inlineRewardId;
+                    const elig = eligByReward.get(rw.rewardId);
+                    // Ineligible only once a preview actually succeeded for this
+                    // cart; the selected reward stays clickable so it can be
+                    // deselected.
+                    const ineligible = cartEvaluated && elig != null && !elig.eligible;
+                    const blocked = ineligible && !active;
+                    const rewardDetail = () => {
+                      // Cost alone made the detail modal read "9 sellos" and say
+                      // nothing about what the socio actually gets.
+                      const lines = [
+                        rw.benefitSummary,
+                        rw.description,
+                        // What actually qualifies. "en productos seleccionados"
+                        // told the cashier nothing they could repeat to a customer.
+                        rw.scopeNames.length > 0
+                          ? `${t("rewardScopeLabel")}: ${rw.scopeNames.join(", ")}`
+                          : null,
+                        rewardCostText(rw),
+                        rw.fulfillmentNote
+                          ? `${t("rewardFulfillmentLabel")}: ${rw.fulfillmentNote}`
+                          : null,
+                        ineligible ? reasonLabel(elig?.reason, t, elig?.upgrade) : null,
+                      ].filter((l): l is string => Boolean(l?.trim()));
+                      setDetailView({
+                        title: rw.name,
+                        lines,
+                        apply: {
+                          label: active ? t("rewardRemove") : t("rewardApply"),
+                          // An ineligible reward can still be removed, never added.
+                          disabled: blocked,
+                          run: () => setInlineRewardId(active ? null : rw.rewardId),
+                        },
+                      });
+                    };
+                    return (
+                      <div key={rw.rewardId} className="flex items-stretch gap-1">
+                        <button
+                          type="button"
+                          disabled={blocked}
+                          onClick={() => setInlineRewardId(active ? null : rw.rewardId)}
+                          // Border width is constant; only its colour changes.
+                          // Selecting used to swap `border` for `border-2`, and
+                          // that 1px reflowed the row — it read as a bounce.
+                          className={`flex flex-1 items-center justify-between gap-2 rounded-2xl border-2 p-3.5 text-left transition-colors ${
+                            active
+                              ? "border-primary bg-primary/5"
+                              : blocked
+                                ? "border-border/60 cursor-not-allowed opacity-45"
+                                : "border-border hover:border-primary/40"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <span className="block truncate text-sm font-bold">{rw.name}</span>
+                            {ineligible ? (
+                              <span className="text-muted-foreground/70 mt-0.5 block truncate text-xs font-semibold">
+                                {reasonLabel(elig?.reason, t, elig?.upgrade)}
+                              </span>
+                            ) : null}
+                          </div>
+                          {active ? <Check className="text-primary size-5 flex-none" /> : null}
+                        </button>
+                        {/* Explicit width, not `aspect-square`: a flex item sizes
+                            its width from content before `self-stretch` sets the
+                            height, so the ratio had nothing to square against and
+                            it rendered as a tall, narrow pill. */}
+                        <button
+                          type="button"
+                          aria-label={t("viewDetail")}
+                          onClick={rewardDetail}
+                          className="border-border text-muted-foreground hover:text-foreground grid w-12 shrink-0 self-stretch place-items-center rounded-2xl border"
+                        >
+                          <Info className="size-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Scroll affordance: a fade + a tappable down-arrow when the list
+                    overflows (the hidden scrollbar didn't read as scrollable). */}
+                {rewards.length > 3 ? (
+                  <>
+                    <div className="from-card pointer-events-none absolute inset-x-0 bottom-0 h-8 rounded-b-3xl bg-gradient-to-t to-transparent" />
+                    <button
+                      type="button"
+                      aria-label={t("scrollMore")}
+                      onClick={() =>
+                        rewardsScrollRef.current?.scrollBy({ top: 140, behavior: "smooth" })
+                      }
+                      className="bg-card border-border text-primary absolute right-1.5 bottom-1.5 grid size-8 place-items-center rounded-full border shadow-md"
+                    >
+                      <ChevronDown className="size-4" />
+                    </button>
+                  </>
+                ) : null}
+              </div>
+              {inlineRewardId && rewardPreview && !rewardPreview.ok ? (
+                <p className="text-muted-foreground mt-2 text-xs font-semibold">
+                  {rewardPreview.reason === "reward-item-not-in-cart"
+                    ? t("rewardAddItemHint")
+                    : t("inlineRewardError")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           {/* Tips para el cajero */}
           {tips.length > 0 ? (
@@ -955,199 +1174,6 @@ export function RegisterBoard({
             </div>
           </div>
 
-          {/* Listos para canjear. The panel stays mounted whenever the cart is
-              itemized: an empty list is now a message, not an absence. Every
-              state renders INSIDE the max-h-60 scroller below — the panel is
-              `flex-none` next to a `flex-1` cart, so height added outside that
-              box pushes the cart's total and Record button off screen. */}
-          {mode === "items" ? (
-            <div className="bg-card border-border flex-none rounded-3xl border p-4 shadow-sm">
-              <div className="text-primary mb-2 flex items-center gap-1.5 text-xs font-extrabold">
-                <Gift className="size-4" />
-                {t("readyToRedeem")}
-                {rewards.length > 0 ? (
-                  <span className="bg-primary/10 text-primary ml-auto rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold">
-                    {rewards.length}
-                  </span>
-                ) : null}
-              </div>
-              <div className="relative">
-                <div
-                  ref={rewardsScrollRef}
-                  className="scrollbar-hide max-h-60 space-y-2 overflow-y-auto pb-1"
-                >
-                  {availableRewards.isError ? (
-                    <div className="space-y-2 py-3">
-                      <p className="text-muted-foreground text-xs font-semibold">
-                        {t("rewardsLoadError")}
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-10"
-                        onClick={availableRewards.refetch}
-                      >
-                        {t("retry")}
-                      </Button>
-                    </div>
-                  ) : availableRewards.isPending ? (
-                    <p className="text-muted-foreground py-3 text-xs font-semibold">
-                      {t("searching")}
-                    </p>
-                  ) : rewards.length === 0 && pinnedPreselect == null ? (
-                    availableRewards.publishedCount === 0 ? (
-                      <div className="space-y-2 py-3">
-                        <p className="text-muted-foreground text-xs font-semibold">
-                          {t("rewardsEmpty")}
-                        </p>
-                        <Link
-                          href="/register/rewards"
-                          className="text-primary text-xs font-extrabold underline"
-                        >
-                          {t("rewardsCatalogLink")}
-                        </Link>
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground py-3 text-xs font-semibold">
-                        {t("rewardsNoneForMember", { count: availableRewards.publishedCount })}
-                      </p>
-                    )
-                  ) : null}
-
-                  {/* Why the eligibility marks are missing, when they are. */}
-                  {!availableRewards.isError &&
-                  (rewards.length > 0 || pinnedPreselect != null) ? (
-                    cart.length === 0 ? (
-                      <p className="text-muted-foreground/70 pb-1 text-xs font-semibold">
-                        {t("rewardsAddItemsHint")}
-                      </p>
-                    ) : preview.isError ? (
-                      <div className="space-y-2 pb-1">
-                        <p className="text-muted-foreground text-xs font-semibold">
-                          {t("rewardEvalError")}
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-10"
-                          onClick={() => void preview.refetch()}
-                        >
-                          {t("retry")}
-                        </Button>
-                      </div>
-                    ) : preview.isPending ? (
-                      <p className="text-muted-foreground/70 pb-1 text-xs font-semibold">
-                        {t("rewardEvalPending")}
-                      </p>
-                    ) : null
-                  ) : null}
-
-                  {pinnedPreselect ? (
-                    <PinnedPreselectRow
-                      preselect={pinnedPreselect}
-                      active={inlineRewardId === pinnedPreselect.rewardId}
-                      elig={eligByReward.get(pinnedPreselect.rewardId)}
-                      evaluated={cartEvaluated}
-                      onToggle={() =>
-                        setInlineRewardId(
-                          inlineRewardId === pinnedPreselect.rewardId
-                            ? null
-                            : pinnedPreselect.rewardId,
-                        )
-                      }
-                      onDetail={setDetailView}
-                    />
-                  ) : null}
-
-                  {rewards.map((rw) => {
-                    const active = rw.rewardId === inlineRewardId;
-                    const elig = eligByReward.get(rw.rewardId);
-                    // Ineligible only once a preview actually succeeded for this
-                    // cart; the selected reward stays clickable so it can be
-                    // deselected.
-                    const ineligible = cartEvaluated && elig != null && !elig.eligible;
-                    const blocked = ineligible && !active;
-                    const rewardDetail = () => {
-                      // Cost alone made the detail modal read "9 sellos" and say
-                      // nothing about what the socio actually gets.
-                      const lines = [
-                        rw.benefitSummary,
-                        rw.description,
-                        rewardCostText(rw),
-                        rw.fulfillmentNote
-                          ? `${t("rewardFulfillmentLabel")}: ${rw.fulfillmentNote}`
-                          : null,
-                        ineligible ? reasonLabel(elig?.reason, t, elig?.upgrade) : null,
-                      ].filter((l): l is string => Boolean(l?.trim()));
-                      setDetailView({ title: rw.name, lines });
-                    };
-                    return (
-                      <div key={rw.rewardId} className="flex items-stretch gap-1">
-                        <button
-                          type="button"
-                          disabled={blocked}
-                          onClick={() => setInlineRewardId(active ? null : rw.rewardId)}
-                          className={`flex flex-1 items-center justify-between gap-2 rounded-2xl p-3.5 text-left ${
-                            active
-                              ? "border-primary bg-primary/5 border-2"
-                              : blocked
-                                ? "border-border cursor-not-allowed border opacity-45"
-                                : "border-border hover:border-primary/40 border"
-                          }`}
-                        >
-                          <div className="min-w-0">
-                            <span className="block truncate text-sm font-bold">{rw.name}</span>
-                            {ineligible ? (
-                              <span className="text-muted-foreground/70 mt-0.5 block truncate text-xs font-semibold">
-                                {reasonLabel(elig?.reason, t, elig?.upgrade)}
-                              </span>
-                            ) : null}
-                          </div>
-                          {active ? <Check className="text-primary size-5 flex-none" /> : null}
-                        </button>
-                        {/* Explicit width, not `aspect-square`: a flex item sizes
-                            its width from content before `self-stretch` sets the
-                            height, so the ratio had nothing to square against and
-                            it rendered as a tall, narrow pill. */}
-                        <button
-                          type="button"
-                          aria-label={t("viewDetail")}
-                          onClick={rewardDetail}
-                          className="border-border text-muted-foreground hover:text-foreground grid w-12 shrink-0 self-stretch place-items-center rounded-2xl border"
-                        >
-                          <Info className="size-4" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Scroll affordance: a fade + a tappable down-arrow when the list
-                    overflows (the hidden scrollbar didn't read as scrollable). */}
-                {rewards.length > 3 ? (
-                  <>
-                    <div className="from-card pointer-events-none absolute inset-x-0 bottom-0 h-8 rounded-b-3xl bg-gradient-to-t to-transparent" />
-                    <button
-                      type="button"
-                      aria-label={t("scrollMore")}
-                      onClick={() =>
-                        rewardsScrollRef.current?.scrollBy({ top: 140, behavior: "smooth" })
-                      }
-                      className="bg-card border-border text-primary absolute right-1.5 bottom-1.5 grid size-8 place-items-center rounded-full border shadow-md"
-                    >
-                      <ChevronDown className="size-4" />
-                    </button>
-                  </>
-                ) : null}
-              </div>
-              {inlineRewardId && rewardPreview && !rewardPreview.ok ? (
-                <p className="text-muted-foreground mt-2 text-xs font-semibold">
-                  {rewardPreview.reason === "reward-item-not-in-cart"
-                    ? t("rewardAddItemHint")
-                    : t("inlineRewardError")}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
         </div>
       </div>
 
@@ -1306,6 +1332,19 @@ export function RegisterBoard({
                 <p className="text-muted-foreground text-sm">{t("noDetail")}</p>
               )}
             </div>
+            {detailView?.apply ? (
+              <Button
+                size="lg"
+                disabled={detailView.apply.disabled}
+                onClick={() => {
+                  detailView.apply?.run();
+                  setDetailView(null);
+                }}
+                className="mt-5 h-11 w-full rounded-2xl text-base font-extrabold"
+              >
+                {detailView.apply.label}
+              </Button>
+            ) : null}
           </div>
         </ResponsiveModalContent>
       </ResponsiveModal>

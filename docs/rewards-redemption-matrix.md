@@ -116,13 +116,20 @@ a promo's cross-sell which gives away the most expensive. Case 5 above is that
 rule, not a bug — but it is a business decision worth revisiting: a customer
 spending 60 points on "a free Frutal" will reasonably expect the 15.500 one.
 
-**The scope is never named when it exceeds two refs.** `refNames()`
-(`features/rewards/format.ts:31`) returns `null` for more than two refs, so the
-copy degrades to "productos seleccionados" — the cashier can't tell which items
-qualify. Same root cause as the generic ineligibility line seen on T2 ("Agrega el
-producto al carrito"), which never says *which* product. The one-line summary has
-to stay short, but the ⓘ detail modal has room to list them, and
-`PromoRepository.refNames(refs)` already resolves them.
+**The register never names the scope — at all.** Two layers cause this:
+
+1. `availableForCustomer` calls `rewardBenefitSummary(rw.benefit, "es")` with no
+   `names` map (`features/rewards/service.ts:664`), so even a single-ref reward
+   renders as "Producto gratis" instead of "Classic Milk Tea gratis". Verified in
+   the detail sheet for T1, which is scoped to exactly one product.
+2. Even given a map, `refNames()` (`features/rewards/format.ts:31`) bails on more
+   than two refs, so a category or broad scope degrades to "productos
+   seleccionados".
+
+Same shape as the generic ineligibility line on T2 ("Agrega el producto al
+carrito"), which never says *which* product. The one-line summary has to stay
+short, but the detail sheet has room to list them and
+`PromoRepository.refNames(refs)` already resolves ids → names.
 
 **Not covered here:** `limitPerCustomer: "once"`, tier-gated rewards
 (`allowedTiers`), store-scoped rewards (`storeIds`), and rewards priced in stamps

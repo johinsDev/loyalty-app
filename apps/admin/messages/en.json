@@ -1478,7 +1478,10 @@
     "rewardUpgradeLine": "Hand over 1 {to}",
     "rewardUpgradeNoPromo": "Reward: covers the difference · this unit doesn't stack with promos",
     "confirmUpgradeNote": "Hand over 1 {to}: the reward covers {amount}. That unit gets no promo.",
-    "rewardDiscountOn": "Reward on {item}"
+    "rewardDiscountOn": "Reward on {item}",
+    "rewardApply": "Apply this reward",
+    "rewardRemove": "Remove reward",
+    "rewardScopeLabel": "Applies to"
   },
   "Admin": {
     "menu": "Menu",
