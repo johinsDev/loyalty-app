@@ -55,13 +55,16 @@ interface RewardUpgradeView {
 function splitPurchaseLine<T extends { qty: number; unitAmountCents: number; variantId?: string | null }>(
   items: T[],
   upgrade: AppliedUpgradeInfo,
-): T[] {
+): (T & { rewardUpgradedFromVariantId?: string | null })[] {
   const source = items[upgrade.sourceLineIndex]!;
   const upgraded = {
     ...source,
     qty: 1,
     variantId: upgrade.toVariantId,
     unitAmountCents: upgrade.upgradedUnitAmountCents,
+    // What the customer ordered, so the ticket can still name the drink the
+    // reward was spent on once every line reads "Grande".
+    rewardUpgradedFromVariantId: source.variantId ?? null,
   };
   if (source.qty === 1) {
     return items.map((it, i) => (i === upgrade.sourceLineIndex ? upgraded : it));

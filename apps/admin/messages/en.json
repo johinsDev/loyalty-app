@@ -2810,7 +2810,8 @@
     "timelineVoid": "Purchase voided · loyalty reversed",
     "timelineVoidBy": "Voided by {name} · loyalty reversed",
     "searchCustomer": "Search customer…",
-    "noCustomers": "No results"
+    "noCustomers": "No results",
+    "upgradedFrom": "Upgraded from {from} with the reward"
   },
   "Stores": {
     "title": "Stores",

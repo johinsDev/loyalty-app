@@ -2810,7 +2810,8 @@
     "timelineVoid": "Compra anulada · lealtad revertida",
     "timelineVoidBy": "Compra anulada por {name} · lealtad revertida",
     "searchCustomer": "Buscar cliente…",
-    "noCustomers": "Sin resultados"
+    "noCustomers": "Sin resultados",
+    "upgradedFrom": "Subido desde {from} con el premio"
   },
   "Stores": {
     "title": "Tiendas",

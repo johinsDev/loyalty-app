@@ -181,6 +181,11 @@ export const purchaseItem = sqliteTable(
       .references(() => purchase.id, { onDelete: "cascade" }),
     productId: text("product_id").notNull(),
     variantId: text("variant_id"),
+    // The variant the customer actually ordered, when a `variantUpgrade` reward
+    // moved this line up. `variantId` is the one served, so without this the
+    // ticket can't say which drink the reward was spent on — with three larges
+    // on the receipt they're indistinguishable.
+    rewardUpgradedFromVariantId: text("reward_upgraded_from_variant_id"),
     modifierOptionIds: text("modifier_option_ids", { mode: "json" }).$type<string[]>(),
     // Catalog add-ons applied to this line (sales attribution). Ids resolve to
     // the reusable add-on catalog; a reward may have waived one at sale time.

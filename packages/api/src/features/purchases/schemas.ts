@@ -87,6 +87,9 @@ export interface PurchaseListView {
 
 /** A resolved line item in the purchase detail. */
 export interface PurchaseDetailItem {
+  /** The variant the customer ordered, when a reward upgraded this line. Set
+   *  only on the upgraded unit, so the ticket names the drink it was spent on. */
+  upgradedFromLabel?: string | null;
   id: string;
   productId: string;
   /** Resolved product name (null when the product was deleted). */

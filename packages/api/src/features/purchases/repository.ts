@@ -995,6 +995,7 @@ export class PurchasesRepository {
         id: purchaseItem.id,
         productId: purchaseItem.productId,
         variantId: purchaseItem.variantId,
+        rewardUpgradedFromVariantId: purchaseItem.rewardUpgradedFromVariantId,
         modifierOptionIds: purchaseItem.modifierOptionIds,
         addonIds: purchaseItem.addonIds,
         removedIngredientIds: purchaseItem.removedIngredientIds,
@@ -1012,7 +1013,10 @@ export class PurchasesRepository {
     // removed-ingredient names.
     const variantIds = [
       ...new Set(
-        rows.map((r) => r.variantId).filter((v): v is string => v != null),
+        rows
+          // The upgrade's source variant resolves through the same batch.
+          .flatMap((r) => [r.variantId, r.rewardUpgradedFromVariantId])
+          .filter((v): v is string => v != null),
       ),
     ];
     const modifierIds = [
@@ -1036,6 +1040,9 @@ export class PurchasesRepository {
       name: r.name ?? null,
       slug: r.slug ?? null,
       variantLabel: r.variantId ? (variantLabels.get(r.variantId) ?? null) : null,
+      upgradedFromLabel: r.rewardUpgradedFromVariantId
+        ? (variantLabels.get(r.rewardUpgradedFromVariantId) ?? null)
+        : null,
       modifierLabels: (r.modifierOptionIds ?? [])
         .map((mid) => modifierLabels.get(mid))
         .filter((l): l is string => l != null),

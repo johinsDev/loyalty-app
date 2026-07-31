@@ -347,6 +347,15 @@ function ItemsBlock({ items }: { items: PurchaseAdminDetail["items"] }) {
                 {parts.length > 0 ? (
                   <span className="text-muted-foreground truncate text-xs">{parts.join(" · ")}</span>
                 ) : null}
+                {/* Names the line the reward was spent on. Once the upgrade is
+                    applied every line reads "Grande", so without this a ticket
+                    with three larges can't say which one it paid for. */}
+                {item.upgradedFromLabel ? (
+                  <span className="text-primary mt-0.5 inline-flex items-center gap-1 truncate text-xs font-semibold">
+                    <Gift className="size-3 flex-none" />
+                    {t("upgradedFrom", { from: item.upgradedFromLabel })}
+                  </span>
+                ) : null}
               </div>
               <span className="text-foreground text-sm font-bold">
                 {money(format, item.unitAmountCents * item.qty)}
