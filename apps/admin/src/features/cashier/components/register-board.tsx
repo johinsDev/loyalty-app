@@ -324,24 +324,13 @@ export function RegisterBoard({
     ? t("rewardDiscountOn", { item: rewardTargetName })
     : t("rewardDiscountShort");
 
-  /** Cart-line names a discount lands on, for a label the cashier can repeat. */
-  const namesOfLines = (idx: number[]): string[] => {
-    const seen = new Set<string>();
-    for (const i of idx) {
-      const n = cart[i]?.name;
-      if (n) seen.add(n);
-    }
-    return [...seen];
-  };
-  const promoTargets = appliedPromo ? namesOfLines(appliedPromo.lineIndexes) : [];
-  // Name the drinks when it's one or two; beyond that the list is longer than
-  // the panel and "3 productos" is the honest summary.
-  const promoDiscountLabel =
-    promoTargets.length > 0 && promoTargets.length <= 2
-      ? t("promoDiscountOn", { items: promoTargets.join(" y ") })
-      : promoTargets.length > 2
-        ? t("promoDiscountOnMany", { n: promoTargets.length })
-        : (appliedPromo?.promo.name ?? t("promoDiscount"));
+  /** Lines the applied promo discounts — badged in the cart, so the totals row
+   *  can stay a short name instead of a wrapped list of drinks. */
+  const promoLineIndexes = useMemo(
+    () => new Set(appliedPromo?.lineIndexes ?? []),
+    [appliedPromo],
+  );
+  const promoDiscountLabel = appliedPromo?.promo.name ?? t("promoDiscount");
 
   // Same three discounts the cart draws, so the review sheet can't disagree
   // with the line the cashier just read.
@@ -1152,6 +1141,26 @@ export function RegisterBoard({
                         <div className="mt-0.5 text-[0.6875rem] font-semibold text-white/60">
                           {t("rewardUpgradeNoPromo")}
                         </div>
+                      </div>
+                    ) : null}
+                    {/* Mark the promo on the line it discounts, the way the
+                        upgrade reward already does. Naming the drinks in the
+                        totals row worked for one, but two wrapped onto three
+                        lines and stopped being readable. */}
+                    {rewardLineIndex === idx && !upgrade ? (
+                      <div className="mt-2 flex items-center gap-1.5 rounded-xl border border-dashed border-violet-400/50 bg-violet-400/5 px-2.5 py-1.5">
+                        <Gift className="size-3 flex-none text-violet-300" />
+                        <span className="min-w-0 truncate text-[0.6875rem] font-bold text-violet-200">
+                          {t("rewardOnLine", { amount: formatCop(rewardDiscount) })}
+                        </span>
+                      </div>
+                    ) : null}
+                    {promoLineIndexes.has(idx) ? (
+                      <div className="mt-2 flex items-center gap-1.5 rounded-xl border border-dashed border-emerald-400/40 bg-emerald-400/5 px-2.5 py-1.5">
+                        <Tag className="size-3 flex-none text-emerald-300" />
+                        <span className="min-w-0 truncate text-[0.6875rem] font-bold text-emerald-200">
+                          {appliedPromo?.promo.name}
+                        </span>
                       </div>
                     ) : null}
                     <div className="mt-2 flex items-center gap-1.5">
