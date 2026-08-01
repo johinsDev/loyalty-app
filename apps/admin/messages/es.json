@@ -1481,7 +1481,8 @@
     "rewardDiscountOn": "Premio en {item}",
     "rewardApply": "Aplicar este premio",
     "rewardRemove": "Quitar el premio",
-    "rewardScopeLabel": "Aplica en"
+    "rewardScopeLabel": "Aplica en",
+    "rewardScopeHint": "Tocá uno para buscarlo en el menú."
   },
   "Admin": {
     "menu": "Menú",

@@ -1481,7 +1481,8 @@
     "rewardDiscountOn": "Reward on {item}",
     "rewardApply": "Apply this reward",
     "rewardRemove": "Remove reward",
-    "rewardScopeLabel": "Applies to"
+    "rewardScopeLabel": "Applies to",
+    "rewardScopeHint": "Tap one to find it in the menu."
   },
   "Admin": {
     "menu": "Menu",

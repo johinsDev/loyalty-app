@@ -1348,36 +1348,58 @@ export function RegisterBoard({
               ) : null}
             </div>
 
-            {/* Chips, not a comma list: the cashier is scanning for one name. */}
+            {/* Chips, not a comma list: the cashier is scanning for one name.
+                Tapping one points the menu at it — a category filters the grid,
+                a product searches for it — because the next thing the cashier
+                does with "needs a Classic Milk Tea" is add one. Navigating to a
+                product page would have cost them the cart. */}
             {(detailView?.scope ?? []).length > 0 ? (
-              <div className="border-border mt-3 border-t pt-3">
+              <div className="border-border mt-4 border-t pt-3.5">
                 <p className="text-muted-foreground/70 text-[0.625rem] font-extrabold tracking-wider uppercase">
                   {t("rewardScopeLabel")}
                 </p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {detailView?.scope?.map((s) => (
-                    <span
-                      key={s}
-                      className="bg-muted text-foreground rounded-lg px-2 py-1 text-xs font-bold"
-                    >
-                      {s}
-                    </span>
-                  ))}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {detailView?.scope?.map((s) => {
+                    const category = (categories.data ?? []).find((c) => c.name === s);
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => {
+                          if (category) {
+                            setCat(category.slug);
+                            setQuery("");
+                          } else {
+                            setQuery(s);
+                            setCat(null);
+                          }
+                          setDetailView(null);
+                        }}
+                        className="bg-muted hover:bg-primary/10 hover:text-primary text-foreground flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors"
+                      >
+                        {category ? <Tag className="size-3" /> : <Search className="size-3" />}
+                        {s}
+                      </button>
+                    );
+                  })}
                 </div>
+                <p className="text-muted-foreground/70 mt-2 text-[0.6875rem] font-semibold">
+                  {t("rewardScopeHint")}
+                </p>
               </div>
             ) : null}
 
             {detailView?.note ? (
-              <div className="border-border mt-3 rounded-xl border border-dashed px-3 py-2">
+              <div className="border-border mt-3.5 rounded-xl border border-dashed px-3.5 py-2.5">
                 <p className="text-muted-foreground/70 text-[0.625rem] font-extrabold tracking-wider uppercase">
                   {t("rewardFulfillmentLabel")}
                 </p>
-                <p className="text-foreground mt-0.5 text-sm font-semibold">{detailView.note}</p>
+                <p className="text-foreground mt-1 text-sm font-semibold">{detailView.note}</p>
               </div>
             ) : null}
 
             {detailView?.warning ? (
-              <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
+              <p className="mt-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-sm font-semibold text-amber-700 dark:text-amber-400">
                 {detailView.warning}
               </p>
             ) : null}
