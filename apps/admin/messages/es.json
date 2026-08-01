@@ -1487,7 +1487,18 @@
     "promoRemove": "Quitar la promo",
     "rewardOnLine": "Premio aplicado · −{amount}",
     "rewardOnLineNamed": "{item} gratis · −{amount}",
-    "editLine": "Editar"
+    "editLine": "Editar",
+    "upsellAddItemNamed": "Ofrecé {item} y se activa.",
+    "upsellSwapNamed": "Cambiá a {to} (+{extra}).",
+    "upsellSwapEcon": "Paga {extra} más, ahorra {discount} → gana {net}",
+    "upsellSwapAction": "Cambiar el tamaño",
+    "upsellHowLabel": "Cómo activarla",
+    "upsellHowAddItem": "Agregá al carrito un producto que la promo incluya.",
+    "upsellHowSpend": "Faltan {amount} de compra para llegar al mínimo.",
+    "upsellHowSwap": "Cambiá esa línea a {to}. El botón te abre el producto con las adiciones y la nota que ya tenía.",
+    "upsellMore": "Ver {count} sugerencia(s) más",
+    "upsellLess": "Ver menos",
+    "rewardAppliedLabel": "Premio aplicado"
   },
   "Admin": {
     "menu": "Menú",

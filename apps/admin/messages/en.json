@@ -1487,7 +1487,18 @@
     "promoRemove": "Remove promo",
     "rewardOnLine": "Reward applied · −{amount}",
     "rewardOnLineNamed": "{item} free · −{amount}",
-    "editLine": "Edit"
+    "editLine": "Edit",
+    "upsellAddItemNamed": "Offer {item} to unlock it.",
+    "upsellSwapNamed": "Switch to {to} (+{extra}).",
+    "upsellSwapEcon": "Pays {extra} more, saves {discount} → nets {net}",
+    "upsellSwapAction": "Change the size",
+    "upsellHowLabel": "How to unlock it",
+    "upsellHowAddItem": "Add a product the promo covers to the cart.",
+    "upsellHowSpend": "{amount} short of the minimum purchase.",
+    "upsellHowSwap": "Switch that line to {to}. The button reopens the product with its add-ons and note already filled in.",
+    "upsellMore": "See {count} more suggestion(s)",
+    "upsellLess": "See less",
+    "rewardAppliedLabel": "Applied reward"
   },
   "Admin": {
     "menu": "Menu",

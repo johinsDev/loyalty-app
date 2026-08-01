@@ -152,6 +152,8 @@ export function RegisterBoard({
   );
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [promoFilter, setPromoFilter] = useState<"customer" | "all">("customer");
+  /** Show every upsell nudge instead of the two best. */
+  const [upsellOpen, setUpsellOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   // The cashier declined the promo outright. Needed because the server picks the
   // best one whenever no id is sent, so clearing the selection alone had it
@@ -235,17 +237,23 @@ export function RegisterBoard({
       { enabled: cart.length > 0, placeholderData: keepPreviousData },
     ),
   );
-  const promos = preview.data?.applicable ?? [];
+  // `keepPreviousData` is what stops the panel flickering on every tap, but it
+  // outlives the cart: emptying it disables the query, so nothing ever settles
+  // and React Query keeps serving the last cart's answer — the totals read
+  // "0 ítems · $16.500". Every derived value goes through this, so an empty cart
+  // shows nothing instead of the sale before it.
+  const previewData = cart.length > 0 ? preview.data : undefined;
+  const promos = previewData?.applicable ?? [];
   /** The server's swap, rendered as a derived view of the cart. */
-  const upgrade = preview.data?.rewardUpgrade ?? null;
-  const upsell = preview.data?.upsell ?? [];
-  const rewardPreview = preview.data?.reward ?? null;
-  const net = preview.data?.net ?? null;
-  const earn = preview.data?.earn ?? null;
+  const upgrade = previewData?.rewardUpgrade ?? null;
+  const upsell = previewData?.upsell ?? [];
+  const rewardPreview = previewData?.reward ?? null;
+  const net = previewData?.net ?? null;
+  const earn = previewData?.earn ?? null;
   // Per-reward line eligibility (only meaningful once the cart has items).
   const eligByReward = useMemo(
-    () => new Map((preview.data?.rewardEligibility ?? []).map((e) => [e.rewardId, e])),
-    [preview.data],
+    () => new Map((previewData?.rewardEligibility ?? []).map((e) => [e.rewardId, e])),
+    [previewData],
   );
   // Eligibility marks are only trustworthy when a preview actually succeeded for
   // this cart. Without this guard a failed or in-flight preview leaves
@@ -277,6 +285,8 @@ export function RegisterBoard({
     scope?: string[];
     cost?: string | null;
     note?: string | null;
+    /** Upsell only: the step that unlocks the promo, spelled out. */
+    how?: string | null;
     warning?: string | null;
     apply?: { label: string; disabled?: boolean; run: () => void };
   } | null>(null);
@@ -285,8 +295,8 @@ export function RegisterBoard({
   // cart line and the promos panel agree with the total.
   useEffect(() => {
     if (promoOptOut) return;
-    setChosenPromoId(preview.data?.net?.appliedPromoId ?? null);
-  }, [preview.data, promoOptOut]);
+    setChosenPromoId(previewData?.net?.appliedPromoId ?? null);
+  }, [previewData, promoOptOut]);
 
   // Drop a selected reward the moment the cart stops satisfying it. Removing
   // the qualifying drink left the row greyed out *and* still ticked, and the
@@ -310,7 +320,7 @@ export function RegisterBoard({
   useEffect(() => {
     syncRewardsEnd(rewardsScrollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rewards.length, cartEvaluated]);
+  }, [rewards.length, cartEvaluated, inlineRewardId]);
 
   const appliedPromo = promos.find((p) => p.promo.id === chosenPromoId) ?? null;
   const promoDiscount = appliedPromo?.discountCents ?? 0;
@@ -468,18 +478,162 @@ export function RegisterBoard({
     }
   };
 
-  const upsellText = (u: (typeof upsell)[number]): string => {
+  /**
+   * An upsell nudge, shaped for the counter: the sentence the cashier says, the
+   * money when it can be stated honestly, and what the promo behind it gives.
+   * The card used to print only the action ("Sumá $13.500 más") beside the
+   * promo's name, which said nothing about what the customer gets for it —
+   * there was nothing there to sell with.
+   */
+  const upsellView = (u: (typeof upsell)[number]) => {
+    const scope = u.kind === "add-item" ? u.missingLabels : [];
+    const base = {
+      scope,
+      /** What the promo grants once unlocked — the reason to bother. */
+      benefit: u.promo.benefitSummary ?? u.promo.shortDescription,
+      econ: null as string | null,
+    };
     switch (u.kind) {
       case "add-item":
-        return t("upsellAddItem");
+        return {
+          ...base,
+          headline:
+            scope.length > 0
+              ? t("upsellAddItemNamed", { item: scope.join(" o ") })
+              : t("upsellAddItem"),
+          how: t("upsellHowAddItem"),
+        };
       case "spend-to-threshold":
-        return t("upsellSpend", { amount: formatCop(u.addCents) });
+        return {
+          ...base,
+          headline: t("upsellSpend", { amount: formatCop(u.addCents) }),
+          how: t("upsellHowSpend", { amount: formatCop(u.addCents) }),
+        };
       case "variant-swap":
-        return t("upsellSwap", {
-          extra: formatCop(u.extraCents),
-          discount: formatCop(u.discountCents),
-        });
+        return {
+          ...base,
+          headline: u.toLabel
+            ? t("upsellSwapNamed", { to: u.toLabel, extra: formatCop(u.extraCents) })
+            : t("upsellSwap", {
+                extra: formatCop(u.extraCents),
+                discount: formatCop(u.discountCents),
+              }),
+          // The whole pitch on one line: what it costs, what it saves, and the
+          // difference — the only number that decides the sale.
+          econ: t("upsellSwapEcon", {
+            extra: formatCop(u.extraCents),
+            discount: formatCop(u.discountCents),
+            net: formatCop(u.discountCents - u.extraCents),
+          }),
+          how: t("upsellHowSwap", { to: u.toLabel ?? "" }),
+        };
     }
+  };
+
+  /** Open an upsell's detail: what the promo gives, how to unlock it, and — for
+   *  a swap — the button that performs it on the right cart line. */
+  const openUpsellDetail = (u: (typeof upsell)[number]) => {
+    const v = upsellView(u);
+    const line = u.kind === "variant-swap" ? cart[u.lineIndex] : undefined;
+    const prod = line ? products.find((p) => p.id === line.productId) : undefined;
+    setDetailView({
+      title: u.promo.name,
+      benefit: v.benefit,
+      lines: [v.headline],
+      cost: v.econ,
+      scope: v.scope,
+      how: v.how,
+      // Reuses the cart-line editor: the swap is exactly "open this line and
+      // pick the bigger size", so the cashier lands in the picker with the
+      // line's add-ons and note already filled in.
+      apply:
+        line && prod
+          ? {
+              label: t("upsellSwapAction"),
+              run: () => {
+                setEditingKey(line.key);
+                setPicker({ slug: prod.slug, name: prod.name, priceCents: prod.priceCents });
+              },
+            }
+          : undefined,
+    });
+  };
+
+  /** What stays inside the scroller — the applied reward is pinned above it. */
+  const listedRewards = rewards.filter((rw) => rw.rewardId !== chosenReward?.rewardId);
+
+  /** One row of the "listos para canjear" list. Extracted because the selected
+   *  reward is rendered twice — pinned above the scroller and, when nothing is
+   *  selected, inside it — and the two must look and behave identically. */
+  const renderRewardRow = (rw: AvailableReward) => {
+    const active = rw.rewardId === inlineRewardId;
+    const elig = eligByReward.get(rw.rewardId);
+    // Ineligible only once a preview actually succeeded for this cart; the
+    // selected reward stays clickable so it can be deselected.
+    const ineligible = cartEvaluated && elig != null && !elig.eligible;
+    // Enabled only once it can actually be redeemed, mirroring the promos
+    // panel. An empty cart made every reward look clickable when none of them
+    // could be applied to anything — a reward always discounts something.
+    const blocked = !active && (cart.length === 0 || ineligible);
+    return (
+      <div key={rw.rewardId} className="flex items-stretch gap-1">
+        <button
+          type="button"
+          onClick={() =>
+            setDetailView({
+              title: rw.name,
+              // The operator's own copy is the only free prose here.
+              lines: rw.description?.trim() ? [rw.description] : [],
+              benefit: rw.benefitSummary,
+              // What actually qualifies. "en productos seleccionados" gave the
+              // cashier nothing to repeat to a customer.
+              scope: rw.scopeNames,
+              cost: rewardCostText(rw),
+              note: rw.fulfillmentNote,
+              warning: ineligible ? reasonLabel(elig?.reason, t, elig?.upgrade) : null,
+              apply: {
+                label: active ? t("rewardRemove") : t("rewardApply"),
+                // An ineligible reward can still be removed, never added.
+                disabled: blocked,
+                run: () => setInlineRewardId(active ? null : rw.rewardId),
+              },
+            })
+          }
+          // Same geometry as a promo row — this panel sits right under Promos
+          // and they are read as one list. `min-w-0` is load-bearing: a flex
+          // item won't shrink below its content without it, so the
+          // ineligibility line pushed the row past the panel and shoved the
+          // detail button off-screen. Border width is constant; only its colour
+          // changes — swapping `border` for `border-2` on select reflowed the
+          // row by 1px, and that was the bounce.
+          className={`flex min-w-0 flex-1 items-center gap-2 rounded-xl border p-2 text-left transition-colors ${
+            active
+              ? "border-primary bg-primary/5"
+              : blocked
+                ? "border-transparent bg-muted/40 cursor-not-allowed opacity-55"
+                : "border-transparent bg-muted/50 hover:bg-muted"
+          }`}
+        >
+          <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
+            <Gift className="size-3" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="line-clamp-2 block text-xs font-bold">{rw.name}</span>
+            {ineligible ? (
+              <span className="text-muted-foreground/70 mt-0.5 line-clamp-2 block text-[0.6875rem] font-semibold">
+                {reasonLabel(elig?.reason, t, elig?.upgrade)}
+              </span>
+            ) : null}
+          </span>
+          <span
+            className={`flex-none text-xs font-extrabold ${active ? "text-primary" : "text-muted-foreground"}`}
+          >
+            {rewardCostText(rw)}
+          </span>
+          <Check className={`text-primary size-3.5 flex-none ${active ? "" : "invisible"}`} />
+        </button>
+      </div>
+    );
   };
 
   // Cashier tips — derived from the customer context (birthday, rewards, favorite).
@@ -582,26 +736,66 @@ export function RegisterBoard({
       <div className="flex flex-col gap-4 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[340px_minmax(0,1fr)_420px] lg:gap-4">
         {/* LEFT — customer intelligence (this column scrolls on desktop) */}
         <div className="space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
-          {/* Ideas de upsell */}
+          {/* Ideas de upsell. The server ranks them by what the customer nets,
+              so the strongest pitch is row one. Only the top two are open: this
+              panel used to render every nudge and pushed promos, rewards and
+              tips off the fold, and a cashier mid-order reads one suggestion,
+              not six. */}
           {upsell.length > 0 ? (
-            <div className="border-primary/40 bg-primary/[0.06] rounded-3xl border-2 p-4 shadow-sm">
-              <div className="text-primary mb-3 flex items-center gap-1.5 text-sm font-extrabold">
-                <Lightbulb className="size-4" />
+            <div className="border-primary/40 bg-primary/[0.06] rounded-3xl border-2 p-3.5 shadow-sm">
+              <div className="text-primary mb-2.5 flex items-center gap-1.5 text-sm font-extrabold">
+                <Lightbulb className="size-4 flex-none" />
                 {t("upsellHeading")}
+                <span className="bg-primary/10 ml-auto rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold">
+                  {upsell.length}
+                </span>
               </div>
-              <div className="space-y-2">
-                {upsell.map((u, i) => (
-                  <div
-                    key={`${u.kind}-${u.promo.id}-${i}`}
-                    className="border-primary/20 bg-card rounded-xl border p-3"
-                  >
-                    <p className="text-foreground text-sm leading-snug font-bold">{upsellText(u)}</p>
-                    <span className="bg-primary/10 text-primary mt-1.5 inline-block rounded-md px-2 py-0.5 text-[0.6875rem] font-extrabold">
-                      {u.promo.name}
-                    </span>
-                  </div>
-                ))}
+              <div className="space-y-1.5">
+                {(upsellOpen ? upsell : upsell.slice(0, 2)).map((u, i) => {
+                  const v = upsellView(u);
+                  return (
+                    <button
+                      key={`${u.kind}-${u.promo.id}-${i}`}
+                      type="button"
+                      onClick={() => openUpsellDetail(u)}
+                      className="border-primary/20 bg-card hover:border-primary/50 w-full rounded-xl border p-2.5 text-left transition-colors"
+                    >
+                      <p className="text-foreground text-sm leading-snug font-bold">{v.headline}</p>
+                      {/* The money, when a swap lets us price it end to end.
+                          "+$2.000 → ahorra $8.250" is the argument; the promo's
+                          name alone never was. */}
+                      {v.econ ? (
+                        <p className="text-primary mt-0.5 text-xs leading-snug font-extrabold">
+                          {v.econ}
+                        </p>
+                      ) : null}
+                      <span className="mt-1.5 flex items-center gap-1">
+                        <Tag className="text-primary/70 size-3 flex-none" />
+                        <span className="text-primary min-w-0 flex-1 truncate text-[0.6875rem] font-extrabold">
+                          {u.promo.name}
+                        </span>
+                        <Info className="text-primary/50 size-3.5 flex-none" />
+                      </span>
+                      {/* What the promo actually gives. Without it the cashier
+                          was asking for $13.500 more in exchange for a name. */}
+                      {v.benefit ? (
+                        <span className="text-muted-foreground mt-0.5 line-clamp-2 block text-[0.6875rem] font-semibold">
+                          {v.benefit}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
               </div>
+              {upsell.length > 2 ? (
+                <button
+                  type="button"
+                  onClick={() => setUpsellOpen((o) => !o)}
+                  className="text-primary mt-2 text-[0.6875rem] font-extrabold underline underline-offset-2"
+                >
+                  {upsellOpen ? t("upsellLess") : t("upsellMore", { count: upsell.length - 2 })}
+                </button>
+              ) : null}
             </div>
           ) : null}
 
@@ -734,6 +928,19 @@ export function RegisterBoard({
                   </span>
                 ) : null}
               </div>
+              {/* The applied reward, lifted out of the scroller. Eleven rewards
+                  in, the selected one sat wherever it happened to be in the
+                  list — below the fold, under the scroll arrow — so the cashier
+                  had to scroll to find out what was applied to the sale they
+                  were about to charge. */}
+              {chosenReward ? (
+                <div className="mb-2.5">
+                  <p className="text-primary/70 mb-1 text-[0.625rem] font-extrabold tracking-wider uppercase">
+                    {t("rewardAppliedLabel")}
+                  </p>
+                  {renderRewardRow(chosenReward)}
+                </div>
+              ) : null}
               <div className="relative">
                 <div
                   ref={rewardsScrollRef}
@@ -823,90 +1030,16 @@ export function RegisterBoard({
                     />
                   ) : null}
 
-                  {rewards.map((rw) => {
-                    const active = rw.rewardId === inlineRewardId;
-                    const elig = eligByReward.get(rw.rewardId);
-                    // Ineligible only once a preview actually succeeded for this
-                    // cart; the selected reward stays clickable so it can be
-                    // deselected.
-                    const ineligible = cartEvaluated && elig != null && !elig.eligible;
-                    // Enabled only once it can actually be redeemed, mirroring
-                    // the promos panel. An empty cart made every reward look
-                    // clickable when none of them could be applied to anything —
-                    // a reward always discounts something on the ticket.
-                    const blocked = !active && (cart.length === 0 || ineligible);
-                    const rewardDetail = () => {
-                      setDetailView({
-                        title: rw.name,
-                        // The operator's own copy is the only free prose here.
-                        lines: rw.description?.trim() ? [rw.description] : [],
-                        benefit: rw.benefitSummary,
-                        // What actually qualifies. "en productos seleccionados"
-                        // gave the cashier nothing to repeat to a customer.
-                        scope: rw.scopeNames,
-                        cost: rewardCostText(rw),
-                        note: rw.fulfillmentNote,
-                        warning: ineligible ? reasonLabel(elig?.reason, t, elig?.upgrade) : null,
-                        apply: {
-                          label: active ? t("rewardRemove") : t("rewardApply"),
-                          // An ineligible reward can still be removed, never added.
-                          disabled: blocked,
-                          run: () => setInlineRewardId(active ? null : rw.rewardId),
-                        },
-                      });
-                    };
-                    return (
-                      <div key={rw.rewardId} className="flex items-stretch gap-1">
-                        <button
-                          type="button"
-                          onClick={rewardDetail}
-                          // Same geometry as a promo row — this panel sits right
-                          // under Promos and they are read as one list.
-                          // `min-w-0` is load-bearing: a flex item won't shrink
-                          // below its content without it, so the ineligibility
-                          // line pushed the row past the panel and shoved the
-                          // detail button off-screen.
-                          // Border width is constant; only its colour changes.
-                          // Swapping `border` for `border-2` on select reflowed
-                          // the row by 1px — that was the bounce.
-                          className={`flex min-w-0 flex-1 items-center gap-2 rounded-xl border p-2 text-left transition-colors ${
-                            active
-                              ? "border-primary bg-primary/5"
-                              : blocked
-                                ? "border-transparent bg-muted/40 cursor-not-allowed opacity-55"
-                                : "border-transparent bg-muted/50 hover:bg-muted"
-                          }`}
-                        >
-                          <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
-                            <Gift className="size-3" />
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="line-clamp-2 block text-xs font-bold">{rw.name}</span>
-                            {ineligible ? (
-                              <span className="text-muted-foreground/70 mt-0.5 line-clamp-2 block text-[0.6875rem] font-semibold">
-                                {reasonLabel(elig?.reason, t, elig?.upgrade)}
-                              </span>
-                            ) : null}
-                          </span>
-                          <span
-                            className={`flex-none text-xs font-extrabold ${active ? "text-primary" : "text-muted-foreground"}`}
-                          >
-                            {rewardCostText(rw)}
-                          </span>
-                          <Check
-                            className={`text-primary size-3.5 flex-none ${active ? "" : "invisible"}`}
-                          />
-                        </button>
-                      </div>
-                    );
-                  })}
+                  {/* The pinned one is drawn above; leaving it here too would
+                      show the same reward twice. */}
+                  {listedRewards.map(renderRewardRow)}
                 </div>
                 {/* Scroll affordance: a fade + a tappable down-arrow when the list
                     overflows (the hidden scrollbar didn't read as scrollable).
                     Both disappear at the end of the list — they used to sit on
                     top of the last reward, blurring its name and covering its
                     detail button, which is exactly when they're useless. */}
-                {rewards.length > 3 && !rewardsAtEnd ? (
+                {listedRewards.length > 3 && !rewardsAtEnd ? (
                   <>
                     <div className="from-card pointer-events-none absolute inset-x-0 bottom-0 h-8 rounded-b-3xl bg-gradient-to-t to-transparent" />
                     <button
@@ -1236,7 +1369,7 @@ export function RegisterBoard({
             <div className="flex-none border-t border-white/10 pt-3 text-sm">
               {mode === "items" && cart.length > 0 ? (
                 <>
-                  <Row label={t("subtotal")} value={formatCop(preview.data?.subtotalCents ?? subtotal)} muted />
+                  <Row label={t("subtotal")} value={formatCop(previewData?.subtotalCents ?? subtotal)} muted />
                   {promoDiscount > 0 ? (
                     <Row
                       label={promoDiscountLabel}
@@ -1457,7 +1590,7 @@ export function RegisterBoard({
             : []
         }
         subtotalCents={
-          mode === "items" ? (preview.data?.subtotalCents ?? subtotal) : null
+          mode === "items" ? (previewData?.subtotalCents ?? subtotal) : null
         }
         discounts={confirmDiscounts}
         totalCents={mode === "total" ? Math.round((priceCop ?? 0) * 100) : total}
@@ -1525,7 +1658,12 @@ export function RegisterBoard({
                           // to add one, and making them close the sheet, find it
                           // in the grid and tap again was three steps for one
                           // intent. A category can't be added, so it filters.
-                          const product = products.find((p) => p.name === s);
+                          // An upsell names a variant ("Taro Milk Tea · Grande")
+                          // — the product is the part before the separator.
+                          const productName = s.split(" · ")[0] ?? s;
+                          const product = products.find(
+                            (p) => p.name === s || p.name === productName,
+                          );
                           if (category) {
                             setCat(category.slug);
                             setQuery("");
@@ -1536,7 +1674,7 @@ export function RegisterBoard({
                               priceCents: product.priceCents,
                             });
                           } else {
-                            setQuery(s);
+                            setQuery(productName);
                             setCat(null);
                           }
                           setDetailView(null);
@@ -1552,6 +1690,16 @@ export function RegisterBoard({
                 <p className="text-muted-foreground/70 mt-2 text-[0.6875rem] font-semibold">
                   {t("rewardScopeHint")}
                 </p>
+              </div>
+            ) : null}
+
+            {/* Upsell: the step that unlocks the promo, stated as an action. */}
+            {detailView?.how ? (
+              <div className="border-primary/25 bg-primary/5 mt-3.5 rounded-xl border px-3.5 py-2.5">
+                <p className="text-primary/70 text-[0.625rem] font-extrabold tracking-wider uppercase">
+                  {t("upsellHowLabel")}
+                </p>
+                <p className="text-foreground mt-1 text-sm font-semibold">{detailView.how}</p>
               </div>
             ) : null}
 

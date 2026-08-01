@@ -22,6 +22,7 @@ import type {
   ApplicablePromo,
   ApplicableResult,
   PatchContentInput,
+  ItemRef,
   PromoAnalytics,
   PromoCard,
   PromoDetail,
@@ -360,8 +361,46 @@ export class PromoService {
       const up = detectPromoUpsell(enriched, promoView(p), customerFacts, now, exclusions, variants);
       if (!up) continue;
       const card = this.repo.cardOf(p, lc);
-      hints.push({ ...up, promo: card });
+      hints.push(
+        up.kind === "add-item"
+          ? { ...up, promo: card, missingLabels: [] }
+          : up.kind === "variant-swap"
+            ? { ...up, promo: card, fromLabel: null, toLabel: null }
+            : { ...up, promo: card },
+      );
     }
+
+    // Resolve every id the cashier would have to read aloud, in ONE pass over
+    // all hints — a per-hint lookup would be a round trip per promo.
+    const refs: ItemRef[] = hints.flatMap((h) =>
+      h.kind === "add-item"
+        ? h.missingGetSide
+        : h.kind === "variant-swap"
+          ? [
+              { kind: "variant" as const, id: h.fromVariantId },
+              { kind: "variant" as const, id: h.toVariantId },
+            ]
+          : [],
+    );
+    const names =
+      refs.length > 0 ? await this.repo.refNames(refs).catch(() => new Map()) : new Map();
+    for (const h of hints) {
+      if (h.kind === "add-item") {
+        h.missingLabels = h.missingGetSide
+          .map((r) => names.get(r.id))
+          .filter((n): n is string => Boolean(n));
+      } else if (h.kind === "variant-swap") {
+        h.fromLabel = names.get(h.fromVariantId) ?? null;
+        h.toLabel = names.get(h.toVariantId) ?? null;
+      }
+    }
+
+    // Best offer first. A swap is ranked by what the customer actually nets
+    // (discount minus the upgrade), so the cashier reads the strongest pitch at
+    // the top instead of whatever promo happened to sort first in the catalog.
+    const rank = (h: PromoUpsellHint): number =>
+      h.kind === "variant-swap" ? h.discountCents - h.extraCents : 0;
+    hints.sort((a, b) => rank(b) - rank(a));
     return hints;
   }
 
