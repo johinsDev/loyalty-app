@@ -64,12 +64,23 @@ export function ProductPicker({
   fallbackPriceCents,
   onAdd,
   onClose,
+  initial = null,
 }: {
   slug: string;
   fallbackName: string;
   fallbackPriceCents: number;
   onAdd: (line: PickedLine) => void;
   onClose: () => void;
+  /** Pre-fills the picker to edit an existing cart line. Editing exists so the
+   *  cashier can change a size or an add-on without deleting the line: removing
+   *  it can drop the applied reward or promo, which then has to be re-picked. */
+  initial?: {
+    variantId: string | null;
+    addonIds: string[];
+    removedIngredientIds: string[];
+    note: string;
+    qty: number;
+  } | null;
 }) {
   const t = useTranslations("Cashier");
   const trpc = useTRPC();
@@ -78,11 +89,15 @@ export function ProductPicker({
   );
   const product = detail.data ?? null;
 
-  const [variantId, setVariantId] = useState<string | null>(null);
-  const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set());
-  const [removed, setRemoved] = useState<Set<string>>(new Set());
-  const [note, setNote] = useState("");
-  const [qty, setQty] = useState(1);
+  const [variantId, setVariantId] = useState<string | null>(initial?.variantId ?? null);
+  const [selectedAddons, setSelectedAddons] = useState<Set<string>>(
+    () => new Set(initial?.addonIds ?? []),
+  );
+  const [removed, setRemoved] = useState<Set<string>>(
+    () => new Set(initial?.removedIngredientIds ?? []),
+  );
+  const [note, setNote] = useState(initial?.note ?? "");
+  const [qty, setQty] = useState(initial?.qty ?? 1);
 
   const valueLabel = useMemo(() => {
     const m = new Map<string, string>();

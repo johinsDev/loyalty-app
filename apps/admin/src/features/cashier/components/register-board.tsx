@@ -23,6 +23,7 @@ import {
   Plus,
   QrCode,
   Search,
+  Pencil,
   Sparkles,
   Tag,
   Trash2,
@@ -138,6 +139,10 @@ export function RegisterBoard({
   const [cat, setCat] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orderNote, setOrderNote] = useState("");
+  /** Key of the cart line being edited, so the picker replaces it instead of
+   *  appending. Editing beats delete-and-re-add: removing a line can drop the
+   *  applied reward or promo, which the cashier then has to pick again. */
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const [picker, setPicker] = useState<{ slug: string; name: string; priceCents: number } | null>(
     null,
   );
@@ -1169,6 +1174,23 @@ export function RegisterBoard({
                       </div>
                     ) : null}
                     <div className="mt-2 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        aria-label={t("editLine")}
+                        onClick={() => {
+                          const prod = products.find((p) => p.id === i.productId);
+                          if (!prod) return;
+                          setEditingKey(i.key);
+                          setPicker({
+                            slug: prod.slug,
+                            name: prod.name,
+                            priceCents: prod.priceCents,
+                          });
+                        }}
+                        className="grid size-7 place-items-center rounded-lg bg-white/10"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
                       <div className="flex-1" />
                       <button
                         type="button"
@@ -1373,8 +1395,41 @@ export function RegisterBoard({
           slug={picker.slug}
           fallbackName={picker.name}
           fallbackPriceCents={picker.priceCents}
-          onAdd={addLine}
-          onClose={() => setPicker(null)}
+          initial={
+            editingKey
+              ? (() => {
+                  const l = cart.find((c) => c.key === editingKey);
+                  return l
+                    ? {
+                        variantId: l.variantId,
+                        addonIds: l.addonIds,
+                        removedIngredientIds: l.removedIngredientIds,
+                        note: l.note,
+                        qty: l.qty,
+                      }
+                    : null;
+                })()
+              : null
+          }
+          onAdd={(line) => {
+            if (editingKey) {
+              // Replace in place. Appending and deleting would reorder the cart
+              // and momentarily drop the line the reward is attached to.
+              setCart((c) =>
+                c.map((it) =>
+                  it.key === editingKey ? { ...line, key: it.key } : it,
+                ),
+              );
+              setEditingKey(null);
+              setPicker(null);
+              return;
+            }
+            addLine(line);
+          }}
+          onClose={() => {
+            setEditingKey(null);
+            setPicker(null);
+          }}
         />
       ) : null}
 

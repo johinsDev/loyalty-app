@@ -1486,7 +1486,8 @@
     "promoApply": "Aplicar esta promo",
     "promoRemove": "Quitar la promo",
     "rewardOnLine": "Premio aplicado · −{amount}",
-    "rewardOnLineNamed": "{item} gratis · −{amount}"
+    "rewardOnLineNamed": "{item} gratis · −{amount}",
+    "editLine": "Editar"
   },
   "Admin": {
     "menu": "Menú",
