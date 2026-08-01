@@ -1509,7 +1509,9 @@
     "promoMore": "Ver {count} promos más",
     "promoLess": "Ver menos",
     "rewardNotCombinable": "El premio no se combina con {promo}. Elegí uno de los dos para poder cobrar.",
-    "dropPromoForReward": "Quitar la promo"
+    "dropPromoForReward": "Quitar la promo",
+    "pricingStale": "No se pudo recalcular el precio. Los montos de arriba son del carrito anterior — reintentá antes de cobrar.",
+    "promosStale": "No se pudo recalcular. Reintentá para ver qué promos aplican."
   },
   "Admin": {
     "menu": "Menú",

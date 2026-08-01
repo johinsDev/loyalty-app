@@ -133,6 +133,7 @@ export const PROCEDURE_TYPES: Record<string, ProcedureKind> = {
   "employees.stats": "query",
   "employees.update": "mutation",
   "flags.smoke": "query",
+  "health.boom": "query",
   "health.ping": "query",
   "ingredients.adminList": "query",
   "ingredients.create": "mutation",
