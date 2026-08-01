@@ -75,6 +75,12 @@ type CartItem = {
   unitAmountCents: number;
   qty: number;
   note: string;
+  /** The parts behind `name` + `unitAmountCents`, so the cart can show what the
+   *  line is made of instead of one flat string and one flat price. */
+  baseName: string;
+  basePriceCents: number;
+  addons: { id: string; name: string; priceDeltaCents: number }[];
+  removedLabels: string[];
 };
 
 const CURRENCY = "COP";
@@ -409,20 +415,7 @@ export function RegisterBoard({
       if (idx >= 0) {
         return c.map((i, n) => (n === idx ? { ...i, qty: i.qty + line.qty } : i));
       }
-      return [
-        ...c,
-        {
-          key: crypto.randomUUID(),
-          productId: line.productId,
-          variantId: line.variantId,
-          addonIds: line.addonIds,
-          removedIngredientIds: line.removedIngredientIds,
-          name: line.name,
-          unitAmountCents: line.unitAmountCents,
-          qty: line.qty,
-          note: line.note,
-        },
-      ];
+      return [...c, { ...line, key: crypto.randomUUID() }];
     });
     setPicker(null);
   };
@@ -1274,11 +1267,37 @@ export function RegisterBoard({
                   <div key={i.key} className="rounded-2xl bg-white/5 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
+                        {/* The drink alone. The add-ons used to be glued onto
+                            this string, which both wrapped the title onto three
+                            lines and hid their prices inside one flat total. */}
                         <div className="line-clamp-2 text-sm font-bold">
                           {upgrade?.sourceLineIndex === idx && upgrade.remainingQty > 0
-                            ? `${upgrade.remainingQty} × ${i.name}`
-                            : i.name}
+                            ? `${upgrade.remainingQty} × ${i.baseName}`
+                            : i.baseName}
                         </div>
+                        {/* Where the money went. Only when there's something to
+                            break down — on a plain drink at qty 1 the line
+                            total already IS the price. */}
+                        {i.addons.length > 0 || i.removedLabels.length > 0 || i.qty > 1 ? (
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.6875rem] font-semibold text-white/55">
+                            {i.qty > 1 ? (
+                              <span className="text-white/70">
+                                {i.qty} × {formatCop(i.unitAmountCents)}
+                              </span>
+                            ) : null}
+                            <span>{t("lineBase", { amount: formatCop(i.basePriceCents) })}</span>
+                            {i.addons.map((a) => (
+                              <span key={a.id} className="text-white/70">
+                                {a.name} +{formatCop(a.priceDeltaCents)}
+                              </span>
+                            ))}
+                            {i.removedLabels.map((r) => (
+                              <span key={r} className="text-amber-300/80">
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                         {i.note ? (
                           <div className="mt-0.5 truncate text-xs font-semibold text-amber-300 italic">
                             ✎ {i.note}

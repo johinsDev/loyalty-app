@@ -27,10 +27,21 @@ export type PickedLine = {
   variantId: string | null;
   addonIds: string[];
   removedIngredientIds: string[];
+  /** Everything in one string: "Classic Milk Tea · Mediano · Shot de espresso ·
+   *  sin Maní". What a receipt line says; the cart shows the parts instead. */
   name: string;
   unitAmountCents: number;
   qty: number;
   note: string;
+  /** The drink alone — "Classic Milk Tea · Mediano". */
+  baseName: string;
+  /** Its price before add-ons, so the cart can show where the money went. */
+  basePriceCents: number;
+  /** Priced add-ons, kept apart from the name: a cashier reading a $17.500 line
+   *  can't tell how much of it is the Perlas unless the line says so. */
+  addons: { id: string; name: string; priceDeltaCents: number }[];
+  /** "sin Maní" — no price, but part of what the customer ordered. */
+  removedLabels: string[];
 };
 
 const formatCop = (cents: number): string =>
@@ -162,13 +173,14 @@ export function ProductPicker({
 
   const add = () => {
     const vLabel = selectedVariant ? variantLabel(selectedVariant) : "";
-    const addonLabels = allItems.filter((it) => selectedAddons.has(it.addonId)).map((it) => it.name);
+    const pickedAddons = allItems
+      .filter((it) => selectedAddons.has(it.addonId))
+      .map((it) => ({ id: it.addonId, name: it.name, priceDeltaCents: it.priceDeltaCents }));
     const removedLabels = removable
       .filter((r) => removed.has(r.ingredientId))
       .map((r) => t("pickerWithout", { name: r.name }));
-    const parts = [product?.name ?? fallbackName, vLabel, ...addonLabels, ...removedLabels].filter(
-      Boolean,
-    );
+    const baseName = [product?.name ?? fallbackName, vLabel].filter(Boolean).join(" · ");
+    const parts = [baseName, ...pickedAddons.map((a) => a.name), ...removedLabels].filter(Boolean);
     onAdd({
       productId: product?.id ?? "",
       variantId: selectedVariant?.id ?? null,
@@ -178,6 +190,10 @@ export function ProductPicker({
       unitAmountCents: unit,
       qty,
       note: note.trim(),
+      baseName,
+      basePriceCents: basePrice,
+      addons: pickedAddons,
+      removedLabels,
     });
   };
 

@@ -1500,7 +1500,8 @@
     "upsellLess": "Ver menos",
     "rewardAppliedLabel": "Premio aplicado",
     "promoWhyBest": "Se aplica {name} porque descuenta {delta} más que la otra.",
-    "promoWhySmaller": "Elegiste {name}. {other} descuenta {delta} más."
+    "promoWhySmaller": "Elegiste {name}. {other} descuenta {delta} más.",
+    "lineBase": "Bebida {amount}"
   },
   "Admin": {
     "menu": "Menú",
