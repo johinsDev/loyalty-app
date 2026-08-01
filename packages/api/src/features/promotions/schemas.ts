@@ -212,6 +212,8 @@ export interface ApplicablePromo {
   applications: number;
   /** This promo doesn't stack with the tier benefit or a reward (register). */
   exclusive: boolean;
+  /** Cart lines the discount lands on, so the register can name the drink. */
+  lineIndexes: number[];
 }
 export interface ApplicableHint {
   promo: PromoCard;

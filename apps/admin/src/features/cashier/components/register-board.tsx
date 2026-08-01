@@ -324,13 +324,32 @@ export function RegisterBoard({
     ? t("rewardDiscountOn", { item: rewardTargetName })
     : t("rewardDiscountShort");
 
+  /** Cart-line names a discount lands on, for a label the cashier can repeat. */
+  const namesOfLines = (idx: number[]): string[] => {
+    const seen = new Set<string>();
+    for (const i of idx) {
+      const n = cart[i]?.name;
+      if (n) seen.add(n);
+    }
+    return [...seen];
+  };
+  const promoTargets = appliedPromo ? namesOfLines(appliedPromo.lineIndexes) : [];
+  // Name the drinks when it's one or two; beyond that the list is longer than
+  // the panel and "3 productos" is the honest summary.
+  const promoDiscountLabel =
+    promoTargets.length > 0 && promoTargets.length <= 2
+      ? t("promoDiscountOn", { items: promoTargets.join(" y ") })
+      : promoTargets.length > 2
+        ? t("promoDiscountOnMany", { n: promoTargets.length })
+        : (appliedPromo?.promo.name ?? t("promoDiscount"));
+
   // Same three discounts the cart draws, so the review sheet can't disagree
   // with the line the cashier just read.
   const confirmDiscounts: ConfirmDiscount[] = [];
   if (mode === "items") {
     if (promoDiscount > 0)
       confirmDiscounts.push({
-        label: appliedPromo?.promo.name ?? t("promoDiscount"),
+        label: promoDiscountLabel,
         amountCents: promoDiscount,
       });
     if (rewardDiscount > 0)
@@ -571,8 +590,8 @@ export function RegisterBoard({
         <div className="space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           {/* Ideas de upsell */}
           {upsell.length > 0 ? (
-            <div className="bg-card border-border rounded-3xl border p-4 shadow-sm">
-              <div className="text-primary mb-3 flex items-center gap-1.5 text-sm font-bold">
+            <div className="border-primary/40 bg-primary/[0.06] rounded-3xl border-2 p-4 shadow-sm">
+              <div className="text-primary mb-3 flex items-center gap-1.5 text-sm font-extrabold">
                 <Lightbulb className="size-4" />
                 {t("upsellHeading")}
               </div>
@@ -580,10 +599,10 @@ export function RegisterBoard({
                 {upsell.map((u, i) => (
                   <div
                     key={`${u.kind}-${u.promo.id}-${i}`}
-                    className="border-primary/20 bg-primary/5 rounded-xl border p-2.5"
+                    className="border-primary/20 bg-card rounded-xl border p-3"
                   >
-                    <p className="text-foreground text-xs font-semibold">{upsellText(u)}</p>
-                    <span className="bg-primary/10 text-primary mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-extrabold">
+                    <p className="text-foreground text-sm leading-snug font-bold">{upsellText(u)}</p>
+                    <span className="bg-primary/10 text-primary mt-1.5 inline-block rounded-md px-2 py-0.5 text-[0.6875rem] font-extrabold">
                       {u.promo.name}
                     </span>
                   </div>
@@ -921,18 +940,21 @@ export function RegisterBoard({
 
           {/* Tips para el cajero */}
           {tips.length > 0 ? (
-            <div className="bg-card border-border rounded-3xl border p-4 shadow-sm">
-              <div className="text-primary mb-2 text-xs font-extrabold">{t("tipsTitle")}</div>
+            <div className="border-primary/25 bg-primary/[0.04] rounded-3xl border p-4 shadow-sm">
+              <div className="text-primary mb-2.5 flex items-center gap-1.5 text-sm font-extrabold">
+                <Sparkles className="size-4" />
+                {t("tipsTitle")}
+              </div>
               <div className="space-y-2">
                 {tips.map((tip) => (
                   <div
                     key={tip.text}
-                    className="text-foreground flex items-start gap-2 text-xs font-semibold"
+                    className="border-primary/15 bg-card text-foreground flex items-start gap-2.5 rounded-xl border p-2.5 text-sm font-semibold"
                   >
-                    <span className="bg-primary/10 text-primary mt-0.5 grid size-5 flex-none place-items-center rounded-md">
+                    <span className="bg-primary/10 text-primary mt-0.5 grid size-6 flex-none place-items-center rounded-lg">
                       {tip.icon}
                     </span>
-                    <span>{tip.text}</span>
+                    <span className="min-w-0 leading-snug">{tip.text}</span>
                   </div>
                 ))}
               </div>
@@ -1181,7 +1203,7 @@ export function RegisterBoard({
                   <Row label={t("subtotal")} value={formatCop(preview.data?.subtotalCents ?? subtotal)} muted />
                   {promoDiscount > 0 ? (
                     <Row
-                      label={appliedPromo?.promo.name ?? t("promoDiscount")}
+                      label={promoDiscountLabel}
                       value={`− ${formatCop(promoDiscount)}`}
                       good
                     />
@@ -1429,9 +1451,21 @@ export function RegisterBoard({
                         key={s}
                         type="button"
                         onClick={() => {
+                          // A product chip opens its picker straight away — the
+                          // cashier's next move on "needs a Classic Milk Tea" is
+                          // to add one, and making them close the sheet, find it
+                          // in the grid and tap again was three steps for one
+                          // intent. A category can't be added, so it filters.
+                          const product = products.find((p) => p.name === s);
                           if (category) {
                             setCat(category.slug);
                             setQuery("");
+                          } else if (product) {
+                            setPicker({
+                              slug: product.slug,
+                              name: product.name,
+                              priceCents: product.priceCents,
+                            });
                           } else {
                             setQuery(s);
                             setCat(null);

@@ -12,6 +12,7 @@ const failed = (reason: IneligibleReason): PromoEvaluation => ({
   pointsMultiplier: 1,
   applications: 0,
   missingGetSide: [],
+  lineIndexes: [],
 });
 
 /** Full evaluation of one promo against one cart + customer. */
@@ -50,7 +51,20 @@ export function evaluatePromo(
     pointsMultiplier: effect.pointsMultiplier,
     applications: match.applications.length,
     missingGetSide: [],
+    lineIndexes: touchedLines(match),
   };
+}
+
+/** Which cart lines a match lands on. Prefer the get side — that's the unit the
+ *  customer is getting free or cheap — and fall back to the buy side for rules
+ *  with no get requirement (a straight percent/amount off). */
+function touchedLines(match: { applications: { buyUnits: { lineIndex: number }[]; getUnits: { lineIndex: number }[] }[] }): number[] {
+  const out = new Set<number>();
+  for (const app of match.applications) {
+    const units = app.getUnits.length > 0 ? app.getUnits : app.buyUnits;
+    for (const u of units) out.add(u.lineIndex);
+  }
+  return [...out].sort((a, b) => a - b);
 }
 
 /** Best promo = highest discount, then highest multiplier, then lowest sortOrder. */

@@ -226,6 +226,7 @@ describe("pickBest", () => {
     discountCents: 0,
     pointsMultiplier: 1,
     applications: 1,
+    lineIndexes: [],
     missingGetSide: [],
     ...over,
   });

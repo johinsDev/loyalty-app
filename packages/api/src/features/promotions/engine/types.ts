@@ -99,6 +99,11 @@ export interface PromoEvaluation {
   /** Upsell hint: get-side refs missing from the cart (only set when the
    *  reason is "missing-get-side"). */
   missingGetSide: PromoItemRef[];
+  /** Cart lines this promo actually lands on, so the register can say which
+   *  drink is being discounted instead of an unattributed amount. Get-side
+   *  units when the rule has one (they're what goes free/cheap), otherwise the
+   *  buy side. Deduplicated, in cart order. */
+  lineIndexes: number[];
 }
 
 export const subtotalCents = (lines: CartLine[]): number =>

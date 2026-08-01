@@ -1482,9 +1482,11 @@
     "rewardApply": "Apply this reward",
     "rewardRemove": "Remove reward",
     "rewardScopeLabel": "Applies to",
-    "rewardScopeHint": "Tap one to find it in the menu.",
+    "rewardScopeHint": "Tap a product to add it, or a category to filter the menu.",
     "promoApply": "Apply this promo",
-    "promoRemove": "Remove promo"
+    "promoRemove": "Remove promo",
+    "promoDiscountOn": "Promo on {items}",
+    "promoDiscountOnMany": "Promo on {n} items"
   },
   "Admin": {
     "menu": "Menu",

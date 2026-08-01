@@ -1482,9 +1482,11 @@
     "rewardApply": "Aplicar este premio",
     "rewardRemove": "Quitar el premio",
     "rewardScopeLabel": "Aplica en",
-    "rewardScopeHint": "Tocá uno para buscarlo en el menú.",
+    "rewardScopeHint": "Tocá un producto para agregarlo, o una categoría para filtrar el menú.",
     "promoApply": "Aplicar esta promo",
-    "promoRemove": "Quitar la promo"
+    "promoRemove": "Quitar la promo",
+    "promoDiscountOn": "Promo en {items}",
+    "promoDiscountOnMany": "Promo en {n} productos"
   },
   "Admin": {
     "menu": "Menú",
