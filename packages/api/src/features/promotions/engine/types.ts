@@ -14,7 +14,7 @@ export interface CartLine {
   categoryIds?: string[];
   modifierOptions?: { id: string; priceDeltaCents: number }[];
   /** Catalog add-ons on this line + their deltas (stitched for reward waiving). */
-  addons?: { id: string; priceDeltaCents: number }[];
+  addons?: { id: string; priceDeltaCents: number; name?: string }[];
   /** Where a reward could move this line's variant, and what the step costs.
    *  Resolved per-reward by the service (it needs the variant graph), so it is
    *  absent for every other benefit type. */

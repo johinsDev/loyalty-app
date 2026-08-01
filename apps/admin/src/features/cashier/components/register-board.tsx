@@ -1151,7 +1151,12 @@ export function RegisterBoard({
                       <div className="mt-2 flex items-center gap-1.5 rounded-xl border border-dashed border-violet-400/50 bg-violet-400/5 px-2.5 py-1.5">
                         <Gift className="size-3 flex-none text-violet-300" />
                         <span className="min-w-0 truncate text-[0.6875rem] font-bold text-violet-200">
-                          {t("rewardOnLine", { amount: formatCop(rewardDiscount) })}
+                          {rewardPreview?.targetLabel
+                            ? t("rewardOnLineNamed", {
+                                item: rewardPreview.targetLabel,
+                                amount: formatCop(rewardDiscount),
+                              })
+                            : t("rewardOnLine", { amount: formatCop(rewardDiscount) })}
                         </span>
                       </div>
                     ) : null}

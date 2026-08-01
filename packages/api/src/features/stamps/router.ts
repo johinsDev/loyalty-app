@@ -163,6 +163,9 @@ export const stampsRouter = router({
          *  instead of an unattributed "Recompensa − $17.000". Null for an
          *  order-wide voucher, which genuinely applies to the whole ticket. */
         lineIndex: number | null;
+        /** What the benefit waived on that line (a free add-on's name), so the
+         *  register can explain the amount instead of just placing it. */
+        targetLabel: string | null;
       } | null = null;
       let exclusions: UnitExclusion[] = [];
       // A `variantUpgrade` reward CHANGES the cart, so everything downstream —
@@ -179,6 +182,7 @@ export const stampsRouter = router({
             discountCents: 0,
             reason: "reward-not-redeemable",
             lineIndex: null,
+            targetLabel: null,
           };
         } else {
           const res = await resolveRewardOnCart(promoRepo, rw, enriched);
@@ -189,6 +193,7 @@ export const stampsRouter = router({
             // `target` covers the benefits that discount a line without
             // consuming a unit (a free add-on), which produce no exclusion.
             lineIndex: res.exclusions[0]?.lineIndex ?? res.target?.lineIndex ?? null,
+            targetLabel: res.target?.label ?? null,
           };
           exclusions = res.exclusions;
           if (res.upgrade) {

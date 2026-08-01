@@ -19,7 +19,7 @@ export type RewardCartEvaluation =
       exclusions: UnitExclusion[];
       /** Presentation-only: the line the benefit lands on when it produces no
        *  exclusion (a free add-on waives a price without consuming a unit). */
-      target?: { lineIndex: number };
+      target?: { lineIndex: number; label?: string };
       /** `variantUpgrade` only: the unit to move up. The caller applies it —
        *  exclusions have to be expressed against post-split line indices. */
       upgrade?: UpgradePlan;
@@ -63,7 +63,7 @@ export function evaluateRewardForCart(
     const candidates = cart.lines.flatMap((l, lineIndex) =>
       (l.addons ?? [])
         .filter((a) => benefit.addonId == null || a.id === benefit.addonId)
-        .map((a) => ({ lineIndex, amountCents: a.priceDeltaCents })),
+        .map((a) => ({ lineIndex, amountCents: a.priceDeltaCents, label: a.name })),
     );
     if (candidates.length === 0) return { ok: false, reason: "reward-item-not-in-cart" };
     const cheapest = candidates.reduce((a, b) => (b.amountCents < a.amountCents ? b : a));
@@ -75,7 +75,7 @@ export function evaluateRewardForCart(
       ok: true,
       discountCents: cheapest.amountCents,
       exclusions: [],
-      target: { lineIndex: cheapest.lineIndex },
+      target: { lineIndex: cheapest.lineIndex, label: cheapest.label },
     };
   }
 

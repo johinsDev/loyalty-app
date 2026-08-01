@@ -33,7 +33,8 @@ export async function enrichCart(
       })),
       addons: (l.addonIds ?? []).map((id) => ({
         id,
-        priceDeltaCents: addonDeltas.get(id) ?? 0,
+        priceDeltaCents: addonDeltas.get(id)?.delta ?? 0,
+        name: addonDeltas.get(id)?.name ?? "",
       })),
     })),
   };

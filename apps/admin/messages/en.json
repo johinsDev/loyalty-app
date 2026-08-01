@@ -1485,7 +1485,8 @@
     "rewardScopeHint": "Tap a product to add it, or a category to filter the menu.",
     "promoApply": "Apply this promo",
     "promoRemove": "Remove promo",
-    "rewardOnLine": "Reward applied · −{amount}"
+    "rewardOnLine": "Reward applied · −{amount}",
+    "rewardOnLineNamed": "{item} free · −{amount}"
   },
   "Admin": {
     "menu": "Menu",

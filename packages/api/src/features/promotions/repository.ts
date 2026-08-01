@@ -867,14 +867,16 @@ export class PromoRepository {
   }
 
   /** addonId → its catalog price delta (for reward add-on waiving at POS). */
-  async addonDeltas(ids: string[]): Promise<Map<string, number>> {
-    const map = new Map<string, number>();
+  async addonDeltas(ids: string[]): Promise<Map<string, { delta: number; name: string }>> {
+    const map = new Map<string, { delta: number; name: string }>();
     if (ids.length === 0) return map;
     const rows = await this.db
-      .select({ id: addon.id, delta: addon.priceDeltaCents })
+      // The name rides along in the same query so the register can say WHICH
+      // add-on a free-add-on reward waived, instead of an unexplained amount.
+      .select({ id: addon.id, delta: addon.priceDeltaCents, name: addon.name })
       .from(addon)
       .where(inArray(addon.id, ids));
-    for (const r of rows) map.set(r.id, r.delta);
+    for (const r of rows) map.set(r.id, { delta: r.delta, name: r.name });
     return map;
   }
 

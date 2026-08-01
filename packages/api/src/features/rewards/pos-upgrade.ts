@@ -29,7 +29,7 @@ export interface RewardOnCart {
   upgrade: AppliedUpgradeInfo | null;
   /** Presentation-only line the benefit landed on when it consumed no unit (a
    *  free add-on waives a price without excluding anything). */
-  target?: { lineIndex: number } | null;
+  target?: { lineIndex: number; label?: string } | null;
   ok: boolean;
   reason: string | null;
 }

@@ -1485,7 +1485,8 @@
     "rewardScopeHint": "Tocá un producto para agregarlo, o una categoría para filtrar el menú.",
     "promoApply": "Aplicar esta promo",
     "promoRemove": "Quitar la promo",
-    "rewardOnLine": "Premio aplicado · −{amount}"
+    "rewardOnLine": "Premio aplicado · −{amount}",
+    "rewardOnLineNamed": "{item} gratis · −{amount}"
   },
   "Admin": {
     "menu": "Menú",
