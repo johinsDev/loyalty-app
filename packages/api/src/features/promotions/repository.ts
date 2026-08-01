@@ -1000,8 +1000,11 @@ export class PromoRepository {
     return Boolean(rows[0]);
   }
 
-  cardOf(row: PromoRow, ctx: LocaleContext): PromoCard {
-    return toCard(row, undefined, ctx);
+  /** `names` resolves the rule's refs so the summary can say WHICH products the
+   *  promo covers. Without it every scoped promo reads "en productos
+   *  seleccionados", which is the one thing a cashier can't work out alone. */
+  cardOf(row: PromoRow, ctx: LocaleContext, names?: ReadonlyMap<string, string>): PromoCard {
+    return toCard(row, undefined, ctx, names);
   }
 
   async #translationsFor(

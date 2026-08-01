@@ -14,6 +14,7 @@ import {
   type UnitExclusion,
 } from "./engine";
 import { enrichCart } from "./stitch";
+import { collectRefs } from "./repository";
 import type { AdminPromoRow, PromoPatch, PromoRepository } from "./repository";
 import { ruleSchema, scheduleSchema, conditionsSchema } from "./schemas";
 import type {
@@ -99,12 +100,38 @@ export class PromoService {
       TTL_SECONDS,
     );
   }
+  /**
+   * Display names for every ref across the org's published promos.
+   *
+   * `benefitSummary` can name what a promo covers — it takes a name map and is
+   * tested for it — but the register was never given one, so every scoped promo
+   * read "20% en productos seleccionados". At the counter that is the one thing
+   * the cashier needs: which drinks it applies to.
+   *
+   * Cached with the other promo reads: the refs only move when a promo is
+   * edited, and this runs on every register preview.
+   */
+  private refNamesForPublished(orgId: string): Promise<Map<string, string>> {
+    return cache.getOrSet(
+      `promos:${orgId}:refnames`,
+      async () => {
+        const promos = await this.repo.publishedPromos(orgId);
+        const refs = promos.flatMap((p) => collectRefs(p));
+        if (refs.length === 0) return new Map<string, string>();
+        return this.repo.refNames(refs).catch(() => new Map<string, string>());
+      },
+      TTL_SECONDS,
+    );
+  }
+
   async invalidate(orgId: string, slug?: string): Promise<void> {
     const keys: string[] = [];
     for (const locale of SUPPORTED_LOCALES) {
       keys.push(`promos:${orgId}:home:${locale}`);
       if (slug) keys.push(`promos:${orgId}:detail:${slug}:${locale}`);
     }
+    // Editing a promo can change which products it covers.
+    keys.push(`promos:${orgId}:refnames`);
     await cache.deleteMany(keys);
   }
 
@@ -262,13 +289,14 @@ export class PromoService {
     const promos = await this.repo.publishedPromos(orgId);
     if (promos.length === 0) return { applicable: [], hints: [] };
 
-    const [facts, counts, enriched] = await Promise.all([
+    const [facts, counts, enriched, names] = await Promise.all([
       this.repo.customerFacts(orgId, customerId),
       this.repo.redemptionCounts(
         promos.map((p) => p.id),
         customerId,
       ),
       opts.enriched ?? enrichCart(this.repo, cart, orgId),
+      this.refNamesForPublished(orgId),
     ]);
     const exclusions = opts.exclusions ?? [];
 
@@ -288,7 +316,7 @@ export class PromoService {
       const result = evaluatePromo(enriched, promoView(p), customerFacts, now, exclusions);
       if (result.eligible && (result.discountCents > 0 || result.pointsMultiplier > 1)) {
         applicable.push({
-          promo: this.repo.cardOf(p, lc),
+          promo: this.repo.cardOf(p, lc, names),
           discountCents: result.discountCents,
           pointsMultiplier: result.pointsMultiplier,
           applications: result.applications,
@@ -296,7 +324,7 @@ export class PromoService {
           lineIndexes: result.lineIndexes,
         });
       } else if (result.reason === "missing-get-side") {
-        hints.push({ promo: this.repo.cardOf(p, lc), missingGetSide: result.missingGetSide });
+        hints.push({ promo: this.repo.cardOf(p, lc, names), missingGetSide: result.missingGetSide });
       }
     }
     applicable.sort(
@@ -309,9 +337,12 @@ export class PromoService {
    *  `storeIds` + `exclusive` — so the cashier can browse active promos and see
    *  whether each is org-wide or store-specific. */
   async staffCatalog(orgId: string, lc: LocaleContext): Promise<StaffPromoCard[]> {
-    const promos = await this.repo.publishedPromos(orgId);
+    const [promos, names] = await Promise.all([
+      this.repo.publishedPromos(orgId),
+      this.refNamesForPublished(orgId),
+    ]);
     return promos.map((p) => ({
-      ...this.repo.cardOf(p, lc),
+      ...this.repo.cardOf(p, lc, names),
       storeIds: p.storeIds,
       exclusive: p.exclusive,
     }));
@@ -335,7 +366,7 @@ export class PromoService {
     if (promos.length === 0) return [];
 
     const productIds = [...new Set(cart.lines.map((l) => l.productId))];
-    const [facts, counts, enriched, variants] = await Promise.all([
+    const [facts, counts, enriched, variants, refNames] = await Promise.all([
       this.repo.customerFacts(orgId, customerId),
       this.repo.redemptionCounts(
         promos.map((p) => p.id),
@@ -343,6 +374,7 @@ export class PromoService {
       ),
       opts.enriched ?? enrichCart(this.repo, cart, orgId),
       this.repo.variantPrices(productIds),
+      this.refNamesForPublished(orgId),
     ]);
     const exclusions = opts.exclusions ?? [];
 
@@ -360,7 +392,7 @@ export class PromoService {
       };
       const up = detectPromoUpsell(enriched, promoView(p), customerFacts, now, exclusions, variants);
       if (!up) continue;
-      const card = this.repo.cardOf(p, lc);
+      const card = this.repo.cardOf(p, lc, refNames);
       hints.push(
         up.kind === "add-item"
           ? { ...up, promo: card, missingLabels: [] }

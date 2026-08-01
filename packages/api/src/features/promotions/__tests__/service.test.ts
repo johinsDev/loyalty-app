@@ -60,6 +60,8 @@ function makeRepo(promos: PromoRow[], over: Partial<Record<string, unknown>> = {
     productCategories: vi.fn(async () => new Map([["prod-1", ["cat-1"]]])),
     modifierOptionDeltas: vi.fn(async () => new Map([["mod-1", 500]])),
     addonDeltas: vi.fn(async () => new Map<string, number>()),
+    // Resolves the rule's refs so a card can say WHICH products it covers.
+    refNames: vi.fn(async () => new Map<string, string>()),
     cardOf: vi.fn((row: PromoRow) => ({ id: row.id, name: row.name })),
     findById: vi.fn(async () => promos[0] ?? null),
     redemptionCount: vi.fn(async () => 0),
