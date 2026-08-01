@@ -8,7 +8,7 @@ import {
   ResponsiveModalContent,
   ResponsiveModalTitle,
 } from "@loyalty/ui";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import { useDebounce } from "ahooks";
 import {
@@ -218,7 +218,11 @@ export function RegisterBoard({
         rewardIds: previewRewardIds,
         appliedPromoId: chosenPromoId ?? undefined,
       },
-      { enabled: cart.length > 0 },
+      // Keep the last preview on screen while the next one is in flight. The
+      // cart key changes on every +/-, so without this `preview.data` blanked
+      // out and the promos, the discounts, the earn line and every eligibility
+      // mark unmounted and remounted — the whole panel jumped on each tap.
+      { enabled: cart.length > 0, placeholderData: keepPreviousData },
     ),
   );
   const promos = preview.data?.applicable ?? [];
@@ -244,7 +248,10 @@ export function RegisterBoard({
   const [rewardsAtEnd, setRewardsAtEnd] = useState(true);
   const syncRewardsEnd = (el: HTMLDivElement | null) => {
     if (!el) return;
-    setRewardsAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 8);
+    const atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+    // Only on change. An unconditional set from a callback ref re-rendered,
+    // which re-ran the ref, which set again — "Maximum update depth exceeded".
+    setRewardsAtEnd((prev) => (prev === atEnd ? prev : atEnd));
   };
   // `apply` turns the detail sheet into a decision instead of a dead end: the
   // cashier reads what the reward does and redeems it without hunting back for
@@ -269,6 +276,14 @@ export function RegisterBoard({
   useEffect(() => {
     setChosenPromoId(preview.data?.net?.appliedPromoId ?? null);
   }, [preview.data]);
+
+  // Measure the rewards scroller after the list renders. The ref is stable, so
+  // it can't do the first measurement itself, and rows changing height (an
+  // ineligibility line appearing) changes whether there's anything below.
+  useEffect(() => {
+    syncRewardsEnd(rewardsScrollRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rewards.length, cartEvaluated]);
 
   const appliedPromo = promos.find((p) => p.promo.id === chosenPromoId) ?? null;
   const promoDiscount = appliedPromo?.discountCents ?? 0;
@@ -679,10 +694,7 @@ export function RegisterBoard({
               </div>
               <div className="relative">
                 <div
-                  ref={(el) => {
-                    rewardsScrollRef.current = el;
-                    syncRewardsEnd(el);
-                  }}
+                  ref={rewardsScrollRef}
                   onScroll={(e) => syncRewardsEnd(e.currentTarget)}
                   className="scrollbar-hide max-h-[26rem] space-y-2 overflow-y-auto pb-1"
                 >
@@ -776,7 +788,11 @@ export function RegisterBoard({
                     // cart; the selected reward stays clickable so it can be
                     // deselected.
                     const ineligible = cartEvaluated && elig != null && !elig.eligible;
-                    const blocked = ineligible && !active;
+                    // Enabled only once it can actually be redeemed, mirroring
+                    // the promos panel. An empty cart made every reward look
+                    // clickable when none of them could be applied to anything —
+                    // a reward always discounts something on the ticket.
+                    const blocked = !active && (cart.length === 0 || ineligible);
                     const rewardDetail = () => {
                       setDetailView({
                         title: rw.name,
@@ -803,26 +819,40 @@ export function RegisterBoard({
                           type="button"
                           disabled={blocked}
                           onClick={() => setInlineRewardId(active ? null : rw.rewardId)}
+                          // Same geometry as a promo row — this panel sits right
+                          // under Promos and they are read as one list.
+                          // `min-w-0` is load-bearing: a flex item won't shrink
+                          // below its content without it, so the ineligibility
+                          // line pushed the row past the panel and shoved the
+                          // detail button off-screen.
                           // Border width is constant; only its colour changes.
-                          // Selecting used to swap `border` for `border-2`, and
-                          // that 1px reflowed the row — it read as a bounce.
-                          className={`flex flex-1 items-center justify-between gap-2 rounded-2xl border-2 p-3.5 text-left transition-colors ${
+                          // Swapping `border` for `border-2` on select reflowed
+                          // the row by 1px — that was the bounce.
+                          className={`flex min-w-0 flex-1 items-center gap-2 rounded-xl border p-2 text-left transition-colors ${
                             active
                               ? "border-primary bg-primary/5"
                               : blocked
-                                ? "border-border/60 cursor-not-allowed opacity-45"
-                                : "border-border hover:border-primary/40"
+                                ? "border-transparent bg-muted/40 cursor-not-allowed opacity-55"
+                                : "border-transparent bg-muted/50 hover:bg-muted"
                           }`}
                         >
-                          <div className="min-w-0">
-                            <span className="block truncate text-sm font-bold">{rw.name}</span>
+                          <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
+                            <Gift className="size-3" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="line-clamp-2 block text-xs font-bold">{rw.name}</span>
                             {ineligible ? (
-                              <span className="text-muted-foreground/70 mt-0.5 block truncate text-xs font-semibold">
+                              <span className="text-muted-foreground/70 mt-0.5 line-clamp-2 block text-[0.6875rem] font-semibold">
                                 {reasonLabel(elig?.reason, t, elig?.upgrade)}
                               </span>
                             ) : null}
-                          </div>
-                          {active ? <Check className="text-primary size-5 flex-none" /> : null}
+                          </span>
+                          <span
+                            className={`flex-none text-xs font-extrabold ${active ? "text-primary" : "text-muted-foreground"}`}
+                          >
+                            {rewardCostText(rw)}
+                          </span>
+                          {active ? <Check className="text-primary size-3.5 flex-none" /> : null}
                         </button>
                         {/* Explicit width, not `aspect-square`: a flex item sizes
                             its width from content before `self-stretch` sets the
@@ -832,9 +862,9 @@ export function RegisterBoard({
                           type="button"
                           aria-label={t("viewDetail")}
                           onClick={rewardDetail}
-                          className="border-border text-muted-foreground hover:text-foreground grid w-12 shrink-0 self-stretch place-items-center rounded-2xl border"
+                          className="border-border text-muted-foreground hover:text-foreground grid w-10 shrink-0 self-stretch place-items-center rounded-xl border"
                         >
-                          <Info className="size-4" />
+                          <Info className="size-3.5" />
                         </button>
                       </div>
                     );
