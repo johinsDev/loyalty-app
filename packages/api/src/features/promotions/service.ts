@@ -111,17 +111,23 @@ export class PromoService {
    * Cached with the other promo reads: the refs only move when a promo is
    * edited, and this runs on every register preview.
    */
-  private refNamesForPublished(orgId: string): Promise<Map<string, string>> {
-    return cache.getOrSet(
+  private async refNamesForPublished(orgId: string): Promise<Map<string, string>> {
+    // Entries, not a Map: the cache serializes its values, so a Map comes back
+    // as a plain object and every `.get` on a cache HIT throws — which took the
+    // whole preview down while the register showed the previous cart's numbers.
+    // Same trap as the cached `Date` in `getLoyaltyConfig`.
+    const entries = await cache.getOrSet<[string, string][]>(
       `promos:${orgId}:refnames`,
       async () => {
         const promos = await this.repo.publishedPromos(orgId);
         const refs = promos.flatMap((p) => collectRefs(p));
-        if (refs.length === 0) return new Map<string, string>();
-        return this.repo.refNames(refs).catch(() => new Map<string, string>());
+        if (refs.length === 0) return [];
+        const names = await this.repo.refNames(refs).catch(() => new Map<string, string>());
+        return [...names];
       },
       TTL_SECONDS,
     );
+    return new Map(entries ?? []);
   }
 
   async invalidate(orgId: string, slug?: string): Promise<void> {
