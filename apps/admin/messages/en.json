@@ -2865,7 +2865,9 @@
     "timelineVoidBy": "Voided by {name} · loyalty reversed",
     "searchCustomer": "Search customer…",
     "noCustomers": "No results",
-    "upgradedFrom": "Upgraded from {from} with the reward"
+    "upgradedFrom": "Upgraded from {from} with the reward",
+    "itemBase": "Drink {amount}",
+    "rewardApplied": "Applied to: {target}"
   },
   "Stores": {
     "title": "Stores",

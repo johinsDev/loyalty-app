@@ -122,7 +122,7 @@ describe("PurchasesService.purchaseDetail", () => {
           slug: "latte",
           variantLabel: "Mediano",
           modifierLabels: ["Extra shot"],
-          addonLabels: ["Perlas"],
+          addons: [{ name: "Perlas", priceCents: 100 }],
           removedLabels: ["Azúcar"],
           qty: 2,
           unitAmountCents: 500,
@@ -173,6 +173,15 @@ describe("PurchasesService.purchaseDetail", () => {
         currency: "stamps",
         stampsSpent: 9,
         pointsSpent: 0,
+        // What the benefit came off — frozen at sale time, because a reward
+        // that discounts "any add-on" resolves one target out of the cart and
+        // it can't be worked out again afterwards.
+        target: {
+          productId: "prod_1",
+          productName: "Latte",
+          variantLabel: "Mediano",
+          addonName: "Perlas",
+        },
       },
     });
     const res = await build(repo).purchaseDetail(ORG, CUSTOMER, "p_1");
@@ -181,6 +190,7 @@ describe("PurchasesService.purchaseDetail", () => {
       currency: "stamps",
       discountCents: 0,
       stampsSpent: 9,
+      target: { productName: "Latte", variantLabel: "Mediano", addonName: "Perlas" },
     });
   });
 

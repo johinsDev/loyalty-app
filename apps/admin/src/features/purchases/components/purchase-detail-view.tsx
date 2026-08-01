@@ -329,12 +329,17 @@ function ItemsBlock({ items }: { items: PurchaseAdminDetail["items"] }) {
     <Section icon={<Receipt className="size-3.5" />} label={t("items")}>
       <div className="bg-card border-border divide-border/60 divide-y rounded-2xl border">
         {items.map((item) => {
+          // The add-ons move out of this list and onto their own priced row:
+          // "Grande · Perlas · Shot de espresso" said what was on the drink but
+          // never what any of it cost, and the line total is the sum of all of
+          // it. What's left here is what carries no price of its own.
           const parts = [
             item.variantLabel,
             ...item.modifierLabels,
-            ...item.addonLabels,
             ...item.removedLabels.map((r) => t("without", { name: r })),
           ].filter(Boolean);
+          const addonTotal = item.addons.reduce((s, a) => s + a.priceCents, 0);
+          const baseCents = item.unitAmountCents - addonTotal;
           const inner = (
             <>
               <span className="bg-muted text-muted-foreground grid h-7 min-w-7 flex-none place-items-center rounded-lg px-1.5 text-sm font-extrabold">
@@ -346,6 +351,18 @@ function ItemsBlock({ items }: { items: PurchaseAdminDetail["items"] }) {
                 </span>
                 {parts.length > 0 ? (
                   <span className="text-muted-foreground truncate text-xs">{parts.join(" · ")}</span>
+                ) : null}
+                {/* Where the money went, per unit. Only when there are add-ons:
+                    on a plain drink the base price IS the line price. */}
+                {item.addons.length > 0 ? (
+                  <span className="text-muted-foreground/80 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                    <span>{t("itemBase", { amount: money(format, baseCents) })}</span>
+                    {item.addons.map((a, n) => (
+                      <span key={`${n}-${a.name}`} className="text-foreground/70">
+                        {a.name} +{money(format, a.priceCents)}
+                      </span>
+                    ))}
+                  </span>
                 ) : null}
                 {/* Names the line the reward was spent on. Once the upgrade is
                     applied every line reads "Grande", so without this a ticket
@@ -405,6 +422,25 @@ function RedeemBlock({ reward }: { reward: NonNullable<PurchaseAdminDetail["rewa
               ? t("spentStamps", { count: reward.stampsSpent })
               : t("spentPoints", { count: reward.pointsSpent })}
           </span>
+          {/* What the benefit came off. "Adición gratis (cualquiera)" resolves
+              ONE target out of the cart, and the ticket used to say only that
+              it took $1.000 — off which drink, and which of its add-ons, was
+              unanswerable. Absent on order-wide vouchers, and on sales recorded
+              before this was captured. */}
+          {reward.target ? (
+            <span className="text-primary mt-1 text-xs font-semibold">
+              {t("rewardApplied", {
+                target: [
+                  reward.target.addonName,
+                  [reward.target.productName, reward.target.variantLabel]
+                    .filter(Boolean)
+                    .join(" · "),
+                ]
+                  .filter(Boolean)
+                  .join(" — "),
+              })}
+            </span>
+          ) : null}
         </div>
         <ChevronRight className="text-muted-foreground/50 size-4 shrink-0" />
       </Link>

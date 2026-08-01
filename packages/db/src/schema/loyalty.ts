@@ -454,6 +454,18 @@ export const redemption = sqliteTable(
     purchaseId: text("purchase_id").references(() => purchase.id, {
       onDelete: "set null",
     }),
+    // What the benefit actually landed on. A reward that discounts "any add-on"
+    // or "the cheapest matching drink" resolves ONE target out of the cart at
+    // sale time, and nothing recorded which — so the purchase detail could show
+    // "−$1.000" with no way to say off what. Not recomputable after the fact:
+    // the reward's benefit config and the catalog both move.
+    //
+    // Ids (resolved to names on read, so a rename doesn't rewrite old tickets)
+    // except the add-on, whose name is frozen because the catalog entry can be
+    // deleted. Null on order-wide vouchers and experiences — they have no target.
+    targetProductId: text("target_product_id"),
+    targetVariantId: text("target_variant_id"),
+    targetAddonName: text("target_addon_name"),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),

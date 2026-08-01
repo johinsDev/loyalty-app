@@ -100,8 +100,10 @@ export interface PurchaseDetailItem {
   variantLabel: string | null;
   /** The chosen modifier labels (e.g. ["Extra shot"]) — legacy modifiers. */
   modifierLabels: string[];
-  /** Catalog add-ons applied to this line (e.g. ["Perlas", "Extra queso"]). */
-  addonLabels: string[];
+  /** Catalog add-ons on this line, with the price frozen at sale time. Priced
+   *  rather than named-only: `unitAmountCents` is the drink plus its add-ons,
+   *  so without these the detail can't say where the money went. */
+  addons: { name: string; priceCents: number }[];
   /** Removed recipe ingredients ("sin X") — names only. */
   removedLabels: string[];
   qty: number;
@@ -118,6 +120,22 @@ export interface PurchaseDetailPromo {
   freeItemLabel: string | null;
 }
 
+/**
+ * What a reward's benefit actually landed on, frozen at sale time.
+ *
+ * `null` on order-wide vouchers and experiences (nothing to land on) and on
+ * redemptions recorded before this was captured. Not derivable later: a reward
+ * that discounts "any add-on" resolves ONE target out of the cart, and both its
+ * config and the catalog move after the sale.
+ */
+export interface PurchaseDetailRewardTarget {
+  productId: string;
+  productName: string | null;
+  variantLabel: string | null;
+  /** The waived add-on, when the benefit was a free add-on. */
+  addonName: string | null;
+}
+
 /** The reward redeemed inline within a purchase. */
 export interface PurchaseDetailReward {
   redemptionId: string;
@@ -131,6 +149,8 @@ export interface PurchaseDetailReward {
   currency: "stamps" | "points";
   stampsSpent: number;
   pointsSpent: number;
+  /** Which drink / variant / add-on the benefit came off. */
+  target: PurchaseDetailRewardTarget | null;
 }
 
 /** Whether the org grants stamps / points at all, so the detail can hide a

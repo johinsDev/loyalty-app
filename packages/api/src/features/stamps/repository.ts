@@ -302,6 +302,14 @@ export class StampsRepository {
       rewardId: string;
       currency: "stamps" | "points" | "both";
       redeemedByUserId: string;
+      /** The cart line the benefit landed on, resolved by the router. Recorded
+       *  on the redemption because it can't be recomputed later — the reward's
+       *  config and the catalog both move. */
+      target?: {
+        productId: string;
+        variantId: string | null;
+        addonName: string | null;
+      } | null;
     };
   }): Promise<RecordResult> {
     return this.db.transaction(async (tx) => {
@@ -551,6 +559,7 @@ export class StampsRepository {
           storeId: input.storeId,
           purchaseId,
           discountCents: input.rewardDiscountCents ?? 0,
+          target: input.inlineReward.target ?? null,
         });
         if (redeemed.kind !== "claimed") {
           throw new TRPCError({

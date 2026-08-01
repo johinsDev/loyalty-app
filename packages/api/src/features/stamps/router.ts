@@ -364,6 +364,16 @@ export const stampsRouter = router({
       let netPrice = input.priceCents;
       let pointsMultiplier = 1;
       let isRedemptionOnly = false;
+      // What the inline reward landed on, recorded on the redemption. Declared
+      // out here because the sale is written below this block — and nothing
+      // downstream can work it out again: the reward's config and the catalog
+      // both move after the sale, so a "−$1.000" in history would have no way
+      // to say what it came off.
+      let rewardTarget: {
+        productId: string;
+        variantId: string | null;
+        addonName: string | null;
+      } | null = null;
       if (input.items && input.items.length > 0) {
         const promoRepo = new PromoRepository(ctx.db);
         const enriched = await enrichCart(promoRepo, {
@@ -397,6 +407,17 @@ export const stampsRouter = router({
           rewardDiscount = evalResult.discountCents;
           exclusions = evalResult.exclusions;
           if (evalResult.upgrade) pricedItems = splitPurchaseLine(input.items, evalResult.upgrade);
+          // The same expression the preview shows the cashier, so history and
+          // the register can't disagree about which line it was.
+          const targetIndex = evalResult.exclusions[0]?.lineIndex ?? evalResult.target?.lineIndex;
+          const targetLine = targetIndex != null ? pricedItems[targetIndex] : undefined;
+          rewardTarget = targetLine
+            ? {
+                productId: targetLine.productId,
+                variantId: targetLine.variantId ?? null,
+                addonName: evalResult.target?.label ?? null,
+              }
+            : null;
         }
 
         // Promo on the remainder (reward-consumed units excluded).
@@ -519,6 +540,7 @@ export const stampsRouter = router({
           acc,
           entrySource: attribution?.entrySource ?? null,
           metadata: attribution?.metadata ?? null,
+          rewardTarget,
         },
       );
       // Points + streak: best-effort, idempotent; never fail the purchase.

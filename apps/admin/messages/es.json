@@ -2865,7 +2865,9 @@
     "timelineVoidBy": "Compra anulada por {name} · lealtad revertida",
     "searchCustomer": "Buscar cliente…",
     "noCustomers": "Sin resultados",
-    "upgradedFrom": "Subido desde {from} con el premio"
+    "upgradedFrom": "Subido desde {from} con el premio",
+    "itemBase": "Bebida {amount}",
+    "rewardApplied": "Se aplicó a: {target}"
   },
   "Stores": {
     "title": "Tiendas",
