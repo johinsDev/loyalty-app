@@ -1504,7 +1504,12 @@
     "lineBase": "Drink {amount}",
     "rewardDiscountAddon": "Reward: free {addon} on {item}",
     "rewardDiscountAddonOfN": "Reward: free {addon} on 1 of {qty} · {item}",
-    "rewardOnLineNamedOfN": "Free {item} on 1 of {qty} · −{amount}"
+    "rewardOnLineNamedOfN": "Free {item} on 1 of {qty} · −{amount}",
+    "promoPointsMult": "×{mult} points",
+    "promoMore": "See {count} more promos",
+    "promoLess": "See less",
+    "rewardNotCombinable": "The reward doesn't combine with {promo}. Pick one of the two to charge.",
+    "dropPromoForReward": "Drop the promo"
   },
   "Admin": {
     "menu": "Menu",

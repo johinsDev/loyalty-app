@@ -152,7 +152,17 @@ export function RegisterBoard({
   const [picker, setPicker] = useState<{ slug: string; name: string; priceCents: number } | null>(
     null,
   );
-  const [chosenPromoId, setChosenPromoId] = useState<string | null>(null);
+  /**
+   * The promo the cashier explicitly picked — NOT the one on the ticket.
+   *
+   * The server auto-applies the biggest applicable promo whenever no id is
+   * sent. This used to mirror that answer back into the next request, which
+   * pinned it: a cart that started as one Classic got "$3.000 off toda la
+   * orden", and adding the matcha that unlocks "Classic + Matcha al 50%"
+   * (−$7.500) kept charging the old one, because the register was now *asking*
+   * for it. $4.500 decided by the order the cashier tapped things in.
+   */
+  const [cashierPromoId, setCashierPromoId] = useState<string | null>(null);
   const [inlineRewardId, setInlineRewardId] = useState<string | null>(
     preselect?.rewardId ?? null,
   );
@@ -160,6 +170,8 @@ export function RegisterBoard({
   const [promoFilter, setPromoFilter] = useState<"customer" | "all">("customer");
   /** Show every upsell nudge instead of the two best. */
   const [upsellOpen, setUpsellOpen] = useState(false);
+  /** Show every applicable promo instead of the six biggest. */
+  const [promosOpen, setPromosOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   // The cashier declined the promo outright. Needed because the server picks the
   // best one whenever no id is sent, so clearing the selection alone had it
@@ -233,7 +245,9 @@ export function RegisterBoard({
         })),
         inlineReward,
         rewardIds: previewRewardIds,
-        appliedPromoId: chosenPromoId ?? undefined,
+        // Only an explicit choice travels. Sending back whatever the server
+        // last applied would freeze that pick against every later cart.
+        appliedPromoId: cashierPromoId ?? undefined,
         skipPromo: promoOptOut || undefined,
       },
       // Keep the last preview on screen while the next one is in flight. The
@@ -297,12 +311,18 @@ export function RegisterBoard({
     apply?: { label: string; disabled?: boolean; run: () => void };
   } | null>(null);
 
-  // Track the promo the server actually applied (best-of + exclusivity), so the
-  // cart line and the promos panel agree with the total.
+  // Drop an explicit promo choice once the cart stops satisfying it, so the
+  // register falls back to the server's best-of instead of asking for a promo
+  // the sale would then be rejected for.
   useEffect(() => {
-    if (promoOptOut) return;
-    setChosenPromoId(previewData?.net?.appliedPromoId ?? null);
-  }, [previewData, promoOptOut]);
+    if (!cashierPromoId) return;
+    if (cart.length === 0) {
+      setCashierPromoId(null);
+      return;
+    }
+    if (!cartEvaluated) return;
+    if (!promos.some((p) => p.promo.id === cashierPromoId)) setCashierPromoId(null);
+  }, [cashierPromoId, cart.length, cartEvaluated, promos]);
 
   // Drop a selected reward the moment the cart stops satisfying it. Removing
   // the qualifying drink left the row greyed out *and* still ticked, and the
@@ -328,11 +348,39 @@ export function RegisterBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rewards.length, cartEvaluated, inlineRewardId]);
 
+  /**
+   * What a promo is worth, in the unit it actually pays in. A points multiplier
+   * discounts nothing, so every row of "Puntos x3" read "− $ 0" — which looks
+   * like a promo that is broken rather than one that pays in points.
+   */
+  const promoWorth = (a: (typeof promos)[number]): string =>
+    a.discountCents > 0
+      ? `− ${formatCop(a.discountCents)}`
+      : a.pointsMultiplier > 1
+        ? t("promoPointsMult", { mult: a.pointsMultiplier })
+        : "—";
+
+  /** What is actually on the ticket — the server's answer, not a local guess. */
+  const chosenPromoId = net?.appliedPromoId ?? null;
   const appliedPromo = promos.find((p) => p.promo.id === chosenPromoId) ?? null;
-  const promoDiscount = appliedPromo?.discountCents ?? 0;
-  const rewardDiscount = rewardPreview?.ok ? rewardPreview.discountCents : 0;
+  // All three come from the server's `net`, which is what the sale is charged
+  // from. The raw evaluations overstate: `resolveNet` applies the stacking
+  // policy (an exclusive promo zeroes the reward) and then the max-total cap.
+  // Drawing the raw reward discount put "Recompensa − $5.000" on a ticket where
+  // it had been suppressed — the total was right, the lines above it were not,
+  // and the sale then failed at charge time with a bare error.
+  const promoDiscount = net ? net.promoDiscountCents : (appliedPromo?.discountCents ?? 0);
+  const rewardDiscount = net
+    ? net.rewardDiscountCents
+    : rewardPreview?.ok
+      ? rewardPreview.discountCents
+      : 0;
   const tierDiscount = net?.tierDiscountCents ?? 0;
   const tierPct = net?.tierDiscountPct ?? 0;
+  /** The cashier picked a reward the applied promo refuses to share a ticket
+   *  with. `recordPurchase` rejects this outright, so it has to be resolved
+   *  here rather than discovered when the sale fails. */
+  const rewardSuppressed = Boolean(inlineRewardId) && Boolean(net?.suppressed.reward);
   const total = net ? net.netPriceCents : Math.max(0, subtotal - promoDiscount - rewardDiscount);
 
   // Name the drink the reward lands on, wherever the amount is shown. An
@@ -489,7 +537,7 @@ export function RegisterBoard({
       setCart([]);
       setOrderNote("");
       setPriceCop(undefined);
-      setChosenPromoId(null);
+      setCashierPromoId(null);
       setInlineRewardId(null);
       toast.success(t("purchaseRecorded"));
     } catch (err) {
@@ -506,7 +554,7 @@ export function RegisterBoard({
       }
       if (msg === "PROMO_NOT_APPLICABLE") {
         toast.error(t("promoNotApplicable"));
-        setChosenPromoId(null);
+        setCashierPromoId(null);
         return;
       }
       toast.error(msg || t("purchaseError"));
@@ -691,7 +739,10 @@ export function RegisterBoard({
     recordPurchase.isPending ||
     (mode === "total" ? priceCop === undefined : cart.length === 0) ||
     // Recording now would drop the reward server-side without a trace.
-    (mode === "total" && inlineRewardId != null);
+    (mode === "total" && inlineRewardId != null) ||
+    // The server rejects this combination; block it here instead of letting the
+    // cashier discover it as a failed sale.
+    rewardSuppressed;
 
   return (
     <div className="flex flex-col gap-3 p-3 sm:p-4 lg:h-full lg:min-h-0">
@@ -859,7 +910,7 @@ export function RegisterBoard({
                   </p>
                 ) : (
                   <>
-                    {promos.slice(0, 6).map((a) => {
+                    {(promosOpen ? promos : promos.slice(0, 6)).map((a) => {
                       const active = a.promo.id === chosenPromoId;
                       return (
                         <div key={a.promo.id} className="flex items-stretch gap-1">
@@ -871,11 +922,11 @@ export function RegisterBoard({
                                 lines: [
                                   a.promo.shortDescription || a.promo.benefitSummary || "",
                                 ].filter(Boolean) as string[],
-                                cost: `− ${formatCop(a.discountCents)}`,
+                                cost: promoWorth(a),
                                 apply: {
                                   label: active ? t("promoRemove") : t("promoApply"),
                                   run: () => {
-                                    setChosenPromoId(active ? null : a.promo.id);
+                                    setCashierPromoId(active ? null : a.promo.id);
                                     setPromoOptOut(active);
                                   },
                                 },
@@ -897,9 +948,9 @@ export function RegisterBoard({
                               {a.promo.name}
                             </span>
                             <span
-                              className={`flex-none text-xs font-extrabold ${active ? "text-primary" : "text-muted-foreground"}`}
+                              className={`flex-none text-xs font-extrabold whitespace-nowrap ${active ? "text-primary" : "text-muted-foreground"}`}
                             >
-                              − {formatCop(a.discountCents)}
+                              {promoWorth(a)}
                             </span>
                             {/* Always holds its width. Appearing on select stole
                                 space from the name, which re-wrapped and changed
@@ -926,6 +977,18 @@ export function RegisterBoard({
                       <p className="text-muted-foreground/70 pt-0.5 text-[0.6875rem] font-semibold">
                         {t("promoTapToSwitch")}
                       </p>
+                    ) : null}
+                    {/* With a full catalog a cart can qualify for a dozen. Six
+                        were drawn and the rest were unreachable — including,
+                        on some carts, ones the cashier would want to switch to. */}
+                    {promos.length > 6 ? (
+                      <button
+                        type="button"
+                        onClick={() => setPromosOpen((o) => !o)}
+                        className="text-primary text-[0.6875rem] font-extrabold underline underline-offset-2"
+                      >
+                        {promosOpen ? t("promoLess") : t("promoMore", { count: promos.length - 6 })}
+                      </button>
                     ) : null}
                   </>
                 )
@@ -1457,6 +1520,16 @@ export function RegisterBoard({
                       value={`− ${formatCop(promoDiscount)}`}
                       good
                     />
+                  ) : appliedPromo && appliedPromo.pointsMultiplier > 1 ? (
+                    // A points promo takes nothing off, so the discount row
+                    // above never drew and the multiplier was applied with
+                    // nothing on screen saying so — the "+N pts" below was just
+                    // a bigger number than usual.
+                    <Row
+                      label={promoDiscountLabel}
+                      value={t("promoPointsMult", { mult: appliedPromo.pointsMultiplier })}
+                      good
+                    />
                   ) : null}
                   {rewardDiscount > 0 ? (
                     <Row label={rewardDiscountLabel} value={`− ${formatCop(rewardDiscount)}`} good />
@@ -1496,6 +1569,38 @@ export function RegisterBoard({
                       +{earn.points} {t("earnPtsUnit")}
                     </span>
                   ) : null}
+                </div>
+              ) : null}
+              {/* An exclusive promo and a reward can't share a ticket, and the
+                  server refuses the sale outright. Surfaced here, beside the
+                  money and the button, with both ways out — otherwise the
+                  cashier finds out by pressing Cobrar and getting an error. */}
+              {rewardSuppressed ? (
+                <div className="mt-3 space-y-2 rounded-2xl bg-amber-400/10 p-3">
+                  <p className="text-xs leading-snug font-semibold text-amber-200">
+                    {t("rewardNotCombinable", { promo: promoDiscountLabel })}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-10 border-white/20 bg-transparent text-white hover:bg-white/10"
+                      onClick={() => setInlineRewardId(null)}
+                    >
+                      {t("removeReward")}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-10 text-white hover:bg-white/10"
+                      onClick={() => {
+                        setCashierPromoId(null);
+                        setPromoOptOut(true);
+                      }}
+                    >
+                      {t("dropPromoForReward")}
+                    </Button>
+                  </div>
                 </div>
               ) : null}
               <Button
