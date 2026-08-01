@@ -212,6 +212,8 @@ export interface ApplicablePromo {
   applications: number;
   /** This promo doesn't stack with the tier benefit or a reward (register). */
   exclusive: boolean;
+  /** Cart lines the discount lands on, so the register can name the drink. */
+  lineIndexes: number[];
 }
 export interface ApplicableHint {
   promo: PromoCard;
@@ -233,9 +235,19 @@ export interface StaffPromoCard extends PromoCard {
 /**
  * A register upsell nudge for a promo that doesn't yet apply — one action the
  * cashier can suggest to unlock it. See `engine/upsell.ts` for the detection.
+ *
+ * The `*Label` fields are resolved names for the ids in the same hint. Ids are
+ * useless at the counter: a cashier can't offer "the get-side ref" or "variant
+ * 8f3c…" to a customer, they have to say "un Taro Milk Tea Grande".
  */
 export type PromoUpsellHint =
-  | { kind: "add-item"; promo: PromoCard; missingGetSide: ItemRef[] }
+  | {
+      kind: "add-item";
+      promo: PromoCard;
+      missingGetSide: ItemRef[];
+      /** Display names for `missingGetSide`, in the same order. */
+      missingLabels: string[];
+    }
   | { kind: "spend-to-threshold"; promo: PromoCard; addCents: number }
   | {
       kind: "variant-swap";
@@ -245,6 +257,8 @@ export type PromoUpsellHint =
       toVariantId: string;
       extraCents: number;
       discountCents: number;
+      fromLabel: string | null;
+      toLabel: string | null;
     };
 
 // ─── Analytics ───────────────────────────────────────────────────────────────

@@ -139,9 +139,14 @@ export class PointsService {
     });
     // Within the post-reactivation grace the on-earn recompute may only raise:
     // the first earn against a restarted (near-empty) window must not demote.
+    // `new Date(...)` rather than `.getTime()`: this value comes from a cached
+    // config, and a cache hit hands back the JSON string it was serialized as.
+    // Assuming a real Date here threw on every hit, and the caller's catch
+    // reported the sale as earning nothing.
     const grace = opts.loyalty?.tierGraceUntil;
+    const graceMs = grace == null ? null : new Date(grace).getTime();
     const tierUp = await this.recompute(organizationId, customerId, {
-      noDowngrade: grace != null && grace.getTime() > Date.now(),
+      noDowngrade: graceMs != null && !Number.isNaN(graceMs) && graceMs > Date.now(),
     });
     return { earned: points, balance, tierUp };
   }

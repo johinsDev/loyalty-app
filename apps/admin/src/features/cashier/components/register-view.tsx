@@ -1,19 +1,22 @@
 "use client";
 
-import type { AppRouter } from "@loyalty/api";
 import { Button } from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
-import type { inferRouterOutputs } from "@trpc/server";
-import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
-import { RegisterBoard, type PreselectReward } from "./register-board";
+import { RegisterBoard, type PreselectReward, type SaleResult } from "./register-board";
+import { SaleSuccess } from "./sale-success";
 
-type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
+const formatCop = (cents: number): string =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(Math.round(cents) / 100);
 
 /**
  * `/caja/cliente/[customerId]` — the register for one identified socio. Loads
@@ -32,7 +35,7 @@ export function RegisterView({
   const trpc = useTRPC();
   const router = useRouter();
 
-  const [success, setSuccess] = useState<WalletView | null>(null);
+  const [success, setSuccess] = useState<SaleResult | null>(null);
 
   const wallet = useQuery(trpc.stamps.walletForCustomer.queryOptions({ customerId }));
   const register = useQuery(trpc.customers.registerContext.queryOptions({ customerId }));
@@ -40,33 +43,24 @@ export function RegisterView({
 
   const backToIdentify = () => router.push("/register");
 
-  if (success) {
-    return (
-      <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-3.5 px-5 py-10 text-center">
-        <div className="from-primary to-primary/80 grid size-24 place-items-center rounded-3xl bg-gradient-to-br text-white shadow-xl">
-          <Check className="size-12" strokeWidth={3} />
-        </div>
-        <div className="font-display text-3xl font-semibold tracking-tight">
-          {t("purchaseRecorded")}
-        </div>
-        <div className="bg-card border-border mt-1 rounded-2xl border p-4">
-          <div className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
-            {t("newBalance")}
-          </div>
-          <div className="text-lg font-extrabold">
-            {success.currentStamps}/{success.walletSize} {t("stampMany")}
-          </div>
-        </div>
-        <Button
-          size="lg"
-          onClick={backToIdentify}
-          className="mt-3 h-10 w-full max-w-xs rounded-2xl text-base font-extrabold"
-        >
-          {t("nextMember")}
-        </Button>
-      </div>
-    );
-  }
+  // `replace`, not `push`: after a sale is recorded, leaving the charged
+  // customer's register in the history means Back lands on it with an empty
+  // cart — the shortest path to charging the same person twice.
+  // `replace`, not `push`: leaving the charged customer's register in the
+  // history means Back lands on it, which is the shortest path to a double sale.
+  //
+  // KNOWN BLOCKER (pre-existing, not caused by the modal): leaving
+  // `/caja/cliente/[id]` doesn't commit. The history entry is pushed but the URL
+  // never changes. Reproduced on a fresh dev server with `Cambiar cliente` and a
+  // plain <Link> too, so it is the route, not this call. Consistent with the
+  // tRPC batch bug where a failed query stays pending forever: an App Router
+  // navigation runs in a transition, and a never-resolving suspense keeps it
+  // from committing. Clearing the cart on success (see register-board) is what
+  // actually defuses the double-charge in the meantime.
+  const doneWithSale = () => {
+    setSuccess(null);
+    router.replace("/register");
+  };
 
   // A failed wallet read used to sit on "Buscando…" forever, indistinguishable
   // from a slow one.
@@ -93,23 +87,36 @@ export function RegisterView({
     register.data?.name?.trim() || register.data?.phoneMasked || t("unknownCustomer");
 
   return (
-    <RegisterBoard
-      customerId={customerId}
-      customerName={customerName}
-      register={register.data}
-      wallet={wallet.data}
-      availableRewards={{
-        items: available.data?.items ?? [],
-        publishedCount: available.data?.publishedCount ?? 0,
-        isPending: available.isPending,
-        isError: available.isError,
-        refetch: () => void available.refetch(),
-      }}
-      preselect={preselect}
-      onSuccess={(view) => setSuccess(view)}
-      onRewardPending={backToIdentify}
-      onCancel={backToIdentify}
-      onScan={backToIdentify}
-    />
+    <>
+      <RegisterBoard
+        customerId={customerId}
+        customerName={customerName}
+        register={register.data}
+        wallet={wallet.data}
+        availableRewards={{
+          items: available.data?.items ?? [],
+          publishedCount: available.data?.publishedCount ?? 0,
+          isPending: available.isPending,
+          isError: available.isError,
+          refetch: () => void available.refetch(),
+        }}
+        preselect={preselect}
+        onSuccess={(result) => setSuccess(result)}
+        onRewardPending={backToIdentify}
+        onCancel={backToIdentify}
+        onScan={backToIdentify}
+      />
+      {success ? (
+        <SaleSuccess
+          open
+          onClose={doneWithSale}
+          totalCents={success.totalCents}
+          earned={success.earned}
+          pointsBalance={success.pointsBalance}
+          tierUp={success.tierUp}
+          formatMoney={formatCop}
+        />
+      ) : null}
+    </>
   );
 }

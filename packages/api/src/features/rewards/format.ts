@@ -56,10 +56,24 @@ export function rewardBenefitSummary(
     }
     case "percentOff": {
       const what = refNames(benefit.refs, names, locale);
+      // The ceiling is part of the benefit, not fine print: "20% en tu compra"
+      // on a $60.000 ticket promises $12.000 and the register takes $4.000 —
+      // the cashier says the first number out loud, the customer reads the
+      // second one off the ticket.
+      const cap =
+        benefit.maxDiscountCents == null
+          ? ""
+          : es
+            ? ` (máx ${money(benefit.maxDiscountCents, locale)})`
+            : ` (max ${money(benefit.maxDiscountCents, locale)})`;
       if (benefit.refs.length === 0)
-        return es ? `${pct(benefit.percent)} en tu compra` : `${pct(benefit.percent)} off`;
+        return es
+          ? `${pct(benefit.percent)} en tu compra${cap}`
+          : `${pct(benefit.percent)} off${cap}`;
       const scope = what ?? (es ? "productos seleccionados" : "selected items");
-      return es ? `${pct(benefit.percent)} en ${scope}` : `${pct(benefit.percent)} off ${scope}`;
+      return es
+        ? `${pct(benefit.percent)} en ${scope}${cap}`
+        : `${pct(benefit.percent)} off ${scope}${cap}`;
     }
     case "freeAddon":
       return es ? "Adición gratis" : "Free add-on";

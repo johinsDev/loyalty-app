@@ -21,6 +21,36 @@ describe("benefitSummary", () => {
     expect(benefitSummary("percentOff", rule, "es")).toBe("20% en productos seleccionados");
   });
 
+  it("states the discount ceiling — it is a promise the register has to keep", () => {
+    // "30% en Studio Showcase" on a $21.000 drink promises $6.300; the register
+    // takes $3.000. The cap belongs in the sentence the cashier reads aloud.
+    const rule = compileRule({
+      type: "percentOff",
+      refs: [{ kind: "product", id: "p1" }],
+      percent: 30,
+      maxDiscountCents: 300000,
+    });
+    const names = new Map([["p1", "Studio Showcase"]]);
+    // `toContain`, because Intl separates the COP symbol with a non-breaking
+    // space — the same reason the money test below matches on the digits.
+    const es = benefitSummary("percentOff", rule, "es", names);
+    expect(es).toContain("30% en Studio Showcase");
+    expect(es).toContain("máx");
+    expect(es).toContain("3.000");
+    expect(benefitSummary("percentOff", rule, "en", names)).toContain("max");
+  });
+
+  it("scopes the second unit with 'de', not a second 'en'", () => {
+    const rule = compileRule({
+      type: "secondUnit",
+      refs: [{ kind: "category", id: "c1" }],
+      percent: 50,
+    });
+    const names = new Map([["c1", "General"]]);
+    // Was "50% en la 2.ª unidad en General".
+    expect(benefitSummary("secondUnit", rule, "es", names)).toBe("50% en la 2.ª unidad de General");
+  });
+
   it("labels nxm with the NxM shape", () => {
     const rule = compileRule({ type: "nxm", refs: [], buyQty: 2, payQty: 1 });
     expect(benefitSummary("nxm", rule, "es")).toBe("2×1: el más barato va gratis");

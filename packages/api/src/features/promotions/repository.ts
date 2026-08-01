@@ -867,14 +867,16 @@ export class PromoRepository {
   }
 
   /** addonId → its catalog price delta (for reward add-on waiving at POS). */
-  async addonDeltas(ids: string[]): Promise<Map<string, number>> {
-    const map = new Map<string, number>();
+  async addonDeltas(ids: string[]): Promise<Map<string, { delta: number; name: string }>> {
+    const map = new Map<string, { delta: number; name: string }>();
     if (ids.length === 0) return map;
     const rows = await this.db
-      .select({ id: addon.id, delta: addon.priceDeltaCents })
+      // The name rides along in the same query so the register can say WHICH
+      // add-on a free-add-on reward waived, instead of an unexplained amount.
+      .select({ id: addon.id, delta: addon.priceDeltaCents, name: addon.name })
       .from(addon)
       .where(inArray(addon.id, ids));
-    for (const r of rows) map.set(r.id, r.delta);
+    for (const r of rows) map.set(r.id, { delta: r.delta, name: r.name });
     return map;
   }
 
@@ -998,8 +1000,11 @@ export class PromoRepository {
     return Boolean(rows[0]);
   }
 
-  cardOf(row: PromoRow, ctx: LocaleContext): PromoCard {
-    return toCard(row, undefined, ctx);
+  /** `names` resolves the rule's refs so the summary can say WHICH products the
+   *  promo covers. Without it every scoped promo reads "en productos
+   *  seleccionados", which is the one thing a cashier can't work out alone. */
+  cardOf(row: PromoRow, ctx: LocaleContext, names?: ReadonlyMap<string, string>): PromoCard {
+    return toCard(row, undefined, ctx, names);
   }
 
   async #translationsFor(

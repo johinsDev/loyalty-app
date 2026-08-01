@@ -27,6 +27,9 @@ export interface RewardOnCart {
   /** Set when the cart was changed, so callers can mirror the split onto the
    *  raw purchase lines and the register can explain what happened. */
   upgrade: AppliedUpgradeInfo | null;
+  /** Presentation-only line the benefit landed on when it consumed no unit (a
+   *  free add-on waives a price without excluding anything). */
+  target?: { lineIndex: number; label?: string } | null;
   ok: boolean;
   reason: string | null;
 }
@@ -128,6 +131,9 @@ export async function resolveRewardOnCart(
     discountCents: res.discountCents,
     exclusions: res.exclusions,
     upgrade: null,
+    // Passed through for benefits that discount a line without consuming a
+    // unit, so the register can still mark which line it landed on.
+    target: res.target ?? null,
     ok: true,
     reason: null,
   };

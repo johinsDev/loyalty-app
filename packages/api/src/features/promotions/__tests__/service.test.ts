@@ -2,6 +2,7 @@ import type { PromoRow } from "@loyalty/db/schema";
 import { describe, expect, it, vi } from "vitest";
 
 import type { LocaleContext } from "../../_shared/localize";
+import { benefitSummary } from "../format";
 import type { PromoRepository } from "../repository";
 import { compileRule } from "../rule-compile";
 import { PromoService } from "../service";
@@ -60,7 +61,16 @@ function makeRepo(promos: PromoRow[], over: Partial<Record<string, unknown>> = {
     productCategories: vi.fn(async () => new Map([["prod-1", ["cat-1"]]])),
     modifierOptionDeltas: vi.fn(async () => new Map([["mod-1", 500]])),
     addonDeltas: vi.fn(async () => new Map<string, number>()),
-    cardOf: vi.fn((row: PromoRow) => ({ id: row.id, name: row.name })),
+    // Resolves the rule's refs so a card can say WHICH products it covers.
+    refNames: vi.fn(async () => new Map<string, string>()),
+    // Runs the real summary formatter, so the `names` the service resolves are
+    // actually consumed. A stub that ignored them made every test about naming
+    // — and about the cache that carries the names — pass vacuously.
+    cardOf: vi.fn((row: PromoRow, _ctx: LocaleContext, names?: ReadonlyMap<string, string>) => ({
+      id: row.id,
+      name: row.name,
+      benefitSummary: benefitSummary(row.type, row.rule, "es", names),
+    })),
     findById: vi.fn(async () => promos[0] ?? null),
     redemptionCount: vi.fn(async () => 0),
     remove: vi.fn(async () => {}),
@@ -73,6 +83,37 @@ function makeRepo(promos: PromoRow[], over: Partial<Record<string, unknown>> = {
 const svc = (repo: PromoRepository) => new PromoService({} as never, repo);
 
 describe("PromoService.applicable", () => {
+  it("survives a second call — the cached ref names come back as data, not a Map", async () => {
+    // The cache serializes what it stores, so a Map returns as a plain object
+    // and every `.get` throws on the HIT. That took the whole register preview
+    // down while it kept showing the previous cart's numbers, and only on the
+    // SECOND evaluation — which is why one call passing proves nothing.
+    const promos = [
+      publishedPromo({
+        id: "named-promo",
+        rule: compileRule({
+          type: "percentOff",
+          refs: [{ kind: "category", id: "cat-1" }],
+          percent: 20,
+        }),
+      }),
+    ];
+    const repo = makeRepo(promos, {
+      refNames: vi.fn(async () => new Map([["cat-1", "Frutales"]])),
+    });
+    const service = svc(repo);
+    const cart = {
+      currency: "COP",
+      lines: [{ productId: "prod-1", qty: 1, unitAmountCents: 10000 }],
+    };
+    const first = await service.applicable("org-cache", "cust-1", cart, lc);
+    const second = await service.applicable("org-cache", "cust-1", cart, lc);
+    // Not just "it didn't throw": the name has to survive the round trip, or
+    // the register quietly falls back to "en productos seleccionados".
+    expect(first.applicable[0]?.promo.benefitSummary).toBe("20% en Frutales");
+    expect(second.applicable[0]?.promo.benefitSummary).toBe("20% en Frutales");
+  });
+
   it("stitches categories + modifier deltas into the cart and evaluates", async () => {
     const promos = [
       publishedPromo({

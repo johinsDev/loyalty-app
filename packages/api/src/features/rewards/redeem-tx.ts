@@ -26,6 +26,15 @@ export interface RedeemWithinTxInput {
   purchaseId?: string;
   /** The reward's share of the ticket discount (v2). null/omitted = unknown. */
   discountCents?: number;
+  /** What the benefit landed on, resolved out of the cart at sale time — the
+   *  only moment it is knowable. Omitted for order-wide vouchers, experiences,
+   *  and the standalone QR/OTP claim (no cart to land on). */
+  target?: {
+    productId: string;
+    variantId: string | null;
+    /** Add-on name, frozen: the catalog entry can be deleted later. */
+    addonName: string | null;
+  } | null;
 }
 
 /**
@@ -153,6 +162,9 @@ export async function redeemWithinTx(
       pointsSpent: pointsCost,
       discountCents: input.discountCents ?? null,
       purchaseId: purchaseId ?? null,
+      targetProductId: input.target?.productId ?? null,
+      targetVariantId: input.target?.variantId ?? null,
+      targetAddonName: input.target?.addonName ?? null,
     })
     .returning({ id: redemption.id });
 

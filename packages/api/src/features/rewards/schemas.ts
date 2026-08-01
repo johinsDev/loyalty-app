@@ -289,6 +289,10 @@ export interface AvailableRewardItem {
   description: string | null;
   /** Hand-over instruction for the cashier (experience rewards). */
   fulfillmentNote: string | null;
+  /** Resolved names of the products/categories this reward is scoped to; empty
+   *  when it covers the whole order. The one-line summary has to stay short, so
+   *  this is what lets the detail sheet say what actually qualifies. */
+  scopeNames: string[];
 }
 
 /** `availableForCustomer` — the claimable set plus why it may be empty. Without

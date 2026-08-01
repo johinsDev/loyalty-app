@@ -643,12 +643,29 @@ export class RewardsService {
       this.repo.tierKey(organizationId, customerId),
       this.repo.claimedRewardIds(organizationId, customerId),
     ]);
-    const items = rows
-      .filter((rw) => {
-        if (rw.allowedTiers && !rw.allowedTiers.includes(tierKey)) return false;
-        if (rw.limitPerCustomer === "once" && claimed.has(rw.id)) return false;
-        return isAffordable(rw, balances);
-      })
+    const claimable = rows.filter((rw) => {
+      if (rw.allowedTiers && !rw.allowedTiers.includes(tierKey)) return false;
+      if (rw.limitPerCustomer === "once" && claimed.has(rw.id)) return false;
+      return isAffordable(rw, balances);
+    });
+
+    // Resolve every claimable reward's scope in ONE pass so the register can
+    // say *which* products qualify. Without it the summary fell back to
+    // "Producto gratis" / "productos seleccionados" and the cashier had nothing
+    // to tell the customer. `refs` is unvalidated JSON, hence the guards.
+    const allRefs = claimable.flatMap((rw) =>
+      rw.benefit && "refs" in rw.benefit ? (rw.benefit.refs ?? []) : [],
+    );
+    const names =
+      allRefs.length > 0
+        ? await new PromoRepository(this.repo.db).refNames(allRefs).catch(() => new Map())
+        : new Map<string, string>();
+    const scopeOf = (rw: (typeof claimable)[number]): string[] => {
+      const refs = rw.benefit && "refs" in rw.benefit ? (rw.benefit.refs ?? []) : [];
+      return refs.map((r) => names.get(r.id)).filter((n): n is string => Boolean(n));
+    };
+
+    const items = claimable
       .map((rw) => ({
         rewardId: rw.id,
         name: rw.name,
@@ -661,9 +678,10 @@ export class RewardsService {
         // The register used to show cost only, so the detail modal read "9
         // sellos" and nothing about what the socio actually gets. `rows` are
         // full reward rows, so this costs no extra query.
-        benefitSummary: rewardBenefitSummary(rw.benefit, "es"),
+        benefitSummary: rewardBenefitSummary(rw.benefit, "es", names),
         description: rw.description,
         fulfillmentNote: rw.fulfillmentNote,
+        scopeNames: scopeOf(rw),
       }));
     return { items, publishedCount: rows.length };
   }

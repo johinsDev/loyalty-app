@@ -33,6 +33,7 @@ import {
   historyInputSchema,
   previewPurchaseInputSchema,
   recordPurchaseInputSchema,
+  type SaleResultView,
 } from "./schemas";
 import { StampsService } from "./service";
 
@@ -158,6 +159,13 @@ export const stampsRouter = router({
         ok: boolean;
         discountCents: number;
         reason: string | null;
+        /** Cart line the reward discounts, so the register can name the drink
+         *  instead of an unattributed "Recompensa − $17.000". Null for an
+         *  order-wide voucher, which genuinely applies to the whole ticket. */
+        lineIndex: number | null;
+        /** What the benefit waived on that line (a free add-on's name), so the
+         *  register can explain the amount instead of just placing it. */
+        targetLabel: string | null;
       } | null = null;
       let exclusions: UnitExclusion[] = [];
       // A `variantUpgrade` reward CHANGES the cart, so everything downstream —
@@ -169,10 +177,24 @@ export const stampsRouter = router({
       if (input.inlineReward) {
         const rw = rewardsById.get(input.inlineReward.rewardId);
         if (!rw || rw.status !== "published") {
-          reward = { ok: false, discountCents: 0, reason: "reward-not-redeemable" };
+          reward = {
+            ok: false,
+            discountCents: 0,
+            reason: "reward-not-redeemable",
+            lineIndex: null,
+            targetLabel: null,
+          };
         } else {
           const res = await resolveRewardOnCart(promoRepo, rw, enriched);
-          reward = { ok: res.ok, discountCents: res.discountCents, reason: res.reason };
+          reward = {
+            ok: res.ok,
+            discountCents: res.discountCents,
+            reason: res.reason,
+            // `target` covers the benefits that discount a line without
+            // consuming a unit (a free add-on), which produce no exclusion.
+            lineIndex: res.exclusions[0]?.lineIndex ?? res.target?.lineIndex ?? null,
+            targetLabel: res.target?.label ?? null,
+          };
           exclusions = res.exclusions;
           if (res.upgrade) {
             pricedCart = res.cart;
@@ -202,9 +224,14 @@ export const stampsRouter = router({
 
       // Combine layers with the org stacking policy so the shown total equals
       // the charged total. Preview the cashier-chosen promo, else the best.
-      const chosen = input.appliedPromoId
-        ? applicable.find((a) => a.promo.id === input.appliedPromoId)
-        : applicable[0];
+      // `skipPromo` is the cashier declining outright. Without it, omitting an
+      // id meant "pick the best", so deselecting a promo had the server hand it
+      // straight back on the next preview and the choice was unclickable.
+      const chosen = input.skipPromo
+        ? undefined
+        : input.appliedPromoId
+          ? applicable.find((a) => a.promo.id === input.appliedPromoId)
+          : applicable[0];
       const loyalty = await getLoyaltyConfig(ctx.db, org);
       const [tierRow] = await ctx.db
         .select({ key: pointsAccount.currentTierKey })
@@ -337,6 +364,16 @@ export const stampsRouter = router({
       let netPrice = input.priceCents;
       let pointsMultiplier = 1;
       let isRedemptionOnly = false;
+      // What the inline reward landed on, recorded on the redemption. Declared
+      // out here because the sale is written below this block — and nothing
+      // downstream can work it out again: the reward's config and the catalog
+      // both move after the sale, so a "−$1.000" in history would have no way
+      // to say what it came off.
+      let rewardTarget: {
+        productId: string;
+        variantId: string | null;
+        addonName: string | null;
+      } | null = null;
       if (input.items && input.items.length > 0) {
         const promoRepo = new PromoRepository(ctx.db);
         const enriched = await enrichCart(promoRepo, {
@@ -370,6 +407,17 @@ export const stampsRouter = router({
           rewardDiscount = evalResult.discountCents;
           exclusions = evalResult.exclusions;
           if (evalResult.upgrade) pricedItems = splitPurchaseLine(input.items, evalResult.upgrade);
+          // The same expression the preview shows the cashier, so history and
+          // the register can't disagree about which line it was.
+          const targetIndex = evalResult.exclusions[0]?.lineIndex ?? evalResult.target?.lineIndex;
+          const targetLine = targetIndex != null ? pricedItems[targetIndex] : undefined;
+          rewardTarget = targetLine
+            ? {
+                productId: targetLine.productId,
+                variantId: targetLine.variantId ?? null,
+                addonName: evalResult.target?.label ?? null,
+              }
+            : null;
         }
 
         // Promo on the remainder (reward-consumed units excluded).
@@ -482,7 +530,7 @@ export const stampsRouter = router({
 
       // Stamps always records now (no completion / no block). Single purchase
       // advances every loyalty track.
-      const { wallet, purchaseId } = await buildService(ctx).recordPurchase(
+      const { wallet, purchaseId, stampsEarned } = await buildService(ctx).recordPurchase(
         org,
         ctx.session.user.id,
         storeId,
@@ -492,6 +540,7 @@ export const stampsRouter = router({
           acc,
           entrySource: attribution?.entrySource ?? null,
           metadata: attribution?.metadata ?? null,
+          rewardTarget,
         },
       );
       // Points + streak: best-effort, idempotent; never fail the purchase.
@@ -504,7 +553,14 @@ export const stampsRouter = router({
             tierGraceUntil: loyalty.tierGraceUntil,
           },
         })
-        .catch(() => ({ earned: 0, balance: 0, tierUp: null }));
+        // Best-effort, but never silent: this swallowed a live `TypeError` for
+        // who knows how long, reporting 0 points on sales that had already
+        // credited them — and taking the tier recompute and the recap's points
+        // line down with it.
+        .catch((e: unknown) => {
+          console.error("points.earnForPurchase failed", e);
+          return { earned: 0, balance: 0, tierUp: null };
+        });
       // Streaks track visits, not stamps: any real purchase advances while the
       // stamps track is on — immune to min/category/per-N accrual rules.
       if (stampsOn && !isRedemptionOnly) {
@@ -542,7 +598,18 @@ export const stampsRouter = router({
         { tierUp: points.tierUp ?? null },
       );
 
-      return wallet;
+      // The register's success summary states what THIS sale earned. Returning
+      // only the wallet made it print the stamp balance even when the sale
+      // earned no stamp — the one number that hadn't moved — while hiding the
+      // points it did earn. Everything here was already computed above.
+      return {
+        wallet,
+        purchaseId,
+        totalCents: netPrice,
+        earned: { stamps: stampsEarned, points: points.earned },
+        pointsBalance: points.balance,
+        tierUp: points.tierUp ?? null,
+      } satisfies SaleResultView;
     }),
 
   walletForCustomer: staffProcedure

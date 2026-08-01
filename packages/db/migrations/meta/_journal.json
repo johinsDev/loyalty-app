@@ -456,6 +456,13 @@
       "when": 1785463900229,
       "tag": "0064_colossal_the_executioner",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "6",
+      "when": 1785559620245,
+      "tag": "0065_gifted_zarda",
+      "breakpoints": true
     }
   ]
 }

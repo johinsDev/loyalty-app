@@ -14,7 +14,7 @@ export interface CartLine {
   categoryIds?: string[];
   modifierOptions?: { id: string; priceDeltaCents: number }[];
   /** Catalog add-ons on this line + their deltas (stitched for reward waiving). */
-  addons?: { id: string; priceDeltaCents: number }[];
+  addons?: { id: string; priceDeltaCents: number; name?: string }[];
   /** Where a reward could move this line's variant, and what the step costs.
    *  Resolved per-reward by the service (it needs the variant graph), so it is
    *  absent for every other benefit type. */
@@ -99,6 +99,11 @@ export interface PromoEvaluation {
   /** Upsell hint: get-side refs missing from the cart (only set when the
    *  reason is "missing-get-side"). */
   missingGetSide: PromoItemRef[];
+  /** Cart lines this promo actually lands on, so the register can say which
+   *  drink is being discounted instead of an unattributed amount. Get-side
+   *  units when the rule has one (they're what goes free/cheap), otherwise the
+   *  buy side. Deduplicated, in cart order. */
+  lineIndexes: number[];
 }
 
 export const subtotalCents = (lines: CartLine[]): number =>

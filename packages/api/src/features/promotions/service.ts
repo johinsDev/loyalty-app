@@ -14,6 +14,7 @@ import {
   type UnitExclusion,
 } from "./engine";
 import { enrichCart } from "./stitch";
+import { collectRefs } from "./repository";
 import type { AdminPromoRow, PromoPatch, PromoRepository } from "./repository";
 import { ruleSchema, scheduleSchema, conditionsSchema } from "./schemas";
 import type {
@@ -22,6 +23,7 @@ import type {
   ApplicablePromo,
   ApplicableResult,
   PatchContentInput,
+  ItemRef,
   PromoAnalytics,
   PromoCard,
   PromoDetail,
@@ -98,12 +100,44 @@ export class PromoService {
       TTL_SECONDS,
     );
   }
+  /**
+   * Display names for every ref across the org's published promos.
+   *
+   * `benefitSummary` can name what a promo covers — it takes a name map and is
+   * tested for it — but the register was never given one, so every scoped promo
+   * read "20% en productos seleccionados". At the counter that is the one thing
+   * the cashier needs: which drinks it applies to.
+   *
+   * Cached with the other promo reads: the refs only move when a promo is
+   * edited, and this runs on every register preview.
+   */
+  private async refNamesForPublished(orgId: string): Promise<Map<string, string>> {
+    // Entries, not a Map: the cache serializes its values, so a Map comes back
+    // as a plain object and every `.get` on a cache HIT throws — which took the
+    // whole preview down while the register showed the previous cart's numbers.
+    // Same trap as the cached `Date` in `getLoyaltyConfig`.
+    const entries = await cache.getOrSet<[string, string][]>(
+      `promos:${orgId}:refnames`,
+      async () => {
+        const promos = await this.repo.publishedPromos(orgId);
+        const refs = promos.flatMap((p) => collectRefs(p));
+        if (refs.length === 0) return [];
+        const names = await this.repo.refNames(refs).catch(() => new Map<string, string>());
+        return [...names];
+      },
+      TTL_SECONDS,
+    );
+    return new Map(entries ?? []);
+  }
+
   async invalidate(orgId: string, slug?: string): Promise<void> {
     const keys: string[] = [];
     for (const locale of SUPPORTED_LOCALES) {
       keys.push(`promos:${orgId}:home:${locale}`);
       if (slug) keys.push(`promos:${orgId}:detail:${slug}:${locale}`);
     }
+    // Editing a promo can change which products it covers.
+    keys.push(`promos:${orgId}:refnames`);
     await cache.deleteMany(keys);
   }
 
@@ -261,13 +295,14 @@ export class PromoService {
     const promos = await this.repo.publishedPromos(orgId);
     if (promos.length === 0) return { applicable: [], hints: [] };
 
-    const [facts, counts, enriched] = await Promise.all([
+    const [facts, counts, enriched, names] = await Promise.all([
       this.repo.customerFacts(orgId, customerId),
       this.repo.redemptionCounts(
         promos.map((p) => p.id),
         customerId,
       ),
       opts.enriched ?? enrichCart(this.repo, cart, orgId),
+      this.refNamesForPublished(orgId),
     ]);
     const exclusions = opts.exclusions ?? [];
 
@@ -287,14 +322,15 @@ export class PromoService {
       const result = evaluatePromo(enriched, promoView(p), customerFacts, now, exclusions);
       if (result.eligible && (result.discountCents > 0 || result.pointsMultiplier > 1)) {
         applicable.push({
-          promo: this.repo.cardOf(p, lc),
+          promo: this.repo.cardOf(p, lc, names),
           discountCents: result.discountCents,
           pointsMultiplier: result.pointsMultiplier,
           applications: result.applications,
           exclusive: p.exclusive,
+          lineIndexes: result.lineIndexes,
         });
       } else if (result.reason === "missing-get-side") {
-        hints.push({ promo: this.repo.cardOf(p, lc), missingGetSide: result.missingGetSide });
+        hints.push({ promo: this.repo.cardOf(p, lc, names), missingGetSide: result.missingGetSide });
       }
     }
     applicable.sort(
@@ -307,9 +343,12 @@ export class PromoService {
    *  `storeIds` + `exclusive` — so the cashier can browse active promos and see
    *  whether each is org-wide or store-specific. */
   async staffCatalog(orgId: string, lc: LocaleContext): Promise<StaffPromoCard[]> {
-    const promos = await this.repo.publishedPromos(orgId);
+    const [promos, names] = await Promise.all([
+      this.repo.publishedPromos(orgId),
+      this.refNamesForPublished(orgId),
+    ]);
     return promos.map((p) => ({
-      ...this.repo.cardOf(p, lc),
+      ...this.repo.cardOf(p, lc, names),
       storeIds: p.storeIds,
       exclusive: p.exclusive,
     }));
@@ -333,7 +372,7 @@ export class PromoService {
     if (promos.length === 0) return [];
 
     const productIds = [...new Set(cart.lines.map((l) => l.productId))];
-    const [facts, counts, enriched, variants] = await Promise.all([
+    const [facts, counts, enriched, variants, refNames] = await Promise.all([
       this.repo.customerFacts(orgId, customerId),
       this.repo.redemptionCounts(
         promos.map((p) => p.id),
@@ -341,6 +380,7 @@ export class PromoService {
       ),
       opts.enriched ?? enrichCart(this.repo, cart, orgId),
       this.repo.variantPrices(productIds),
+      this.refNamesForPublished(orgId),
     ]);
     const exclusions = opts.exclusions ?? [];
 
@@ -358,9 +398,47 @@ export class PromoService {
       };
       const up = detectPromoUpsell(enriched, promoView(p), customerFacts, now, exclusions, variants);
       if (!up) continue;
-      const card = this.repo.cardOf(p, lc);
-      hints.push({ ...up, promo: card });
+      const card = this.repo.cardOf(p, lc, refNames);
+      hints.push(
+        up.kind === "add-item"
+          ? { ...up, promo: card, missingLabels: [] }
+          : up.kind === "variant-swap"
+            ? { ...up, promo: card, fromLabel: null, toLabel: null }
+            : { ...up, promo: card },
+      );
     }
+
+    // Resolve every id the cashier would have to read aloud, in ONE pass over
+    // all hints — a per-hint lookup would be a round trip per promo.
+    const refs: ItemRef[] = hints.flatMap((h) =>
+      h.kind === "add-item"
+        ? h.missingGetSide
+        : h.kind === "variant-swap"
+          ? [
+              { kind: "variant" as const, id: h.fromVariantId },
+              { kind: "variant" as const, id: h.toVariantId },
+            ]
+          : [],
+    );
+    const names =
+      refs.length > 0 ? await this.repo.refNames(refs).catch(() => new Map()) : new Map();
+    for (const h of hints) {
+      if (h.kind === "add-item") {
+        h.missingLabels = h.missingGetSide
+          .map((r) => names.get(r.id))
+          .filter((n): n is string => Boolean(n));
+      } else if (h.kind === "variant-swap") {
+        h.fromLabel = names.get(h.fromVariantId) ?? null;
+        h.toLabel = names.get(h.toVariantId) ?? null;
+      }
+    }
+
+    // Best offer first. A swap is ranked by what the customer actually nets
+    // (discount minus the upgrade), so the cashier reads the strongest pitch at
+    // the top instead of whatever promo happened to sort first in the catalog.
+    const rank = (h: PromoUpsellHint): number =>
+      h.kind === "variant-swap" ? h.discountCents - h.extraCents : 0;
+    hints.sort((a, b) => rank(b) - rank(a));
     return hints;
   }
 

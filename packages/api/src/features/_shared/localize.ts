@@ -199,8 +199,8 @@ export function rateForCurrency(cfg: LoyaltyConfig, currency: string): PointsRat
 
 const loyaltyKey = (orgId: string) => `org-loyalty:${orgId}`;
 
-export function getLoyaltyConfig(db: typeof Db, orgId: string): Promise<LoyaltyConfig> {
-  return cache.getOrSet(
+export async function getLoyaltyConfig(db: typeof Db, orgId: string): Promise<LoyaltyConfig> {
+  const cfg = await cache.getOrSet(
     loyaltyKey(orgId),
     async () => {
       const [row] = await db
@@ -245,6 +245,15 @@ export function getLoyaltyConfig(db: typeof Db, orgId: string): Promise<LoyaltyC
     },
     TTL_SECONDS,
   );
+  // A cache HIT round-trips through JSON, so `tierGraceUntil` comes back as a
+  // string while a MISS returns a real Date. `earnForPurchase` called
+  // `grace.getTime()` on it and threw — inside a `.catch()` that reported the
+  // sale as earning 0 points, after the points row had already been written.
+  // Reviving here fixes every consumer at the boundary that broke it.
+  return {
+    ...cfg,
+    tierGraceUntil: cfg.tierGraceUntil == null ? null : new Date(cfg.tierGraceUntil),
+  };
 }
 
 export async function invalidateLoyaltyConfig(orgId: string): Promise<void> {

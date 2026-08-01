@@ -66,8 +66,15 @@ export class StampsService {
       acc: StampsAccrual;
       entrySource?: string | null;
       metadata?: Record<string, unknown> | null;
+      /** What the inline reward landed on, resolved by the router against the
+       *  cart — the only place and moment it is knowable. */
+      rewardTarget?: {
+        productId: string;
+        variantId: string | null;
+        addonName: string | null;
+      } | null;
     },
-  ): Promise<{ wallet: WalletView; purchaseId: string }> {
+  ): Promise<{ wallet: WalletView; purchaseId: string; stampsEarned: number }> {
     const result = await this.repo.recordPurchase({
       orgId: organizationId,
       customerId: input.customerId,
@@ -92,6 +99,7 @@ export class StampsService {
             rewardId: input.inlineReward.rewardId,
             currency: input.inlineReward.currency,
             redeemedByUserId: addedByUserId,
+            target: input.rewardTarget ?? null,
           }
         : undefined,
     });
@@ -127,7 +135,11 @@ export class StampsService {
       }
     }
 
-    return { wallet: result.wallet, purchaseId: result.purchaseId };
+    return {
+      wallet: result.wallet,
+      purchaseId: result.purchaseId,
+      stampsEarned: result.stampsEarned,
+    };
   }
 
   walletForCustomer(

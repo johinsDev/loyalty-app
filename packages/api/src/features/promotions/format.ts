@@ -39,6 +39,18 @@ function scopedNames(
   return resolved.join(AND[locale]);
 }
 
+/**
+ * The ceiling on a percentage effect, when there is one.
+ *
+ * Without it "30% en Studio Showcase" is a promise the register won't keep: the
+ * cashier offers 30% of a $21.000 drink and the ticket takes $3.000 off. The
+ * cap is part of the benefit, not fine print.
+ */
+function capNote(cents: number | undefined, locale: SummaryLocale): string {
+  if (cents == null) return "";
+  return locale === "es" ? ` (máx ${money(cents, locale)})` : ` (max ${money(cents, locale)})`;
+}
+
 export function benefitSummary(
   type: string | null,
   rule: PromoRule | null,
@@ -49,14 +61,17 @@ export function benefitSummary(
   const e = rule.effect;
   const scoped = scopedNames(rule, names, locale);
   const es = locale === "es";
+  const cap = e.kind === "percentOff" ? capNote(e.maxDiscountCents, locale) : "";
 
   switch (type) {
     case "percentOff": {
       if (e.kind !== "percentOff") return null;
       if (rule.buy.requirements.length === 0)
-        return es ? `${pct(e.percent)} en toda tu compra` : `${pct(e.percent)} off your order`;
+        return es
+          ? `${pct(e.percent)} en toda tu compra${cap}`
+          : `${pct(e.percent)} off your order${cap}`;
       const what = scoped ?? (es ? "productos seleccionados" : "selected items");
-      return es ? `${pct(e.percent)} en ${what}` : `${pct(e.percent)} off ${what}`;
+      return es ? `${pct(e.percent)} en ${what}${cap}` : `${pct(e.percent)} off ${what}${cap}`;
     }
     case "amountOff": {
       if (e.kind !== "amountOff") return null;
@@ -77,10 +92,11 @@ export function benefitSummary(
     }
     case "secondUnit": {
       if (e.kind !== "percentOff") return null;
-      const what = scoped ? (es ? ` en ${scoped}` : ` on ${scoped}`) : "";
+      // "de", not "en": "50% en la 2.ª unidad en General" stacked two of them.
+      const what = scoped ? (es ? ` de ${scoped}` : ` on ${scoped}`) : "";
       return es
-        ? `${pct(e.percent)} en la 2.ª unidad${what}`
-        : `${pct(e.percent)} off the 2nd unit${what}`;
+        ? `${pct(e.percent)} en la 2.ª unidad${what}${cap}`
+        : `${pct(e.percent)} off the 2nd unit${what}${cap}`;
     }
     case "bundle": {
       if (e.kind === "percentOff")
@@ -105,7 +121,7 @@ export function benefitSummary(
         return es ? "Producto de regalo con tu compra" : "Free item with your purchase";
       }
       const what = gift ?? (es ? "tu adicional" : "your add-on");
-      return es ? `${pct(e.percent)} en ${what}` : `${pct(e.percent)} off ${what}`;
+      return es ? `${pct(e.percent)} en ${what}${cap}` : `${pct(e.percent)} off ${what}${cap}`;
     }
     case "cartThreshold": {
       const threshold = rule.buy.minSubtotalCents;

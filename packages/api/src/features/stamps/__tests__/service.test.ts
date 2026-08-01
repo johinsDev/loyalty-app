@@ -30,6 +30,7 @@ class FakeRepo {
     kind: "recorded",
     wallet: view(),
     purchaseId: "p1",
+    stampsEarned: 1,
   };
 
   recordPurchase = vi.fn(async () => this.recordResult);
@@ -81,6 +82,7 @@ describe("StampsService.recordPurchase", () => {
       kind: "recorded",
       wallet: view({ currentStamps: 2 }),
       purchaseId: "p2",
+      stampsEarned: 1,
     };
     const { service, realtime, enqueue } = build(repo);
     await service.recordPurchase(ORG, STAFF, STORE, {
@@ -104,6 +106,7 @@ describe("StampsService.recordPurchase", () => {
       kind: "recorded",
       wallet: view({ currentStamps: 15 }),
       purchaseId: "p15",
+      stampsEarned: 1,
     };
     const { service, realtime, enqueue } = build(repo);
     const { wallet } = await service.recordPurchase(ORG, STAFF, STORE, {
@@ -128,6 +131,7 @@ describe("StampsService.recordPurchase", () => {
       kind: "idempotent",
       wallet: view({ currentStamps: 1 }),
       purchaseId: "p1",
+      stampsEarned: 0,
     };
     const { service, realtime, enqueue } = build(repo);
     const { wallet } = await service.recordPurchase(ORG, STAFF, STORE, {
@@ -158,7 +162,32 @@ describe("StampsService.recordPurchase", () => {
           rewardId: "rw_1",
           currency: "stamps",
           redeemedByUserId: STAFF,
+          // No cart line resolved (amount-only sale) → nothing to record.
+          target: null,
         },
+      }),
+    );
+  });
+
+  it("threads the reward's resolved target through to the repo", async () => {
+    // The router resolves WHICH line the benefit landed on; if the service drops
+    // it the redemption records a discount with nothing to attribute it to, and
+    // it can't be recovered — the reward config and the catalog both move.
+    const { service } = build(repo);
+    await service.recordPurchase(ORG, STAFF, STORE, {
+      customerId: CUSTOMER,
+      priceCents: 1500,
+      idempotencyKey: "idem-inline-target",
+      stampEligible: true,
+      acc: ACC,
+      inlineReward: { rewardId: "rw_1", currency: "points" },
+      rewardTarget: { productId: "prod_1", variantId: "var_1", addonName: "Perlas" },
+    });
+    expect(repo.recordPurchase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inlineReward: expect.objectContaining({
+          target: { productId: "prod_1", variantId: "var_1", addonName: "Perlas" },
+        }),
       }),
     );
   });

@@ -27,10 +27,21 @@ export type PickedLine = {
   variantId: string | null;
   addonIds: string[];
   removedIngredientIds: string[];
+  /** Everything in one string: "Classic Milk Tea · Mediano · Shot de espresso ·
+   *  sin Maní". What a receipt line says; the cart shows the parts instead. */
   name: string;
   unitAmountCents: number;
   qty: number;
   note: string;
+  /** The drink alone — "Classic Milk Tea · Mediano". */
+  baseName: string;
+  /** Its price before add-ons, so the cart can show where the money went. */
+  basePriceCents: number;
+  /** Priced add-ons, kept apart from the name: a cashier reading a $17.500 line
+   *  can't tell how much of it is the Perlas unless the line says so. */
+  addons: { id: string; name: string; priceDeltaCents: number }[];
+  /** "sin Maní" — no price, but part of what the customer ordered. */
+  removedLabels: string[];
 };
 
 const formatCop = (cents: number): string =>
@@ -64,12 +75,23 @@ export function ProductPicker({
   fallbackPriceCents,
   onAdd,
   onClose,
+  initial = null,
 }: {
   slug: string;
   fallbackName: string;
   fallbackPriceCents: number;
   onAdd: (line: PickedLine) => void;
   onClose: () => void;
+  /** Pre-fills the picker to edit an existing cart line. Editing exists so the
+   *  cashier can change a size or an add-on without deleting the line: removing
+   *  it can drop the applied reward or promo, which then has to be re-picked. */
+  initial?: {
+    variantId: string | null;
+    addonIds: string[];
+    removedIngredientIds: string[];
+    note: string;
+    qty: number;
+  } | null;
 }) {
   const t = useTranslations("Cashier");
   const trpc = useTRPC();
@@ -78,11 +100,15 @@ export function ProductPicker({
   );
   const product = detail.data ?? null;
 
-  const [variantId, setVariantId] = useState<string | null>(null);
-  const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set());
-  const [removed, setRemoved] = useState<Set<string>>(new Set());
-  const [note, setNote] = useState("");
-  const [qty, setQty] = useState(1);
+  const [variantId, setVariantId] = useState<string | null>(initial?.variantId ?? null);
+  const [selectedAddons, setSelectedAddons] = useState<Set<string>>(
+    () => new Set(initial?.addonIds ?? []),
+  );
+  const [removed, setRemoved] = useState<Set<string>>(
+    () => new Set(initial?.removedIngredientIds ?? []),
+  );
+  const [note, setNote] = useState(initial?.note ?? "");
+  const [qty, setQty] = useState(initial?.qty ?? 1);
 
   const valueLabel = useMemo(() => {
     const m = new Map<string, string>();
@@ -147,13 +173,14 @@ export function ProductPicker({
 
   const add = () => {
     const vLabel = selectedVariant ? variantLabel(selectedVariant) : "";
-    const addonLabels = allItems.filter((it) => selectedAddons.has(it.addonId)).map((it) => it.name);
+    const pickedAddons = allItems
+      .filter((it) => selectedAddons.has(it.addonId))
+      .map((it) => ({ id: it.addonId, name: it.name, priceDeltaCents: it.priceDeltaCents }));
     const removedLabels = removable
       .filter((r) => removed.has(r.ingredientId))
       .map((r) => t("pickerWithout", { name: r.name }));
-    const parts = [product?.name ?? fallbackName, vLabel, ...addonLabels, ...removedLabels].filter(
-      Boolean,
-    );
+    const baseName = [product?.name ?? fallbackName, vLabel].filter(Boolean).join(" · ");
+    const parts = [baseName, ...pickedAddons.map((a) => a.name), ...removedLabels].filter(Boolean);
     onAdd({
       productId: product?.id ?? "",
       variantId: selectedVariant?.id ?? null,
@@ -163,6 +190,10 @@ export function ProductPicker({
       unitAmountCents: unit,
       qty,
       note: note.trim(),
+      baseName,
+      basePriceCents: basePrice,
+      addons: pickedAddons,
+      removedLabels,
     });
   };
 

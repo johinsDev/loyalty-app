@@ -49,6 +49,7 @@ import type {
   PurchaseAdminListItem,
   PurchaseDetail,
   PurchaseDetailItem,
+  PurchaseDetailRewardTarget,
   PurchaseListItem,
   PurchaseListView,
   PurchasesAdminListInput,
@@ -1046,7 +1047,7 @@ export class PurchasesRepository {
       modifierLabels: (r.modifierOptionIds ?? [])
         .map((mid) => modifierLabels.get(mid))
         .filter((l): l is string => l != null),
-      addonLabels: addonLabels.get(r.id) ?? [],
+      addons: addonLabels.get(r.id) ?? [],
       removedLabels: (r.removedIngredientIds ?? [])
         .map((iid) => ingredientLabels.get(iid))
         .filter((l): l is string => l != null),
@@ -1102,19 +1103,28 @@ export class PurchasesRepository {
    * against the catalog meant a rename rewrote historical receipts and a
    * deletion made the label vanish; the snapshot keeps a ticket what it was.
    */
-  private async addonSnapshots(itemIds: string[]): Promise<Map<string, string[]>> {
-    const out = new Map<string, string[]>();
+  private async addonSnapshots(
+    itemIds: string[],
+  ): Promise<Map<string, { name: string; priceCents: number }[]>> {
+    const out = new Map<string, { name: string; priceCents: number }[]>();
     if (itemIds.length === 0) return out;
     const rows = await this.db
       .select({
         purchaseItemId: purchaseItemAddon.purchaseItemId,
         name: purchaseItemAddon.name,
+        // The price was already frozen here at sale time; the detail used to
+        // read only the name, so a line's total was a lump sum and nobody could
+        // tell how much of it was the add-ons.
+        priceCents: purchaseItemAddon.priceCents,
       })
       .from(purchaseItemAddon)
       .where(inArray(purchaseItemAddon.purchaseItemId, itemIds))
       .orderBy(asc(purchaseItemAddon.sortOrder));
     for (const r of rows) {
-      out.set(r.purchaseItemId, [...(out.get(r.purchaseItemId) ?? []), r.name]);
+      out.set(r.purchaseItemId, [
+        ...(out.get(r.purchaseItemId) ?? []),
+        { name: r.name, priceCents: r.priceCents },
+      ]);
     }
     return out;
   }
@@ -1214,6 +1224,13 @@ export class PurchasesRepository {
         // The reward's own share. `purchase.discountCents` is the TOTAL, so
         // without this the detail can't tell a reward from a tier benefit.
         discountCents: redemption.discountCents,
+        // Which line the benefit landed on, frozen at sale time. Null on rows
+        // recorded before this was captured, and on order-wide vouchers — the
+        // detail says nothing rather than guessing, because a re-evaluation
+        // today would use a reward config and a catalog that have both moved.
+        targetProductId: redemption.targetProductId,
+        targetVariantId: redemption.targetVariantId,
+        targetAddonName: redemption.targetAddonName,
         name: reward.name,
         imageUrl: reward.imageUrl,
       })
@@ -1223,6 +1240,25 @@ export class PurchasesRepository {
       .limit(1);
     const r = rows[0];
     if (!r) return null;
+    // Resolve the target's names. Two small reads, and only when a target was
+    // recorded, so an order-wide voucher pays nothing.
+    let target: PurchaseDetailRewardTarget | null = null;
+    if (r.targetProductId) {
+      const [prodRows, variantLabels] = await Promise.all([
+        this.db
+          .select({ name: product.name })
+          .from(product)
+          .where(eq(product.id, r.targetProductId))
+          .limit(1),
+        r.targetVariantId ? this.variantLabels([r.targetVariantId]) : Promise.resolve(new Map()),
+      ]);
+      target = {
+        productId: r.targetProductId,
+        productName: prodRows[0]?.name ?? null,
+        variantLabel: r.targetVariantId ? (variantLabels.get(r.targetVariantId) ?? null) : null,
+        addonName: r.targetAddonName,
+      };
+    }
     return {
       redemptionId: r.id,
       rewardId: r.rewardId,
@@ -1232,6 +1268,7 @@ export class PurchasesRepository {
       currency: r.currency as "stamps" | "points",
       stampsSpent: r.stampsSpent,
       pointsSpent: r.pointsSpent,
+      target,
     };
   }
 
