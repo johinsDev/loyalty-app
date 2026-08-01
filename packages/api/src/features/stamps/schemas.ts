@@ -43,6 +43,10 @@ export const recordPurchaseInputSchema = z.object({
   // Optional itemized checkout + chosen promo (discount re-computed server-side).
   items: z.array(purchaseLineSchema).optional(),
   appliedPromoId: z.string().uuid().optional(),
+  /** Charge with NO promo. Omitting `appliedPromoId` means "pick the best one",
+   *  so without this the cashier had no way to decline one — deselecting a promo
+   *  simply had the server re-apply it on the next preview. */
+  skipPromo: z.boolean().optional(),
   currency: z.string().optional(),
   /** Cashier's order-level note (e.g. "para llevar", "mesa 4"). */
   orderNote: z.string().max(500).nullish(),
@@ -76,6 +80,10 @@ export const previewPurchaseInputSchema = z.object({
     .optional(),
   /** The promo the cashier selected; omit to preview the best applicable one. */
   appliedPromoId: z.string().uuid().optional(),
+  /** Charge with NO promo. Omitting `appliedPromoId` means "pick the best one",
+   *  so without this the cashier had no way to decline one — deselecting a promo
+   *  simply had the server re-apply it on the next preview. */
+  skipPromo: z.boolean().optional(),
   /** Available reward ids to check line eligibility for (the "ready to redeem"
    *  list) — the preview returns which apply to the current cart. */
   rewardIds: z.array(z.string()).optional(),

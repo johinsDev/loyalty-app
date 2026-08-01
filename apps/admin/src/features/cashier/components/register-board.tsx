@@ -148,6 +148,10 @@ export function RegisterBoard({
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [promoFilter, setPromoFilter] = useState<"customer" | "all">("customer");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // The cashier declined the promo outright. Needed because the server picks the
+  // best one whenever no id is sent, so clearing the selection alone had it
+  // reappear on the very next preview — the promo was impossible to refuse.
+  const [promoOptOut, setPromoOptOut] = useState(false);
 
   // ── Catalog (middle) ────────────────────────────────────────────────────────
   const debouncedQuery = useDebounce(query.trim(), { wait: 250 });
@@ -217,6 +221,7 @@ export function RegisterBoard({
         inlineReward,
         rewardIds: previewRewardIds,
         appliedPromoId: chosenPromoId ?? undefined,
+        skipPromo: promoOptOut || undefined,
       },
       // Keep the last preview on screen while the next one is in flight. The
       // cart key changes on every +/-, so without this `preview.data` blanked
@@ -274,8 +279,25 @@ export function RegisterBoard({
   // Track the promo the server actually applied (best-of + exclusivity), so the
   // cart line and the promos panel agree with the total.
   useEffect(() => {
+    if (promoOptOut) return;
     setChosenPromoId(preview.data?.net?.appliedPromoId ?? null);
-  }, [preview.data]);
+  }, [preview.data, promoOptOut]);
+
+  // Drop a selected reward the moment the cart stops satisfying it. Removing
+  // the qualifying drink left the row greyed out *and* still ticked, and the
+  // sale would have gone through with a reward the server then refused.
+  useEffect(() => {
+    if (!inlineRewardId) return;
+    // Emptying the cart counts too: eligibility isn't evaluated at all then, so
+    // the reward stayed ticked while every row around it was greyed out.
+    if (cart.length === 0) {
+      setInlineRewardId(null);
+      return;
+    }
+    if (!cartEvaluated) return;
+    const elig = eligByReward.get(inlineRewardId);
+    if (elig && !elig.eligible) setInlineRewardId(null);
+  }, [inlineRewardId, cart.length, cartEvaluated, eligByReward]);
 
   // Measure the rewards scroller after the list renders. The ref is stable, so
   // it can't do the first measurement itself, and rows changing height (an
@@ -601,7 +623,22 @@ export function RegisterBoard({
                         <div key={a.promo.id} className="flex items-stretch gap-1">
                           <button
                             type="button"
-                            onClick={() => setChosenPromoId(active ? null : a.promo.id)}
+                            onClick={() =>
+                              setDetailView({
+                                title: a.promo.name,
+                                lines: [
+                                  a.promo.shortDescription || a.promo.benefitSummary || "",
+                                ].filter(Boolean) as string[],
+                                cost: `− ${formatCop(a.discountCents)}`,
+                                apply: {
+                                  label: active ? t("promoRemove") : t("promoApply"),
+                                  run: () => {
+                                    setChosenPromoId(active ? null : a.promo.id);
+                                    setPromoOptOut(active);
+                                  },
+                                },
+                              })
+                            }
                             className={`flex flex-1 items-center gap-2 rounded-xl border p-2 text-left transition-colors ${
                               active
                                 ? "border-primary bg-primary/5"
@@ -628,21 +665,6 @@ export function RegisterBoard({
                             <Check
                               className={`text-primary size-3.5 flex-none ${active ? "" : "invisible"}`}
                             />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={t("viewDetail")}
-                            onClick={() =>
-                              setDetailView({
-                                title: a.promo.name,
-                                lines: [a.promo.shortDescription || a.promo.benefitSummary || ""].filter(
-                                  Boolean,
-                                ) as string[],
-                              })
-                            }
-                            className="border-border text-muted-foreground hover:text-foreground grid size-9 shrink-0 self-center place-items-center rounded-xl border"
-                          >
-                            <Info className="size-3.5" />
                           </button>
                         </div>
                       );
@@ -824,8 +846,7 @@ export function RegisterBoard({
                       <div key={rw.rewardId} className="flex items-stretch gap-1">
                         <button
                           type="button"
-                          disabled={blocked}
-                          onClick={() => setInlineRewardId(active ? null : rw.rewardId)}
+                          onClick={rewardDetail}
                           // Same geometry as a promo row — this panel sits right
                           // under Promos and they are read as one list.
                           // `min-w-0` is load-bearing: a flex item won't shrink
@@ -862,18 +883,6 @@ export function RegisterBoard({
                           <Check
                             className={`text-primary size-3.5 flex-none ${active ? "" : "invisible"}`}
                           />
-                        </button>
-                        {/* Fixed square, centred — not `self-stretch`. An
-                            ineligible row is three lines tall, and stretching
-                            grew this into a slab beside it. A constant size also
-                            means it can't change when the row does. */}
-                        <button
-                          type="button"
-                          aria-label={t("viewDetail")}
-                          onClick={rewardDetail}
-                          className="border-border text-muted-foreground hover:text-foreground grid size-9 shrink-0 self-center place-items-center rounded-xl border"
-                        >
-                          <Info className="size-3.5" />
                         </button>
                       </div>
                     );

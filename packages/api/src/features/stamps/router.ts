@@ -217,9 +217,14 @@ export const stampsRouter = router({
 
       // Combine layers with the org stacking policy so the shown total equals
       // the charged total. Preview the cashier-chosen promo, else the best.
-      const chosen = input.appliedPromoId
-        ? applicable.find((a) => a.promo.id === input.appliedPromoId)
-        : applicable[0];
+      // `skipPromo` is the cashier declining outright. Without it, omitting an
+      // id meant "pick the best", so deselecting a promo had the server hand it
+      // straight back on the next preview and the choice was unclickable.
+      const chosen = input.skipPromo
+        ? undefined
+        : input.appliedPromoId
+          ? applicable.find((a) => a.promo.id === input.appliedPromoId)
+          : applicable[0];
       const loyalty = await getLoyaltyConfig(ctx.db, org);
       const [tierRow] = await ctx.db
         .select({ key: pointsAccount.currentTierKey })
