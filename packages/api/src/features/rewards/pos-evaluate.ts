@@ -17,6 +17,9 @@ export type RewardCartEvaluation =
       ok: true;
       discountCents: number;
       exclusions: UnitExclusion[];
+      /** Presentation-only: the line the benefit lands on when it produces no
+       *  exclusion (a free add-on waives a price without consuming a unit). */
+      target?: { lineIndex: number };
       /** `variantUpgrade` only: the unit to move up. The caller applies it —
        *  exclusions have to be expressed against post-split line indices. */
       upgrade?: UpgradePlan;
@@ -57,13 +60,23 @@ export function evaluateRewardForCart(
     // The cashier adds the add-on to a line; this waives its price. `addonId`
     // null = any add-on present. Cheapest matching add-on goes free. Add-ons are
     // not promo-matchable units, so no exclusions are needed (no double-count).
-    const deltas = cart.lines.flatMap((l) =>
+    const candidates = cart.lines.flatMap((l, lineIndex) =>
       (l.addons ?? [])
         .filter((a) => benefit.addonId == null || a.id === benefit.addonId)
-        .map((a) => a.priceDeltaCents),
+        .map((a) => ({ lineIndex, amountCents: a.priceDeltaCents })),
     );
-    if (deltas.length === 0) return { ok: false, reason: "reward-item-not-in-cart" };
-    return { ok: true, discountCents: Math.min(...deltas), exclusions: [] };
+    if (candidates.length === 0) return { ok: false, reason: "reward-item-not-in-cart" };
+    const cheapest = candidates.reduce((a, b) => (b.amountCents < a.amountCents ? b : a));
+    // No exclusions — add-ons aren't promo-matchable units, so there's nothing
+    // to double-count. `target` is presentation only: without it the register
+    // showed a bare "Recompensa − $1.000" and no marker on the line the add-on
+    // sits on, which is the one thing the cashier needs to know.
+    return {
+      ok: true,
+      discountCents: cheapest.amountCents,
+      exclusions: [],
+      target: { lineIndex: cheapest.lineIndex },
+    };
   }
 
   if (benefit.type === "variantUpgrade") {

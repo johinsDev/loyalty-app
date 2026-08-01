@@ -95,7 +95,14 @@ describe("evaluateRewardForCart", () => {
       }),
     );
     const res = evaluateRewardForCart(rw({ type: "freeAddon", addonId: "pearls" }), c);
-    expect(res).toEqual({ ok: true, discountCents: 4000, exclusions: [] });
+    // `target` names the line so the register can mark it: a free add-on
+    // consumes no unit, so there is no exclusion to infer it from.
+    expect(res).toEqual({
+      ok: true,
+      discountCents: 4000,
+      exclusions: [],
+      target: { lineIndex: 0 },
+    });
   });
 
   it("freeAddon 'any' frees the CHEAPEST add-on present across lines", () => {
@@ -104,7 +111,13 @@ describe("evaluateRewardForCart", () => {
       line({ productId: "tea", unitAmountCents: 18000, addons: [{ id: "jelly", priceDeltaCents: 2500 }] }),
     );
     const res = evaluateRewardForCart(rw({ type: "freeAddon", addonId: null }), c);
-    expect(res).toEqual({ ok: true, discountCents: 2500, exclusions: [] });
+    // The cheapest sits on the SECOND line — the marker has to follow it.
+    expect(res).toEqual({
+      ok: true,
+      discountCents: 2500,
+      exclusions: [],
+      target: { lineIndex: 1 },
+    });
   });
 
   it("freeAddon with the add-on not on any line → reward-item-not-in-cart", () => {

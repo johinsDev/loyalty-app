@@ -186,7 +186,9 @@ export const stampsRouter = router({
             ok: res.ok,
             discountCents: res.discountCents,
             reason: res.reason,
-            lineIndex: res.exclusions[0]?.lineIndex ?? null,
+            // `target` covers the benefits that discount a line without
+            // consuming a unit (a free add-on), which produce no exclusion.
+            lineIndex: res.exclusions[0]?.lineIndex ?? res.target?.lineIndex ?? null,
           };
           exclusions = res.exclusions;
           if (res.upgrade) {
