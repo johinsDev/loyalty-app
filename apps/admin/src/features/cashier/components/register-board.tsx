@@ -243,7 +243,16 @@ export function RegisterBoard({
   // the row. Absent for promo details, which have no equivalent commit step.
   const [detailView, setDetailView] = useState<{
     title: string;
+    /** Promo details stay a plain paragraph list. */
     lines: string[];
+    /** Reward details are structured so the sheet can rank them: what it gives
+     *  reads as the headline, what qualifies as chips, the rest as support.
+     *  Flattening all of it into `lines` rendered one wall of identical text. */
+    benefit?: string | null;
+    scope?: string[];
+    cost?: string | null;
+    note?: string | null;
+    warning?: string | null;
     apply?: { label: string; disabled?: boolean; run: () => void };
   } | null>(null);
 
@@ -757,25 +766,17 @@ export function RegisterBoard({
                     const ineligible = cartEvaluated && elig != null && !elig.eligible;
                     const blocked = ineligible && !active;
                     const rewardDetail = () => {
-                      // Cost alone made the detail modal read "9 sellos" and say
-                      // nothing about what the socio actually gets.
-                      const lines = [
-                        rw.benefitSummary,
-                        rw.description,
-                        // What actually qualifies. "en productos seleccionados"
-                        // told the cashier nothing they could repeat to a customer.
-                        rw.scopeNames.length > 0
-                          ? `${t("rewardScopeLabel")}: ${rw.scopeNames.join(", ")}`
-                          : null,
-                        rewardCostText(rw),
-                        rw.fulfillmentNote
-                          ? `${t("rewardFulfillmentLabel")}: ${rw.fulfillmentNote}`
-                          : null,
-                        ineligible ? reasonLabel(elig?.reason, t, elig?.upgrade) : null,
-                      ].filter((l): l is string => Boolean(l?.trim()));
                       setDetailView({
                         title: rw.name,
-                        lines,
+                        // The operator's own copy is the only free prose here.
+                        lines: rw.description?.trim() ? [rw.description] : [],
+                        benefit: rw.benefitSummary,
+                        // What actually qualifies. "en productos seleccionados"
+                        // gave the cashier nothing to repeat to a customer.
+                        scope: rw.scopeNames,
+                        cost: rewardCostText(rw),
+                        note: rw.fulfillmentNote,
+                        warning: ineligible ? reasonLabel(elig?.reason, t, elig?.upgrade) : null,
                         apply: {
                           label: active ? t("rewardRemove") : t("rewardApply"),
                           // An ineligible reward can still be removed, never added.
@@ -1318,20 +1319,68 @@ export function RegisterBoard({
             <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
               {detailView?.title}
             </ResponsiveModalTitle>
+            {/* What it gives, first and largest — it's the sentence the cashier
+                repeats to the customer. Everything else supports it. */}
+            {detailView?.benefit ? (
+              <p className="text-primary mt-2 text-lg leading-snug font-extrabold">
+                {detailView.benefit}
+              </p>
+            ) : null}
+
+            {detailView?.cost ? (
+              <div className="mt-2.5">
+                <span className="bg-primary/10 text-primary inline-block rounded-full px-2.5 py-1 text-xs font-extrabold">
+                  {detailView.cost}
+                </span>
+              </div>
+            ) : null}
+
             <div className="mt-3 space-y-2">
-              {(detailView?.lines ?? []).length > 0 ? (
-                // Index-keyed: two lines can legitimately be the same string
-                // (a benefit summary that matches the operator's description),
-                // and a bare `key={l}` dropped the duplicate.
-                detailView?.lines.map((l, i) => (
-                  <p key={`${i}-${l}`} className="text-foreground text-sm font-semibold">
-                    {l}
-                  </p>
-                ))
-              ) : (
+              {/* Index-keyed: two lines can legitimately be the same string, and
+                  a bare `key={l}` dropped the duplicate. */}
+              {detailView?.lines.map((l, i) => (
+                <p key={`${i}-${l}`} className="text-muted-foreground text-sm leading-relaxed">
+                  {l}
+                </p>
+              ))}
+              {!detailView?.benefit && (detailView?.lines ?? []).length === 0 ? (
                 <p className="text-muted-foreground text-sm">{t("noDetail")}</p>
-              )}
+              ) : null}
             </div>
+
+            {/* Chips, not a comma list: the cashier is scanning for one name. */}
+            {(detailView?.scope ?? []).length > 0 ? (
+              <div className="border-border mt-3 border-t pt-3">
+                <p className="text-muted-foreground/70 text-[0.625rem] font-extrabold tracking-wider uppercase">
+                  {t("rewardScopeLabel")}
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {detailView?.scope?.map((s) => (
+                    <span
+                      key={s}
+                      className="bg-muted text-foreground rounded-lg px-2 py-1 text-xs font-bold"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {detailView?.note ? (
+              <div className="border-border mt-3 rounded-xl border border-dashed px-3 py-2">
+                <p className="text-muted-foreground/70 text-[0.625rem] font-extrabold tracking-wider uppercase">
+                  {t("rewardFulfillmentLabel")}
+                </p>
+                <p className="text-foreground mt-0.5 text-sm font-semibold">{detailView.note}</p>
+              </div>
+            ) : null}
+
+            {detailView?.warning ? (
+              <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
+                {detailView.warning}
+              </p>
+            ) : null}
             {detailView?.apply ? (
               <Button
                 size="lg"
