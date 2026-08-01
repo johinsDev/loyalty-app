@@ -1501,7 +1501,10 @@
     "rewardAppliedLabel": "Premio aplicado",
     "promoWhyBest": "Se aplica {name} porque descuenta {delta} más que la otra.",
     "promoWhySmaller": "Elegiste {name}. {other} descuenta {delta} más.",
-    "lineBase": "Bebida {amount}"
+    "lineBase": "Bebida {amount}",
+    "rewardDiscountAddon": "Premio: {addon} gratis en {item}",
+    "rewardDiscountAddonOfN": "Premio: {addon} gratis en 1 de {qty} · {item}",
+    "rewardOnLineNamedOfN": "{item} gratis en 1 de {qty} · −{amount}"
   },
   "Admin": {
     "menu": "Menú",

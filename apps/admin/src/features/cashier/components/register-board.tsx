@@ -340,10 +340,26 @@ export function RegisterBoard({
   // lines it belonged to. An order-wide voucher keeps the generic label,
   // because it really does apply to the whole ticket.
   const rewardLineIndex = upgrade?.sourceLineIndex ?? rewardPreview?.lineIndex ?? null;
-  const rewardTargetName = rewardLineIndex != null ? cart[rewardLineIndex]?.name : undefined;
-  const rewardDiscountLabel = rewardTargetName
-    ? t("rewardDiscountOn", { item: rewardTargetName })
-    : t("rewardDiscountShort");
+  const rewardLine = rewardLineIndex != null ? cart[rewardLineIndex] : undefined;
+  // A free add-on waives ONE unit's add-on, not the line's. On "3 × Brown Sugar
+  // Boba · Perlas · Shot de espresso" the customer paid for three Perlas and
+  // gets one back, and the old label — the line's whole name, add-ons and all —
+  // said neither which add-on nor how many. Name the add-on, count the units,
+  // and identify the line by the drink alone.
+  const rewardDiscountLabel = !rewardLine
+    ? t("rewardDiscountShort")
+    : rewardPreview?.targetLabel
+      ? rewardLine.qty > 1
+        ? t("rewardDiscountAddonOfN", {
+            addon: rewardPreview.targetLabel,
+            item: rewardLine.baseName,
+            qty: rewardLine.qty,
+          })
+        : t("rewardDiscountAddon", {
+            addon: rewardPreview.targetLabel,
+            item: rewardLine.baseName,
+          })
+      : t("rewardDiscountOn", { item: rewardLine.baseName });
 
   /** Lines the applied promo discounts — badged in the cart, so the totals row
    *  can stay a short name instead of a wrapped list of drinks. */
@@ -1344,12 +1360,21 @@ export function RegisterBoard({
                     {rewardLineIndex === idx && !upgrade ? (
                       <div className="mt-2 flex items-center gap-1.5 rounded-xl border border-dashed border-violet-400/50 bg-violet-400/5 px-2.5 py-1.5">
                         <Gift className="size-3 flex-none text-violet-300" />
-                        <span className="min-w-0 truncate text-[0.6875rem] font-bold text-violet-200">
+                        {/* Wraps rather than truncating, and states the unit
+                            count: "Perlas gratis · −$1.000" on a 3× line read
+                            as though all three were free. */}
+                        <span className="min-w-0 text-[0.6875rem] leading-snug font-bold text-violet-200">
                           {rewardPreview?.targetLabel
-                            ? t("rewardOnLineNamed", {
-                                item: rewardPreview.targetLabel,
-                                amount: formatCop(rewardDiscount),
-                              })
+                            ? i.qty > 1
+                              ? t("rewardOnLineNamedOfN", {
+                                  item: rewardPreview.targetLabel,
+                                  qty: i.qty,
+                                  amount: formatCop(rewardDiscount),
+                                })
+                              : t("rewardOnLineNamed", {
+                                  item: rewardPreview.targetLabel,
+                                  amount: formatCop(rewardDiscount),
+                                })
                             : t("rewardOnLine", { amount: formatCop(rewardDiscount) })}
                         </span>
                       </div>

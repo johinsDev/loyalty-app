@@ -79,12 +79,17 @@ export function ConfirmSale({
             <ul className="border-border mt-4 max-h-52 space-y-1 overflow-y-auto border-t pt-3 text-sm">
               {lines.map((l) => (
                 <li key={l.key}>
-                  <div className="flex items-baseline gap-2">
+                  {/* Wraps, never truncates. This is the sheet whose only job is
+                      to let the cashier read out what they are about to charge —
+                      "Brown Sugar Boba · Grande · Perlas · Shot de espre…" hides
+                      the add-ons the customer is paying for, which is exactly
+                      what gets disputed at the counter. */}
+                  <div className="flex items-baseline gap-2 py-0.5">
                     <span className="text-muted-foreground w-6 flex-none font-bold tabular-nums">
                       {l.qty}×
                     </span>
-                    <span className="min-w-0 flex-1 truncate font-semibold">{l.name}</span>
-                    <span className="flex-none font-semibold tabular-nums">
+                    <span className="min-w-0 flex-1 leading-snug font-semibold">{l.name}</span>
+                    <span className="flex-none font-semibold tabular-nums whitespace-nowrap">
                       {formatMoney(l.amountCents)}
                     </span>
                   </div>
@@ -108,10 +113,12 @@ export function ConfirmSale({
             {discounts.map((d) => (
               <div
                 key={d.label}
-                className="flex justify-between font-semibold text-emerald-600 dark:text-emerald-400"
+                className="flex items-center justify-between gap-3 py-0.5 font-semibold text-emerald-600 dark:text-emerald-400"
               >
-                <span className="min-w-0 truncate pr-2">{d.label}</span>
-                <span className="flex-none tabular-nums">− {formatMoney(d.amountCents)}</span>
+                <span className="min-w-0 leading-snug">{d.label}</span>
+                <span className="flex-none tabular-nums whitespace-nowrap">
+                  − {formatMoney(d.amountCents)}
+                </span>
               </div>
             ))}
             <div className="mt-2 flex items-baseline justify-between">
