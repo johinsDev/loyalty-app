@@ -1498,7 +1498,9 @@
     "upsellHowSwap": "Cambiá esa línea a {to}. El botón te abre el producto con las adiciones y la nota que ya tenía.",
     "upsellMore": "Ver {count} sugerencia(s) más",
     "upsellLess": "Ver menos",
-    "rewardAppliedLabel": "Premio aplicado"
+    "rewardAppliedLabel": "Premio aplicado",
+    "promoWhyBest": "Se aplica {name} porque descuenta {delta} más que la otra.",
+    "promoWhySmaller": "Elegiste {name}. {other} descuenta {delta} más."
   },
   "Admin": {
     "menu": "Menú",

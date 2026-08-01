@@ -1498,7 +1498,9 @@
     "upsellHowSwap": "Switch that line to {to}. The button reopens the product with its add-ons and note already filled in.",
     "upsellMore": "See {count} more suggestion(s)",
     "upsellLess": "See less",
-    "rewardAppliedLabel": "Applied reward"
+    "rewardAppliedLabel": "Applied reward",
+    "promoWhyBest": "{name} is applied because it discounts {delta} more than the other.",
+    "promoWhySmaller": "You picked {name}. {other} discounts {delta} more."
   },
   "Admin": {
     "menu": "Menu",

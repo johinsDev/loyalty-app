@@ -347,6 +347,32 @@ export function RegisterBoard({
   );
   const promoDiscountLabel = appliedPromo?.promo.name ?? t("promoDiscount");
 
+  /**
+   * One sentence explaining which promo is on the ticket and why, whenever more
+   * than one qualifies. A purchase carries a single promo, so the register
+   * silently applies the biggest — and that reads as a switcheroo to a cashier
+   * who added a drink chasing a specific one. Two truths worth saying:
+   * the automatic pick is the biggest (and by how much), or the cashier
+   * overrode it and is leaving money on the table.
+   */
+  const promoChoice = useMemo(() => {
+    if (!appliedPromo || promos.length < 2) return null;
+    // `promos` arrives sorted by discount desc, so the first non-applied row is
+    // the best alternative.
+    const other = promos.find((p) => p.promo.id !== appliedPromo.promo.id);
+    if (!other) return null;
+    const delta = appliedPromo.discountCents - other.discountCents;
+    if (delta > 0)
+      return t("promoWhyBest", { name: appliedPromo.promo.name, delta: formatCop(delta) });
+    if (delta < 0)
+      return t("promoWhySmaller", {
+        name: appliedPromo.promo.name,
+        other: other.promo.name,
+        delta: formatCop(-delta),
+      });
+    return null;
+  }, [appliedPromo, promos, t]);
+
   // Same three discounts the cart draws, so the review sheet can't disagree
   // with the line the cashier just read.
   const confirmDiscounts: ConfirmDiscount[] = [];
@@ -876,6 +902,17 @@ export function RegisterBoard({
                         </div>
                       );
                     })}
+                    {/* Why THIS one. Only one promo can ride a purchase, so the
+                        register silently picks the biggest — which turned a
+                        followed upsell into a bait and switch: the cashier adds
+                        a drink chasing "$5.000 de descuento" and the ticket
+                        comes back saying "Segunda unidad al 50%". It's the
+                        better deal, it just never said so. */}
+                    {promoChoice ? (
+                      <p className="text-muted-foreground pt-1 text-[0.6875rem] leading-snug font-semibold">
+                        {promoChoice}
+                      </p>
+                    ) : null}
                     {promos.length > 1 ? (
                       <p className="text-muted-foreground/70 pt-0.5 text-[0.6875rem] font-semibold">
                         {t("promoTapToSwitch")}
