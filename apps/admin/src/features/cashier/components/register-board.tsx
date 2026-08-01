@@ -238,6 +238,14 @@ export function RegisterBoard({
   // `eligByReward` empty, which read as "everything applies".
   const cartEvaluated = cart.length > 0 && preview.isSuccess;
   const rewardsScrollRef = useRef<HTMLDivElement>(null);
+  // Whether the rewards list is scrolled to its end, so the fade + arrow can
+  // get out of the last row's way. Starts true: a list that doesn't overflow
+  // never fires a scroll event, and it has nothing to scroll to either.
+  const [rewardsAtEnd, setRewardsAtEnd] = useState(true);
+  const syncRewardsEnd = (el: HTMLDivElement | null) => {
+    if (!el) return;
+    setRewardsAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 8);
+  };
   // `apply` turns the detail sheet into a decision instead of a dead end: the
   // cashier reads what the reward does and redeems it without hunting back for
   // the row. Absent for promo details, which have no equivalent commit step.
@@ -671,7 +679,11 @@ export function RegisterBoard({
               </div>
               <div className="relative">
                 <div
-                  ref={rewardsScrollRef}
+                  ref={(el) => {
+                    rewardsScrollRef.current = el;
+                    syncRewardsEnd(el);
+                  }}
+                  onScroll={(e) => syncRewardsEnd(e.currentTarget)}
                   className="scrollbar-hide max-h-[26rem] space-y-2 overflow-y-auto pb-1"
                 >
                   {availableRewards.isError ? (
@@ -829,8 +841,11 @@ export function RegisterBoard({
                   })}
                 </div>
                 {/* Scroll affordance: a fade + a tappable down-arrow when the list
-                    overflows (the hidden scrollbar didn't read as scrollable). */}
-                {rewards.length > 3 ? (
+                    overflows (the hidden scrollbar didn't read as scrollable).
+                    Both disappear at the end of the list — they used to sit on
+                    top of the last reward, blurring its name and covering its
+                    detail button, which is exactly when they're useless. */}
+                {rewards.length > 3 && !rewardsAtEnd ? (
                   <>
                     <div className="from-card pointer-events-none absolute inset-x-0 bottom-0 h-8 rounded-b-3xl bg-gradient-to-t to-transparent" />
                     <button
