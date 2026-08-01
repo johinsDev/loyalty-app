@@ -1393,9 +1393,9 @@ export function RegisterBoard({
                   ) : null}
                 </>
               ) : null}
-              <div className="mt-1.5 flex items-baseline justify-between">
+              <div className="mt-2 flex items-baseline justify-between gap-3">
                 <span className="font-bold">{t("net")}</span>
-                <span className="font-display text-2xl font-bold">
+                <span className="font-display flex-none text-2xl font-bold tabular-nums whitespace-nowrap">
                   {mode === "total"
                     ? formatCop(Math.round((priceCop ?? 0) * 100))
                     : formatCop(total)}
@@ -1908,11 +1908,25 @@ function Row({
   good?: boolean;
 }) {
   return (
-    <div className="flex justify-between font-semibold">
+    // The amount is the part that must never wrap: with both spans shrinkable
+    // it was the one that broke, leaving the minus sign stranded on one line
+    // and "$ 2.500" on the next. `flex-none` + `nowrap` keeps it whole and
+    // `min-w-0` lets the long label — "Premio en Classic Milk Tea · Mediano ·
+    // Shot de espresso" — be the thing that wraps instead. `tabular-nums`
+    // lines the column of figures up, the way the review sheet already does.
+    <div className="flex items-center justify-between gap-3 py-0.5 font-semibold">
       {/* violet-300, not the brand primary: that purple on this near-black
           panel is about 3:1 and unreadable at this size. */}
-      <span className={muted ? "text-white/50" : good ? "text-violet-300" : ""}>{label}</span>
-      <span className={good ? "font-bold text-violet-300" : "font-bold"}>{value}</span>
+      <span
+        className={`min-w-0 leading-snug ${muted ? "text-white/50" : good ? "text-violet-300" : ""}`}
+      >
+        {label}
+      </span>
+      <span
+        className={`flex-none tabular-nums whitespace-nowrap ${good ? "font-bold text-violet-300" : "font-bold"}`}
+      >
+        {value}
+      </span>
     </div>
   );
 }
