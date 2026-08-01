@@ -13,16 +13,16 @@ C = {  # categories
 ADDON_PERLAS = "86a0ea0f-b25d-4152-be8d-2a4c5395ac53"
 
 R = [
- ("T1 Free product (one)",        "freeProduct",  {"type":"freeProduct","refs":[{"kind":"product","id":P["classic"]}]}, 50),
- ("T2 Free product (category)",   "freeProduct",  {"type":"freeProduct","refs":[{"kind":"category","id":C["frutales"]}]}, 60),
- ("T3 Amount off (order)",        "amountOff",    {"type":"amountOff","refs":[],"amountCents":500000}, 40),
- ("T4 Amount off (category)",     "amountOff",    {"type":"amountOff","refs":[{"kind":"category","id":C["milktea"]}],"amountCents":300000}, 30),
- ("T5 Percent off (capped)",      "percentOff",   {"type":"percentOff","refs":[],"percent":20,"maxDiscountCents":400000}, 35),
- ("T6 Percent off (category)",    "percentOff",   {"type":"percentOff","refs":[{"kind":"category","id":C["matcha"]}],"percent":50}, 45),
- ("T7 Free addon (Perlas)",       "freeAddon",    {"type":"freeAddon","addonId":ADDON_PERLAS}, 15),
- ("T8 Free addon (any)",          "freeAddon",    {"type":"freeAddon","addonId":None}, 20),
- ("T9 Upgrade (General cat)",     "variantUpgrade",{"type":"variantUpgrade","refs":[{"kind":"category","id":C["general"]}],"optionName":"Tamaño","fromValueLabel":"Mediano","toValueLabel":"Grande"}, 25),
- ("T10 Experience",               "experience",   {"type":"experience"}, 10),
+ ("T1 Producto gratis (uno)",        "freeProduct",  {"type":"freeProduct","refs":[{"kind":"product","id":P["classic"]}]}, 50),
+ ("T2 Producto gratis (categoría)",   "freeProduct",  {"type":"freeProduct","refs":[{"kind":"category","id":C["frutales"]}]}, 60),
+ ("T3 Monto off (toda la orden)",        "amountOff",    {"type":"amountOff","refs":[],"amountCents":500000}, 40),
+ ("T4 Monto off (categoría)",     "amountOff",    {"type":"amountOff","refs":[{"kind":"category","id":C["milktea"]}],"amountCents":300000}, 30),
+ ("T5 Porcentaje off (con tope)",      "percentOff",   {"type":"percentOff","refs":[],"percent":20,"maxDiscountCents":400000}, 35),
+ ("T6 Porcentaje off (categoría)",    "percentOff",   {"type":"percentOff","refs":[{"kind":"category","id":C["matcha"]}],"percent":50}, 45),
+ ("T7 Adición gratis (Perlas)",       "freeAddon",    {"type":"freeAddon","addonId":ADDON_PERLAS}, 15),
+ ("T8 Adición gratis (cualquiera)",          "freeAddon",    {"type":"freeAddon","addonId":None}, 20),
+ ("T9 Subir tamaño (categoría General)",     "variantUpgrade",{"type":"variantUpgrade","refs":[{"kind":"category","id":C["general"]}],"optionName":"Tamaño","fromValueLabel":"Mediano","toValueLabel":"Grande"}, 25),
+ ("T10 Experiencia",               "experience",   {"type":"experience"}, 10),
 ]
 
 stmts = [{"type":"execute","stmt":{"sql":"delete from reward where name like 'T% %'"}}]
