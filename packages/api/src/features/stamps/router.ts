@@ -159,6 +159,10 @@ export const stampsRouter = router({
         ok: boolean;
         discountCents: number;
         reason: string | null;
+        /** Cart line the reward discounts, so the register can name the drink
+         *  instead of an unattributed "Recompensa − $17.000". Null for an
+         *  order-wide voucher, which genuinely applies to the whole ticket. */
+        lineIndex: number | null;
       } | null = null;
       let exclusions: UnitExclusion[] = [];
       // A `variantUpgrade` reward CHANGES the cart, so everything downstream —
@@ -170,10 +174,20 @@ export const stampsRouter = router({
       if (input.inlineReward) {
         const rw = rewardsById.get(input.inlineReward.rewardId);
         if (!rw || rw.status !== "published") {
-          reward = { ok: false, discountCents: 0, reason: "reward-not-redeemable" };
+          reward = {
+            ok: false,
+            discountCents: 0,
+            reason: "reward-not-redeemable",
+            lineIndex: null,
+          };
         } else {
           const res = await resolveRewardOnCart(promoRepo, rw, enriched);
-          reward = { ok: res.ok, discountCents: res.discountCents, reason: res.reason };
+          reward = {
+            ok: res.ok,
+            discountCents: res.discountCents,
+            reason: res.reason,
+            lineIndex: res.exclusions[0]?.lineIndex ?? null,
+          };
           exclusions = res.exclusions;
           if (res.upgrade) {
             pricedCart = res.cart;

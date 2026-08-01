@@ -292,6 +292,16 @@ export function RegisterBoard({
   const tierPct = net?.tierDiscountPct ?? 0;
   const total = net ? net.netPriceCents : Math.max(0, subtotal - promoDiscount - rewardDiscount);
 
+  // Name the drink the reward lands on, wherever the amount is shown. An
+  // unattributed "Recompensa − $17.000" left the cashier guessing which of the
+  // lines it belonged to. An order-wide voucher keeps the generic label,
+  // because it really does apply to the whole ticket.
+  const rewardLineIndex = upgrade?.sourceLineIndex ?? rewardPreview?.lineIndex ?? null;
+  const rewardTargetName = rewardLineIndex != null ? cart[rewardLineIndex]?.name : undefined;
+  const rewardDiscountLabel = rewardTargetName
+    ? t("rewardDiscountOn", { item: rewardTargetName })
+    : t("rewardDiscountShort");
+
   // Same three discounts the cart draws, so the review sheet can't disagree
   // with the line the cashier just read.
   const confirmDiscounts: ConfirmDiscount[] = [];
@@ -302,15 +312,7 @@ export function RegisterBoard({
         amountCents: promoDiscount,
       });
     if (rewardDiscount > 0)
-      confirmDiscounts.push({
-        // Name the drink the reward lands on. "Recompensa − $2.000" left the
-        // cashier guessing which of three lines it belonged to.
-        label:
-          upgrade && cart[upgrade.sourceLineIndex]
-            ? t("rewardDiscountOn", { item: cart[upgrade.sourceLineIndex]!.name })
-            : t("rewardDiscountShort"),
-        amountCents: rewardDiscount,
-      });
+      confirmDiscounts.push({ label: rewardDiscountLabel, amountCents: rewardDiscount });
     if (tierDiscount > 0)
       confirmDiscounts.push({
         label:
@@ -620,7 +622,12 @@ export function RegisterBoard({
                             >
                               − {formatCop(a.discountCents)}
                             </span>
-                            {active ? <Check className="text-primary size-3.5 flex-none" /> : null}
+                            {/* Always holds its width. Appearing on select stole
+                                space from the name, which re-wrapped and changed
+                                the row's height — that was the jump. */}
+                            <Check
+                              className={`text-primary size-3.5 flex-none ${active ? "" : "invisible"}`}
+                            />
                           </button>
                           <button
                             type="button"
@@ -633,7 +640,7 @@ export function RegisterBoard({
                                 ) as string[],
                               })
                             }
-                            className="border-border text-muted-foreground hover:text-foreground grid w-10 shrink-0 self-stretch place-items-center rounded-xl border"
+                            className="border-border text-muted-foreground hover:text-foreground grid size-9 shrink-0 self-center place-items-center rounded-xl border"
                           >
                             <Info className="size-3.5" />
                           </button>
@@ -852,17 +859,19 @@ export function RegisterBoard({
                           >
                             {rewardCostText(rw)}
                           </span>
-                          {active ? <Check className="text-primary size-3.5 flex-none" /> : null}
+                          <Check
+                            className={`text-primary size-3.5 flex-none ${active ? "" : "invisible"}`}
+                          />
                         </button>
-                        {/* Explicit width, not `aspect-square`: a flex item sizes
-                            its width from content before `self-stretch` sets the
-                            height, so the ratio had nothing to square against and
-                            it rendered as a tall, narrow pill. */}
+                        {/* Fixed square, centred — not `self-stretch`. An
+                            ineligible row is three lines tall, and stretching
+                            grew this into a slab beside it. A constant size also
+                            means it can't change when the row does. */}
                         <button
                           type="button"
                           aria-label={t("viewDetail")}
                           onClick={rewardDetail}
-                          className="border-border text-muted-foreground hover:text-foreground grid w-10 shrink-0 self-stretch place-items-center rounded-xl border"
+                          className="border-border text-muted-foreground hover:text-foreground grid size-9 shrink-0 self-center place-items-center rounded-xl border"
                         >
                           <Info className="size-3.5" />
                         </button>
@@ -1169,7 +1178,7 @@ export function RegisterBoard({
                     />
                   ) : null}
                   {rewardDiscount > 0 ? (
-                    <Row label={t("rewardDiscountShort")} value={`− ${formatCop(rewardDiscount)}`} good />
+                    <Row label={rewardDiscountLabel} value={`− ${formatCop(rewardDiscount)}`} good />
                   ) : null}
                   {tierDiscount > 0 ? (
                     <Row
