@@ -1035,7 +1035,9 @@
       "secondUnitPercent": "Discount on the 2nd unit",
       "secondUnitHint": "On the cheapest unit of the pair",
       "takes": "Takes",
-      "of": "of:"
+      "of": "of:",
+      "discountAddons": "The discount also covers add-ons",
+      "discountAddonsHint": "By default the discount applies to the drink and add-ons are charged separately. Turn this on only if the offer includes the toppings — on a fixed-price combo the customer can then add as many as they like for free."
     },
     "refs": {
       "any": "Any item on the menu",

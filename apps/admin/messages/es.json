@@ -1035,7 +1035,9 @@
       "secondUnitPercent": "Descuento en la 2.ª unidad",
       "secondUnitHint": "Sobre la unidad de menor valor",
       "takes": "Lleva",
-      "of": "de:"
+      "of": "de:",
+      "discountAddons": "El descuento también cubre las adiciones",
+      "discountAddonsHint": "Por defecto el descuento es sobre la bebida y las adiciones se cobran aparte. Activalo solo si la oferta incluye los toppings — en un combo a precio fijo, el cliente puede agregar los que quiera sin costo."
     },
     "refs": {
       "any": "Cualquier producto de la carta",

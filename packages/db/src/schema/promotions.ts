@@ -49,6 +49,20 @@ export type PromoRule = {
   get?: { requirements: PromoLineRequirement[] };
   effect: PromoEffect;
   maxApplicationsPerOrder?: number;
+  /**
+   * Whether the discount also covers a line's add-ons. Default (absent or
+   * false) is NO: the promo prices the drink, not the toppings put on it.
+   *
+   * A line's price arrives with its add-ons folded in, so covering them is what
+   * happens by accident — and a fixed-price combo then swallows them without
+   * bound: two drinks closed at $28.000 hand over $3.000 of toppings each for
+   * free, however many the customer piles on. Opt in per promo when the offer
+   * genuinely means "everything on this drink".
+   *
+   * Spend thresholds are unaffected either way: the customer paid for the
+   * add-ons, so they count toward reaching a minimum.
+   */
+  discountAddons?: boolean;
 };
 
 export type PromoRecurrence =

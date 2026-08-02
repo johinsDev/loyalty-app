@@ -16,6 +16,9 @@ const requirementsSchema = z.array(lineRequirementSchema);
 const percentSchema = z.number().min(0.01).max(100);
 const centsSchema = z.number().int().min(1);
 const maxAppsSchema = z.number().int().min(1).optional();
+/** Only on the types that discount matched units — an order-wide effect prices
+ *  the whole ticket, so the toggle would be a knob that does nothing. */
+const addonScope = { discountAddons: z.boolean().optional() };
 
 const moneyBenefitSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -33,11 +36,13 @@ export const benefitConfigSchema = z.discriminatedUnion("type", [
     refs: refsSchema, // [] = whole order
     percent: percentSchema,
     maxDiscountCents: centsSchema.optional(),
+    ...addonScope,
   }),
   z.object({
     type: z.literal("amountOff"),
     refs: refsSchema,
     amountCents: centsSchema,
+    ...addonScope,
   }),
   z.object({
     type: z.literal("nxm"),
@@ -45,24 +50,28 @@ export const benefitConfigSchema = z.discriminatedUnion("type", [
     buyQty: z.number().int().min(2),
     payQty: z.number().int().min(1),
     maxApplicationsPerOrder: maxAppsSchema,
+    ...addonScope,
   }),
   z.object({
     type: z.literal("secondUnit"),
     refs: refsSchema,
     percent: percentSchema, // discount on the cheapest of the pair
     maxApplicationsPerOrder: maxAppsSchema,
+    ...addonScope,
   }),
   z.object({
     type: z.literal("bundle"),
     requirements: requirementsSchema.min(1),
     benefit: moneyBenefitSchema,
     maxApplicationsPerOrder: maxAppsSchema,
+    ...addonScope,
   }),
   z.object({
     type: z.literal("combo"),
     requirements: requirementsSchema.min(1),
     priceCents: centsSchema,
     maxApplicationsPerOrder: maxAppsSchema,
+    ...addonScope,
   }),
   z.object({
     type: z.literal("crossSell"),
@@ -70,6 +79,7 @@ export const benefitConfigSchema = z.discriminatedUnion("type", [
     get: requirementsSchema.min(1),
     percent: percentSchema, // 100 = free
     maxApplicationsPerOrder: maxAppsSchema, // compile defaults it to 1
+    ...addonScope,
   }),
   z.object({
     type: z.literal("cartThreshold"),
@@ -82,6 +92,7 @@ export const benefitConfigSchema = z.discriminatedUnion("type", [
     tiers: z
       .array(z.object({ minQty: z.number().int().min(1), percent: percentSchema }))
       .min(1),
+    ...addonScope,
   }),
   z.object({
     type: z.literal("pointsMultiplier"),
@@ -112,6 +123,16 @@ const moneyEffect = (b: MoneyBenefit, target: "buy" | "order"): PromoRule["effec
     : { kind: "amountOff", amountCents: b.amountCents, target };
 
 export function compileRule(config: BenefitConfig): PromoRule {
+  const rule = compileShape(config);
+  // Attached once here rather than at each of the eight return sites: it is a
+  // property of the offer, not of any particular type's shape. Only written
+  // when true, so a stored rule stays as small as it was.
+  return "discountAddons" in config && config.discountAddons === true
+    ? { ...rule, discountAddons: true }
+    : rule;
+}
+
+function compileShape(config: BenefitConfig): PromoRule {
   switch (config.type) {
     case "percentOff":
       return {
@@ -202,6 +223,30 @@ export function compileRule(config: BenefitConfig): PromoRule {
 /** Lift a stored rule back into its type's config (compile's inverse for the
  *  10 curated shapes). Returns null when the rule doesn't fit the type. */
 export function decompileRule(type: PromoType, rule: PromoRule): BenefitConfig | null {
+  const config = decompileShape(type, rule);
+  // Lift the flag back too, or reopening the wizard would silently drop it and
+  // republish the promo no longer covering add-ons. Guarded by type: the
+  // order-wide shapes don't carry the field at all.
+  if (config == null || rule.discountAddons !== true) return config;
+  return ADDON_SCOPED.has(config.type)
+    ? ({ ...config, discountAddons: true } as BenefitConfig)
+    : config;
+}
+
+/** Types whose config accepts `discountAddons` — the ones that discount matched
+ *  units rather than the whole ticket. */
+const ADDON_SCOPED = new Set<PromoType>([
+  "percentOff",
+  "amountOff",
+  "nxm",
+  "secondUnit",
+  "bundle",
+  "combo",
+  "crossSell",
+  "volumeTiered",
+]);
+
+function decompileShape(type: PromoType, rule: PromoRule): BenefitConfig | null {
   const e = rule.effect;
   const firstReq = rule.buy.requirements[0];
   switch (type) {
