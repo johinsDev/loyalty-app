@@ -72,6 +72,10 @@ export const PROMO_TEMPLATES: PromoTemplate[] = [
         target: "buy",
         select: { count: 1, pick: "cheapest" },
       },
+      // Once per ticket. Without it the rule reads "every second unit at 50%":
+      // five drinks made two pairs and took half off two of them, which is not
+      // what "la segunda unidad" says to anyone standing at the counter.
+      maxApplicationsPerOrder: 1,
     },
   },
   {
@@ -228,6 +232,10 @@ export const PROMO_TEMPLATES: PromoTemplate[] = [
         target: "buy",
         select: { count: 1, pick: "cheapest" },
       },
+      // Once per ticket. Without it the rule reads "every second unit at 50%":
+      // five drinks made two pairs and took half off two of them, which is not
+      // what "la segunda unidad" says to anyone standing at the counter.
+      maxApplicationsPerOrder: 1,
     },
   },
 ];

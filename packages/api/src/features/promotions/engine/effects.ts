@@ -11,7 +11,8 @@ export interface EffectResult {
 
 const NONE: EffectResult = { discountCents: 0, pointsMultiplier: 1 };
 
-const sum = (units: CartUnit[]) => units.reduce((s, u) => s + u.amountCents, 0);
+/** What a scoped effect may take off. Add-ons are excluded — see `CartUnit`. */
+const sum = (units: CartUnit[]) => units.reduce((s, u) => s + u.discountableCents, 0);
 
 const cheapest = (units: CartUnit[], count: number): CartUnit[] =>
   [...units].sort((a, b) => a.amountCents - b.amountCents).slice(0, count);

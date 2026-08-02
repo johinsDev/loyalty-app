@@ -981,6 +981,15 @@ export function RegisterBoard({
                                 needs. The amount stays pinned on the right. */}
                             <span className="line-clamp-2 min-w-0 flex-1 text-xs font-bold">
                               {a.promo.name}
+                              {/* A promo that fired twice looked identical to
+                                  one that fired once — five drinks under
+                                  "segunda unidad al 50%" quietly took half off
+                                  two of them. */}
+                              {a.applications > 1 ? (
+                                <span className="text-muted-foreground ml-1 font-extrabold">
+                                  ×{a.applications}
+                                </span>
+                              ) : null}
                             </span>
                             <span
                               className={`flex-none text-xs font-extrabold whitespace-nowrap ${active ? "text-primary" : "text-muted-foreground"}`}
@@ -1605,6 +1614,19 @@ export function RegisterBoard({
                     </span>
                   ) : null}
                 </div>
+              ) : null}
+              {/* A points promo shows up as a bigger number than usual and
+                  nothing else. Break it down, or the cashier can't tell the
+                  customer what the promo is actually worth — and can't check
+                  the register either. */}
+              {mode === "items" && earn && earn.pointsMultiplier > 1 && earn.points > 0 ? (
+                <p className="mt-1 text-[0.6875rem] leading-snug font-semibold text-white/60">
+                  {t("earnPointsBreakdown", {
+                    base: earn.basePoints,
+                    extra: earn.points - earn.basePoints,
+                    total: earn.points,
+                  })}
+                </p>
               ) : null}
               {/* An exclusive promo and a reward can't share a ticket, and the
                   server refuses the sale outright. Surfaced here, beside the

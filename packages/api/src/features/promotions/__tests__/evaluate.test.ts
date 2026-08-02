@@ -219,6 +219,58 @@ describe("evaluatePromo per curated type", () => {
   });
 });
 
+describe("add-ons are outside what a promo may discount", () => {
+  // A line's price arrives with its add-ons folded in. Discounting that number
+  // hands the toppings over free, which a fixed-price combo makes unbounded:
+  // nothing stops a customer loading up once the price is closed.
+  const withAddons = () =>
+    cart(
+      line({
+        productId: "classic",
+        categoryIds: ["milk-teas"],
+        unitAmountCents: 18500, // 15500 drink + 3000 of add-ons
+        addons: [
+          { id: "perlas", priceDeltaCents: 1000 },
+          { id: "pudding", priceDeltaCents: 2000 },
+        ],
+        qty: 2,
+      }),
+    );
+
+  it("percentOff prices the drink, not the toppings", () => {
+    const rule = compileRule({
+      type: "percentOff",
+      refs: [{ kind: "category", id: "milk-teas" }],
+      percent: 25,
+    });
+    // 25% of (15500 × 2), not of (18500 × 2).
+    expect(evaluatePromo(withAddons(), view({ rule }), facts(), NOW).discountCents).toBe(7750);
+  });
+
+  it("a fixed-price combo charges the add-ons on top", () => {
+    const rule = compileRule({
+      type: "combo",
+      requirements: [{ refs: [{ kind: "category", id: "milk-teas" }], qty: 2 }],
+      priceCents: 28000,
+    });
+    // The two drinks list at 31000; the combo closes them at 28000. The 6000 of
+    // add-ons stays on the ticket, so the discount is 3000 — not 9000.
+    expect(evaluatePromo(withAddons(), view({ rule }), facts(), NOW).discountCents).toBe(3000);
+  });
+
+  it("still counts the add-ons toward a spend threshold — the customer paid them", () => {
+    const rule = compileRule({
+      type: "cartThreshold",
+      minSubtotalCents: 37000,
+      benefit: { kind: "amount", amountCents: 4000 },
+    });
+    // Subtotal is 37000 WITH add-ons; without them it would be 31000 and miss.
+    const result = evaluatePromo(withAddons(), view({ rule }), facts(), NOW);
+    expect(result.eligible).toBe(true);
+    expect(result.discountCents).toBe(4000);
+  });
+});
+
 describe("pickBest", () => {
   const evaluation = (over: Partial<PromoEvaluation>): PromoEvaluation => ({
     eligible: true,

@@ -32,7 +32,21 @@ export interface Cart {
  *  one modifier unit per modifier option per qty (priced at its delta). */
 export interface CartUnit {
   lineIndex: number;
+  /** What the customer pays for this unit, add-ons included. Ranks and selects
+   *  units, because that is the price a cashier reads off the line. */
   amountCents: number;
+  /**
+   * What a promo may take off: the drink without its add-ons.
+   *
+   * `unitAmountCents` arrives with the add-ons folded in, so every scoped effect
+   * used to discount them too. A fixed-price combo swallowed them whole — two
+   * drinks at $15.500 carrying $3.000 of toppings each went to $28.000 flat, so
+   * the toppings rode along free and nothing stopped a customer loading up.
+   *
+   * Spend thresholds and order-wide effects still use the full amount: the
+   * customer did spend it.
+   */
+  discountableCents: number;
   source: "product" | "modifierOption";
   modifierOptionId?: string;
 }

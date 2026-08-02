@@ -288,6 +288,12 @@ export const stampsRouter = router({
       // the ticket clears the minimum). A hint — recordPurchase is authoritative.
       const previewCurrency = input.currency ?? "COP";
       const pointsMult = chosen?.pointsMultiplier ?? 1;
+      // The base is what the sale would earn with no multiplier. A "×3 puntos"
+      // promo was previously visible only as a bigger-than-usual total, so the
+      // cashier couldn't tell the customer what the promo was actually worth.
+      const basePoints = earnsPoints(loyalty.mode)
+        ? Math.round(pointsForPrice(net.netPriceCents, rateForCurrency(loyalty, previewCurrency)))
+        : 0;
       const earnPoints = earnsPoints(loyalty.mode)
         ? Math.round(pointsForPrice(net.netPriceCents, rateForCurrency(loyalty, previewCurrency)) * pointsMult)
         : 0;
@@ -305,7 +311,15 @@ export const stampsRouter = router({
         // Null when the stacking policy suppressed the reward — the swap didn't
         // happen, so the register must not draw it.
         rewardUpgrade: net.suppressed.reward ? null : rewardUpgrade,
-        earn: { points: earnPoints, stamps: earnStamps },
+        earn: {
+          points: earnPoints,
+          stamps: earnStamps,
+          // What the sale earns without the promo, and the multiplier applied,
+          // so the register can break "+150 pts" into "50 normales + 100 por la
+          // promo" instead of showing one number nobody can check.
+          basePoints,
+          pointsMultiplier: pointsMult,
+        },
         net: {
           ...net,
           tierDiscountPct: tierPct,
