@@ -1,9 +1,17 @@
 "use client";
 
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalTitle,
+  Skeleton,
+} from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
-import { Receipt, Store } from "lucide-react";
+import { ChevronRight, Receipt, Store } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
+import { PurchaseDetailView } from "@/features/purchases/components/purchase-detail-view";
 import { useFadeUp } from "@/lib/animate";
 import { useTRPC } from "@/lib/trpc/client";
 
@@ -26,6 +34,15 @@ export function PurchasesView() {
   const fade = useFadeUp();
   const trpc = useTRPC();
   const activeStoreId = useActiveStoreId();
+
+  // Which sale the cashier opened. The feed row answers "was it rung up"; the
+  // detail answers the question that follows — what was in it, which promo and
+  // reward landed, what the customer earned.
+  const [openId, setOpenId] = useState<string | null>(null);
+  const detail = useQuery({
+    ...trpc.purchases.adminGet.queryOptions({ id: openId ?? "" }),
+    enabled: Boolean(openId),
+  });
 
   const feed = useQuery(
     trpc.stamps.shiftPurchases.queryOptions(
@@ -51,10 +68,12 @@ export function PurchasesView() {
       ) : (
         <div className="mt-4 flex flex-col gap-2.5">
           {rows.map((r, i) => (
-            <div
+            <button
               key={r.id}
+              type="button"
+              onClick={() => setOpenId(r.id)}
               style={fade(i)}
-              className="border-border bg-card flex items-center gap-3 rounded-2xl border p-3.5 shadow-sm"
+              className="border-border bg-card hover:border-primary/40 flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left shadow-sm transition-colors"
             >
               <span className="bg-muted text-muted-foreground grid size-11 flex-none place-items-center rounded-xl">
                 <Receipt className="size-5" />
@@ -84,10 +103,30 @@ export function PurchasesView() {
                   {formatCop(r.netCents)}
                 </div>
               </div>
-            </div>
+              <ChevronRight className="text-muted-foreground/40 size-4 flex-none" />
+            </button>
           ))}
         </div>
       )}
+
+      <ResponsiveModal open={openId !== null} onOpenChange={(o) => !o && setOpenId(null)}>
+        <ResponsiveModalContent
+          showCloseButton={false}
+          mobileClassName="mx-auto w-full max-w-md"
+          desktopClassName="sm:max-w-2xl"
+        >
+          <ResponsiveModalTitle className="sr-only">{t("tabPurchases")}</ResponsiveModalTitle>
+          {openId && detail.data ? (
+            <PurchaseDetailView detail={detail.data} variant="modal" />
+          ) : (
+            <div className="flex flex-col gap-4 p-5">
+              <Skeleton className="h-12 w-1/2" />
+              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-5 w-2/3" />
+            </div>
+          )}
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </div>
   );
 }

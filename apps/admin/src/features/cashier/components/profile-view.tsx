@@ -28,12 +28,7 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useRouter } from "@/i18n/nav";
 
-import {
-  AVATAR_ACCEPT,
-  AVATAR_MAX_BYTES,
-  cashier,
-  teaAvatars,
-} from "../data";
+import { AVATAR_ACCEPT, AVATAR_MAX_BYTES, cashier, teaAvatars } from "../data";
 
 type EditField = "name" | "nick" | null;
 
@@ -111,7 +106,12 @@ export function ProfileView() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-md px-5 py-5">
+    // Same width as every other cashier tab (`max-w-2xl lg:max-w-4xl`); this
+    // one was stuck at `max-w-md`, so switching to Perfil visibly narrowed the
+    // page. The extra room then goes to columns instead of a long thin ribbon:
+    // account on the left, preferences and session on the right from `sm` up,
+    // one column on a phone.
+    <div className="mx-auto w-full max-w-2xl px-5 py-5 lg:max-w-4xl">
       <input
         ref={fileRef}
         type="file"
@@ -141,55 +141,65 @@ export function ProfileView() {
         </div>
       </div>
 
-      {/* Account */}
-      <Section label={t("profileAccount")}>
-        <Row label={t("name")} value={name} onClick={() => openEdit("name")} />
-        <Row
-          label={t("nickname")}
-          value={`@${nick}`}
-          onClick={() => openEdit("nick")}
-        />
-        <Row
-          icon={<Cake className="size-5" />}
-          label={t("birthday")}
-          value={birthdayText}
-          onClick={() => setBdayOpen(true)}
-        />
-      </Section>
-
-      {/* Preferences */}
-      <Section label={t("preferences")}>
-        <div className="flex items-center justify-between px-4 py-3.5">
-          <span className="text-sm font-bold">{t("language")}</span>
-          <LocaleSwitcher />
+      <div className="mt-4 grid grid-cols-1 items-start gap-x-5 sm:grid-cols-2">
+        <div>
+          {/* Account */}
+          <Section label={t("profileAccount")}>
+            <Row
+              label={t("name")}
+              value={name}
+              onClick={() => openEdit("name")}
+            />
+            <Row
+              label={t("nickname")}
+              value={`@${nick}`}
+              onClick={() => openEdit("nick")}
+            />
+            <Row
+              icon={<Cake className="size-5" />}
+              label={t("birthday")}
+              value={birthdayText}
+              onClick={() => setBdayOpen(true)}
+            />
+          </Section>
         </div>
-        <div className="border-border flex items-center justify-between border-t px-4 py-3.5">
-          <span className="text-sm font-bold">{t("theme")}</span>
-          <ThemeToggle />
-        </div>
-      </Section>
 
-      {/* Shift + session */}
-      <Section>
-        <Row
-          icon={<KeyRound className="size-5" />}
-          label={t("changePin")}
-          onClick={() => {
-            /* seam: shift-PIN keypad lands with the shift model */
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => void onSignOut()}
-          disabled={signingOut}
-          className="flex w-full items-center gap-3.5 px-4 py-4 text-left font-semibold text-rose-500 disabled:opacity-60"
-        >
-          <span className="grid size-10 flex-none place-items-center rounded-xl bg-rose-500/10">
-            <LogOut className="size-5" />
-          </span>
-          {signingOut ? t("signingOut") : t("signOut")}
-        </button>
-      </Section>
+        <div>
+          {/* Preferences */}
+          <Section label={t("preferences")}>
+            <div className="flex items-center justify-between px-4 py-3.5">
+              <span className="text-sm font-bold">{t("language")}</span>
+              <LocaleSwitcher />
+            </div>
+            <div className="border-border flex items-center justify-between border-t px-4 py-3.5">
+              <span className="text-sm font-bold">{t("theme")}</span>
+              <ThemeToggle />
+            </div>
+          </Section>
+
+          {/* Shift + session */}
+          <Section>
+            <Row
+              icon={<KeyRound className="size-5" />}
+              label={t("changePin")}
+              onClick={() => {
+                /* seam: shift-PIN keypad lands with the shift model */
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => void onSignOut()}
+              disabled={signingOut}
+              className="flex w-full items-center gap-3.5 px-4 py-4 text-left font-semibold text-rose-500 disabled:opacity-60"
+            >
+              <span className="grid size-10 flex-none place-items-center rounded-xl bg-rose-500/10">
+                <LogOut className="size-5" />
+              </span>
+              {signingOut ? t("signingOut") : t("signOut")}
+            </button>
+          </Section>
+        </div>
+      </div>
 
       {/* Edit name / nick */}
       <ResponsiveModal

@@ -24,9 +24,19 @@ const TABS: { key: string; href: Href; icon: LucideIcon }[] = [
   { key: "tabProfile", href: "/register/profile", icon: User },
 ];
 
+/**
+ * The first tab owns the whole charging flow, not just the identify screen.
+ *
+ * `/register/customer/<id>` — where the cashier actually spends the sale — used
+ * to match no tab at all, so the bar sat there with nothing lit. It also made
+ * the pill jump: `layoutId` animates the highlight between tabs, and with no
+ * tab active there was no pill to animate from, so tapping Escanear mounted one
+ * out of nowhere. Every cashier route maps to a tab now, so the pill always has
+ * somewhere to be and always slides.
+ */
 function isActive(pathname: string, href: Href) {
   return href === "/register"
-    ? pathname === "/register"
+    ? pathname === "/register" || pathname.startsWith("/register/customer")
     : pathname.startsWith(href);
 }
 

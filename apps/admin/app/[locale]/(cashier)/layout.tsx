@@ -3,6 +3,7 @@ import { type ReactNode, Suspense } from "react";
 
 import { CashierHeader } from "@/features/cashier/components/cashier-header";
 import { CashierTabBar } from "@/features/cashier/components/cashier-tab-bar";
+import { RoleGate } from "@/features/shell/role-gate";
 import { RoleGuard } from "@/features/shell/role-guard";
 
 /**
@@ -23,8 +24,13 @@ export default function CashierLayout({ children }: { children: ReactNode }) {
       <Suspense fallback={null}>
         <RoleGuard allowed={STAFF_OR_ABOVE} />
       </Suspense>
+      {/* The header gates one affordance on the role (the way back to the
+          dashboard), so it needs the provider. Same promise-not-await shape as
+          the dashboard shell: nothing here waits on the session hop. */}
       <Suspense fallback={null}>
-        <CashierHeader />
+        <RoleGate>
+          <CashierHeader />
+        </RoleGate>
       </Suspense>
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <Suspense fallback={null}>{children}</Suspense>
