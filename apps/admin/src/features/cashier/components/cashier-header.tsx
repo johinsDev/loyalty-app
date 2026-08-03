@@ -1,10 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, TrendingUp } from "lucide-react";
+import { LayoutDashboard, LogOut, TrendingUp } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { useRouter } from "@/i18n/nav";
+import { useHasRole } from "@/lib/role-context";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { useActiveStoreId } from "../use-active-store";
@@ -21,6 +22,8 @@ export function CashierHeader() {
   const router = useRouter();
   const trpc = useTRPC();
   const activeStoreId = useActiveStoreId();
+  // Staff have no dashboard to go back to — the route bounces them.
+  const canSeeDashboard = useHasRole("manager");
 
   const { data: stores } = useQuery(trpc.employees.myStores.queryOptions());
   const storeName =
@@ -67,14 +70,28 @@ export function CashierHeader() {
         <Kpi label={t("pointsToday")} value={pointsToday} />
       </div>
 
-      <button
-        type="button"
-        onClick={() => router.push("/dashboard")}
-        aria-label={t("exit")}
-        className="border-border bg-card text-muted-foreground hover:text-foreground grid size-10 flex-none place-items-center rounded-xl border"
-      >
-        <LogOut className="size-4" />
-      </button>
+      {/* The same button used to be a bare logout icon for everyone, so the way
+          back to the dashboard was invisible to the owner and a dead end for
+          staff, who get bounced by the route guard. */}
+      {canSeeDashboard ? (
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard")}
+          className="border-border bg-card text-muted-foreground hover:text-foreground flex h-10 flex-none items-center gap-2 rounded-xl border px-3 text-sm font-bold"
+        >
+          <LayoutDashboard className="size-4" />
+          <span className="hidden sm:inline">{t("goToDashboard")}</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard")}
+          aria-label={t("exit")}
+          className="border-border bg-card text-muted-foreground hover:text-foreground grid size-10 flex-none place-items-center rounded-xl border"
+        >
+          <LogOut className="size-4" />
+        </button>
+      )}
     </header>
   );
 }

@@ -1,9 +1,13 @@
 import { z } from "zod";
 
-export const periodSchema = z.enum(["7d", "30d", "90d"]);
+export const periodSchema = z.enum(["1d", "7d", "30d", "90d"]);
 export type Period = z.infer<typeof periodSchema>;
 
-export const PERIOD_DAYS: Record<Period, number> = { "7d": 7, "30d": 30, "90d": 90 };
+// `1d` is a rolling 24h window, like every other option here — not the calendar
+// day. The whole dashboard compares a window against the one immediately before
+// it (`daysAgo(now, days * 2)`), so a calendar-day option would need its own
+// previous-day arithmetic in each of the thirteen query sites.
+export const PERIOD_DAYS: Record<Period, number> = { "1d": 1, "7d": 7, "30d": 30, "90d": 90 };
 
 /** Active-store scope for the dashboard: `null`/undefined = aggregate (all
  *  stores); a store id filters purchase-based aggregates to that store. */

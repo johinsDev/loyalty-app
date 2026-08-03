@@ -258,7 +258,8 @@
     "categoryMixSubtitle": "Where the money comes from in the period",
     "categoryNone": "No category",
     "categoryRest": "Others",
-    "revenueShort": "revenue"
+    "revenueShort": "revenue",
+    "period24hHint": "Last 24 hours (rolling window, not the calendar day)"
   },
   "Customers": {
     "title": "Customers",
@@ -1517,7 +1518,8 @@
     "dropPromoForReward": "Drop the promo",
     "pricingStale": "Couldn't reprice the cart. The amounts above are from the previous one — retry before charging.",
     "promosStale": "Couldn't reprice. Retry to see which promos apply.",
-    "earnPointsBreakdown": "{base} normal + {extra} from the promo = {total} pts"
+    "earnPointsBreakdown": "{base} normal + {extra} from the promo = {total} pts",
+    "goToDashboard": "Dashboard"
   },
   "Admin": {
     "menu": "Menu",

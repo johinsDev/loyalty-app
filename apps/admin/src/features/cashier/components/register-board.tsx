@@ -9,7 +9,7 @@ import {
   ResponsiveModalContent,
   ResponsiveModalTitle,
 } from "@loyalty/ui";
-import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import { useDebounce } from "ahooks";
 import {
@@ -139,6 +139,7 @@ export function RegisterBoard({
   const t = useTranslations("Cashier");
   const locale = useLocale();
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const activeStoreId = useActiveStoreId();
 
   const [mode, setMode] = useState<"items" | "total">("items");
@@ -532,6 +533,15 @@ export function RegisterBoard({
             },
       );
       onSuccess(view);
+      // The sale just moved numbers that are still on screen, and nothing was
+      // invalidating them: with the 30s default staleTime, charging a sale
+      // worth 11 points left "PUNTOS HOY" showing the figure from before it.
+      // The customer's own reads go too — they just earned, and possibly spent,
+      // stamps and points, which changes what they can claim.
+      void queryClient.invalidateQueries(trpc.stamps.shiftSummary.queryFilter());
+      void queryClient.invalidateQueries(trpc.stamps.walletForCustomer.queryFilter());
+      void queryClient.invalidateQueries(trpc.customers.registerContext.queryFilter());
+      void queryClient.invalidateQueries(trpc.rewards.availableForCustomer.queryFilter());
       // The success used to replace this whole view, so the cart died with the
       // unmount. It's a modal now and the board stays mounted underneath —
       // leaving a charged cart sitting behind it, one tap from being charged

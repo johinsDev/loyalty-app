@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
+import { Link } from "@/i18n/nav";
 import { trpc } from "@/lib/trpc/server";
 
 import type { DashboardPeriod } from "../list-params";
@@ -173,20 +174,27 @@ export async function RecentPurchases({ storeId }: Pick<WidgetProps, "storeId">)
   return (
     <ul className="divide-border divide-y">
       {rows.map((r) => (
-        <li key={r.id} className="flex items-center gap-3 py-2.5">
-          <AvatarChip initials={initialsOf(r.customerName)} />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-bold">{r.customerName}</div>
-            {r.storeName ? (
-              <div className="text-muted-foreground/70 truncate text-xs font-semibold">
-                {r.storeName}
-              </div>
-            ) : null}
-          </div>
-          <div className="text-right text-sm font-bold">{fmtCop(r.amountCents)}</div>
-          <span className="text-muted-foreground/70 w-12 text-right text-xs font-semibold">
-            {agoOf(r.createdAt, now)}
-          </span>
+        <li key={r.id}>
+          {/* The obvious next question about a sale on this list is "what was
+              in it", and the answer already has a page. */}
+          <Link
+            href={{ pathname: "/purchases/[id]", params: { id: r.id } }}
+            className="hover:bg-muted/40 -mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors"
+          >
+            <AvatarChip initials={initialsOf(r.customerName)} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-bold">{r.customerName}</div>
+              {r.storeName ? (
+                <div className="text-muted-foreground/70 truncate text-xs font-semibold">
+                  {r.storeName}
+                </div>
+              ) : null}
+            </div>
+            <div className="text-right text-sm font-bold">{fmtCop(r.amountCents)}</div>
+            <span className="text-muted-foreground/70 w-12 text-right text-xs font-semibold">
+              {agoOf(r.createdAt, now)}
+            </span>
+          </Link>
         </li>
       ))}
     </ul>
