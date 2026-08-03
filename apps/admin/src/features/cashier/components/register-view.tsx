@@ -96,6 +96,7 @@ export function RegisterView({
         availableRewards={{
           items: available.data?.items ?? [],
           publishedCount: available.data?.publishedCount ?? 0,
+          nextReward: available.data?.nextReward ?? null,
           isPending: available.isPending,
           isError: available.isError,
           refetch: () => void available.refetch(),

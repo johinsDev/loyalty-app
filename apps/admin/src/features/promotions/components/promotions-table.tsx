@@ -1,4 +1,4 @@
-import type { AdminPromoRow } from "@loyalty/api/features/promotions";
+import type { AdminPromoListRow, AdminPromoRow } from "@loyalty/api/features/promotions";
 import { formatDate } from "@loyalty/date";
 import { Badge } from "@loyalty/ui";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -76,7 +76,7 @@ export async function PromotionsTable({
     return `${from} – ${to}`;
   };
 
-  const columns: ServerColumn<AdminPromoRow>[] = [
+  const columns: ServerColumn<AdminPromoListRow>[] = [
     {
       id: "name",
       label: t("list.colName"),
@@ -93,6 +93,17 @@ export async function PromotionsTable({
             style={{ background: p.backgroundCss ?? "var(--muted)" }}
           />
           <span className="font-semibold">{p.name || t("list.namePlaceholder")}</span>
+          {/* A promo whose product was deleted can never apply again, and used
+              to say nothing about it — the only way to find out was to build a
+              cart and watch it not show up. */}
+          {p.deadRefs > 0 ? (
+            <span
+              title={t("list.deadRefsHint")}
+              className="flex-none rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[0.625rem] font-extrabold text-amber-700 dark:text-amber-400"
+            >
+              {t("list.deadRefs")}
+            </span>
+          ) : null}
         </Link>
       ),
     },

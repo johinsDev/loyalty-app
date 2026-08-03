@@ -15,7 +15,7 @@ import {
 } from "./engine";
 import { enrichCart } from "./stitch";
 import { collectRefs } from "./repository";
-import type { AdminPromoRow, PromoPatch, PromoRepository } from "./repository";
+import type { AdminPromoListRow, PromoPatch, PromoRepository } from "./repository";
 import { ruleSchema, scheduleSchema, conditionsSchema } from "./schemas";
 import type {
   AdminListInput,
@@ -259,8 +259,31 @@ export class PromoService {
     return { ok: true };
   }
 
-  adminList(orgId: string, input: AdminListInput): Promise<ListResult<AdminPromoRow>> {
-    return this.repo.adminList(orgId, input);
+  /**
+   * Admin list, plus how many of each promo's item refs no longer resolve.
+   *
+   * A promo whose product was deleted can never apply again and says nothing
+   * about it — two of the seeded ones point at products that don't exist, and
+   * the only way to find out was to build a cart and watch them not appear.
+   * Resolved for the page in one batched pass.
+   */
+  async adminList(
+    orgId: string,
+    input: AdminListInput,
+  ): Promise<ListResult<AdminPromoListRow>> {
+    const page = await this.repo.adminList(orgId, input);
+    const refs = page.rows.flatMap((p) => collectRefs(p));
+    const names =
+      refs.length > 0
+        ? await this.repo.refNames(refs).catch(() => new Map<string, string>())
+        : new Map<string, string>();
+    return {
+      ...page,
+      rows: page.rows.map((p) => ({
+        ...p,
+        deadRefs: collectRefs(p).filter((r) => !names.has(r.id)).length,
+      })),
+    };
   }
 
   /** Org promo activity for the Analytics section. Defaults to the last 30 days. */
@@ -328,6 +351,7 @@ export class PromoService {
           applications: result.applications,
           exclusive: p.exclusive,
           lineIndexes: result.lineIndexes,
+          discountedLineIndexes: result.discountedLineIndexes,
         });
       } else if (result.reason === "missing-get-side") {
         hints.push({ promo: this.repo.cardOf(p, lc, names), missingGetSide: result.missingGetSide });

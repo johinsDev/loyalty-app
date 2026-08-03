@@ -643,11 +643,24 @@ export class RewardsService {
       this.repo.tierKey(organizationId, customerId),
       this.repo.claimedRewardIds(organizationId, customerId),
     ]);
-    const claimable = rows.filter((rw) => {
+    const eligible = rows.filter((rw) => {
       if (rw.allowedTiers && !rw.allowedTiers.includes(tierKey)) return false;
       if (rw.limitPerCustomer === "once" && claimed.has(rw.id)) return false;
-      return isAffordable(rw, balances);
+      return true;
     });
+    const claimable = eligible.filter((rw) => isAffordable(rw, balances));
+
+    // The nearest reward the customer CAN'T afford yet, and by how much.
+    // "Ready to redeem" only ever showed what was already paid for, so the
+    // cashier had nothing to say to the customer who is 36 points away — which
+    // is the one moment a nudge is worth anything. Points only: a stamp comes
+    // from a whole extra visit, so "you need 2 more stamps" isn't something this
+    // sale can act on.
+    const nearest = eligible
+      .filter((rw) => !isAffordable(rw, balances) && rw.pointsCost != null)
+      .map((rw) => ({ rw, missing: (rw.pointsCost ?? 0) - balances.points }))
+      .filter((x) => x.missing > 0)
+      .sort((a, b) => a.missing - b.missing)[0];
 
     // Resolve every claimable reward's scope in ONE pass so the register can
     // say *which* products qualify. Without it the summary fell back to
@@ -683,7 +696,18 @@ export class RewardsService {
         fulfillmentNote: rw.fulfillmentNote,
         scopeNames: scopeOf(rw),
       }));
-    return { items, publishedCount: rows.length };
+    return {
+      items,
+      publishedCount: rows.length,
+      nextReward: nearest
+        ? {
+            rewardId: nearest.rw.id,
+            name: nearest.rw.name,
+            pointsCost: nearest.rw.pointsCost ?? 0,
+            pointsMissing: nearest.missing,
+          }
+        : null,
+    };
   }
 
   /**

@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@loyalty/ui";
 import {
   Filter,
   Grid3x3,
@@ -21,19 +20,11 @@ import { useState } from "react";
 
 import { BannersAnalyticsPanel } from "@/features/banners/components/banners-analytics-panel";
 import { CampaignsAnalyticsPanel } from "@/features/campaigns/components/campaigns-analytics-panel";
-import { AreaChart, Bars, Donut } from "@/features/dashboard/components/charts";
+import { AreaChart, Donut } from "@/features/dashboard/components/charts";
 import { TeamLeaderboardPanel } from "@/features/employees/components/team-leaderboard-panel";
 import { PromotionsAnalyticsPanel } from "@/features/promotions/components/promotions-analytics-panel";
 import { useFadeUp } from "@/lib/animate";
 import { useTRPC } from "@/lib/trpc/client";
-
-import {
-  engagementClick,
-  engagementOpen,
-  growthSeries,
-  revenueBars,
-  tierMix,
-} from "../data";
 
 const PERIODS = ["7d", "30d", "90d"] as const;
 type Period = (typeof PERIODS)[number];
@@ -148,7 +139,7 @@ export function AnalyticsView({
         {/* Active section */}
         <div className="lg:col-span-3">
           {active === "overview" ? (
-            <Overview fade={fade} />
+            <Overview fade={fade} period={period} />
           ) : active === "campaigns" ? (
             <CampaignsAnalyticsPanel />
           ) : active === "promotions" ? (
@@ -175,78 +166,128 @@ export function AnalyticsView({
 
 type Fade = (index: number) => React.CSSProperties | undefined;
 
-function Overview({ fade }: { fade: Fade }) {
+function Overview({ fade, period }: { fade: Fade; period: Period }) {
   const t = useTranslations("Analytics");
+  const trpc = useTRPC();
+  // Every card here drew invented numbers — including a tier donut showing
+  // bronze/silver/gold/diamond, which are not this program's tiers at all.
+  // Same endpoints the dashboard already reads.
+  const series = useQuery(
+    trpc.dashboard.series.queryOptions({ period }, { placeholderData: keepPreviousData }),
+  );
+  const tiers = useQuery(trpc.dashboard.tiers.queryOptions());
+  const campaigns = useQuery(
+    trpc.campaigns.analytics.queryOptions({ period }, { placeholderData: keepPreviousData }),
+  );
+
+  const points = series.data ?? [];
+  const totalMembers = tiers.data?.tiers.reduce((n, x) => n + x.count, 0) ?? 0;
+  const tierSlices = (tiers.data?.tiers ?? []).map((x) => ({
+    key: x.key,
+    pct: totalMembers === 0 ? 0 : Math.round((x.count / totalMembers) * 100),
+    color: TIER_COLORS[x.key] ?? "#c7cdd4",
+  }));
+  // A window with sends but zero clicks is a real, useful zero; a window with
+  // no sends at all is nothing to plot, and a flat line at the bottom reads as
+  // a broken chart rather than "no campaigns went out".
+  const camp = campaigns.data?.series ?? [];
+  const anySent = camp.some((d) => d.sent > 0);
+  // Rates, not raw counts: a spike in sends would otherwise read as engagement.
+  const rate = (num: number, den: number) => (den === 0 ? 0 : Math.round((num / den) * 100));
+
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-      <ChartCard
-        title={t("growthTitle")}
-        subtitle={t("growthSubtitle")}
-        style={fade(0)}
-      >
+      <ChartCard title={t("growthTitle")} subtitle={t("growthSubtitle")} style={fade(0)}>
         <div className="h-48">
-          <AreaChart series={growthSeries} />
+          {series.isPending ? (
+            <Skeleton className="size-full rounded-xl" />
+          ) : points.some((p) => p.members > 0) ? (
+            <AreaChart series={points.map((p) => p.members)} />
+          ) : (
+            <EmptyChart text={t("noData")} />
+          )}
         </div>
       </ChartCard>
 
-      <ChartCard
-        title={t("tierTitle")}
-        subtitle={t("tierSubtitle")}
-        style={fade(1)}
-      >
-        <div className="flex flex-wrap items-center justify-center gap-4">
-          <Donut slices={tierMix} center="4" centerSub={t("nav.overview")} />
-          <ul className="min-w-40 flex-1 space-y-2 text-sm">
-            {tierMix.map((s) => (
-              <li key={s.key} className="flex items-center gap-2">
-                <span
-                  className="size-2.5 flex-none rounded-full"
-                  style={{ background: s.color }}
-                />
-                <span className="flex-1">{t(`tier.${s.key}`)}</span>
-                <span className="font-bold">{s.pct}%</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+      <ChartCard title={t("tierTitle")} subtitle={t("tierSubtitle")} style={fade(1)}>
+        {tiers.isPending ? (
+          <Skeleton className="h-40 w-full rounded-xl" />
+        ) : totalMembers === 0 ? (
+          <EmptyChart text={t("noData")} />
+        ) : (
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Donut slices={tierSlices} center={String(totalMembers)} centerSub={t("membersShort")} />
+            <ul className="min-w-40 flex-1 space-y-2 text-sm">
+              {tierSlices.map((sl) => (
+                <li key={sl.key} className="flex items-center gap-2">
+                  <span className="size-2.5 flex-none rounded-full" style={{ background: sl.color }} />
+                  <span className="flex-1 capitalize">{sl.key}</span>
+                  <span className="font-bold">{sl.pct}%</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </ChartCard>
 
-      <ChartCard
-        title={t("revenueTitle")}
-        subtitle={t("revenueSubtitle")}
-        style={fade(2)}
-      >
+      <ChartCard title={t("revenueTitle")} subtitle={t("revenueSubtitle")} style={fade(2)}>
         <div className="h-44">
-          <Bars series={revenueBars} />
+          {series.isPending ? (
+            <Skeleton className="size-full rounded-xl" />
+          ) : points.some((p) => p.revenueCents > 0) ? (
+            // `AreaChart`, not `Bars`: the bar chart renders an empty SVG with
+            // real data (0 rectangles at 176px tall) and this was its only
+            // caller — it came from the mock era and was never exercised.
+            <AreaChart series={points.map((p) => Math.round(p.revenueCents / 100))} />
+          ) : (
+            <EmptyChart text={t("noData")} />
+          )}
         </div>
       </ChartCard>
 
-      <ChartCard
-        title={t("engagementTitle")}
-        subtitle={t("engagementSubtitle")}
-        style={fade(3)}
-      >
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <div className="text-muted-foreground/70 mb-1 flex items-center gap-1.5 text-xs font-bold">
-              <span className="bg-primary size-2 rounded-full" />
-              {t("open")}
+      <ChartCard title={t("engagementTitle")} subtitle={t("engagementSubtitle")} style={fade(3)}>
+        {campaigns.isPending ? (
+          <Skeleton className="h-32 w-full rounded-xl" />
+        ) : !anySent ? (
+          <EmptyChart text={t("noCampaigns")} />
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-muted-foreground/70 mb-1 flex items-center gap-1.5 text-xs font-bold">
+                <span className="bg-primary size-2 rounded-full" />
+                {t("engagementClick")}
+              </div>
+              <div className="h-24">
+                <AreaChart series={camp.map((d) => rate(d.clicked, d.sent))} />
+              </div>
             </div>
-            <div className="h-32">
-              <Bars series={engagementOpen} />
+            <div>
+              <div className="text-muted-foreground/70 mb-1 flex items-center gap-1.5 text-xs font-bold">
+                <span className="size-2 rounded-full bg-[#f0a868]" />
+                {t("engagementRedeemed")}
+              </div>
+              <div className="h-24">
+                <AreaChart series={camp.map((d) => rate(d.redeemed, d.sent))} color="#f0a868" />
+              </div>
             </div>
           </div>
-          <div>
-            <div className="text-muted-foreground/70 mb-1 flex items-center gap-1.5 text-xs font-bold">
-              <span className="bg-primary/50 size-2 rounded-full" />
-              {t("click")}
-            </div>
-            <div className="h-32">
-              <Bars series={engagementClick} />
-            </div>
-          </div>
-        </div>
+        )}
       </ChartCard>
+    </div>
+  );
+}
+
+/** Same ramp the dashboard donut uses, so the two read as one program. */
+const TIER_COLORS: Record<string, string> = {
+  hoja: "var(--primary)",
+  flor: "color-mix(in srgb, var(--primary) 45%, #fff)",
+  oro: "#f0a868",
+};
+
+function EmptyChart({ text }: { text: string }) {
+  return (
+    <div className="text-muted-foreground/70 grid h-full min-h-24 place-items-center text-sm font-semibold">
+      {text}
     </div>
   );
 }
@@ -402,17 +443,9 @@ function ChartCard({
     >
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-display text-lg font-semibold tracking-tight">
-              {title}
-            </h2>
-            <Badge
-              variant="secondary"
-              className="text-[0.625rem] font-bold text-blue-600"
-            >
-              Beta
-            </Badge>
-          </div>
+          {/* The "Beta" badge came off with the mock data: it was standing in
+              for "these numbers are invented", which a badge never said. */}
+          <h2 className="font-display text-lg font-semibold tracking-tight">{title}</h2>
           {subtitle ? (
             <p className="text-muted-foreground/80 mt-0.5 text-xs font-semibold">
               {subtitle}

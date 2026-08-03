@@ -80,6 +80,8 @@ export const ruleSchema = z.object({
   maxApplicationsPerOrder: z.number().int().min(1).optional(),
   /** Opt in to discounting a line's add-ons too. Off by default — see PromoRule. */
   discountAddons: z.boolean().optional(),
+  /** Require every consumed unit to be the same product. Off by default. */
+  sameItem: z.boolean().optional(),
 });
 export type RuleInput = z.infer<typeof ruleSchema>;
 
@@ -216,6 +218,9 @@ export interface ApplicablePromo {
   exclusive: boolean;
   /** Cart lines the discount lands on, so the register can name the drink. */
   lineIndexes: number[];
+  /** Of those, the ones singled out — the free unit of a 3x2, the halved one of
+   *  a pair. Empty when the effect covers everything it matched. */
+  discountedLineIndexes: number[];
 }
 export interface ApplicableHint {
   promo: PromoCard;
