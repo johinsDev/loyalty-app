@@ -3224,13 +3224,13 @@
       "promotions": "Promotions"
     },
     "growthTitle": "Customer growth",
-    "growthSubtitle": "New members per month",
+    "growthSubtitle": "New members per day",
     "tierTitle": "Tier distribution",
     "tierSubtitle": "Base mix",
     "revenueTitle": "Loyalty revenue",
-    "revenueSubtitle": "Attributed to the program",
+    "revenueSubtitle": "Charged per day, voided excluded",
     "engagementTitle": "Notification engagement",
-    "engagementSubtitle": "Open vs click",
+    "engagementSubtitle": "Click and redemption over sends",
     "open": "Open",
     "click": "Click",
     "cohortsTitle": "Cohort retention",
@@ -3249,7 +3249,11 @@
       "gold": "Gold",
       "diamond": "Diamond"
     },
-    "noData": "No data yet"
+    "noData": "No data in this period",
+    "engagementClick": "Click rate",
+    "engagementRedeemed": "Redemption rate",
+    "membersShort": "members",
+    "noCampaigns": "No campaigns were sent in this period"
   },
   "Audit": {
     "title": "Activity log",

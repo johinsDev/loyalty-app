@@ -54,6 +54,10 @@ export interface DashboardSeriesPoint {
   date: string;
   purchases: number;
   redemptions: number;
+  /** Customers who joined that day. */
+  members: number;
+  /** Charged total of that day's purchases, voided ones excluded. */
+  revenueCents: number;
 }
 
 export interface RecentPurchaseRow {
