@@ -298,8 +298,19 @@ export interface AvailableRewardItem {
 /** `availableForCustomer` — the claimable set plus why it may be empty. Without
  *  `publishedCount` the cashier can't tell "the org has no rewards" from "none
  *  apply to this socio", and both rendered as a blank panel. */
+/** The closest reward the customer can't afford yet — the only nudge a single
+ *  sale can actually close. Null when everything eligible is already claimable
+ *  or the remaining ones cost stamps. */
+export interface NextRewardHint {
+  rewardId: string;
+  name: string;
+  pointsCost: number;
+  pointsMissing: number;
+}
+
 export interface AvailableRewardsView {
   items: AvailableRewardItem[];
+  nextReward: NextRewardHint | null;
   /** Published rewards in the org, before the per-customer tier / limit /
    *  affordability filters. */
   publishedCount: number;

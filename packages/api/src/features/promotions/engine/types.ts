@@ -118,6 +118,10 @@ export interface PromoEvaluation {
    *  units when the rule has one (they're what goes free/cheap), otherwise the
    *  buy side. Deduplicated, in cart order. */
   lineIndexes: number[];
+  /** Of those lines, the ones the discount actually singles out — the free
+   *  drink of a 3x2, the halved one of a pair. Empty when the effect covers
+   *  everything it matched, because then there is nothing to point at. */
+  discountedLineIndexes: number[];
 }
 
 export const subtotalCents = (lines: CartLine[]): number =>

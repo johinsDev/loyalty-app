@@ -1,5 +1,5 @@
 export { promocionesRouter } from "./router";
-export { PromoRepository, collectRefs, type AdminPromoRow, type PromoPatch } from "./repository";
+export { PromoRepository, collectRefs, type AdminPromoRow, type AdminPromoListRow, type PromoPatch } from "./repository";
 export { PromoService, type PromoWizardResult } from "./service";
 export {
   evaluatePromo,

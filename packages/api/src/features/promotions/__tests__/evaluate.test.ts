@@ -219,6 +219,71 @@ describe("evaluatePromo per curated type", () => {
   });
 });
 
+describe("the engine says WHICH unit the discount landed on", () => {
+  // `computeEffect` was picking the free/halved unit and throwing it away, so
+  // the register could only mark every participating line — on a 3x2 it lit up
+  // all three drinks without ever saying which one was free.
+  it("names the freed unit of an nxm, not the whole set", () => {
+    const rule = compileRule({ type: "nxm", refs: [], buyQty: 3, payQty: 2 });
+    const c = cart(
+      line({ productId: "a", unitAmountCents: 5000 }),
+      line({ productId: "b", unitAmountCents: 3000 }),
+      line({ productId: "c", unitAmountCents: 4000 }),
+    );
+    const r = evaluatePromo(c, view({ rule }), facts(), NOW);
+    expect(r.lineIndexes).toEqual([0, 1, 2]);
+    expect(r.discountedLineIndexes).toEqual([1]); // the 3000 one
+  });
+
+  it("names the halved unit of a second-unit pair", () => {
+    const rule = compileRule({ type: "secondUnit", refs: [], percent: 50 });
+    const c = cart(
+      line({ productId: "a", unitAmountCents: 9000 }),
+      line({ productId: "b", unitAmountCents: 6000 }),
+    );
+    expect(evaluatePromo(c, view({ rule }), facts(), NOW).discountedLineIndexes).toEqual([1]);
+  });
+
+  it("singles out nothing when the effect covers everything it matched", () => {
+    const rule = compileRule({ type: "percentOff", refs: [], percent: 10 });
+    expect(run(rule).discountedLineIndexes).toEqual([]);
+  });
+});
+
+describe("sameItem — 'la segunda unidad' of WHAT", () => {
+  const mixed = () =>
+    cart(
+      line({ productId: "classic", unitAmountCents: 13500 }),
+      line({ productId: "taro", unitAmountCents: 15500 }),
+    );
+
+  it("takes any two units by default — the behaviour the engine always had", () => {
+    const rule = compileRule({ type: "secondUnit", refs: [], percent: 50 });
+    expect(rule.sameItem).toBeUndefined();
+    expect(evaluatePromo(mixed(), view({ rule }), facts(), NOW).discountCents).toBe(6750);
+  });
+
+  it("refuses a mixed pair when the promo asks for the same product", () => {
+    const rule = compileRule({ type: "secondUnit", refs: [], percent: 50, sameItem: true });
+    const r = evaluatePromo(mixed(), view({ rule }), facts(), NOW);
+    expect(r.eligible).toBe(false);
+    expect(r.reason).toBe("no-matching-items");
+  });
+
+  it("applies to two of the same drink", () => {
+    const rule = compileRule({ type: "secondUnit", refs: [], percent: 50, sameItem: true });
+    const c = cart(line({ productId: "classic", unitAmountCents: 13500, qty: 2 }));
+    expect(evaluatePromo(c, view({ rule }), facts(), NOW).discountCents).toBe(6750);
+  });
+
+  it("survives the wizard round trip", () => {
+    const rule = compileRule({ type: "secondUnit", refs: [], percent: 50, sameItem: true });
+    const back = decompileRule("secondUnit", rule);
+    expect(back).toMatchObject({ sameItem: true });
+    expect(compileRule(back!).sameItem).toBe(true);
+  });
+});
+
 describe("whether a promo covers a line's add-ons is the promo's to declare", () => {
   // A line's price arrives with its add-ons folded in. Discounting that number
   // hands the toppings over free, which a fixed-price combo makes unbounded:
@@ -305,6 +370,7 @@ describe("pickBest", () => {
     pointsMultiplier: 1,
     applications: 1,
     lineIndexes: [],
+    discountedLineIndexes: [],
     missingGetSide: [],
     ...over,
   });

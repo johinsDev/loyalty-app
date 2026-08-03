@@ -19,6 +19,9 @@ const maxAppsSchema = z.number().int().min(1).optional();
 /** Only on the types that discount matched units — an order-wide effect prices
  *  the whole ticket, so the toggle would be a knob that does nothing. */
 const addonScope = { discountAddons: z.boolean().optional() };
+/** Only on the types whose requirement consumes more than one unit — with qty 1
+ *  there is no second unit for "the same product" to constrain. */
+const sameItemScope = { sameItem: z.boolean().optional() };
 
 const moneyBenefitSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -46,6 +49,7 @@ export const benefitConfigSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("nxm"),
+    ...sameItemScope,
     refs: refsSchema, // [] = any item
     buyQty: z.number().int().min(2),
     payQty: z.number().int().min(1),
@@ -54,6 +58,7 @@ export const benefitConfigSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("secondUnit"),
+    ...sameItemScope,
     refs: refsSchema,
     percent: percentSchema, // discount on the cheapest of the pair
     maxApplicationsPerOrder: maxAppsSchema,
@@ -68,6 +73,7 @@ export const benefitConfigSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("combo"),
+    ...sameItemScope,
     requirements: requirementsSchema.min(1),
     priceCents: centsSchema,
     maxApplicationsPerOrder: maxAppsSchema,
@@ -127,9 +133,13 @@ export function compileRule(config: BenefitConfig): PromoRule {
   // Attached once here rather than at each of the eight return sites: it is a
   // property of the offer, not of any particular type's shape. Only written
   // when true, so a stored rule stays as small as it was.
-  return "discountAddons" in config && config.discountAddons === true
-    ? { ...rule, discountAddons: true }
-    : rule;
+  return {
+    ...rule,
+    ...("discountAddons" in config && config.discountAddons === true
+      ? { discountAddons: true as const }
+      : {}),
+    ...("sameItem" in config && config.sameItem === true ? { sameItem: true as const } : {}),
+  };
 }
 
 function compileShape(config: BenefitConfig): PromoRule {
@@ -227,14 +237,22 @@ export function decompileRule(type: PromoType, rule: PromoRule): BenefitConfig |
   // Lift the flag back too, or reopening the wizard would silently drop it and
   // republish the promo no longer covering add-ons. Guarded by type: the
   // order-wide shapes don't carry the field at all.
-  if (config == null || rule.discountAddons !== true) return config;
-  return ADDON_SCOPED.has(config.type)
-    ? ({ ...config, discountAddons: true } as BenefitConfig)
-    : config;
+  if (config == null) return config;
+  const lifted = {
+    ...config,
+    ...(rule.discountAddons === true && ADDON_SCOPED.has(config.type)
+      ? { discountAddons: true }
+      : {}),
+    ...(rule.sameItem === true && SAME_ITEM_SCOPED.has(config.type) ? { sameItem: true } : {}),
+  };
+  return lifted as BenefitConfig;
 }
 
 /** Types whose config accepts `discountAddons` — the ones that discount matched
  *  units rather than the whole ticket. */
+/** Types whose config accepts `sameItem`. */
+const SAME_ITEM_SCOPED = new Set<PromoType>(["nxm", "secondUnit", "combo"]);
+
 const ADDON_SCOPED = new Set<PromoType>([
   "percentOff",
   "amountOff",

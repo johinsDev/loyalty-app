@@ -912,7 +912,9 @@
       "archiveConfirm": "Yes, archive",
       "archivedToast": "“{name}” archived",
       "archiveError": "Could not archive. Try again.",
-      "deleteError": "Could not delete. Try again."
+      "deleteError": "Could not delete. Try again.",
+      "deadRefs": "can't apply",
+      "deadRefsHint": "Points at products or categories that no longer exist, so it will never apply. Edit or archive it."
     },
     "add": "New promotion",
     "searchPlaceholder": "Search promotion…",
@@ -1041,7 +1043,9 @@
       "takes": "Takes",
       "of": "of:",
       "discountAddons": "The discount also covers add-ons",
-      "discountAddonsHint": "By default the discount applies to the drink and add-ons are charged separately. Turn this on only if the offer includes the toppings — on a fixed-price combo the customer can then add as many as they like for free."
+      "discountAddonsHint": "By default the discount applies to the drink and add-ons are charged separately. Turn this on only if the offer includes the toppings — on a fixed-price combo the customer can then add as many as they like for free.",
+      "sameItem": "Only between units of the same product",
+      "sameItemHint": "Off, two different drinks satisfy the condition. On, it takes two of the same product — which is what most people mean by “the second unit”."
     },
     "refs": {
       "any": "Any item on the menu",
@@ -1519,7 +1523,11 @@
     "pricingStale": "Couldn't reprice the cart. The amounts above are from the previous one — retry before charging.",
     "promosStale": "Couldn't reprice. Retry to see which promos apply.",
     "earnPointsBreakdown": "{base} normal + {extra} from the promo = {total} pts",
-    "goToDashboard": "Dashboard"
+    "goToDashboard": "Dashboard",
+    "promoOnThisOne": "this one",
+    "promoWhyTie": "{name} and {other} discount the same; the first one applies.",
+    "nextRewardNudge": "{pts} pts short of “{reward}”.",
+    "nextRewardCost": "Costs {pts} pts"
   },
   "Admin": {
     "menu": "Menu",
