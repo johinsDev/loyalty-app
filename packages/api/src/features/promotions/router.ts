@@ -136,7 +136,7 @@ export const promocionesRouter = router({
     .input(adminListInputSchema)
     .query(async ({ ctx, input }) => {
       const org = requireOrg(ctx);
-      return cachedListRead(ctx, "promotions", org, input, () =>
+      return cachedListRead(ctx, "promociones", org, input, () =>
         makeService(ctx.db).adminList(org, input),
       );
     }),
