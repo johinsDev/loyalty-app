@@ -751,17 +751,17 @@ export function RegisterBoard({
   /**
    * The prices on screen belong to a different cart than the one in the cart.
    *
-   * Deliberately NOT `preview.isError`. Measured against a forced 500 on
-   * `stamps.preview`: the register fires one request per cart change, never
-   * retries, and the observer never settles — `isError` stays false while
-   * `keepPreviousData` holds the previous cart's totals on screen with the
-   * charge button enabled. Every error branch written against `isError` in this
-   * file is dead code today.
+   * Deliberately NOT `preview.isError`, which arrives late and sometimes never.
+   * React Query pauses retries while the tab is hidden, so a failed preview
+   * sits at `fetchStatus: "paused"` with `isPending` true for as long as the
+   * register is in the background; and even in front of the cashier the default
+   * three retries with backoff take several seconds to give up. `keepPreviousData`
+   * holds the previous cart's totals on screen through all of it.
    *
    * So the check is about agreement, not about failure: the server echoes the
    * subtotal of the cart it actually priced. If that doesn't match what this
-   * cart adds up to, the numbers are from somewhere else — whatever the cause,
-   * error or in-flight or a bug we haven't found yet.
+   * cart adds up to, the numbers came from somewhere else — failed, paused, or
+   * still in flight.
    *
    * `variantUpgrade` legitimately shifts the subtotal by the upgrade delta,
    * because the server prices the swapped cart; that is expected, not a
