@@ -7,7 +7,7 @@ import { headers } from "next/headers";
 import superjson from "superjson";
 
 import { log } from "../log";
-import { trpcErrorData } from "../trpc-errors";
+import { cookieNames, trpcErrorData } from "../trpc-errors";
 import { getTrpcUrl } from "./shared";
 
 type ServerCaller = ReturnType<typeof appRouter.createCaller>;
@@ -76,6 +76,7 @@ const httpCaller = (cookie: string, extra: Record<string, string>): ServerCaller
                 procedure,
                 hadCookie: cookie.length > 0,
                 cookieBytes: cookie.length,
+                cookies: cookieNames(cookie),
               },
               "trpcServer.unauthorized — Worker returned 401 for an RSC call",
             );

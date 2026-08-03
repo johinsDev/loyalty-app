@@ -1,7 +1,7 @@
 import { TRPCClientError } from "@trpc/client";
 import { describe, expect, it } from "vitest";
 
-import { isSignedOut, trpcErrorData } from "./trpc-errors";
+import { cookieNames, isSignedOut, trpcErrorData } from "./trpc-errors";
 
 /** A tRPC client error as the RSC caller surfaces it (shape from the server). */
 function trpcError(code: string, httpStatus: number): TRPCClientError<never> {
@@ -60,5 +60,42 @@ describe("trpcErrorData", () => {
   it("is undefined for anything that isn't a tRPC client error", () => {
     expect(trpcErrorData(new Error("boom"))).toBeUndefined();
     expect(trpcErrorData(null)).toBeUndefined();
+  });
+});
+
+describe("cookieNames", () => {
+  it("lists names in order, without values", () => {
+    expect(cookieNames("a=1; b=2; c=3")).toEqual(["a", "b", "c"]);
+  });
+
+  it("keeps the name when the value contains '=' (base64 / JWT padding)", () => {
+    expect(cookieNames("__Secure-better-auth.session_token=abc==")).toEqual([
+      "__Secure-better-auth.session_token",
+    ]);
+  });
+
+  it("survives a realistic preview header", () => {
+    const header =
+      "_vercel_jwt=eyJhbGciOi.J9==; __Secure-better-auth.session_token=tok.sig; " +
+      "__Secure-better-auth.session_data=blob=; NEXT_LOCALE=es";
+    expect(cookieNames(header)).toEqual([
+      "_vercel_jwt",
+      "__Secure-better-auth.session_token",
+      "__Secure-better-auth.session_data",
+      "NEXT_LOCALE",
+    ]);
+  });
+
+  it("tolerates sloppy spacing and trailing separators", () => {
+    expect(cookieNames("  a=1 ;b=2;  ; ")).toEqual(["a", "b"]);
+  });
+
+  it("is empty for an empty header", () => {
+    expect(cookieNames("")).toEqual([]);
+  });
+
+  it("never leaks a value", () => {
+    const secret = "s3cr3t-session-token";
+    expect(cookieNames(`session=${secret}`).join()).not.toContain(secret);
   });
 });

@@ -27,3 +27,20 @@ export function isSignedOut(err: unknown): boolean {
   if (!data) return false;
   return data.code === "UNAUTHORIZED" || data.httpStatus === 401;
 }
+
+/**
+ * Cookie **names** in a `Cookie` header, in order. Never the values — every one
+ * of them is a bearer credential.
+ *
+ * "Some cookie was sent" is not enough to diagnose a 401: a header carrying only
+ * Vercel's `_vercel_jwt` looks identical to one carrying a session. The names
+ * say whether the Better Auth session cookie was actually there.
+ *
+ * Values may contain `=` (base64 padding on a JWT), so split on the first one.
+ */
+export function cookieNames(cookie: string): string[] {
+  return cookie
+    .split(";")
+    .map((pair) => pair.split("=", 1)[0]?.trim() ?? "")
+    .filter(Boolean);
+}
