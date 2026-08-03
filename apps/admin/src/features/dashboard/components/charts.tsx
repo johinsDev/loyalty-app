@@ -6,15 +6,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@loyalty/ui";
-import {
-  Area,
-  AreaChart as RAreaChart,
-  Bar,
-  BarChart as RBarChart,
-  Cell,
-  Pie,
-  PieChart,
-} from "recharts";
+import { Area, AreaChart as RAreaChart, Cell, Pie, PieChart } from "recharts";
 
 /** One slice of the Donut chart. */
 export type DonutSlice = { key: string; pct: number; color: string };
@@ -87,26 +79,6 @@ export function AreaChart({
           dot={false}
         />
       </RAreaChart>
-    </ChartContainer>
-  );
-}
-
-/** Vertical bars (daily active users), with a tooltip. */
-export function Bars({ series }: { series: number[] }) {
-  const config = {
-    v: { label: "", color: "var(--color-primary)" },
-  } satisfies ChartConfig;
-  return (
-    <ChartContainer config={config} className="aspect-auto size-full">
-      <RBarChart data={toData(series)} margin={{ top: 6, bottom: 0 }}>
-        <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-        <Bar
-          dataKey="v"
-          fill="var(--color-primary)"
-          fillOpacity={0.55}
-          radius={[3, 3, 0, 0]}
-        />
-      </RBarChart>
     </ChartContainer>
   );
 }
