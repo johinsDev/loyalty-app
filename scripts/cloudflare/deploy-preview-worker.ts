@@ -33,6 +33,8 @@ const apiHost = `api.pr-${pr}.${zone}`;
 const adminHost = `admin.pr-${pr}.${zone}`;
 const webHost = `app.pr-${pr}.${zone}`;
 const cookieDomain = `.pr-${pr}.${zone}`;
+/** Namespaces the auth cookie names so they can't collide with prod's. */
+const cookiePrefix = `pr-${pr}`;
 
 // Trigger.dev wiring (optional). When the preview env provides a TRIGGER secret,
 // route the Worker's phone-OTP enqueue (auth `sendOtp`) to THIS PR's Trigger
@@ -134,6 +136,11 @@ APP_ENV = "preview"
 BETTER_AUTH_URL = "https://${apiHost}"
 BETTER_AUTH_TRUSTED_ORIGINS = "https://${adminHost},https://${webHost}"
 AUTH_COOKIE_DOMAIN = "${cookieDomain}"
+# Prod scopes its cookie to ".${zone}", which matches this preview host too, so
+# without a distinct prefix both cookies share a name and the browser sends
+# both — the server then reads whichever comes first and rejects prod's token.
+# The FE proxies need the SAME value (pinned on Vercel by preview.yml).
+AUTH_COOKIE_PREFIX = "${cookiePrefix}"
 AUTH_PASSWORD_ENABLED = "true"
 ${triggerVars}
 ${providerVars}
