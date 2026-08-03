@@ -4,6 +4,8 @@ import { auth, getUserRole, type Role } from "@loyalty/auth/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { isSignedOut, trpcErrorData } from "./auth-guard-errors";
+import { log } from "./log";
 import { trpc } from "./trpc/server";
 
 /**
@@ -17,9 +19,36 @@ import { trpc } from "./trpc/server";
  */
 const viaWorker = !!process.env.NEXT_PUBLIC_API_URL;
 
+/**
+ * Ask the Worker who this is.
+ *
+ * Only `UNAUTHORIZED` means "signed out". Everything else — a 429 from the rate
+ * limiter, a 5xx, a cookie the Worker rejected, a network blip — is an outage,
+ * and it must NOT be reported as a missing session: the guards below turn `null`
+ * into `redirect("/sign-in")`, so swallowing every error here logs the user out
+ * on a server fault and leaves no trace anywhere.
+ *
+ * So: log it (with the tRPC code + HTTP status, which is the bit you actually
+ * need) and rethrow. An error boundary that Sentry captures beats a silent
+ * logout loop. Mirror copy in apps/admin.
+ */
+async function fetchMe() {
+  try {
+    return await (await trpc()).auth.me();
+  } catch (err) {
+    if (isSignedOut(err)) return null;
+    const data = trpcErrorData(err);
+    log.error(
+      { err, code: data?.code, httpStatus: data?.httpStatus },
+      "authGuard.me.failed — NOT signed out; the Worker call failed",
+    );
+    throw err;
+  }
+}
+
 export async function requireSession() {
   if (viaWorker) {
-    const me = await (await trpc()).auth.me().catch(() => null);
+    const me = await fetchMe();
     if (!me?.user) redirect("/sign-in");
     return { user: me.user };
   }
@@ -36,7 +65,7 @@ export async function requireSession() {
  */
 export async function getSession(): Promise<{ user: { id: string } } | null> {
   if (viaWorker) {
-    const me = await (await trpc()).auth.me().catch(() => null);
+    const me = await fetchMe();
     return me?.user ? { user: me.user } : null;
   }
   const session = await auth.api.getSession({ headers: await headers() });
@@ -67,7 +96,7 @@ export async function redirectIfSignedIn(to = "/"): Promise<void> {
  * would loop a real customer back to `/complete-phone`.
  */
 export async function requireCustomer() {
-  const me = await (await trpc()).auth.me().catch(() => null);
+  const me = await fetchMe();
   if (!me?.user) redirect("/sign-in");
   if (!me.isCustomer) redirect("/complete-phone");
   return { user: me.user };
@@ -75,7 +104,7 @@ export async function requireCustomer() {
 
 export async function requireRole(allowed: readonly Role[]) {
   if (viaWorker) {
-    const me = await (await trpc()).auth.me().catch(() => null);
+    const me = await fetchMe();
     if (!me?.user) redirect("/sign-in");
     if (!allowed.includes(me.role)) redirect("/sign-in?error=forbidden");
     return { session: { user: me.user }, role: me.role };
