@@ -11,7 +11,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
-import { isSignedOut, trpcErrorData } from "./auth-guard-errors";
+import { isSignedOut, trpcErrorData } from "./trpc-errors";
 import { log } from "./log";
 import { trpc } from "./trpc/server";
 

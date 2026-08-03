@@ -1,7 +1,7 @@
 import { TRPCClientError } from "@trpc/client";
 import { describe, expect, it } from "vitest";
 
-import { isSignedOut, trpcErrorData } from "./auth-guard-errors";
+import { isSignedOut, trpcErrorData } from "./trpc-errors";
 
 /** A tRPC client error as the RSC caller surfaces it (shape from the server). */
 function trpcError(code: string, httpStatus: number): TRPCClientError<never> {

@@ -4,7 +4,7 @@ import { auth, getUserRole, type Role } from "@loyalty/auth/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { isSignedOut, trpcErrorData } from "./auth-guard-errors";
+import { isSignedOut, trpcErrorData } from "./trpc-errors";
 import { log } from "./log";
 import { trpc } from "./trpc/server";
 

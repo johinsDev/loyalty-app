@@ -6,6 +6,8 @@ import { createTRPCUntypedClient, httpBatchLink } from "@trpc/client";
 import { headers } from "next/headers";
 import superjson from "superjson";
 
+import { log } from "../log";
+import { trpcErrorData } from "../trpc-errors";
 import { getTrpcUrl } from "./shared";
 
 type ServerCaller = ReturnType<typeof appRouter.createCaller>;
@@ -56,9 +58,30 @@ const httpCaller = (cookie: string, extra: Record<string, string>): ServerCaller
           : undefined,
       apply: (_target, _thisArg, args) => {
         const procedure = path.join(".");
-        return procedureTypes.get(procedure) === "mutation"
-          ? client.mutation(procedure, args[0])
-          : client.query(procedure, args[0]);
+        const call =
+          procedureTypes.get(procedure) === "mutation"
+            ? client.mutation(procedure, args[0])
+            : client.query(procedure, args[0]);
+        // A 401 has two very different causes and they are indistinguishable
+        // from the outside: either this render had no request cookies at all
+        // (a prerendered / cached path — `headers()` gives nothing, so the call
+        // goes out anonymous and the Worker is right to reject it), or we did
+        // send a cookie and the Worker rejected it (session store, cookie
+        // domain, an expired cookieCache). `hadCookie` is that one bit.
+        // Length only — never the contents, it's a session token.
+        return call.catch((err: unknown) => {
+          if (trpcErrorData(err)?.httpStatus === 401) {
+            log.warn(
+              {
+                procedure,
+                hadCookie: cookie.length > 0,
+                cookieBytes: cookie.length,
+              },
+              "trpcServer.unauthorized — Worker returned 401 for an RSC call",
+            );
+          }
+          throw err;
+        });
       },
     });
 
