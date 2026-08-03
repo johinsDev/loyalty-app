@@ -13,6 +13,7 @@ const failed = (reason: IneligibleReason): PromoEvaluation => ({
   applications: 0,
   missingGetSide: [],
   lineIndexes: [],
+  discountedLineIndexes: [],
 });
 
 /** Full evaluation of one promo against one cart + customer. */
@@ -52,6 +53,9 @@ export function evaluatePromo(
     applications: match.applications.length,
     missingGetSide: [],
     lineIndexes: touchedLines(match),
+    discountedLineIndexes: [...new Set(effect.discountedUnits.map((u) => u.lineIndex))].sort(
+      (a, b) => a - b,
+    ),
   };
 }
 

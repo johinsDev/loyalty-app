@@ -63,6 +63,15 @@ export type PromoRule = {
    * add-ons, so they count toward reaching a minimum.
    */
   discountAddons?: boolean;
+  /**
+   * Every unit a requirement consumes must be the SAME product.
+   *
+   * Off by default, which is what the engine has always done: "segunda unidad
+   * al 50%" is satisfied by any two units in the cart, so a Classic and a Taro
+   * qualify. That is the more generous reading and some offers mean it; the one
+   * most people picture — two of the same drink — was simply not expressible.
+   */
+  sameItem?: boolean;
 };
 
 export type PromoRecurrence =

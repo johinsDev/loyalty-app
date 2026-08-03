@@ -53,6 +53,13 @@ type AvailableReward =
 export type AvailableRewardsState = {
   items: AvailableReward[];
   publishedCount: number;
+  /** The closest reward the customer can't afford yet. */
+  nextReward: {
+    rewardId: string;
+    name: string;
+    pointsCost: number;
+    pointsMissing: number;
+  } | null;
   isPending: boolean;
   isError: boolean;
   refetch: () => void;
@@ -419,6 +426,13 @@ export function RegisterBoard({
     [appliedPromo],
   );
   const promoDiscountLabel = appliedPromo?.promo.name ?? t("promoDiscount");
+  /** The lines the promo singles out — the free drink of a 3x2, the halved one
+   *  of a pair. The badge used to mark all three participants identically, so
+   *  the cashier couldn't tell which one they were giving away. */
+  const promoDiscountedLines = useMemo(
+    () => new Set(appliedPromo?.discountedLineIndexes ?? []),
+    [appliedPromo],
+  );
 
   /**
    * One sentence explaining which promo is on the ticket and why, whenever more
@@ -443,7 +457,8 @@ export function RegisterBoard({
         other: other.promo.name,
         delta: formatCop(-delta),
       });
-    return null;
+    // A tie said nothing at all, which reads as the register having no reason.
+    return t("promoWhyTie", { name: appliedPromo.promo.name, other: other.promo.name });
   }, [appliedPromo, promos, t]);
 
   // Same three discounts the cart draws, so the review sheet can't disagree
@@ -751,17 +766,17 @@ export function RegisterBoard({
   /**
    * The prices on screen belong to a different cart than the one in the cart.
    *
-   * Deliberately NOT `preview.isError`. Measured against a forced 500 on
-   * `stamps.preview`: the register fires one request per cart change, never
-   * retries, and the observer never settles — `isError` stays false while
-   * `keepPreviousData` holds the previous cart's totals on screen with the
-   * charge button enabled. Every error branch written against `isError` in this
-   * file is dead code today.
+   * Deliberately NOT `preview.isError`, which arrives late and sometimes never.
+   * React Query pauses retries while the tab is hidden, so a failed preview
+   * sits at `fetchStatus: "paused"` with `isPending` true for as long as the
+   * register is in the background; and even in front of the cashier the default
+   * three retries with backoff take several seconds to give up. `keepPreviousData`
+   * holds the previous cart's totals on screen through all of it.
    *
    * So the check is about agreement, not about failure: the server echoes the
    * subtotal of the cart it actually priced. If that doesn't match what this
-   * cart adds up to, the numbers are from somewhere else — whatever the cause,
-   * error or in-flight or a bug we haven't found yet.
+   * cart adds up to, the numbers came from somewhere else — failed, paused, or
+   * still in flight.
    *
    * `variantUpgrade` legitimately shifts the subtotal by the upgrade delta,
    * because the server prices the swapped cart; that is expected, not a
@@ -868,14 +883,18 @@ export function RegisterBoard({
               panel used to render every nudge and pushed promos, rewards and
               tips off the fold, and a cashier mid-order reads one suggestion,
               not six. */}
-          {upsell.length > 0 ? (
+          {/* The reward nudge belongs here too, and doesn't need a promo to be
+              worth saying — so the panel opens for either. */}
+          {upsell.length > 0 || availableRewards.nextReward ? (
             <div className="border-primary/40 bg-primary/[0.06] rounded-3xl border-2 p-3.5 shadow-sm">
               <div className="text-primary mb-2.5 flex items-center gap-1.5 text-sm font-extrabold">
                 <Lightbulb className="size-4 flex-none" />
                 {t("upsellHeading")}
-                <span className="bg-primary/10 ml-auto rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold">
-                  {upsell.length}
-                </span>
+                {upsell.length > 0 ? (
+                  <span className="bg-primary/10 ml-auto rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold">
+                    {upsell.length}
+                  </span>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 {(upsellOpen ? upsell : upsell.slice(0, 2)).map((u, i) => {
@@ -914,6 +933,27 @@ export function RegisterBoard({
                   );
                 })}
               </div>
+              {/* The reward the customer is closest to. "Listos para canjear"
+                  only ever showed what was already paid for, so the cashier had
+                  nothing to say to the socio who is 36 points away — the one
+                  moment a nudge is worth anything. Points only: a stamp needs a
+                  whole extra visit, which this sale can't close. */}
+              {availableRewards.nextReward ? (
+                <div className="border-primary/20 bg-card mt-1.5 rounded-xl border p-2.5">
+                  <p className="text-foreground text-sm leading-snug font-bold">
+                    {t("nextRewardNudge", {
+                      pts: availableRewards.nextReward.pointsMissing,
+                      reward: availableRewards.nextReward.name,
+                    })}
+                  </p>
+                  <span className="mt-1 flex items-center gap-1">
+                    <Gift className="text-primary/70 size-3 flex-none" />
+                    <span className="text-primary min-w-0 flex-1 truncate text-[0.6875rem] font-extrabold">
+                      {t("nextRewardCost", { pts: availableRewards.nextReward.pointsCost })}
+                    </span>
+                  </span>
+                </div>
+              ) : null}
               {upsell.length > 2 ? (
                 <button
                   type="button"
@@ -1503,6 +1543,11 @@ export function RegisterBoard({
                         <Tag className="size-3 flex-none text-emerald-300" />
                         <span className="min-w-0 truncate text-[0.6875rem] font-bold text-emerald-200">
                           {appliedPromo?.promo.name}
+                          {promoDiscountedLines.has(idx) ? (
+                            <span className="ml-1 rounded bg-emerald-400/25 px-1.5 py-0.5 font-extrabold text-emerald-100">
+                              {t("promoOnThisOne")}
+                            </span>
+                          ) : null}
                         </span>
                       </div>
                     ) : null}

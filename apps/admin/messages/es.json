@@ -912,7 +912,9 @@
       "archiveConfirm": "Sí, archivar",
       "archivedToast": "«{name}» archivada",
       "archiveError": "No se pudo archivar. Inténtalo de nuevo.",
-      "deleteError": "No se pudo eliminar. Inténtalo de nuevo."
+      "deleteError": "No se pudo eliminar. Inténtalo de nuevo.",
+      "deadRefs": "no aplica",
+      "deadRefsHint": "Apunta a productos o categorías que ya no existen, así que nunca va a aplicar. Editala o archivala."
     },
     "add": "Nueva promoción",
     "searchPlaceholder": "Buscar promoción…",
@@ -1041,7 +1043,9 @@
       "takes": "Lleva",
       "of": "de:",
       "discountAddons": "El descuento también cubre las adiciones",
-      "discountAddonsHint": "Por defecto el descuento es sobre la bebida y las adiciones se cobran aparte. Activalo solo si la oferta incluye los toppings — en un combo a precio fijo, el cliente puede agregar los que quiera sin costo."
+      "discountAddonsHint": "Por defecto el descuento es sobre la bebida y las adiciones se cobran aparte. Activalo solo si la oferta incluye los toppings — en un combo a precio fijo, el cliente puede agregar los que quiera sin costo.",
+      "sameItem": "Solo entre unidades del mismo producto",
+      "sameItemHint": "Apagado, dos bebidas distintas cumplen la condición. Encendido, hacen falta dos del mismo producto — que es lo que la mayoría entiende por “la segunda unidad”."
     },
     "refs": {
       "any": "Cualquier producto de la carta",
@@ -1519,7 +1523,11 @@
     "pricingStale": "No se pudo recalcular el precio. Los montos de arriba son del carrito anterior — reintentá antes de cobrar.",
     "promosStale": "No se pudo recalcular. Reintentá para ver qué promos aplican.",
     "earnPointsBreakdown": "{base} normales + {extra} por la promo = {total} pts",
-    "goToDashboard": "Dashboard"
+    "goToDashboard": "Dashboard",
+    "promoOnThisOne": "esta",
+    "promoWhyTie": "{name} y {other} descuentan lo mismo; se aplica la primera.",
+    "nextRewardNudge": "Le faltan {pts} pts para «{reward}».",
+    "nextRewardCost": "Cuesta {pts} pts"
   },
   "Admin": {
     "menu": "Menú",

@@ -166,6 +166,10 @@ function toCard(
 
 export type AdminPromoRow = PromoRow & { uses: number };
 
+/** A list row plus how many of its item refs no longer resolve. A promo whose
+ *  product was deleted can never apply again; the list says so. */
+export type AdminPromoListRow = AdminPromoRow & { deadRefs: number };
+
 /** Drizzle access for `promo`. Only layer that touches the db; org-scoped. */
 export class PromoRepository {
   constructor(private readonly db: typeof Db) {}

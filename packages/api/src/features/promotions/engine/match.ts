@@ -71,6 +71,8 @@ function pickUnits(
   available: boolean[],
   takenThisApp: Set<number>,
   cart: Cart,
+  /** All picked units must be the same product — see `PromoRule.sameItem`. */
+  sameItem = false,
 ): number[] | null {
   const candidates: number[] = [];
   for (let i = 0; i < units.length; i++) {
@@ -80,7 +82,23 @@ function pickUnits(
   }
   if (candidates.length < req.qty) return null;
   candidates.sort((a, b) => (units[b]?.amountCents ?? 0) - (units[a]?.amountCents ?? 0));
-  return candidates.slice(0, req.qty);
+  if (!sameItem) return candidates.slice(0, req.qty);
+
+  // "La segunda unidad" of WHAT: with `sameItem` the requirement is only met by
+  // `qty` units of one product. Candidates are already most-expensive-first, so
+  // the first product that has enough of them is also the priciest such group.
+  const byProduct = new Map<string, number[]>();
+  for (const i of candidates) {
+    const productId = cart.lines[units[i]!.lineIndex]?.productId;
+    if (productId == null) continue;
+    const group = byProduct.get(productId) ?? [];
+    group.push(i);
+    byProduct.set(productId, group);
+  }
+  for (const group of byProduct.values()) {
+    if (group.length >= req.qty) return group.slice(0, req.qty);
+  }
+  return null;
 }
 
 /**
@@ -106,7 +124,7 @@ export function matchRule(
     const buyUnits: CartUnit[] = [];
     let buySatisfied = true;
     for (const req of rule.buy.requirements) {
-      const picked = pickUnits(req, units, available, taken, cart);
+      const picked = pickUnits(req, units, available, taken, cart, rule.sameItem === true);
       if (!picked) {
         buySatisfied = false;
         break;

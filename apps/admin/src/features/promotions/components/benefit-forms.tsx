@@ -165,6 +165,10 @@ export function BenefitConfigFields({
             value={value.maxApplicationsPerOrder}
             onChange={(m) => onChange({ ...value, maxApplicationsPerOrder: m })}
           />
+          <SameItemField
+            value={value.sameItem}
+            onChange={(v) => onChange({ ...value, sameItem: v })}
+          />
           <AddonScopeField
             value={value.discountAddons}
             onChange={(d) => onChange({ ...value, discountAddons: d })}
@@ -192,6 +196,10 @@ export function BenefitConfigFields({
           <MaxAppsField
             value={value.maxApplicationsPerOrder}
             onChange={(m) => onChange({ ...value, maxApplicationsPerOrder: m })}
+          />
+          <SameItemField
+            value={value.sameItem}
+            onChange={(v) => onChange({ ...value, sameItem: v })}
           />
           <AddonScopeField
             value={value.discountAddons}
@@ -237,6 +245,10 @@ export function BenefitConfigFields({
           <MaxAppsField
             value={value.maxApplicationsPerOrder}
             onChange={(m) => onChange({ ...value, maxApplicationsPerOrder: m })}
+          />
+          <SameItemField
+            value={value.sameItem}
+            onChange={(v) => onChange({ ...value, sameItem: v })}
           />
           <AddonScopeField
             value={value.discountAddons}
@@ -559,6 +571,33 @@ function AddonScopeField({
       <div className="min-w-0">
         <Label className="text-sm font-semibold">{t("discountAddons")}</Label>
         <p className="text-muted-foreground mt-0.5 text-xs">{t("discountAddonsHint")}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Whether the units a requirement consumes have to be the same product.
+ *
+ * Off by default, which is what the engine always did: "segunda unidad al 50%"
+ * takes any two units, so a Classic and a Taro qualify. Some offers mean that;
+ * the one most people picture — two of the same drink — was simply not
+ * expressible until now.
+ */
+function SameItemField({
+  value,
+  onChange,
+}: {
+  value: boolean | undefined;
+  onChange: (v: boolean) => void;
+}) {
+  const t = useTranslations("Promotions.benefit");
+  return (
+    <div className="border-border flex items-start gap-3 rounded-xl border p-3">
+      <Switch checked={value === true} onCheckedChange={onChange} className="mt-0.5" />
+      <div className="min-w-0">
+        <Label className="text-sm font-semibold">{t("sameItem")}</Label>
+        <p className="text-muted-foreground mt-0.5 text-xs">{t("sameItemHint")}</p>
       </div>
     </div>
   );
