@@ -735,6 +735,33 @@ export function RegisterBoard({
     tips.push({ icon: <Sparkles className="size-3.5" />, text: t("tipFavorite", { product: register.topProduct }) });
 
   const cartCount = cart.reduce((n, i) => n + i.qty, 0);
+
+  /**
+   * The prices on screen belong to a different cart than the one in the cart.
+   *
+   * Deliberately NOT `preview.isError`. Measured against a forced 500 on
+   * `stamps.preview`: the register fires one request per cart change, never
+   * retries, and the observer never settles — `isError` stays false while
+   * `keepPreviousData` holds the previous cart's totals on screen with the
+   * charge button enabled. Every error branch written against `isError` in this
+   * file is dead code today.
+   *
+   * So the check is about agreement, not about failure: the server echoes the
+   * subtotal of the cart it actually priced. If that doesn't match what this
+   * cart adds up to, the numbers are from somewhere else — whatever the cause,
+   * error or in-flight or a bug we haven't found yet.
+   *
+   * `variantUpgrade` legitimately shifts the subtotal by the upgrade delta,
+   * because the server prices the swapped cart; that is expected, not a
+   * mismatch.
+   */
+  const expectedSubtotal = subtotal + (upgrade?.deltaCents ?? 0);
+  const pricingStale =
+    mode === "items" &&
+    cart.length > 0 &&
+    previewData != null &&
+    previewData.subtotalCents !== expectedSubtotal;
+
   const recordDisabled =
     recordPurchase.isPending ||
     (mode === "total" ? priceCop === undefined : cart.length === 0) ||
@@ -742,7 +769,9 @@ export function RegisterBoard({
     (mode === "total" && inlineRewardId != null) ||
     // The server rejects this combination; block it here instead of letting the
     // cashier discover it as a failed sale.
-    rewardSuppressed;
+    rewardSuppressed ||
+    // Charging off a stale preview would take the previous cart's money.
+    pricingStale;
 
   return (
     <div className="flex flex-col gap-3 p-3 sm:p-4 lg:h-full lg:min-h-0">
@@ -904,7 +933,13 @@ export function RegisterBoard({
             </div>
             <div className="space-y-1.5">
               {promoFilter === "customer" ? (
-                promos.length === 0 ? (
+                // A failed preview leaves the previous cart's promos listed,
+                // with their old amounts, looking applicable.
+                pricingStale ? (
+                  <p className="text-xs leading-snug font-semibold text-red-600 dark:text-red-400">
+                    {t("promosStale")}
+                  </p>
+                ) : promos.length === 0 ? (
                   <p className="text-muted-foreground text-xs font-semibold">
                     {cart.length === 0 ? t("promoAddItems") : t("noPromos")}
                   </p>
@@ -1575,6 +1610,23 @@ export function RegisterBoard({
                   server refuses the sale outright. Surfaced here, beside the
                   money and the button, with both ways out — otherwise the
                   cashier finds out by pressing Cobrar and getting an error. */}
+              {/* The numbers above are the previous cart's. Said plainly, next
+                  to them, because `keepPreviousData` makes them look current. */}
+              {pricingStale ? (
+                <div className="mt-3 space-y-2 rounded-2xl bg-red-500/15 p-3">
+                  <p className="text-xs leading-snug font-semibold text-red-200">
+                    {t("pricingStale")}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 border-white/20 bg-transparent text-white hover:bg-white/10"
+                    onClick={() => void preview.refetch()}
+                  >
+                    {t("retry")}
+                  </Button>
+                </div>
+              ) : null}
               {rewardSuppressed ? (
                 <div className="mt-3 space-y-2 rounded-2xl bg-amber-400/10 p-3">
                   <p className="text-xs leading-snug font-semibold text-amber-200">
