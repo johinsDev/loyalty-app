@@ -34,8 +34,12 @@ export function PeriodBar() {
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
+            // Labelled "24h", not "hoy": it is a rolling window like the others,
+            // so at 3pm it still counts yesterday's evening. Calling it "today"
+            // would promise a calendar day the number isn't.
+            title={p === "1d" ? t("period24hHint") : undefined}
           >
-            {p}
+            {p === "1d" ? "24h" : p}
           </button>
         ))}
       </div>

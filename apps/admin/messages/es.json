@@ -258,7 +258,8 @@
     "categoryMixSubtitle": "De qué vive el negocio en el periodo",
     "categoryNone": "Sin categoría",
     "categoryRest": "Otras",
-    "revenueShort": "ingresos"
+    "revenueShort": "ingresos",
+    "period24hHint": "Últimas 24 horas (ventana rodante, no el día calendario)"
   },
   "Customers": {
     "title": "Clientes",
@@ -1514,7 +1515,8 @@
     "dropPromoForReward": "Quitar la promo",
     "pricingStale": "No se pudo recalcular el precio. Los montos de arriba son del carrito anterior — reintentá antes de cobrar.",
     "promosStale": "No se pudo recalcular. Reintentá para ver qué promos aplican.",
-    "earnPointsBreakdown": "{base} normales + {extra} por la promo = {total} pts"
+    "earnPointsBreakdown": "{base} normales + {extra} por la promo = {total} pts",
+    "goToDashboard": "Dashboard"
   },
   "Admin": {
     "menu": "Menú",
