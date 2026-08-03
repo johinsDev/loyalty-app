@@ -142,9 +142,13 @@ export class DashboardRepository {
   async series(orgId: string, period: Period, now = new Date()): Promise<DashboardSeriesPoint[]> {
     const days = PERIOD_DAYS[period];
     const start = daysAgo(now, days);
-    const [purchases, redemptions] = await Promise.all([
+    // Members and revenue ride along here rather than in endpoints of their
+    // own: the analytics overview drew a made-up growth curve and a made-up
+    // revenue bar chart because no series carried either, and one more column
+    // plus one more scan is cheaper than two more round trips per view.
+    const [purchases, redemptions, members] = await Promise.all([
       this.db
-        .select({ createdAt: purchase.createdAt })
+        .select({ createdAt: purchase.createdAt, priceCents: purchase.priceCents })
         .from(purchase)
         .where(
         and(
@@ -158,20 +162,39 @@ export class DashboardRepository {
         .select({ createdAt: redemption.createdAt })
         .from(redemption)
         .where(and(eq(redemption.organizationId, orgId), gte(redemption.createdAt, start))),
+      // Org-level on purpose: a customer belongs to the org, not to a store, so
+      // scoping this by store would report zero growth for every store.
+      this.db
+        .select({ createdAt: customer.createdAt })
+        .from(customer)
+        .where(and(eq(customer.organizationId, orgId), gte(customer.createdAt, start))),
     ]);
 
     // Pre-seed every day in the window so the chart has no gaps.
-    const buckets = new Map<string, { purchases: number; redemptions: number }>();
+    type Bucket = { purchases: number; redemptions: number; members: number; revenueCents: number };
+    const buckets = new Map<string, Bucket>();
     for (let i = 0; i < days; i++) {
-      buckets.set(isoDay(daysAgo(now, days - 1 - i)), { purchases: 0, redemptions: 0 });
+      buckets.set(isoDay(daysAgo(now, days - 1 - i)), {
+        purchases: 0,
+        redemptions: 0,
+        members: 0,
+        revenueCents: 0,
+      });
     }
     for (const p of purchases) {
       const b = buckets.get(isoDay(p.createdAt));
-      if (b) b.purchases += 1;
+      if (b) {
+        b.purchases += 1;
+        b.revenueCents += p.priceCents;
+      }
     }
     for (const r of redemptions) {
       const b = buckets.get(isoDay(r.createdAt));
       if (b) b.redemptions += 1;
+    }
+    for (const c of members) {
+      const b = buckets.get(isoDay(c.createdAt));
+      if (b) b.members += 1;
     }
     return [...buckets.entries()].map(([date, v]) => ({ date, ...v }));
   }

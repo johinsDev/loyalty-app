@@ -3224,13 +3224,13 @@
       "promotions": "Promociones"
     },
     "growthTitle": "Crecimiento de clientes",
-    "growthSubtitle": "Nuevos socios por mes",
+    "growthSubtitle": "Socios nuevos por día",
     "tierTitle": "Distribución por tier",
     "tierSubtitle": "Mix de la base",
     "revenueTitle": "Ingresos por lealtad",
-    "revenueSubtitle": "Atribuidos al programa",
+    "revenueSubtitle": "Cobrado por día, sin anuladas",
     "engagementTitle": "Engagement de notificaciones",
-    "engagementSubtitle": "Apertura vs clic",
+    "engagementSubtitle": "Clic y canje sobre lo enviado",
     "open": "Apertura",
     "click": "Clic",
     "cohortsTitle": "Retención por cohorte",
@@ -3249,7 +3249,11 @@
       "gold": "Oro",
       "diamond": "Diamante"
     },
-    "noData": "Sin datos aún"
+    "noData": "Sin datos en este período",
+    "engagementClick": "Tasa de clic",
+    "engagementRedeemed": "Tasa de canje",
+    "membersShort": "socios",
+    "noCampaigns": "No se enviaron campañas en este período"
   },
   "Audit": {
     "title": "Registro de actividad",
