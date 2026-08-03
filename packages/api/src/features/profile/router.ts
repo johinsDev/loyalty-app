@@ -7,6 +7,7 @@ import {
   checkNicknameInputSchema,
   confirmPhoneChangeInputSchema,
   updateAvatarInputSchema,
+  updateBirthdayInputSchema,
   updateNameInputSchema,
   updateNicknameInputSchema,
 } from "./schemas";
@@ -58,6 +59,17 @@ export const profileRouter = router({
         orgId(ctx),
         ctx.session.user.id,
         input.nickname,
+      ),
+    ),
+
+  updateBirthday: protectedProcedure
+    .use(rateLimit({ name: "profile.birthday", limit: 20, window: "1m", by: "user" }))
+    .input(updateBirthdayInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      buildProfileService(ctx).updateBirthday(
+        orgId(ctx),
+        ctx.session.user.id,
+        input.birthday,
       ),
     ),
 

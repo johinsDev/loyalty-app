@@ -366,6 +366,8 @@
     "rowEmail": "Email",
     "rowBirthday": "Birthday",
     "birthdaySub": "Free drink every year",
+    "addBirthday": "Add",
+    "birthdayRemove": "Remove birthday",
     "verified": "Verified",
     "verify": "Verify",
     "googleSub": "One-tap quick sign in",

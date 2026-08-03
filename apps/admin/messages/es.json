@@ -370,6 +370,9 @@
       "whatsapp": "WhatsApp"
     },
     "birthdayHint": "Desliza para elegir la fecha.",
+    "dayLabel": "DÍA",
+    "monthLabel": "MES",
+    "yearLabel": "AÑO",
     "done": "Listo",
     "selectAll": "Seleccionar todo",
     "selectRow": "Seleccionar fila",

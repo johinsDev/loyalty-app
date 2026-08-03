@@ -1,6 +1,7 @@
 "use client";
 
 import type { AppRouter } from "@loyalty/api";
+import { formatBirthday } from "@loyalty/date";
 import {
   Button,
   CurrencyInput,
@@ -29,7 +30,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -136,6 +137,7 @@ export function RegisterBoard({
   onScan: () => void;
 }) {
   const t = useTranslations("Cashier");
+  const locale = useLocale();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const activeStoreId = useActiveStoreId();
@@ -1717,9 +1719,9 @@ export function RegisterBoard({
                     label={t("detailBirthday")}
                     value={
                       register.birthday
-                        ? new Date(register.birthday).toLocaleDateString("es-CO", {
-                            day: "numeric",
-                            month: "short",
+                        ? formatBirthday(register.birthday, {
+                            locale,
+                            preset: "dayMonthShort",
                           })
                         : "—"
                     }

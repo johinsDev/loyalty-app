@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  formatBirthday,
   formatDate,
   formatDateRange,
   formatDateTime,
@@ -94,5 +95,40 @@ describe("formatDateRange", () => {
   test("invalid input returns empty", () => {
     expect(formatDateRange(null, start)).toBe("");
     expect(formatDateRange(start, undefined)).toBe("");
+  });
+});
+
+describe("formatBirthday", () => {
+  // Birthdays are stored as UTC midnight of the picked day. These assertions
+  // hold in every host timezone — that is the whole point of the helper.
+  const BORN = new Date(Date.UTC(1998, 2, 2)); // 2 March 1998, UTC midnight
+
+  test("keeps the stored calendar day west of UTC", () => {
+    expect(formatBirthday(BORN)).toBe("2 marzo");
+  });
+  test("en locale", () => {
+    expect(formatBirthday(BORN, { locale: "en" })).toBe("2 March");
+  });
+  test("short preset", () => {
+    expect(formatBirthday(BORN, { preset: "dayMonthShort" })).toBe("2 mar");
+  });
+  test("full preset keeps the year", () => {
+    expect(formatBirthday(BORN, { preset: "full" })).toBe("2 mar 1998");
+  });
+  test("plain formatDate is the thing this exists to avoid", () => {
+    // Locally-formatted, the same instant drifts a day for anyone behind UTC.
+    const drifts = formatDate(BORN, { preset: "iso" }) !== "1998-03-02";
+    expect(drifts).toBe(new Date().getTimezoneOffset() > 0);
+  });
+  test("29 February survives", () => {
+    expect(formatBirthday(new Date(Date.UTC(2000, 1, 29)))).toBe("29 febrero");
+  });
+  test("1 January survives (the worst case for a west-of-UTC shift)", () => {
+    expect(formatBirthday(new Date(Date.UTC(2000, 0, 1)))).toBe("1 enero");
+  });
+  test("invalid input returns empty", () => {
+    expect(formatBirthday(null)).toBe("");
+    expect(formatBirthday(undefined)).toBe("");
+    expect(formatBirthday("")).toBe("");
   });
 });

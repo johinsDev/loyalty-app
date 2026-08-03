@@ -83,6 +83,7 @@ export class ProfileService {
       avatarPreset: row.avatarPreset,
       avatarUrl: row.avatarUrl,
       avatarThumbhash: row.avatarThumbhash,
+      birthday: row.birthday,
       memberSince: row.createdAt,
       stats: { points: points.balance, tierName: points.tierName, visits },
       googleLinked,
@@ -113,6 +114,16 @@ export class ProfileService {
     name: string,
   ): Promise<{ ok: true }> {
     await this.repo.updateName(orgId, customerId, name);
+    return { ok: true };
+  }
+
+  /** Self-service date of birth. `null` clears it. */
+  async updateBirthday(
+    orgId: string,
+    customerId: string,
+    birthday: Date | null,
+  ): Promise<{ ok: true }> {
+    await this.repo.updateBirthday(orgId, customerId, birthday);
     return { ok: true };
   }
 

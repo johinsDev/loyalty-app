@@ -1,7 +1,7 @@
 "use client";
 
 import type { CustomerDetail, CustomerStats } from "@loyalty/api/features/customers/schemas";
-import { formatDate } from "@loyalty/date";
+import { formatBirthday, formatDate } from "@loyalty/date";
 import {
   Badge,
   Button,
@@ -113,7 +113,7 @@ export function Customer360({
                 label={t("birthday")}
                 value={
                   detail.birthday
-                    ? formatDate(detail.birthday, { locale })
+                    ? formatBirthday(detail.birthday, { locale, preset: "full" })
                     : t("detail.noBirthday")
                 }
               />
