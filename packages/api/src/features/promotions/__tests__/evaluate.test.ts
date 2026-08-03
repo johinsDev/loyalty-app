@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { evaluatePromo, pickBest, type PromoEvaluation } from "../engine";
-import { compileRule } from "../rule-compile";
+import { compileRule, decompileRule } from "../rule-compile";
 import { cart, facts, line, NOW, view } from "../__fixtures__/promos";
 
 const run = (rule: ReturnType<typeof compileRule>, c = defaultCart(), v = {}) =>
@@ -216,6 +216,84 @@ describe("evaluatePromo per curated type", () => {
       NOW,
     );
     expect(result.reason).toBe("below-min-purchase");
+  });
+});
+
+describe("whether a promo covers a line's add-ons is the promo's to declare", () => {
+  // A line's price arrives with its add-ons folded in. Discounting that number
+  // hands the toppings over free, which a fixed-price combo makes unbounded:
+  // nothing stops a customer loading up once the price is closed.
+  const withAddons = () =>
+    cart(
+      line({
+        productId: "classic",
+        categoryIds: ["milk-teas"],
+        unitAmountCents: 18500, // 15500 drink + 3000 of add-ons
+        addons: [
+          { id: "perlas", priceDeltaCents: 1000 },
+          { id: "pudding", priceDeltaCents: 2000 },
+        ],
+        qty: 2,
+      }),
+    );
+
+  it("prices the drink and not the toppings, by default", () => {
+    const rule = compileRule({
+      type: "percentOff",
+      refs: [{ kind: "category", id: "milk-teas" }],
+      percent: 25,
+    });
+    // 25% of (15500 × 2), not of (18500 × 2).
+    expect(rule.discountAddons).toBeUndefined();
+    expect(evaluatePromo(withAddons(), view({ rule }), facts(), NOW).discountCents).toBe(7750);
+  });
+
+  it("covers them when the promo says so", () => {
+    const rule = compileRule({
+      type: "percentOff",
+      refs: [{ kind: "category", id: "milk-teas" }],
+      percent: 25,
+      discountAddons: true,
+    });
+    // Now 25% of (18500 × 2) — the toppings are part of the offer.
+    expect(rule.discountAddons).toBe(true);
+    expect(evaluatePromo(withAddons(), view({ rule }), facts(), NOW).discountCents).toBe(9250);
+  });
+
+  it("survives a round trip through the wizard's config", () => {
+    // Reopening a promo to edit it must not silently drop the choice.
+    const rule = compileRule({
+      type: "combo",
+      requirements: [{ refs: [{ kind: "category", id: "milk-teas" }], qty: 2 }],
+      priceCents: 28000,
+      discountAddons: true,
+    });
+    const back = decompileRule("combo", rule);
+    expect(back).toMatchObject({ type: "combo", discountAddons: true });
+    expect(compileRule(back!).discountAddons).toBe(true);
+  });
+
+  it("a fixed-price combo charges the add-ons on top", () => {
+    const rule = compileRule({
+      type: "combo",
+      requirements: [{ refs: [{ kind: "category", id: "milk-teas" }], qty: 2 }],
+      priceCents: 28000,
+    });
+    // The two drinks list at 31000; the combo closes them at 28000. The 6000 of
+    // add-ons stays on the ticket, so the discount is 3000 — not 9000.
+    expect(evaluatePromo(withAddons(), view({ rule }), facts(), NOW).discountCents).toBe(3000);
+  });
+
+  it("still counts the add-ons toward a spend threshold — the customer paid them", () => {
+    const rule = compileRule({
+      type: "cartThreshold",
+      minSubtotalCents: 37000,
+      benefit: { kind: "amount", amountCents: 4000 },
+    });
+    // Subtotal is 37000 WITH add-ons; without them it would be 31000 and miss.
+    const result = evaluatePromo(withAddons(), view({ rule }), facts(), NOW);
+    expect(result.eligible).toBe(true);
+    expect(result.discountCents).toBe(4000);
   });
 });
 

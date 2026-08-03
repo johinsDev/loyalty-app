@@ -87,7 +87,10 @@ PROMOS = [
      "Dos de la categoría General: la más barata a mitad de precio.", "2.ª -50%",
      {"buy": {"requirements": [{"refs": [cat("general")], "qty": 2}]},
       "effect": {"kind": "percentOff", "percent": 50, "target": "buy",
-                 "select": {"count": 1, "pick": "cheapest"}}}, False),
+                 "select": {"count": 1, "pick": "cheapest"}},
+      # Once per ticket, matching the template. Without it five drinks made two
+      # pairs and took half off two of them.
+      "maxApplicationsPerOrder": 1}, False),
 
     ("P09 Combo Milk Tea a $28.000", "combo",
      "Dos Milk Tea por $28.000 cerrados.", "Combo",

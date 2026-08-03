@@ -78,6 +78,8 @@ export const ruleSchema = z.object({
   get: z.object({ requirements: z.array(lineRequirementSchema).min(1) }).optional(),
   effect: effectSchema,
   maxApplicationsPerOrder: z.number().int().min(1).optional(),
+  /** Opt in to discounting a line's add-ons too. Off by default — see PromoRule. */
+  discountAddons: z.boolean().optional(),
 });
 export type RuleInput = z.infer<typeof ruleSchema>;
 

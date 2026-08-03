@@ -11,7 +11,15 @@ export interface EffectResult {
 
 const NONE: EffectResult = { discountCents: 0, pointsMultiplier: 1 };
 
-const sum = (units: CartUnit[]) => units.reduce((s, u) => s + u.amountCents, 0);
+/**
+ * What a scoped effect may take off.
+ *
+ * `discountAddons` on the rule decides whether a line's toppings are part of
+ * the offer. Off by default, because including them is what happens by accident
+ * — the line's price arrives with the add-ons already folded in.
+ */
+const sum = (units: CartUnit[], withAddons = false) =>
+  units.reduce((s, u) => s + (withAddons ? u.amountCents : u.discountableCents), 0);
 
 const cheapest = (units: CartUnit[], count: number): CartUnit[] =>
   [...units].sort((a, b) => a.amountCents - b.amountCents).slice(0, count);
@@ -28,6 +36,8 @@ export function computeEffect(
   exclusions: UnitExclusion[] = [],
 ): EffectResult {
   const e = rule.effect;
+  // Whether this promo's offer covers the add-ons on a line.
+  const withAddons = rule.discountAddons === true;
   const orderSubtotal = Math.max(
     0,
     subtotalCents(cart.lines) - excludedAmountCents(cart, exclusions),
@@ -44,7 +54,7 @@ export function computeEffect(
       for (const app of match.applications) {
         let units = targetUnits(app, e.target);
         if (e.select) units = cheapest(units, e.select.count);
-        total += Math.round((sum(units) * e.percent) / 100);
+        total += Math.round((sum(units, withAddons) * e.percent) / 100);
       }
       if (e.maxDiscountCents != null) total = Math.min(total, e.maxDiscountCents);
       return { discountCents: Math.max(0, total), pointsMultiplier: 1 };
@@ -54,19 +64,19 @@ export function computeEffect(
         return { discountCents: Math.min(e.amountCents, orderSubtotal), pointsMultiplier: 1 };
       let total = 0;
       for (const app of match.applications)
-        total += Math.min(e.amountCents, sum(targetUnits(app, e.target)));
+        total += Math.min(e.amountCents, sum(targetUnits(app, e.target), withAddons));
       return { discountCents: total, pointsMultiplier: 1 };
     }
     case "fixedPrice": {
       let total = 0;
       for (const app of match.applications)
-        total += Math.max(0, sum(app.buyUnits) - e.priceCents);
+        total += Math.max(0, sum(app.buyUnits, withAddons) - e.priceCents);
       return { discountCents: total, pointsMultiplier: 1 };
     }
     case "freeUnits": {
       let total = 0;
       for (const app of match.applications)
-        total += sum(cheapest(targetUnits(app, e.target), e.count));
+        total += sum(cheapest(targetUnits(app, e.target), e.count), withAddons);
       return { discountCents: total, pointsMultiplier: 1 };
     }
     case "tieredPercent": {
@@ -78,7 +88,7 @@ export function computeEffect(
         .find((t) => units.length >= t.minQty);
       if (!tier) return NONE;
       return {
-        discountCents: Math.max(0, Math.round((sum(units) * tier.percent) / 100)),
+        discountCents: Math.max(0, Math.round((sum(units, withAddons) * tier.percent) / 100)),
         pointsMultiplier: 1,
       };
     }

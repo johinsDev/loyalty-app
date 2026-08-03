@@ -2,7 +2,7 @@
 
 import type { BenefitConfig } from "@loyalty/api/features/promotions/rule-compile";
 import type { PromoType } from "@loyalty/api/features/promotions/schemas";
-import { Button, Label, NumberInput } from "@loyalty/ui";
+import { Button, Label, NumberInput, Switch } from "@loyalty/ui";
 import { Plus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -106,6 +106,10 @@ export function BenefitConfigFields({
               anyLabel={t("wholeOrder")}
             />
           </Field>
+          <AddonScopeField
+            value={value.discountAddons}
+            onChange={(d) => onChange({ ...value, discountAddons: d })}
+          />
         </div>
       );
     case "amountOff":
@@ -125,6 +129,10 @@ export function BenefitConfigFields({
               anyLabel={t("wholeOrder")}
             />
           </Field>
+          <AddonScopeField
+            value={value.discountAddons}
+            onChange={(d) => onChange({ ...value, discountAddons: d })}
+          />
         </div>
       );
     case "nxm":
@@ -157,6 +165,10 @@ export function BenefitConfigFields({
             value={value.maxApplicationsPerOrder}
             onChange={(m) => onChange({ ...value, maxApplicationsPerOrder: m })}
           />
+          <AddonScopeField
+            value={value.discountAddons}
+            onChange={(d) => onChange({ ...value, discountAddons: d })}
+          />
         </div>
       );
     case "secondUnit":
@@ -181,6 +193,10 @@ export function BenefitConfigFields({
             value={value.maxApplicationsPerOrder}
             onChange={(m) => onChange({ ...value, maxApplicationsPerOrder: m })}
           />
+          <AddonScopeField
+            value={value.discountAddons}
+            onChange={(d) => onChange({ ...value, discountAddons: d })}
+          />
         </div>
       );
     case "bundle":
@@ -197,6 +213,10 @@ export function BenefitConfigFields({
           <MaxAppsField
             value={value.maxApplicationsPerOrder}
             onChange={(m) => onChange({ ...value, maxApplicationsPerOrder: m })}
+          />
+          <AddonScopeField
+            value={value.discountAddons}
+            onChange={(d) => onChange({ ...value, discountAddons: d })}
           />
         </div>
       );
@@ -217,6 +237,10 @@ export function BenefitConfigFields({
           <MaxAppsField
             value={value.maxApplicationsPerOrder}
             onChange={(m) => onChange({ ...value, maxApplicationsPerOrder: m })}
+          />
+          <AddonScopeField
+            value={value.discountAddons}
+            onChange={(d) => onChange({ ...value, discountAddons: d })}
           />
         </div>
       );
@@ -250,6 +274,10 @@ export function BenefitConfigFields({
             value={value.maxApplicationsPerOrder}
             onChange={(m) => onChange({ ...value, maxApplicationsPerOrder: m })}
           />
+          <AddonScopeField
+            value={value.discountAddons}
+            onChange={(d) => onChange({ ...value, discountAddons: d })}
+          />
         </div>
       );
     case "cartThreshold":
@@ -279,6 +307,10 @@ export function BenefitConfigFields({
             />
           </Field>
           <TiersField value={value.tiers} onChange={(tiers) => onChange({ ...value, tiers })} />
+          <AddonScopeField
+            value={value.discountAddons}
+            onChange={(d) => onChange({ ...value, discountAddons: d })}
+          />
         </div>
       );
     case "pointsMultiplier":
@@ -299,6 +331,8 @@ export function BenefitConfigFields({
               anyLabel={t("wholeOrder")}
             />
           </Field>
+          {/* No add-on toggle here: this effect grants points, it discounts
+              nothing, so the choice would be a knob that does nothing. */}
         </div>
       );
     default:
@@ -501,6 +535,32 @@ function MaxAppsField({
         className="h-10 w-40"
       />
     </Field>
+  );
+}
+
+/**
+ * Whether the offer covers a line's add-ons.
+ *
+ * Off by default, because a line's price already carries them: a fixed-price
+ * combo that covers them hands the toppings over free however many the customer
+ * piles on. On when the offer genuinely means "everything on this drink".
+ */
+function AddonScopeField({
+  value,
+  onChange,
+}: {
+  value: boolean | undefined;
+  onChange: (v: boolean) => void;
+}) {
+  const t = useTranslations("Promotions.benefit");
+  return (
+    <div className="border-border flex items-start gap-3 rounded-xl border p-3">
+      <Switch checked={value === true} onCheckedChange={onChange} className="mt-0.5" />
+      <div className="min-w-0">
+        <Label className="text-sm font-semibold">{t("discountAddons")}</Label>
+        <p className="text-muted-foreground mt-0.5 text-xs">{t("discountAddonsHint")}</p>
+      </div>
+    </div>
   );
 }
 

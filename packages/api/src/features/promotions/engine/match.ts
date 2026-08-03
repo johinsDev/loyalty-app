@@ -8,12 +8,22 @@ import type { Cart, CartUnit, MatchResult, RuleApplication } from "./types";
 export function expandUnits(cart: Cart): CartUnit[] {
   const out: CartUnit[] = [];
   cart.lines.forEach((line, lineIndex) => {
+    // The line's price carries its add-ons; a promo discounts the drink, not
+    // the toppings the customer chose to put on it. Absent when the cart wasn't
+    // stitched, and then the two amounts coincide and nothing changes.
+    const addonDelta = (line.addons ?? []).reduce((s, a) => s + a.priceDeltaCents, 0);
     for (let i = 0; i < line.qty; i++) {
-      out.push({ lineIndex, amountCents: line.unitAmountCents, source: "product" });
+      out.push({
+        lineIndex,
+        amountCents: line.unitAmountCents,
+        discountableCents: Math.max(0, line.unitAmountCents - addonDelta),
+        source: "product",
+      });
       for (const mod of line.modifierOptions ?? []) {
         out.push({
           lineIndex,
           amountCents: mod.priceDeltaCents,
+          discountableCents: mod.priceDeltaCents,
           source: "modifierOption",
           modifierOptionId: mod.id,
         });
