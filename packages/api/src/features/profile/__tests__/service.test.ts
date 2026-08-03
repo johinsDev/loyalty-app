@@ -36,6 +36,7 @@ class FakeRepo {
   updateName = vi.fn(async () => {});
   updateNickname = vi.fn(async () => {});
   updateAvatar = vi.fn(async () => {});
+  updateBirthday = vi.fn(async () => {});
   updatePhone = vi.fn(async () => {});
   updateEmail = vi.fn(async () => {});
   visitCount = vi.fn(async () => this.visits);
@@ -240,6 +241,40 @@ describe("ProfileService.me", () => {
     expect(me.email).toBe("ana@gmail.com");
     expect(me.hasRealEmail).toBe(true);
     expect(me.googleLinked).toBe(true);
+  });
+
+  it("passes the stored birthday through", async () => {
+    const repo = new FakeRepo();
+    const born = new Date("1998-07-09T00:00:00Z");
+    repo.row = customer({ birthday: born });
+    const { service } = build(repo);
+    expect((await service.me(ORG, CUSTOMER)).birthday).toEqual(born);
+  });
+
+  it("reports a missing birthday as null", async () => {
+    const repo = new FakeRepo();
+    repo.row = customer({ birthday: null });
+    const { service } = build(repo);
+    expect((await service.me(ORG, CUSTOMER)).birthday).toBeNull();
+  });
+});
+
+describe("ProfileService.updateBirthday", () => {
+  it("writes the date through to the repository", async () => {
+    const repo = new FakeRepo();
+    const { service } = build(repo);
+    const born = new Date("1998-07-09T00:00:00Z");
+    await expect(service.updateBirthday(ORG, CUSTOMER, born)).resolves.toEqual({
+      ok: true,
+    });
+    expect(repo.updateBirthday).toHaveBeenCalledWith(ORG, CUSTOMER, born);
+  });
+
+  it("clears the date with null", async () => {
+    const repo = new FakeRepo();
+    const { service } = build(repo);
+    await service.updateBirthday(ORG, CUSTOMER, null);
+    expect(repo.updateBirthday).toHaveBeenCalledWith(ORG, CUSTOMER, null);
   });
 });
 

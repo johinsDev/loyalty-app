@@ -239,7 +239,6 @@ export function ProfileView() {
               dayLabel={t("dayLabel")}
               monthLabel={t("monthLabel")}
               yearLabel={t("yearLabel")}
-              maxYear={new Date().getFullYear()}
             />
             <ResponsiveModalClose
               variant="gradient"

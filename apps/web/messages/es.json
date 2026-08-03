@@ -366,6 +366,8 @@
     "rowEmail": "Correo",
     "rowBirthday": "Cumpleaños",
     "birthdaySub": "Bebida gratis cada año",
+    "addBirthday": "Agregar",
+    "birthdayRemove": "Quitar cumpleaños",
     "verified": "Verificado",
     "verify": "Verificar",
     "googleSub": "Acceso rápido con un toque",

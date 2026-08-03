@@ -369,6 +369,9 @@
       "whatsapp": "WhatsApp"
     },
     "birthdayHint": "Scroll to pick the date.",
+    "dayLabel": "DAY",
+    "monthLabel": "MONTH",
+    "yearLabel": "YEAR",
     "done": "Done",
     "selectAll": "Select all",
     "selectRow": "Select row",

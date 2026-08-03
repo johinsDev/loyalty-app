@@ -183,6 +183,97 @@ These exceptions are documented at the top of each component file.
 
 ---
 
+## Picking a date
+
+Two components, and picking the wrong one is the usual mistake:
+
+| Need | Component |
+| --- | --- |
+| A calendar date near today — schedule a campaign, filter a range, set an end date | `DatePicker` / `DateRangePicker` (Button trigger + `Calendar` in a `Popover`) |
+| A **date of birth** | `DateWheelPicker` |
+
+A birthday is decades away from today. A calendar makes you page through ~300
+months to reach 1998; the wheel spins straight to it. Never `<input type="date">`
+— its rendering is browser-specific and it can't be themed.
+
+### `WheelPicker` — the primitive
+
+`packages/ui/src/components/ui/wheel-picker.tsx`, adapted from
+[beui.dev](https://beui.dev/components/motion/wheel-picker). An iOS-style drum:
+options ride a 3D cylinder driven by one float row index; a flick coasts on real
+momentum (`DECELERATION` / `MAX_VELOCITY` constants at the top) and springs into
+its detent.
+
+```tsx
+<WheelPicker
+  options={["sm", "md", "lg"]}          // or [{ label, value }]
+  value={size}
+  onValueChange={setSize}
+  visibleCount={5}                       // odd; more rows = flatter curve
+  itemHeight={44}
+  variant="card"                         // "bare" to share a parent's band
+  sound                                  // opt-in Web Audio tick, default off
+  aria-label="Tamaño"
+/>
+```
+
+Things worth knowing before you touch it:
+
+- **The list is rendered twice.** A dimmed copy for the whole drum and a crisp
+  copy clipped to the centre band, both driven by the same transform so they
+  register exactly. Change one, change the other.
+- **Touch and wheel listeners are bound natively, non-passively** (in an effect),
+  because React's synthetic `touchmove`/`wheel` handlers are passive and their
+  `preventDefault()` is a no-op — the page would scroll instead of the drum.
+- **`prefers-reduced-motion` swaps the whole render** for a plain snap-scroll
+  list. Any feature you add to the drum needs an answer in that branch too.
+- **The role is `spinbutton`, not `listbox`.** Both option copies are
+  `aria-hidden` (they'd be announced twice), so upstream's `listbox` advertised a
+  list with no options and no value. `spinbutton` + `aria-valuetext` describes
+  what this actually is: one value, stepped with the arrow keys.
+- **Sound is off by default** and synthesized at runtime (`wheel-picker.tick-sound.ts`)
+  — no asset ships. One `AudioContext` is shared and ref-counted across every
+  wheel on the page.
+
+### `DateWheelPicker` — three wheels, one control
+
+Composes a day / month / year `WheelPicker` in `variant="bare"` under a single
+highlighted band. Controlled and i18n-agnostic — it never formats anything
+itself:
+
+```tsx
+<DateWheelPicker
+  value={draft}                          // { day, month: 1-12, year }
+  onValueChange={setDraft}
+  monthLabels={monthLabels}              // 12 localized names, index 0 = January
+  dayLabel={t("dayLabel")}               // headings AND accessible names
+  monthLabel={t("monthLabel")}
+  yearLabel={t("yearLabel")}
+/>
+```
+
+- **Leave `maxYear` unset.** The default upper bound is *today*, so a future
+  birth date can't be picked at all. `maxYear` / `maxDate` override it; `minYear`
+  defaults to 1925.
+- **The wheels stay consistent.** February offers 28 or 29 days depending on the
+  year currently on the year wheel, and bounds are enforced per column: scroll to
+  the current year and the month wheel stops at the current month, and that month
+  at today's day. All of that is `normalizeDate` in `date-wheel-picker.lib.ts` —
+  pure, and the place to add rules (it has a full test suite).
+- **It corrects the parent.** If `value` is out of range or impossible
+  (31 February), it renders the normalized date *and* calls `onValueChange` with
+  it, so the parent's state stops disagreeing with the screen.
+- **`order`** re-arranges the columns (`["month", "day", "year"]` for en-US).
+- **Open it in a `ResponsiveModal`**, don't inline it — see the `responsive-modal`
+  skill. Both admin call sites and the web profile do this.
+
+Persisting a birthday: the `customer.birthday` column is a **timestamp**, so
+write UTC midnight of the picked day (`Date.UTC(year, month - 1, day)`) and read
+it back with `getUTC*` / `timeZone: "UTC"`. Anything else drifts a day for
+customers behind UTC.
+
+---
+
 ## Common gotchas
 
 ### Editing a shadcn file breaks somewhere I didn't change

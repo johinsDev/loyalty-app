@@ -188,6 +188,7 @@ export const PROCEDURE_TYPES: Record<string, ProcedureKind> = {
   "profile.me": "query",
   "profile.syncEmail": "mutation",
   "profile.updateAvatar": "mutation",
+  "profile.updateBirthday": "mutation",
   "profile.updateName": "mutation",
   "profile.updateNickname": "mutation",
   "promociones.adminList": "query",

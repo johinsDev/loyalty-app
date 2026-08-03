@@ -26,6 +26,23 @@ export const updateAvatarInputSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("clear") }),
 ]);
 
+/** Nobody in the loyalty program was born before this. */
+const MIN_BIRTHDAY = Date.UTC(1900, 0, 1);
+/** The client sends UTC midnight of the day it displayed. A customer in a
+ *  timezone ahead of UTC picking "today" therefore lands slightly in the
+ *  future, so the upper bound is tomorrow rather than this instant. */
+const FUTURE_SLACK_MS = 24 * 60 * 60 * 1000;
+
+export const updateBirthdayInputSchema = z.object({
+  birthday: z.coerce
+    .date()
+    .refine((d) => d.getTime() >= MIN_BIRTHDAY, { message: "birthday_too_old" })
+    .refine((d) => d.getTime() <= Date.now() + FUTURE_SLACK_MS, {
+      message: "birthday_in_future",
+    })
+    .nullable(),
+});
+
 /** Called AFTER the web client verified the new phone with
  *  `updatePhoneNumber: true` (which already swapped `user.phoneNumber`). This
  *  mirrors the new number onto the `customer` row and alerts the old one. */
@@ -50,6 +67,8 @@ export interface ProfileMe {
   avatarPreset: string | null;
   avatarUrl: string | null;
   avatarThumbhash: string | null;
+  /** Stored as UTC midnight of the picked day. Read it back with `getUTC*`. */
+  birthday: Date | null;
   memberSince: Date;
   stats: {
     points: number;

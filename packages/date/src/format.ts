@@ -40,6 +40,38 @@ export function formatDate(input: Input, options: LocaleOption & { preset?: Date
   });
 }
 
+/** "2 de marzo" / "March 2" — day and month, no year. */
+const BIRTHDAY_PATTERNS: Record<BirthdayPreset, string> = {
+  dayMonth: "d MMMM",
+  dayMonthShort: "d MMM",
+  full: "PP",
+};
+
+type BirthdayPreset = "dayMonth" | "dayMonthShort" | "full";
+
+/**
+ * Format a date of birth. Birthdays are stored as **UTC midnight** of the day
+ * the customer picked, so formatting them in local time renders the day before
+ * for anyone behind UTC — in Bogotá (UTC-5) a 2 March birthday reads "1 de
+ * marzo". This re-anchors the instant so the local wall clock lands on the
+ * stored calendar day, then formats normally.
+ *
+ * Use this for every birthday surface; `formatDate` is for real timestamps.
+ */
+export function formatBirthday(
+  input: Input,
+  options: LocaleOption & { preset?: BirthdayPreset } = {},
+): string {
+  const date = toDateOrNull(input);
+  if (!date) return "";
+  const asLocalDay = new Date(
+    date.getTime() + date.getTimezoneOffset() * 60_000,
+  );
+  return fmt(asLocalDay, BIRTHDAY_PATTERNS[options.preset ?? "dayMonth"], {
+    locale: localeFromCode(options.locale),
+  });
+}
+
 /** Format the time portion only (HH:mm or h:mm a depending on locale). */
 export function formatTime(input: Input, options: LocaleOption & { seconds?: boolean } = {}): string {
   const date = toDateOrNull(input);

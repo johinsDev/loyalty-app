@@ -4,6 +4,7 @@ import type { MarketingChannel } from "@loyalty/api/features/customers/schemas";
 import {
   Button,
   DateWheelPicker,
+  type DateValue,
   Input,
   InputPhone,
   Label,
@@ -45,7 +46,7 @@ const CHANNEL_META: Record<MarketingChannel, { icon: LucideIcon; key: string }> 
   whatsapp: { icon: MessageCircle, key: "whatsapp" },
 };
 
-type BirthDate = { day: number; month: number; year: number };
+type BirthDate = DateValue;
 
 type Draft = {
   name: string;
@@ -379,7 +380,9 @@ function WizardInner({ id, initial }: { id?: string; initial: Draft }) {
               value={draft.birthday ?? { day: 1, month: 1, year: 2000 }}
               onValueChange={(v) => set("birthday", v)}
               monthLabels={monthLabels}
-              maxYear={new Date().getFullYear()}
+              dayLabel={t("dayLabel")}
+              monthLabel={t("monthLabel")}
+              yearLabel={t("yearLabel")}
             />
             <Button onClick={() => setBdayOpen(false)} className="mt-4 h-12 w-full rounded-xl font-semibold">
               {t("done")}

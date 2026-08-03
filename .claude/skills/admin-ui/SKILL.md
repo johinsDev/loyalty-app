@@ -62,8 +62,11 @@ footer. Step state is local (design-first); the server-driven draft (see the
   `Calendar` in a `Popover`) for any calendar date (scheduling, send dates). Pass
   `formatLabel={(d) => formatDate(d, { locale })}` from `@loyalty/date` for the
   localized label. **`DateWheelPicker`** is only for birthdays / date-of-birth
-  (year scrolling) — open it inside a `ResponsiveModal` (don't inline the wheel);
-  it supports mouse click-drag, not just trackpad/touch. Never `<input type="date">`.
+  (year scrolling) — open it inside a `ResponsiveModal` (don't inline the wheel).
+  Pass `dayLabel` / `monthLabel` / `yearLabel`: they are the column headings *and*
+  each wheel's accessible name. Leave `maxYear` unset — the default upper bound is
+  today, so a future birth date can't be picked. Never `<input type="date">`.
+  See the `ui` skill for the full API.
 
 ## List screens
 

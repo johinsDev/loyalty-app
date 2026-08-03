@@ -47,6 +47,8 @@ export * from "./components/ui/kbd";
 export * from "./components/ui/label";
 export * from "./components/ui/menubar";
 export * from "./components/ui/date-wheel-picker";
+export * from "./components/ui/date-wheel-picker.lib";
+export * from "./components/ui/wheel-picker";
 export * from "./components/ui/mode-segmented";
 export * from "./components/ui/mode-toggle";
 export * from "./components/ui/native-select";

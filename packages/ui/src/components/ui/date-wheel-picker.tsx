@@ -1,10 +1,22 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "../../cn";
-
-export type DateValue = { day: number; month: number; year: number };
+import {
+  DEFAULT_FIELD_ORDER,
+  type DateField,
+  type DateValue,
+  dayBounds,
+  fromDate,
+  monthBounds,
+  normalizeDate,
+  range,
+  resolveBounds,
+  sameDate,
+} from "./date-wheel-picker.lib";
+import { WheelPicker, type WheelPickerOption } from "./wheel-picker";
 
 export type DateWheelPickerProps = {
   /** Selected date. `month` is 1-12. */
@@ -12,241 +24,194 @@ export type DateWheelPickerProps = {
   onValueChange: (value: DateValue) => void;
   /** 12 localized month names (index 0 = January). */
   monthLabels: string[];
+  /** Lower bound as a whole year. Ignored when `minDate` is given. */
   minYear?: number;
+  /**
+   * Upper bound as a whole year. Ignored when `maxDate` is given. Leave both
+   * unset and the wheels stop at today — a birth date is never in the future.
+   */
   maxYear?: number;
-  /** Optional column headings (already localized). */
+  /** Exact lower bound. Wins over `minYear`. */
+  minDate?: DateValue;
+  /** Exact upper bound. Wins over `maxYear`. */
+  maxDate?: DateValue;
+  /** Column order, left to right. Default day → month → year. */
+  order?: readonly DateField[];
+  /** Column headings, already localized. Double as each wheel's accessible name. */
   dayLabel?: string;
   monthLabel?: string;
   yearLabel?: string;
+  /** Rows visible through each wheel, odd. Default 5. */
+  visibleCount?: number;
+  /** Row height in px. Default 44 (touch target). */
+  itemHeight?: number;
+  disabled?: boolean;
+  /** Tick on every row crossed. Default false. */
+  sound?: boolean;
   className?: string;
 };
 
-const ITEM = 44;
-/** (wheel height 200 − ITEM) / 2 → centers the selected row under the band. */
-const PAD = 78;
-const HEIGHT = 200;
-const MASK =
-  "linear-gradient(to bottom, transparent, #000 32%, #000 68%, transparent)";
-
-function daysInMonth(month: number, year: number): number {
-  return new Date(year, month, 0).getDate();
-}
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, n));
-}
-/** Re-center a column on `targetIdx` only when it isn't already there. */
-function sync(el: HTMLDivElement | null, targetIdx: number): void {
-  if (el && Math.round(el.scrollTop / ITEM) !== targetIdx) {
-    el.scrollTop = targetIdx * ITEM;
-  }
-}
+/** Relative widths: the month names need the room, the day needs the least. */
+const FIELD_FLEX: Record<DateField, number> = {
+  day: 0.8,
+  month: 1.4,
+  year: 1.1,
+};
 
 /**
- * iOS-style date wheel: three snapping columns (day / month / year) with a
- * highlighted center band and faded edges. No calendar grid — built for
- * birthdays / date-of-birth, where scrolling years is the point and the full
- * calendar's year navigation is overkill. Controlled and i18n-agnostic: pass
- * `monthLabels` + column headings already localized.
+ * Date-of-birth picker: three iOS-style {@link WheelPicker} drums (day / month
+ * / year) sharing one highlighted centre band. No calendar grid — scrolling
+ * decades is the point, and a calendar's year navigation is the wrong tool for
+ * it.
+ *
+ * Controlled and i18n-agnostic: pass `monthLabels` and the column headings
+ * already localized.
+ *
+ * The wheels stay consistent with one another. February offers 28 or 29 days
+ * depending on the year sitting on the year wheel, and the bounds are enforced
+ * per column — under the default upper bound of today, scrolling the year wheel
+ * to the current year trims the month wheel at the current month, and that
+ * month at today's day.
  */
 function DateWheelPicker({
   value,
   onValueChange,
   monthLabels,
-  minYear = 1925,
-  maxYear = new Date().getFullYear(),
+  minYear,
+  maxYear,
+  minDate,
+  maxDate,
+  order = DEFAULT_FIELD_ORDER,
   dayLabel,
   monthLabel,
   yearLabel,
+  visibleCount = 5,
+  itemHeight = 44,
+  disabled = false,
+  sound = false,
   className,
 }: DateWheelPickerProps) {
-  const dayEl = useRef<HTMLDivElement>(null);
-  const monthEl = useRef<HTMLDivElement>(null);
-  const yearEl = useRef<HTMLDivElement>(null);
-  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // Read the clock once per mount: re-reading it mid-render would let the
+  // bounds shift under the wheels.
+  const [today] = useState(() => fromDate(new Date()));
 
-  const dim = daysInMonth(value.month, value.year);
+  const { min, max } = useMemo(
+    () => resolveBounds({ minYear, maxYear, minDate, maxDate, today }),
+    [minYear, maxYear, minDate, maxDate, today],
+  );
 
-  // Center each column on the current value (on mount + tap + day clamp).
-  // When the user scrolls, the settled position already matches → no re-scroll.
+  // Render against a value guaranteed to exist on the wheels, and push the
+  // correction back up so the parent's state stops disagreeing with what is on
+  // screen (an out-of-range `value`, or 31 January carried into February).
+  const safe = useMemo(() => normalizeDate(value, min, max), [value, min, max]);
   useEffect(() => {
-    if (value.day > dim) {
-      onValueChange({ ...value, day: dim });
-      return;
-    }
-    sync(dayEl.current, value.day - 1);
-    sync(monthEl.current, value.month - 1);
-    sync(yearEl.current, value.year - minYear);
-  }, [value, dim, minYear, onValueChange]);
+    if (!sameDate(safe, value)) onValueChange(safe);
+  }, [safe, value, onValueChange]);
 
-  const onScroll = (col: "day" | "month" | "year", el: HTMLDivElement) => {
-    clearTimeout(timers.current[col]);
-    timers.current[col] = setTimeout(() => {
-      const idx = Math.round(el.scrollTop / ITEM);
-      if (col === "day") {
-        const day = clamp(idx + 1, 1, dim);
-        if (day !== value.day) onValueChange({ ...value, day });
-      } else if (col === "month") {
-        const month = clamp(idx + 1, 1, 12);
-        if (month !== value.month) onValueChange({ ...value, month });
-      } else {
-        const year = clamp(minYear + idx, minYear, maxYear);
-        if (year !== value.year) onValueChange({ ...value, year });
-      }
-    }, 90);
+  const yearOptions = useMemo<WheelPickerOption[]>(
+    () => range(min.year, max.year).map(String),
+    [min.year, max.year],
+  );
+  const monthOptions = useMemo<WheelPickerOption[]>(() => {
+    const [lo, hi] = monthBounds(safe.year, min, max);
+    return range(lo, hi).map((m) => ({
+      value: String(m),
+      label: monthLabels[m - 1] ?? String(m),
+    }));
+  }, [safe.year, min, max, monthLabels]);
+  const dayOptions = useMemo<WheelPickerOption[]>(() => {
+    const [lo, hi] = dayBounds(safe.year, safe.month, min, max);
+    return range(lo, hi).map(String);
+  }, [safe.year, safe.month, min, max]);
+
+  // The value we last handed to `onValueChange`. Each wheel only knows its own
+  // field, so it merges its change into the rest of the date — and two wheels
+  // can settle before the parent re-renders (tap the year, then the month).
+  // Merging into the render-time value there would silently drop the first
+  // change; merging into this ref composes them.
+  const pending = useRef(safe);
+  if (!sameDate(pending.current, safe)) pending.current = safe;
+
+  const update = (patch: Partial<DateValue>) => {
+    const next = normalizeDate({ ...pending.current, ...patch }, min, max);
+    pending.current = next;
+    onValueChange(next);
   };
 
-  const years: number[] = [];
-  for (let y = minYear; y <= maxYear; y++) years.push(y);
+  // `bare` so the three drums read as one control under the shared band below.
+  const shared = { visibleCount, itemHeight, disabled, sound } as const;
 
-  const hasHeadings = Boolean(dayLabel || monthLabel || yearLabel);
+  const wheels: Record<DateField, ReactNode> = {
+    day: (
+      <WheelPicker
+        {...shared}
+        variant="bare"
+        options={dayOptions}
+        value={String(safe.day)}
+        onValueChange={(v) => update({ day: Number(v) })}
+        aria-label={dayLabel}
+      />
+    ),
+    month: (
+      <WheelPicker
+        {...shared}
+        variant="bare"
+        options={monthOptions}
+        value={String(safe.month)}
+        onValueChange={(v) => update({ month: Number(v) })}
+        aria-label={monthLabel}
+      />
+    ),
+    year: (
+      <WheelPicker
+        {...shared}
+        variant="bare"
+        options={yearOptions}
+        value={String(safe.year)}
+        onValueChange={(v) => update({ year: Number(v) })}
+        aria-label={yearLabel}
+      />
+    ),
+  };
+
+  const headings: Record<DateField, string | undefined> = {
+    day: dayLabel,
+    month: monthLabel,
+    year: yearLabel,
+  };
+  const hasHeadings = order.some((field) => headings[field]);
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {hasHeadings ? (
         <div className="text-muted-foreground flex gap-2 px-1.5 text-xs font-bold tracking-wider">
-          <span style={{ flex: 0.85 }} className="text-center">
-            {dayLabel}
-          </span>
-          <span style={{ flex: 1.25 }} className="text-center">
-            {monthLabel}
-          </span>
-          <span style={{ flex: 1 }} className="text-center">
-            {yearLabel}
-          </span>
+          {order.map((field) => (
+            <span
+              key={field}
+              className="text-center"
+              style={{ flex: FIELD_FLEX[field] }}
+            >
+              {headings[field]}
+            </span>
+          ))}
         </div>
       ) : null}
 
-      <div
-        className="relative flex gap-2 select-none"
-        style={{ height: HEIGHT }}
-      >
+      <div className="relative flex gap-2">
+        {/* One band spanning all three wheels. Painted first so the wheels —
+            also positioned — stack above it. */}
         <div
           aria-hidden
-          className="bg-primary/10 ring-primary/25 pointer-events-none absolute inset-x-0 rounded-xl ring-1"
-          style={{ top: PAD, height: ITEM }}
+          className="bg-primary/10 ring-primary/25 pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-xl ring-1"
+          style={{ height: itemHeight }}
         />
-        <Wheel refEl={dayEl} flex={0.85} onScroll={(el) => onScroll("day", el)}>
-          {Array.from({ length: dim }, (_, i) => (
-            <WheelItem
-              key={i + 1}
-              active={value.day === i + 1}
-              onClick={() => onValueChange({ ...value, day: i + 1 })}
-            >
-              {i + 1}
-            </WheelItem>
-          ))}
-        </Wheel>
-        <Wheel
-          refEl={monthEl}
-          flex={1.25}
-          onScroll={(el) => onScroll("month", el)}
-        >
-          {monthLabels.map((label, i) => (
-            <WheelItem
-              key={label}
-              active={value.month === i + 1}
-              onClick={() => onValueChange({ ...value, month: i + 1 })}
-            >
-              {label}
-            </WheelItem>
-          ))}
-        </Wheel>
-        <Wheel refEl={yearEl} flex={1} onScroll={(el) => onScroll("year", el)}>
-          {years.map((y) => (
-            <WheelItem
-              key={y}
-              active={value.year === y}
-              onClick={() => onValueChange({ ...value, year: y })}
-            >
-              {y}
-            </WheelItem>
-          ))}
-        </Wheel>
+        {order.map((field) => (
+          <div key={field} className="relative" style={{ flex: FIELD_FLEX[field] }}>
+            {wheels[field]}
+          </div>
+        ))}
       </div>
     </div>
-  );
-}
-
-function Wheel({
-  refEl,
-  flex,
-  onScroll,
-  children,
-}: {
-  refEl: React.RefObject<HTMLDivElement | null>;
-  flex: number;
-  onScroll: (el: HTMLDivElement) => void;
-  children: React.ReactNode;
-}) {
-  // Mouse devices can't flick a touch-scroll wheel, so add click-drag scrolling
-  // (mouse only — touch keeps native scrolling, the trackpad keeps the wheel).
-  const drag = useRef({ active: false, startY: 0, startTop: 0 });
-
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.pointerType !== "mouse") return;
-    const el = refEl.current;
-    if (!el) return;
-    drag.current = { active: true, startY: e.clientY, startTop: el.scrollTop };
-    el.setPointerCapture(e.pointerId);
-  };
-
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag.current.active || !refEl.current) return;
-    refEl.current.scrollTop =
-      drag.current.startTop - (e.clientY - drag.current.startY);
-  };
-
-  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag.current.active) return;
-    drag.current.active = false;
-    refEl.current?.releasePointerCapture(e.pointerId);
-  };
-
-  return (
-    <div
-      ref={refEl}
-      onScroll={(event) => onScroll(event.currentTarget)}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
-      className="snap-y snap-mandatory cursor-grab overflow-y-scroll active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      style={{
-        flex,
-        paddingBlock: PAD,
-        maskImage: MASK,
-        WebkitMaskImage: MASK,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function WheelItem({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      data-active={active}
-      className={cn(
-        "flex w-full snap-center snap-always items-center justify-center whitespace-nowrap transition-all",
-        active
-          ? "text-primary text-xl font-extrabold"
-          : "text-muted-foreground/70 text-lg font-medium",
-      )}
-      style={{ height: ITEM }}
-    >
-      {children}
-    </button>
   );
 }
 

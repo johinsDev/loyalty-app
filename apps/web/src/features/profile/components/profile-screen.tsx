@@ -1,9 +1,11 @@
 "use client";
 
 import { authClient } from "@loyalty/auth/client";
-import { formatDate } from "@loyalty/date";
+import { formatBirthday, formatDate } from "@loyalty/date";
 import {
   Button,
+  DateWheelPicker,
+  type DateValue,
   Input,
   InputOTP,
   InputOTPGroup,
@@ -20,6 +22,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "ahooks";
 import {
   AtSign,
+  Cake,
   Camera,
   Check,
   ChevronRight,
@@ -46,7 +49,7 @@ import { parsePhoneNumber } from "libphonenumber-js";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { CurrencySwitcher } from "@/components/currency-switcher";
@@ -69,7 +72,25 @@ import {
 import { AvatarCropper } from "./avatar-cropper";
 import { NotificationPreferences } from "./notification-preferences";
 
-type DrawerKind = "name" | "nick" | "avatar" | "phone" | "unlink" | "signout" | null;
+type DrawerKind =
+  | "name"
+  | "nick"
+  | "birthday"
+  | "avatar"
+  | "phone"
+  | "unlink"
+  | "signout"
+  | null;
+
+/** The `birthday` column is a timestamp; store UTC midnight of the picked day
+ *  so it reads back as the same calendar date in every timezone. */
+const toBirthdayDate = (v: DateValue): Date =>
+  new Date(Date.UTC(v.year, v.month - 1, v.day));
+const fromBirthdayDate = (d: Date): DateValue => ({
+  day: d.getUTCDate(),
+  month: d.getUTCMonth() + 1,
+  year: d.getUTCFullYear(),
+});
 
 /** Local mirror of the avatar so edits feel instant before the query refetches. */
 type AvatarMirror =
@@ -98,6 +119,9 @@ export function ProfileScreen() {
     trpc.profile.updateNickname.mutationOptions(),
   );
   const updateAvatar = useMutation(trpc.profile.updateAvatar.mutationOptions());
+  const updateBirthday = useMutation(
+    trpc.profile.updateBirthday.mutationOptions(),
+  );
   const confirmPhoneChange = useMutation(
     trpc.profile.confirmPhoneChange.mutationOptions(),
   );
@@ -107,6 +131,10 @@ export function ProfileScreen() {
   const [nameMirror, setNameMirror] = useState<string | null>(null);
   const [nickMirror, setNickMirror] = useState<string | null>(null);
   const [avatarMirror, setAvatarMirror] = useState<AvatarMirror | null>(null);
+  // `undefined` = no local override; `null` = locally cleared.
+  const [birthdayMirror, setBirthdayMirror] = useState<Date | null | undefined>(
+    undefined,
+  );
 
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [signingOut, setSigningOut] = useState(false);
@@ -157,7 +185,34 @@ export function ProfileScreen() {
   const googleLinked = me?.googleLinked ?? false;
   const hasRealEmail = me?.hasRealEmail ?? false;
 
+  const birthday =
+    birthdayMirror !== undefined ? birthdayMirror : (me?.birthday ?? null);
+  // Day + month only: the year is nobody's business on a profile row.
+  const birthdayText = birthday ? formatBirthday(birthday, { locale }) : null;
+  const monthLabels = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) =>
+        new Intl.DateTimeFormat(locale, { month: "long" }).format(
+          new Date(2000, i, 1),
+        ),
+      ),
+    [locale],
+  );
+
   const openEdit = (kind: "name" | "nick") => setDrawer(kind);
+
+  const saveBirthday = async (next: Date | null) => {
+    const previous = birthdayMirror;
+    setBirthdayMirror(next);
+    setDrawer(null);
+    try {
+      await updateBirthday.mutateAsync({ birthday: next });
+      invalidateMe();
+    } catch {
+      setBirthdayMirror(previous);
+      toast.error(t("saveFailed"));
+    }
+  };
 
   const saveName = async (value: string) => {
     const next = value.trim();
@@ -374,6 +429,14 @@ export function ProfileScreen() {
           edit
           onClick={() => setDrawer("phone")}
         />
+        <Row
+          icon={Cake}
+          label={t("rowBirthday")}
+          sub={t("birthdaySub")}
+          value={birthdayText ?? t("addBirthday")}
+          edit
+          onClick={() => setDrawer("birthday")}
+        />
         {hasRealEmail ? (
           <Row icon={Mail} label={t("rowEmail")} sub={me?.email ?? undefined}>
             <span className="bg-primary/10 text-primary inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold">
@@ -530,6 +593,31 @@ export function ProfileScreen() {
               <NickForm currentNick={nick} onSave={saveNick} />
             ) : drawer === "name" ? (
               <NameForm defaultValue={displayName} onSave={saveName} />
+            ) : null}
+          </div>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
+
+      {/* ===== BIRTHDAY DRAWER ===== */}
+      <ResponsiveModal
+        open={drawer === "birthday"}
+        onOpenChange={(open) => !open && setDrawer(null)}
+      >
+        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
+          <div className="px-6 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
+              {t("birthdayTitle")}
+            </ResponsiveModalTitle>
+            <ResponsiveModalDescription className="text-muted-foreground mt-1 text-sm">
+              {t("birthdayHint")}
+            </ResponsiveModalDescription>
+            {/* Remounted per open so the wheels always start from the saved value. */}
+            {drawer === "birthday" ? (
+              <BirthdayForm
+                current={birthday}
+                monthLabels={monthLabels}
+                onSave={saveBirthday}
+              />
             ) : null}
           </div>
         </ResponsiveModalContent>
@@ -995,6 +1083,57 @@ function ResendRow({
 }
 
 /** Name editor — react-hook-form + zod; Enter submits via `<form onSubmit>`. */
+/** Default landing spot when no birthday is set yet — mid-wheel, so the year
+ *  drum has room to spin in both directions. */
+const BIRTHDAY_FALLBACK: DateValue = { day: 1, month: 1, year: 2000 };
+
+function BirthdayForm({
+  current,
+  monthLabels,
+  onSave,
+}: {
+  current: Date | null;
+  monthLabels: string[];
+  onSave: (value: Date | null) => void | Promise<void>;
+}) {
+  const t = useTranslations("Profile");
+  const [draft, setDraft] = useState<DateValue>(() =>
+    current ? fromBirthdayDate(current) : BIRTHDAY_FALLBACK,
+  );
+
+  return (
+    <>
+      <DateWheelPicker
+        className="mt-4"
+        value={draft}
+        onValueChange={setDraft}
+        monthLabels={monthLabels}
+        dayLabel={t("dayLabel")}
+        monthLabel={t("monthLabel")}
+        yearLabel={t("yearLabel")}
+      />
+      <Button
+        type="button"
+        variant="gradient"
+        size="lg"
+        onClick={() => void onSave(toBirthdayDate(draft))}
+        className="mt-4 h-14 w-full rounded-full"
+      >
+        {t("done")}
+      </Button>
+      {current ? (
+        <button
+          type="button"
+          onClick={() => void onSave(null)}
+          className="text-muted-foreground mt-3 w-full py-1 text-center text-sm font-semibold"
+        >
+          {t("birthdayRemove")}
+        </button>
+      ) : null}
+    </>
+  );
+}
+
 function NameForm({
   defaultValue,
   onSave,

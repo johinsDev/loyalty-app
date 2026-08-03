@@ -98,6 +98,19 @@ export class ProfileRepository {
       );
   }
 
+  async updateBirthday(
+    orgId: string,
+    customerId: string,
+    birthday: Date | null,
+  ): Promise<void> {
+    await this.db
+      .update(customer)
+      .set({ birthday, updatedAt: new Date() })
+      .where(
+        and(eq(customer.organizationId, orgId), eq(customer.id, customerId)),
+      );
+  }
+
   async updatePhone(
     orgId: string,
     customerId: string,
