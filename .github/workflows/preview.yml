@@ -143,6 +143,10 @@ jobs:
             export PARTYKIT_HOST="partykit.pr-${PR_NUMBER}.t4diverclub.app"
             bun run scripts/cloudflare/deploy-preview-worker.ts
             ENV_KEY=NEXT_PUBLIC_API_URL ENV_VALUE="https://api.pr-${PR_NUMBER}.t4diverclub.app" bun run scripts/vercel/set-preview-env.ts
+            # The FE proxies read the session cookie by name, so they need the
+            # SAME prefix the Worker issues with (see deploy-preview-worker.ts).
+            # Without it they look for a cookie nobody sets and bounce to sign-in.
+            ENV_KEY=AUTH_COOKIE_PREFIX ENV_VALUE="pr-${PR_NUMBER}" bun run scripts/vercel/set-preview-env.ts
             bun run scripts/vercel/alias-preview-domains.ts
           '
 
