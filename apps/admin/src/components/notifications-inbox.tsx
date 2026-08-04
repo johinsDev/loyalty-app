@@ -177,37 +177,40 @@ export function NotificationsInbox() {
                 );
               })}
             </ul>
-            <div className="border-border grid grid-cols-2 border-t">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() =>
-                  tab === "inbox"
-                    ? markAllRead.mutate(undefined)
-                    : archiveAll.mutate(undefined)
-                }
-                className="border-border text-muted-foreground hover:text-foreground border-r py-3 text-center text-sm font-semibold disabled:opacity-50"
-              >
-                {tab === "inbox" ? t("markAllRead") : t("archiveAll")}
-              </button>
+            {/* The inbox can be cleared two ways; the archive can only be
+                browsed — "archive all" there would be a no-op with a
+                misleading label. */}
+            <div
+              className={`border-border grid border-t ${tab === "inbox" ? "grid-cols-3" : "grid-cols-1"}`}
+            >
+              {tab === "inbox" ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => markAllRead.mutate(undefined)}
+                    className="border-border text-muted-foreground hover:text-foreground border-r py-3 text-center text-xs font-semibold disabled:opacity-50"
+                  >
+                    {t("markAllRead")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => archive.mutate({ ids: rows.map((r) => r.id) })}
+                    className="border-border text-muted-foreground hover:text-foreground border-r py-3 text-center text-xs font-semibold disabled:opacity-50"
+                  >
+                    {t("archiveAll")}
+                  </button>
+                </>
+              ) : null}
               <Link
                 href="/notifications"
                 onClick={() => setOpen(false)}
-                className="text-muted-foreground hover:text-foreground py-3 text-center text-sm font-semibold"
+                className="text-muted-foreground hover:text-foreground py-3 text-center text-xs font-semibold"
               >
                 {t("viewAll")}
               </Link>
             </div>
-            {tab === "inbox" ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => archive.mutate({ ids: rows.map((r) => r.id) })}
-                className="border-border text-muted-foreground hover:text-foreground w-full border-t py-3 text-center text-sm font-semibold disabled:opacity-50"
-              >
-                {t("archiveAll")}
-              </button>
-            ) : null}
           </>
         )}
       </PopoverContent>

@@ -54,25 +54,28 @@ export function severityTone(severity: string): string {
 
 export { CheckCircle2 };
 
+/** Object href for the localized `Link`. */
+export type EntityHref = { pathname: string; params: { id: string } };
+
 /**
- * Where a row's "go to the thing" link points. Returns a store-scoped path
- * (the admin `Link` injects the `[storeId]` segment itself), or null when the
- * alert has no entity to visit.
+ * Where a row's "go to the thing" link points. Returns the **object** form the
+ * localized `Link` needs — a plain interpolated string throws
+ * "Dynamic href found in <Link> while using the /app router". The `[storeId]`
+ * segment is injected by `@/i18n/nav`.
+ *
+ * Null when the alert has no entity to visit, or when the entity has no detail
+ * screen of its own (campaigns and employees are edited in place).
  */
 export function entityHref(
   entityType: string | null,
   entityId: string | null,
-): string | null {
+): EntityHref | null {
   if (!entityType || !entityId) return null;
   switch (entityType) {
     case "customer":
-      return `/customers/${entityId}`;
+      return { pathname: "/customers/[id]", params: { id: entityId } };
     case "purchase":
-      return `/purchases/${entityId}`;
-    case "campaign":
-      return `/campaigns/${entityId}`;
-    case "employee":
-      return `/employees/${entityId}`;
+      return { pathname: "/purchases/[id]", params: { id: entityId } };
     default:
       return null;
   }

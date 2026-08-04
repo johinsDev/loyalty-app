@@ -1,4 +1,6 @@
 import { type db as Db } from "@loyalty/db";
+
+import { ADMIN_ALERTS } from "../admin-notifications/catalog";
 import { TRPCError } from "@trpc/server";
 
 import { managerProcedure, orgId, protectedProcedure, rateLimit, router, staffProcedure } from "../../trpc";
@@ -130,7 +132,10 @@ export const notificationsRouter = router({
         return {
           notificationKey: key,
           enabled: row?.enabled ?? true,
-          channels: row?.channels ?? null,
+          // Default to what the alert actually declares, not null: null would
+          // render as "every channel on" and promise SMS/push that a staff
+          // recipient never receives.
+          channels: row?.channels ?? [...ADMIN_ALERTS[key].channels],
           // Nothing here is protected: an owner may silence any of their own
           // alerts. The inbox channel stays locked on in the UI regardless.
           isProtected: false,

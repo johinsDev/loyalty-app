@@ -32,7 +32,7 @@ import {
   parseAsStringLiteral,
   useQueryState,
 } from "nuqs";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -320,6 +320,16 @@ export function AdminNotificationsView({
     ? entityHref(detail.entityType, detail.entityId)
     : null;
 
+  // Opening an alert is reading it. Keyed on the id (not the object) so the
+  // refetch that follows — which flips `readAt` — doesn't re-fire this.
+  const markedOnOpen = useRef<string | null>(null);
+  useEffect(() => {
+    if (!detail || detail.readAt) return;
+    if (markedOnOpen.current === detail.id) return;
+    markedOnOpen.current = detail.id;
+    markRead.mutate({ id: detail.id });
+  }, [detail, markRead]);
+
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -495,7 +505,6 @@ export function AdminNotificationsView({
         open={Boolean(detail)}
         onOpenChange={(open) => {
           if (!open) void setDetailId(null);
-          else if (detail && !detail.readAt) markRead.mutate({ id: detail.id });
         }}
       >
         <ResponsiveModalContent className="sm:max-w-lg">

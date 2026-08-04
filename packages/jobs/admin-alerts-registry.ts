@@ -42,11 +42,11 @@ export class AdminAlertNotification
   }
 
   via(): ChannelName[] {
-    // The inbox always gets it. Critical alerts also leave the app, because
-    // "someone is impersonating a user" shouldn't wait for the next login.
-    return this.alert.severity === "critical"
-      ? ["database", "mail"]
-      : ["database"];
+    // Declared once in the catalog so the config screen can't advertise a
+    // channel the alert never uses. The inbox is always the floor; critical
+    // alerts also leave the app, because "someone is impersonating a user"
+    // shouldn't wait for the next login.
+    return [...ADMIN_ALERTS[this.alert.type].channels];
   }
 
   toDatabase() {

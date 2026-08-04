@@ -23,6 +23,11 @@ import { useTRPC } from "@/lib/trpc/client";
 
 const CONFIG_CHANNELS = ["push", "mail", "sms", "whatsapp", "database"] as const;
 
+// Staff have no push tokens and often no phone on file, so an operator alert
+// only ever travels by inbox (+ mail when it's critical). Offering the other
+// channels here would be a switch that silently does nothing.
+const TEAM_CHANNELS = ["database", "mail"] as const;
+
 /**
  * Automated-trigger config — the umbrella's "Automatizadas" surface. Each keyed
  * notification is an event-driven message the customer gets automatically; the
@@ -135,6 +140,7 @@ export function AutomatedTriggers() {
             description={tAlertDesc(row.notificationKey)}
             save={save}
             onRequestOff={setConfirmOff}
+            availableChannels={TEAM_CHANNELS}
           />
         ))}
       </div>
@@ -188,17 +194,20 @@ function TriggerCard({
   description,
   save,
   onRequestOff,
+  availableChannels = CONFIG_CHANNELS,
 }: {
   row: ConfigRow;
   name: string;
   description: string;
   save: (key: string, enabled: boolean, channels: string[] | null) => void;
   onRequestOff: (v: { key: string; name: string; channels: string[] | null }) => void;
+  /** Channels this trigger can actually use. Defaults to all customer channels. */
+  availableChannels?: readonly string[];
 }) {
   const t = useTranslations("Campaigns");
 
   // null channels behave as "all declared"; show all as on.
-  const active = new Set(row.channels ?? CONFIG_CHANNELS);
+  const active = new Set(row.channels ?? availableChannels);
   const toggleChannel = (ch: string) => {
         if (ch === "database") return; // Inbox is a permanent record — locked on.
         const next = new Set(active);
@@ -250,7 +259,7 @@ function TriggerCard({
                 {t("automatedChannelsLabel")}
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {CONFIG_CHANNELS.map((ch) => {
+                {availableChannels.map((ch) => {
                   const locked = ch === "database"; // Inbox = permanent record
                   const on = locked || active.has(ch);
           return (

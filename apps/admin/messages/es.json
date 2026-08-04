@@ -2242,7 +2242,8 @@
       "tier-up": "Subió de nivel",
       "tier-down": "Bajó de nivel",
       "tier-near": "Cerca del siguiente nivel",
-      "phone-changed": "Cambio de teléfono"
+      "phone-changed": "Cambio de teléfono",
+      "loyalty-mode": "Cambio de modo de lealtad"
     },
     "triggerDesc": {
       "new-user": "Se envía cuando un cliente se registra por primera vez.",
@@ -2261,7 +2262,8 @@
       "tier-up": "Se envía cuando el cliente sube de nivel.",
       "tier-down": "Se envía cuando el cliente baja de nivel.",
       "tier-near": "Se envía cuando está cerca del siguiente nivel.",
-      "phone-changed": "Aviso cuando cambia su teléfono. Siempre activo por seguridad."
+      "phone-changed": "Aviso cuando cambia su teléfono. Siempre activo por seguridad.",
+      "loyalty-mode": "Se envía cuando cambias entre sellos y puntos."
     },
     "automatedChannelsLabel": "Se envía por:",
     "automatedChannelsHint": "Toca un canal para activarlo o desactivarlo. El Inbox siempre queda como historial.",

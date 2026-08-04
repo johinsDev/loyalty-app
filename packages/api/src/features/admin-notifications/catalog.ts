@@ -56,7 +56,17 @@ export interface AdminAlertDefinition {
   /** Only for `threshold` delivery: the absolute change that earns a row. */
   threshold?: number;
   severity: AdminAlertSeverity;
+  /**
+   * Channels this alert can actually travel on — the single source of truth
+   * shared by the notification's `via()` and the config screen. Staff have no
+   * push tokens and usually no phone, so the inbox is the floor and mail is
+   * the only escalation.
+   */
+  channels: AdminAlertChannel[];
 }
+
+/** Channels an operator alert can use. */
+export type AdminAlertChannel = "database" | "mail";
 
 export const ADMIN_ALERTS: Record<AdminAlertType, AdminAlertDefinition> = {
   "staff-role-changed": {
@@ -64,30 +74,35 @@ export const ADMIN_ALERTS: Record<AdminAlertType, AdminAlertDefinition> = {
     storeScoped: false,
     delivery: "immediate",
     severity: "warning",
+    channels: ["database"],
   },
   "staff-disabled": {
     minRole: ROLES.owner,
     storeScoped: false,
     delivery: "immediate",
     severity: "warning",
+    channels: ["database"],
   },
   "impersonation-started": {
     minRole: ROLES.owner,
     storeScoped: false,
     delivery: "immediate",
     severity: "critical",
+    channels: ["database", "mail"],
   },
   "invite-accepted": {
     minRole: ROLES.owner,
     storeScoped: false,
     delivery: "immediate",
     severity: "success",
+    channels: ["database"],
   },
   "customer-banned": {
     minRole: ROLES.manager,
     storeScoped: false,
     delivery: "immediate",
     severity: "warning",
+    channels: ["database"],
   },
   "points-adjusted": {
     minRole: ROLES.manager,
@@ -95,6 +110,7 @@ export const ADMIN_ALERTS: Record<AdminAlertType, AdminAlertDefinition> = {
     delivery: "threshold",
     threshold: 100,
     severity: "warning",
+    channels: ["database"],
   },
   "stamps-adjusted": {
     minRole: ROLES.manager,
@@ -102,36 +118,42 @@ export const ADMIN_ALERTS: Record<AdminAlertType, AdminAlertDefinition> = {
     delivery: "threshold",
     threshold: 3,
     severity: "warning",
+    channels: ["database"],
   },
   "purchase-voided": {
     minRole: ROLES.manager,
     storeScoped: true,
     delivery: "immediate",
     severity: "warning",
+    channels: ["database"],
   },
   "campaign-finished": {
     minRole: ROLES.manager,
     storeScoped: false,
     delivery: "immediate",
     severity: "success",
+    channels: ["database"],
   },
   "campaign-failures": {
     minRole: ROLES.manager,
     storeScoped: false,
     delivery: "immediate",
     severity: "warning",
+    channels: ["database"],
   },
   "customer-signup": {
     minRole: ROLES.manager,
     storeScoped: true,
     delivery: "digest",
     severity: "info",
+    channels: ["database"],
   },
   "daily-digest": {
     minRole: ROLES.manager,
     storeScoped: false,
     delivery: "cron",
     severity: "info",
+    channels: ["database"],
   },
 };
 

@@ -2242,7 +2242,8 @@
       "tier-up": "Tier up",
       "tier-down": "Tier down",
       "tier-near": "Near next tier",
-      "phone-changed": "Phone changed"
+      "phone-changed": "Phone changed",
+      "loyalty-mode": "Loyalty mode changed"
     },
     "triggerDesc": {
       "new-user": "Sent when a customer signs up for the first time.",
@@ -2261,7 +2262,8 @@
       "tier-up": "Sent when the customer moves up a tier.",
       "tier-down": "Sent when the customer moves down a tier.",
       "tier-near": "Sent when they're close to the next tier.",
-      "phone-changed": "Alert when their phone changes. Always on for security."
+      "phone-changed": "Alert when their phone changes. Always on for security.",
+      "loyalty-mode": "Sent when you switch between stamps and points."
     },
     "automatedChannelsLabel": "Sent via:",
     "automatedChannelsHint": "Tap a channel to turn it on or off. The Inbox always keeps a record.",
