@@ -1630,7 +1630,21 @@
     "archived": "Archived",
     "unarchived": "Unarchived",
     "searchPlaceholder": "Search your alerts…",
-    "total": "{count, plural, =0 {No alerts} one {# alert} other {# alerts}}"
+    "total": "{count, plural, =0 {No alerts} one {# alert} other {# alerts}}",
+    "typeDesc": {
+      "staff-role-changed": "When someone changes an employee's role.",
+      "staff-disabled": "When an employee is disabled.",
+      "impersonation-started": "When someone signs in as another person.",
+      "invite-accepted": "When someone accepts their team invitation.",
+      "customer-banned": "When a customer is banned.",
+      "points-adjusted": "Large manual points adjustments. Small ones go to the daily summary.",
+      "stamps-adjusted": "Large manual stamp adjustments. Small ones go to the daily summary.",
+      "purchase-voided": "When a purchase is voided and its loyalty reversed.",
+      "campaign-finished": "When a campaign finishes sending.",
+      "campaign-failures": "When a campaign finishes with failed sends.",
+      "customer-signup": "New customers. Counted in the daily summary only.",
+      "daily-digest": "Each day's close: sales, new customers, redemptions and adjustments."
+    }
   },
   "Wizard": {
     "back": "Back",
@@ -2286,7 +2300,9 @@
     "previewEmpty": "Write a message to see the preview.",
     "previewNow": "now",
     "previewTitlePlaceholder": "Message title",
-    "previewBodyPlaceholder": "Your campaign message body goes here."
+    "previewBodyPlaceholder": "Your campaign message body goes here.",
+    "teamAlertsTitle": "To your team",
+    "teamAlertsSubtitle": "Alerts you and your team get in the panel's bell. Customers never see these."
   },
   "Banners": {
     "title": "Banners",

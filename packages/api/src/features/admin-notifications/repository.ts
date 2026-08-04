@@ -2,9 +2,13 @@ import type { Role } from "@loyalty/auth/server";
 import type { db as Db } from "@loyalty/db";
 import {
   adminNotification,
+  auditLog,
   campaign,
   customer,
   member,
+  organization,
+  purchase,
+  redemption,
   storeStaff,
   user,
 } from "@loyalty/db/schema";
@@ -378,6 +382,88 @@ export class AdminNotificationRepository
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Counts for the daily digest, over `[from, to)`.
+   *
+   * This is where the events that deliberately never raised their own row end
+   * up: new signups, and adjustments that fell under the alert threshold. If
+   * they weren't summarised here they'd be invisible, which would make the
+   * "keep the inbox quiet" rule a way of losing information rather than
+   * ordering it.
+   */
+  async digestCounts(
+    organizationId: string,
+    from: Date,
+    to: Date,
+  ): Promise<{
+    signups: number;
+    purchases: number;
+    redemptions: number;
+    adjustments: number;
+  }> {
+    const [signups, purchases, redemptions, adjustments] = await Promise.all([
+      this.db
+        .select({ value: count() })
+        .from(customer)
+        .where(
+          and(
+            eq(customer.organizationId, organizationId),
+            gte(customer.createdAt, from),
+            lt(customer.createdAt, to),
+          ),
+        ),
+      this.db
+        .select({ value: count() })
+        .from(purchase)
+        .where(
+          and(
+            eq(purchase.organizationId, organizationId),
+            gte(purchase.createdAt, from),
+            lt(purchase.createdAt, to),
+            isNull(purchase.voidedAt),
+          ),
+        ),
+      this.db
+        .select({ value: count() })
+        .from(redemption)
+        .where(
+          and(
+            eq(redemption.organizationId, organizationId),
+            gte(redemption.createdAt, from),
+            lt(redemption.createdAt, to),
+          ),
+        ),
+      this.db
+        .select({ value: count() })
+        .from(auditLog)
+        .where(
+          and(
+            eq(auditLog.organizationId, organizationId),
+            gte(auditLog.createdAt, from),
+            lt(auditLog.createdAt, to),
+            inArray(auditLog.type, [
+              "customer_points_adjust",
+              "customer_stamps_adjust",
+            ]),
+          ),
+        ),
+    ]);
+    return {
+      signups: signups[0]?.value ?? 0,
+      purchases: purchases[0]?.value ?? 0,
+      redemptions: redemptions[0]?.value ?? 0,
+      adjustments: adjustments[0]?.value ?? 0,
+    };
+  }
+
+  /** Every org that could receive a digest. */
+  async listOrganizationIds(): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: organization.id })
+      .from(organization);
+    return rows.map((r) => r.id);
   }
 
   /** Retention: archived rows past the window are dropped. */

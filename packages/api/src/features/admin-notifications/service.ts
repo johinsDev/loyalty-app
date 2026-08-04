@@ -104,6 +104,29 @@ export class AdminNotificationService {
     return actorUserId ? users.filter((id) => id !== actorUserId) : users;
   }
 
+  listOrganizationIds(): Promise<string[]> {
+    return this.repo.listOrganizationIds();
+  }
+
+  digestCounts(
+    organizationId: string,
+    from: Date,
+    to: Date,
+  ): Promise<{
+    signups: number;
+    purchases: number;
+    redemptions: number;
+    adjustments: number;
+  }> {
+    return this.repo.digestCounts(organizationId, from, to);
+  }
+
+  /** Retention: drop archived rows older than `days`. */
+  pruneArchived(days: number): Promise<number> {
+    const cutoff = new Date(Date.now() - days * 86_400_000);
+    return this.repo.pruneArchived(cutoff);
+  }
+
   resolveDisplayNames(
     entity: { type: string; id: string } | undefined,
     actorUserId: string | null | undefined,

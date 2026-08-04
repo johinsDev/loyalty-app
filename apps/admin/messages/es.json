@@ -1630,7 +1630,21 @@
     "archived": "Archivadas",
     "unarchived": "Desarchivadas",
     "searchPlaceholder": "Buscar en tus alertas…",
-    "total": "{count, plural, =0 {Sin alertas} one {# alerta} other {# alertas}}"
+    "total": "{count, plural, =0 {Sin alertas} one {# alerta} other {# alertas}}",
+    "typeDesc": {
+      "staff-role-changed": "Cuando alguien cambia el rol de un empleado.",
+      "staff-disabled": "Cuando se inhabilita a un empleado.",
+      "impersonation-started": "Cuando alguien entra a la cuenta de otra persona.",
+      "invite-accepted": "Cuando alguien acepta su invitación al equipo.",
+      "customer-banned": "Cuando se bloquea a un cliente.",
+      "points-adjusted": "Ajustes manuales de puntos grandes. Los chicos van al resumen del día.",
+      "stamps-adjusted": "Ajustes manuales de sellos grandes. Los chicos van al resumen del día.",
+      "purchase-voided": "Cuando se anula una compra y se revierte su lealtad.",
+      "campaign-finished": "Cuando termina de enviarse una campaña.",
+      "campaign-failures": "Cuando una campaña termina con envíos fallidos.",
+      "customer-signup": "Clientes nuevos. Sólo se cuentan en el resumen del día.",
+      "daily-digest": "El cierre de cada día: ventas, clientes nuevos, canjes y ajustes."
+    }
   },
   "Wizard": {
     "back": "Atrás",
@@ -2286,7 +2300,9 @@
     "previewEmpty": "Escribe un mensaje para ver la vista previa.",
     "previewNow": "ahora",
     "previewTitlePlaceholder": "Título del mensaje",
-    "previewBodyPlaceholder": "Aquí va el cuerpo del mensaje de tu campaña."
+    "previewBodyPlaceholder": "Aquí va el cuerpo del mensaje de tu campaña.",
+    "teamAlertsTitle": "A tu equipo",
+    "teamAlertsSubtitle": "Alertas que reciben vos y tu equipo en la campana del panel. No las ven los clientes."
   },
   "Banners": {
     "title": "Banners",

@@ -6,6 +6,7 @@ import { NotificationConfigRepository } from "./config-repository";
 import { DrizzleNotificationPreferences } from "./preferences-repository";
 import { NotificationRepository } from "./repository";
 import {
+  adminAlertKeySchema,
   deleteInputSchema,
   listCustomersInputSchema,
   listMineInputSchema,
@@ -111,6 +112,32 @@ export const notificationsRouter = router({
       };
     });
   }),
+
+  /**
+   * Same shape as `configList`, for the operator-facing alerts. A separate
+   * procedure (not a widened `configList`) so the customer-facing screen can't
+   * accidentally list, or send, an internal alert.
+   */
+  adminConfigList: managerProcedure.query(
+    async ({ ctx }): Promise<NotificationConfigView[]> => {
+      const stored = new Map(
+        (await new NotificationConfigRepository(ctx.db).list(orgId(ctx))).map(
+          (r) => [r.notificationKey, r],
+        ),
+      );
+      return adminAlertKeySchema.options.map((key) => {
+        const row = stored.get(key);
+        return {
+          notificationKey: key,
+          enabled: row?.enabled ?? true,
+          channels: row?.channels ?? null,
+          // Nothing here is protected: an owner may silence any of their own
+          // alerts. The inbox channel stays locked on in the UI regardless.
+          isProtected: false,
+        };
+      });
+    },
+  ),
 
   setConfig: managerProcedure
     .input(setConfigInputSchema)

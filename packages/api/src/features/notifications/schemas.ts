@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ADMIN_ALERT_TYPES } from "../admin-notifications/catalog";
+
 /** Channels a customer can manage a marketing opt-out for in their profile. */
 export const preferenceChannelSchema = z.enum([
   "mail",
@@ -31,6 +33,9 @@ export const notificationKeySchema = z.enum([
   "phone-changed",
   "loyalty-mode",
 ]);
+
+/** Operator-facing alert keys. Configurable in the same screen, same table. */
+export const adminAlertKeySchema = z.enum(ADMIN_ALERT_TYPES);
 
 export const feedFilterSchema = z.enum(["all", "unread"]);
 
@@ -97,8 +102,14 @@ export const configChannelSchema = z.enum([
   "database",
 ]);
 
+/**
+ * Accepts an admin alert key too. The two enums stay separate (an alert must
+ * never be a legal input to `notifications.send`, which blasts customers), but
+ * `notification_config.notificationKey` is free text so one table configures
+ * both audiences with no schema change.
+ */
 export const setConfigInputSchema = z.object({
-  notificationKey: notificationKeySchema,
+  notificationKey: z.union([notificationKeySchema, adminAlertKeySchema]),
   enabled: z.boolean(),
   /** null = use the notification's declared channels. */
   channels: z.array(configChannelSchema).min(1).nullable(),

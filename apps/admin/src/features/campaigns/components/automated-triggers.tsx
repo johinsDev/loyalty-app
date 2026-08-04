@@ -31,10 +31,13 @@ const CONFIG_CHANNELS = ["push", "mail", "sms", "whatsapp", "database"] as const
  */
 export function AutomatedTriggers() {
   const t = useTranslations("Campaigns");
+  const tAlert = useTranslations("Inbox.types");
+  const tAlertDesc = useTranslations("Inbox.typeDesc");
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
   const query = useQuery(trpc.notifications.configList.queryOptions());
+  const adminQuery = useQuery(trpc.notifications.adminConfigList.queryOptions());
   const setConfig = useMutation(trpc.notifications.setConfig.mutationOptions());
   const [search, setSearch] = useState("");
   const [confirmOff, setConfirmOff] = useState<{
@@ -47,8 +50,14 @@ export function AutomatedTriggers() {
     setConfig.mutate(
       { notificationKey: key as never, enabled, channels: channels as never },
       {
-        onSuccess: () =>
-          queryClient.invalidateQueries(trpc.notifications.configList.queryFilter()),
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.notifications.configList.queryFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.notifications.adminConfigList.queryFilter(),
+          );
+        },
         onError: () => toast.error(t("saveError")),
       },
     );
@@ -57,6 +66,9 @@ export function AutomatedTriggers() {
   const q = search.trim().toLowerCase();
   const rows = (query.data ?? []).filter(
     (row) => !q || t(`triggers.${row.notificationKey}`).toLowerCase().includes(q),
+  );
+  const adminRows = (adminQuery.data ?? []).filter(
+    (row) => !q || tAlert(row.notificationKey).toLowerCase().includes(q),
   );
 
   return (
@@ -89,94 +101,42 @@ export function AutomatedTriggers() {
             {t("automatedNoResults")}
           </p>
         ) : null}
-        {rows.map((row) => {
-          const name = t(`triggers.${row.notificationKey}`);
-          // null channels behave as "all declared"; show all as on.
-          const active = new Set(row.channels ?? CONFIG_CHANNELS);
-          const toggleChannel = (ch: string) => {
-            if (ch === "database") return; // Inbox is a permanent record — locked on.
-            const next = new Set(active);
-            if (next.has(ch)) next.delete(ch);
-            else next.add(ch);
-            next.add("database"); // always keep the Inbox record
-            if (next.size === 0) return; // keep at least one
-            save(row.notificationKey, row.enabled, [...next]);
-          };
-          return (
-            <section
-              key={row.notificationKey}
-              className="bg-card border-border rounded-2xl border p-4 shadow-sm"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold">{name}</p>
-                    {row.isProtected ? (
-                      <Badge variant="secondary">{t("triggerAlwaysOn")}</Badge>
-                    ) : null}
-                  </div>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
-                    {t(`triggerDesc.${row.notificationKey}`)}
-                  </p>
-                </div>
-                {row.isProtected ? (
-                  <Switch checked disabled className="mt-0.5 shrink-0" />
-                ) : (
-                  <Switch
-                    checked={row.enabled}
-                    className="mt-0.5 shrink-0"
-                    onCheckedChange={(v) => {
-                      if (v) save(row.notificationKey, true, row.channels);
-                      else
-                        setConfirmOff({
-                          key: row.notificationKey,
-                          name,
-                          channels: row.channels,
-                        });
-                    }}
-                  />
-                )}
-              </div>
+        {rows.map((row) => (
+          <TriggerCard
+            key={row.notificationKey}
+            row={row}
+            name={t(`triggers.${row.notificationKey}`)}
+            description={t(`triggerDesc.${row.notificationKey}`)}
+            save={save}
+            onRequestOff={setConfirmOff}
+          />
+        ))}
+      </div>
 
-              {!row.isProtected && row.enabled ? (
-                <div className="mt-3 border-t border-border pt-3">
-                  <p className="text-muted-foreground mb-2 text-xs font-semibold">
-                    {t("automatedChannelsLabel")}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {CONFIG_CHANNELS.map((ch) => {
-                      const locked = ch === "database"; // Inbox = permanent record
-                      const on = locked || active.has(ch);
-                      return (
-                        <button
-                          key={ch}
-                          type="button"
-                          disabled={locked}
-                          onClick={() => toggleChannel(ch)}
-                          title={locked ? t("automatedInboxLocked") : undefined}
-                          className={cn(
-                            "inline-flex h-8 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition-colors",
-                            on
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border text-muted-foreground hover:bg-muted",
-                            locked && "cursor-default opacity-90",
-                          )}
-                        >
-                          {on ? <Check className="size-3" /> : null}
-                          {t(`cfgChannel.${ch}`)}
-                          {locked ? <Lock className="size-2.5" /> : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="text-muted-foreground/70 mt-2 text-[11px]">
-                    {t("automatedChannelsHint")}
-                  </p>
-                </div>
-              ) : null}
-            </section>
-          );
-        })}
+      {/* Alerts the SHOP's staff receive — a different audience entirely, so
+          it gets its own heading rather than being mixed into the list above. */}
+      <div className="mt-8">
+        <h2 className="font-display text-lg font-semibold tracking-tight">
+          {t("teamAlertsTitle")}
+        </h2>
+        <p className="text-muted-foreground text-sm">{t("teamAlertsSubtitle")}</p>
+      </div>
+      <div className="mt-4 space-y-2.5">
+        {adminQuery.data && adminRows.length === 0 ? (
+          <p className="text-muted-foreground py-8 text-center text-sm">
+            {t("automatedNoResults")}
+          </p>
+        ) : null}
+        {adminRows.map((row) => (
+          <TriggerCard
+            key={row.notificationKey}
+            row={row}
+            name={tAlert(row.notificationKey)}
+            description={tAlertDesc(row.notificationKey)}
+            save={save}
+            onRequestOff={setConfirmOff}
+          />
+        ))}
       </div>
 
       <ResponsiveModal open={confirmOff !== null} onOpenChange={(o) => !o && setConfirmOff(null)}>
@@ -211,4 +171,116 @@ export function AutomatedTriggers() {
       </ResponsiveModal>
     </div>
   );
+}
+
+type ConfigRow = {
+  notificationKey: string;
+  enabled: boolean;
+  channels: string[] | null;
+  isProtected: boolean;
+};
+
+/** One configurable trigger. Shared by both audiences — the only difference
+ *  between a customer notification and a staff alert here is its copy. */
+function TriggerCard({
+  row,
+  name,
+  description,
+  save,
+  onRequestOff,
+}: {
+  row: ConfigRow;
+  name: string;
+  description: string;
+  save: (key: string, enabled: boolean, channels: string[] | null) => void;
+  onRequestOff: (v: { key: string; name: string; channels: string[] | null }) => void;
+}) {
+  const t = useTranslations("Campaigns");
+
+  // null channels behave as "all declared"; show all as on.
+  const active = new Set(row.channels ?? CONFIG_CHANNELS);
+  const toggleChannel = (ch: string) => {
+        if (ch === "database") return; // Inbox is a permanent record — locked on.
+        const next = new Set(active);
+        if (next.has(ch)) next.delete(ch);
+        else next.add(ch);
+        next.add("database"); // always keep the Inbox record
+        if (next.size === 0) return; // keep at least one
+        save(row.notificationKey, row.enabled, [...next]);
+      };
+  return (
+        <section
+          key={row.notificationKey}
+          className="bg-card border-border rounded-2xl border p-4 shadow-sm"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-semibold">{name}</p>
+                {row.isProtected ? (
+                  <Badge variant="secondary">{t("triggerAlwaysOn")}</Badge>
+                ) : null}
+              </div>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                {description}
+              </p>
+            </div>
+            {row.isProtected ? (
+              <Switch checked disabled className="mt-0.5 shrink-0" />
+            ) : (
+              <Switch
+                checked={row.enabled}
+                className="mt-0.5 shrink-0"
+                onCheckedChange={(v) => {
+                  if (v) save(row.notificationKey, true, row.channels);
+                  else
+                    onRequestOff({
+                      key: row.notificationKey,
+                      name,
+                      channels: row.channels,
+                    });
+                }}
+              />
+            )}
+          </div>
+
+          {!row.isProtected && row.enabled ? (
+            <div className="mt-3 border-t border-border pt-3">
+              <p className="text-muted-foreground mb-2 text-xs font-semibold">
+                {t("automatedChannelsLabel")}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {CONFIG_CHANNELS.map((ch) => {
+                  const locked = ch === "database"; // Inbox = permanent record
+                  const on = locked || active.has(ch);
+          return (
+                    <button
+                      key={ch}
+                      type="button"
+                      disabled={locked}
+                      onClick={() => toggleChannel(ch)}
+                      title={locked ? t("automatedInboxLocked") : undefined}
+                      className={cn(
+                        "inline-flex h-8 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition-colors",
+                        on
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:bg-muted",
+                        locked && "cursor-default opacity-90",
+                      )}
+                    >
+                      {on ? <Check className="size-3" /> : null}
+                      {t(`cfgChannel.${ch}`)}
+                      {locked ? <Lock className="size-2.5" /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-muted-foreground/70 mt-2 text-[11px]">
+                {t("automatedChannelsHint")}
+              </p>
+            </div>
+          ) : null}
+        </section>
+  );
+
 }

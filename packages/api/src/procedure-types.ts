@@ -172,6 +172,7 @@ export const PROCEDURE_TYPES: Record<string, ProcedureKind> = {
   "menu.setStatus": "mutation",
   "menu.toggleFavorite": "mutation",
   "menu.upsert": "mutation",
+  "notifications.adminConfigList": "query",
   "notifications.configList": "query",
   "notifications.delete": "mutation",
   "notifications.deleteAll": "mutation",
