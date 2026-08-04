@@ -49,6 +49,8 @@
     "./features/rewards/schemas": "./src/features/rewards/schemas.ts",
     "./features/rewards/format": "./src/features/rewards/format.ts",
     "./features/rewards/templates": "./src/features/rewards/templates.ts",
+    "./features/admin-notifications": "./src/features/admin-notifications/index.ts",
+    "./features/admin-notifications/schemas": "./src/features/admin-notifications/schemas.ts",
     "./procedure-types": "./src/procedure-types.ts"
   },
   "scripts": {
