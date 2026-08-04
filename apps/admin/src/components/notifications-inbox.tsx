@@ -85,7 +85,15 @@ export function NotificationsInbox() {
           <span className="bg-primary absolute top-1.5 right-1.5 size-2 rounded-full" />
         ) : null}
       </PopoverTrigger>
-      <PopoverContent align="center" side="top" className="w-96 rounded-xl p-0">
+      {/* `align="start"` matters: centred on a trigger this close to the
+          viewport edge, collision avoidance shrinks the panel and every line
+          wraps. */}
+      <PopoverContent
+        align="start"
+        side="top"
+        sideOffset={8}
+        className="w-96 rounded-xl p-0"
+      >
         <div className="border-border flex items-center gap-5 border-b px-4">
           <UnderlineTab active={tab === "inbox"} onClick={() => setTab("inbox")}>
             {t("inbox")}
@@ -132,19 +140,24 @@ export function NotificationsInbox() {
                     >
                       <Icon className="size-4" />
                     </span>
+                    {/* Time sits under the message, not beside it: in a panel
+                        this narrow a right-aligned timestamp steals the width
+                        the message needs and everything wraps. */}
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold">
-                        {n.title}
+                      <span className="flex items-center gap-1.5">
+                        {n.readAt ? null : (
+                          <span className="bg-primary size-1.5 flex-none rounded-full" />
+                        )}
+                        <span className="truncate text-sm font-semibold">
+                          {n.title}
+                        </span>
                       </span>
-                      <span className="text-muted-foreground block text-sm leading-relaxed">
+                      <span className="text-muted-foreground line-clamp-2 block text-sm leading-snug">
                         {n.body}
                       </span>
-                    </span>
-                    <span className="text-muted-foreground/70 mt-0.5 flex flex-none items-center gap-1.5 text-xs font-semibold whitespace-nowrap">
-                      {n.readAt ? null : (
-                        <span className="bg-primary size-1.5 rounded-full" />
-                      )}
-                      {formatRelative(n.createdAt, { locale })}
+                      <span className="text-muted-foreground/70 mt-1 block text-xs font-semibold">
+                        {formatRelative(n.createdAt, { locale })}
+                      </span>
                     </span>
                   </>
                 );
@@ -191,7 +204,7 @@ export function NotificationsInbox() {
                     onClick={() => markAllRead.mutate(undefined)}
                     className="border-border text-muted-foreground hover:text-foreground border-r py-3 text-center text-xs font-semibold disabled:opacity-50"
                   >
-                    {t("markAllRead")}
+                    {t("markAllReadShort")}
                   </button>
                   <button
                     type="button"

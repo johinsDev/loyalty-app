@@ -127,20 +127,24 @@ export const notificationsRouter = router({
           (r) => [r.notificationKey, r],
         ),
       );
-      return adminAlertKeySchema.options.map((key) => {
-        const row = stored.get(key);
-        return {
-          notificationKey: key,
-          enabled: row?.enabled ?? true,
-          // Default to what the alert actually declares, not null: null would
-          // render as "every channel on" and promise SMS/push that a staff
-          // recipient never receives.
-          channels: row?.channels ?? [...ADMIN_ALERTS[key].channels],
-          // Nothing here is protected: an owner may silence any of their own
-          // alerts. The inbox channel stays locked on in the UI regardless.
-          isProtected: false,
-        };
-      });
+      // Digest-only alerts never emit on their own (the nightly job rolls them
+      // up), so a switch for them would be inert. The digest itself IS listed.
+      return adminAlertKeySchema.options
+        .filter((key) => ADMIN_ALERTS[key].delivery !== "digest")
+        .map((key) => {
+          const row = stored.get(key);
+          return {
+            notificationKey: key,
+            enabled: row?.enabled ?? true,
+            // Default to what the alert declares, not null: null renders as
+            // "every channel on" and promises SMS/push a staff recipient never
+            // receives.
+            channels: row?.channels ?? [...ADMIN_ALERTS[key].channels],
+            // Nothing here is protected: an owner may silence any of their own
+            // alerts. The inbox channel stays locked on in the UI regardless.
+            isProtected: false,
+          };
+        });
     },
   ),
 

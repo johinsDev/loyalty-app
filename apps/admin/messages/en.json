@@ -1644,7 +1644,8 @@
       "campaign-failures": "When a campaign finishes with failed sends.",
       "customer-signup": "New customers. Counted in the daily summary only.",
       "daily-digest": "Each day's close: sales, new customers, redemptions and adjustments."
-    }
+    },
+    "markAllReadShort": "Mark read"
   },
   "Wizard": {
     "back": "Back",
@@ -2243,7 +2244,9 @@
       "tier-down": "Tier down",
       "tier-near": "Near next tier",
       "phone-changed": "Phone changed",
-      "loyalty-mode": "Loyalty mode changed"
+      "loyalty-mode": "Loyalty mode changed",
+      "purchase-receipt": "Purchase receipt",
+      "purchase-voided": "Purchase voided"
     },
     "triggerDesc": {
       "new-user": "Sent when a customer signs up for the first time.",
@@ -2263,7 +2266,9 @@
       "tier-down": "Sent when the customer moves down a tier.",
       "tier-near": "Sent when they're close to the next tier.",
       "phone-changed": "Alert when their phone changes. Always on for security.",
-      "loyalty-mode": "Sent when you switch between stamps and points."
+      "loyalty-mode": "Sent when you switch between stamps and points.",
+      "purchase-receipt": "Sends the customer their purchase detail.",
+      "purchase-voided": "Tells the customer when their purchase is voided."
     },
     "automatedChannelsLabel": "Sent via:",
     "automatedChannelsHint": "Tap a channel to turn it on or off. The Inbox always keeps a record.",

@@ -1637,14 +1637,15 @@
       "impersonation-started": "Cuando alguien entra a la cuenta de otra persona.",
       "invite-accepted": "Cuando alguien acepta su invitación al equipo.",
       "customer-banned": "Cuando se bloquea a un cliente.",
-      "points-adjusted": "Ajustes manuales de puntos grandes. Los chicos van al resumen del día.",
-      "stamps-adjusted": "Ajustes manuales de sellos grandes. Los chicos van al resumen del día.",
+      "points-adjusted": "Ajustes manuales de puntos grandes. Los pequeños van al resumen del día.",
+      "stamps-adjusted": "Ajustes manuales de sellos grandes. Los pequeños van al resumen del día.",
       "purchase-voided": "Cuando se anula una compra y se revierte su lealtad.",
       "campaign-finished": "Cuando termina de enviarse una campaña.",
       "campaign-failures": "Cuando una campaña termina con envíos fallidos.",
       "customer-signup": "Clientes nuevos. Sólo se cuentan en el resumen del día.",
       "daily-digest": "El cierre de cada día: ventas, clientes nuevos, canjes y ajustes."
-    }
+    },
+    "markAllReadShort": "Marcar leídas"
   },
   "Wizard": {
     "back": "Atrás",
@@ -2243,7 +2244,9 @@
       "tier-down": "Bajó de nivel",
       "tier-near": "Cerca del siguiente nivel",
       "phone-changed": "Cambio de teléfono",
-      "loyalty-mode": "Cambio de modo de lealtad"
+      "loyalty-mode": "Cambio de modo de lealtad",
+      "purchase-receipt": "Recibo de compra",
+      "purchase-voided": "Compra anulada"
     },
     "triggerDesc": {
       "new-user": "Se envía cuando un cliente se registra por primera vez.",
@@ -2263,7 +2266,9 @@
       "tier-down": "Se envía cuando el cliente baja de nivel.",
       "tier-near": "Se envía cuando está cerca del siguiente nivel.",
       "phone-changed": "Aviso cuando cambia su teléfono. Siempre activo por seguridad.",
-      "loyalty-mode": "Se envía cuando cambias entre sellos y puntos."
+      "loyalty-mode": "Se envía cuando cambias entre sellos y puntos.",
+      "purchase-receipt": "Se envía el detalle de la compra al cliente.",
+      "purchase-voided": "Se avisa al cliente cuando se anula su compra."
     },
     "automatedChannelsLabel": "Se envía por:",
     "automatedChannelsHint": "Toca un canal para activarlo o desactivarlo. El Inbox siempre queda como historial.",
