@@ -17,6 +17,7 @@ import {
 } from "../test-fixtures";
 
 const who: ResolvedNotifiable = {
+  kind: "customer",
   customerId: "cust-1",
   organizationId: ORG,
   phone: "+5491155555555",

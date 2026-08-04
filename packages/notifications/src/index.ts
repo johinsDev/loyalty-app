@@ -22,6 +22,8 @@ export {
   DatabaseChannel,
   type DatabaseNotificationRepository,
   type DatabaseNotificationInput,
+  type AdminDatabaseNotificationRepository,
+  type AdminDatabaseNotificationInput,
 } from "./channels/database";
 
 export {
@@ -47,17 +49,23 @@ export { resolveChannels } from "./preferences";
 
 export {
   isOptOutable,
+  isUserNotifiable,
   OPT_OUTABLE_CATEGORIES,
+  recipientId,
   type BuiltInChannelName,
   type ChannelName,
   type ChannelResult,
+  type CustomerNotifiable,
   type Notifiable,
   type NotifiableInput,
   type NotificationCategory,
   type NotifierLogLevel,
   type NotifierLogger,
+  type ResolvedCustomerNotifiable,
   type ResolvedNotifiable,
+  type ResolvedUserNotifiable,
   type SendOptions,
   type SendResult,
   type SkipReason,
+  type UserNotifiable,
 } from "./types";

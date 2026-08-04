@@ -42,25 +42,46 @@ export function isOptOutable(category: NotificationCategory): boolean {
   return OPT_OUTABLE_CATEGORIES.has(category);
 }
 
-/**
- * Caller-facing recipient. Either a fully described object or — when only an
- * id is known — the engine hydrates the rest via `NotifiableRepository`.
- * `organizationId` is required because customers are org-scoped.
- */
-export interface Notifiable {
-  customerId: string;
-  organizationId: string;
-  /** Pre-resolved contact info. Optional — the repository fills the gaps. */
+/** Contact fields any recipient may carry. The repository fills the gaps. */
+interface NotifiableContact {
   email?: string | null;
   phone?: string | null;
   name?: string | null;
 }
 
 /**
- * Fully hydrated recipient the channels read from. `phone` is guaranteed
- * (notnull on the `customer` table); `email`/`name` may be null.
+ * A customer of the loyalty program — the original (and by far most common)
+ * recipient. `kind` is optional here so the thousands of existing
+ * `{ customerId, organizationId }` literals keep compiling untouched.
  */
-export interface ResolvedNotifiable {
+export interface CustomerNotifiable extends NotifiableContact {
+  kind?: "customer";
+  customerId: string;
+  organizationId: string;
+}
+
+/**
+ * A staff `user` (owner / manager / cashier) — the recipient of admin alerts.
+ * `storeId` scopes the alert to a branch so the inbox can filter by the store
+ * switcher; null means org-wide.
+ */
+export interface UserNotifiable extends NotifiableContact {
+  kind: "user";
+  userId: string;
+  organizationId: string;
+  storeId?: string | null;
+}
+
+/**
+ * Caller-facing recipient. Either a fully described object or — when only an
+ * id is known — the engine hydrates the rest via `NotifiableRepository`.
+ * `organizationId` is required because both customers and staff are org-scoped.
+ */
+export type Notifiable = CustomerNotifiable | UserNotifiable;
+
+/** Hydrated customer. `phone` is guaranteed (notnull on the `customer` table). */
+export interface ResolvedCustomerNotifiable {
+  kind: "customer";
   customerId: string;
   organizationId: string;
   phone: string;
@@ -68,8 +89,50 @@ export interface ResolvedNotifiable {
   name: string | null;
 }
 
-/** Accepted `send()` targets: a full notifiable, or `{ customerId, organizationId }`. */
+/**
+ * Hydrated staff user. Unlike a customer, **`phone` may be null** — an employee
+ * signs in with email/magic-link and need never register one. Channels that
+ * need it must skip with `no-contact` rather than assume.
+ */
+export interface ResolvedUserNotifiable {
+  kind: "user";
+  userId: string;
+  organizationId: string;
+  storeId: string | null;
+  phone: string | null;
+  email: string | null;
+  name: string | null;
+}
+
+/** Fully hydrated recipient the channels read from. */
+export type ResolvedNotifiable =
+  | ResolvedCustomerNotifiable
+  | ResolvedUserNotifiable;
+
+/** Accepted `send()` targets. */
 export type NotifiableInput = Notifiable;
+
+/** True when the recipient is a staff user rather than a customer. */
+export function isUserNotifiable(
+  n: Notifiable,
+): n is UserNotifiable;
+export function isUserNotifiable(
+  n: ResolvedNotifiable,
+): n is ResolvedUserNotifiable;
+export function isUserNotifiable(
+  n: Notifiable | ResolvedNotifiable,
+): boolean {
+  return n.kind === "user";
+}
+
+/**
+ * The recipient's primary id, whichever entity it is. Channels that address a
+ * recipient by id (push tokens, realtime rooms) go through this instead of
+ * reaching for `customerId`.
+ */
+export function recipientId(n: Notifiable | ResolvedNotifiable): string {
+  return n.kind === "user" ? n.userId : n.customerId;
+}
 
 /** Why a channel did not send. */
 export type SkipReason =
@@ -102,7 +165,8 @@ export interface SendOptions {
 export interface SendResult {
   /** The notification class name (e.g. `NewUserNotification`). */
   notification: string;
-  customerId: string;
+  /** Who it went to — a customer or a staff user. */
+  recipient: { kind: "customer" | "user"; id: string };
   category: NotificationCategory;
   results: ChannelResult[];
   /** True when no channel failed (skips don't count as failures). */

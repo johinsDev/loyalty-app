@@ -1,4 +1,7 @@
-import type { DatabaseNotificationInput } from "./channels/database";
+import type {
+  AdminDatabaseNotificationInput,
+  DatabaseNotificationInput,
+} from "./channels/database";
 import { BaseChannelMessage } from "./messages/base-channel-message";
 import type { SmsContract } from "./messages/contracts";
 import { Notification, type NotificationRenderers } from "./notification";
@@ -6,13 +9,18 @@ import type { NotifiableRepository } from "./notifiable";
 import type { PreferencesRepository } from "./preferences";
 import type {
   ChannelName,
+  CustomerNotifiable,
   Notifiable,
-  ResolvedNotifiable,
+  ResolvedCustomerNotifiable,
+  ResolvedUserNotifiable,
+  UserNotifiable,
 } from "./types";
 
 export const ORG = "org-1";
 
-export function notifiable(overrides: Partial<Notifiable> = {}): Notifiable {
+export function notifiable(
+  overrides: Partial<CustomerNotifiable> = {},
+): CustomerNotifiable {
   return {
     customerId: "cust-1",
     organizationId: ORG,
@@ -23,13 +31,40 @@ export function notifiable(overrides: Partial<Notifiable> = {}): Notifiable {
   };
 }
 
+/** A staff recipient (admin alerts). Phone defaults to null on purpose. */
+export function userNotifiable(
+  overrides: Partial<UserNotifiable> = {},
+): UserNotifiable {
+  return {
+    kind: "user",
+    userId: "user-1",
+    organizationId: ORG,
+    storeId: null,
+    phone: null,
+    email: "duena@example.com",
+    name: "Dueña",
+    ...overrides,
+  };
+}
+
 export class StubNotifiableRepository implements NotifiableRepository {
-  constructor(private readonly rows: Record<string, ResolvedNotifiable>) {}
+  constructor(
+    private readonly rows: Record<string, ResolvedCustomerNotifiable>,
+    private readonly users: Record<string, ResolvedUserNotifiable> = {},
+  ) {}
   async resolve(
     customerId: string,
     organizationId: string,
-  ): Promise<ResolvedNotifiable | null> {
+  ): Promise<ResolvedCustomerNotifiable | null> {
     const row = this.rows[customerId];
+    if (!row || row.organizationId !== organizationId) return null;
+    return row;
+  }
+  async resolveUser(
+    userId: string,
+    organizationId: string,
+  ): Promise<ResolvedUserNotifiable | null> {
+    const row = this.users[userId];
     if (!row || row.organizationId !== organizationId) return null;
     return row;
   }
@@ -90,6 +125,16 @@ export class StubDatabaseRepository {
     this.created.push(input);
     this.#seq += 1;
     return { id: `notif-${this.#seq}` };
+  }
+}
+
+export class StubAdminDatabaseRepository {
+  readonly created: AdminDatabaseNotificationInput[] = [];
+  #seq = 0;
+  async create(input: AdminDatabaseNotificationInput): Promise<{ id: string }> {
+    this.created.push(input);
+    this.#seq += 1;
+    return { id: `admin-notif-${this.#seq}` };
   }
 }
 

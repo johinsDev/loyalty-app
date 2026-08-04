@@ -6,10 +6,11 @@ import type {
   SendOptions,
   SendResult,
 } from "./types";
+import { recipientId } from "./types";
 
 interface RecordedNotification {
   notification: Notification;
-  customerId: string;
+  recipient: { kind: "customer" | "user"; id: string };
   organizationId: string;
   channels: ChannelName[];
 }
@@ -43,9 +44,13 @@ export class FakeNotifier {
       const allow = new Set(opts.onlyChannels);
       channels = channels.filter((c) => allow.has(c));
     }
+    const recipient = {
+      kind: target.kind === "user" ? ("user" as const) : ("customer" as const),
+      id: recipientId(target),
+    };
     this.sent.push({
       notification,
-      customerId: target.customerId,
+      recipient,
       organizationId: target.organizationId,
       channels,
     });
@@ -55,7 +60,7 @@ export class FakeNotifier {
     }));
     return {
       notification: notification.constructor.name,
-      customerId: target.customerId,
+      recipient,
       category: notification.category,
       results,
       ok: true,

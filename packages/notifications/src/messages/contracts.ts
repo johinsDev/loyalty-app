@@ -50,6 +50,14 @@ export interface DatabaseContract {
   title: string;
   body: string;
   data?: Record<string, unknown>;
+  // ── Admin inbox only (ignored when the recipient is a customer) ──
+  /** Row tone in the admin inbox. Defaults to `info`. */
+  severity?: string;
+  /** Deep-link target for the detail panel. */
+  entityType?: string;
+  entityId?: string;
+  /** Overrides the recipient's store scope for this alert. */
+  storeId?: string | null;
 }
 
 /** Maps a built-in channel key to its contract. Used for generic typing. */

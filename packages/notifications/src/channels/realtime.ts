@@ -36,7 +36,15 @@ export class RealtimeChannel implements NotificationChannel {
     const contract = await normalizeContract<RealtimeContract>(
       await render.toRealtime(notifiable),
     );
-    const room = contract.room ?? `customer:${notifiable.customerId}`;
+    // Only a customer has an implicit room. A staff recipient must name one
+    // explicitly — admin alerts publish a single org-wide signal from the job
+    // instead of one frame per recipient, so there is no default here.
+    const room =
+      contract.room ??
+      (notifiable.kind === "user" ? null : `customer:${notifiable.customerId}`);
+    if (!room) {
+      return { channel: this.name, status: "skipped", reason: "no-method" };
+    }
     await this.realtime.publish(room, {
       event: contract.event,
       data: contract.data,
