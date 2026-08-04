@@ -21,6 +21,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  like,
   lt,
   lte,
   ne,
@@ -97,7 +98,14 @@ export class AdminNotificationRepository
   }
 
   #filters(input: AdminAlertsListInput): SQL | undefined {
+    const q = input.q?.trim();
     return and(
+      q
+        ? or(
+            like(adminNotification.title, `%${q}%`),
+            like(adminNotification.body, `%${q}%`),
+          )
+        : undefined,
       input.tab === "archive"
         ? isNotNull(adminNotification.archivedAt)
         : isNull(adminNotification.archivedAt),
