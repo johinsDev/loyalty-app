@@ -1645,7 +1645,8 @@
       "customer-signup": "New customers. Counted in the daily summary only.",
       "daily-digest": "Each day's close: sales, new customers, redemptions and adjustments."
     },
-    "markAllReadShort": "Mark read"
+    "markAllReadShort": "Mark read",
+    "toastAction": "View"
   },
   "Wizard": {
     "back": "Back",

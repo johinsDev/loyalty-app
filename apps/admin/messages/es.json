@@ -1645,7 +1645,8 @@
       "customer-signup": "Clientes nuevos. Sólo se cuentan en el resumen del día.",
       "daily-digest": "El cierre de cada día: ventas, clientes nuevos, canjes y ajustes."
     },
-    "markAllReadShort": "Marcar leídas"
+    "markAllReadShort": "Marcar leídas",
+    "toastAction": "Ver"
   },
   "Wizard": {
     "back": "Atrás",
