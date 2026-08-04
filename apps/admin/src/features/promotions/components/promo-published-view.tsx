@@ -103,7 +103,17 @@ export function PromoPublishedView({ id }: { id: string }) {
   async function archive() {
     try {
       await archiveMut.mutateAsync({ id });
-      await queryClient.invalidateQueries(trpc.promociones.adminList.queryFilter());
+      // This promo's own read too, not just the list: without it, coming back
+      // into the detail served the cached published copy — the archive
+      // confirmation offered itself again on a promo that was already archived.
+      await Promise.all([
+        queryClient.invalidateQueries(trpc.promociones.adminList.queryFilter()),
+        queryClient.invalidateQueries(trpc.promociones.get.queryFilter({ id })),
+      ]);
+      // Close it before leaving: the client router cache keeps this tree alive,
+      // so a dialog left open greets you again — asking to archive a promo that
+      // already is — the next time the row is opened.
+      setArchiveOpen(false);
       toast.success(t("archived", { name: promo?.name ?? "" }));
       router.refresh();
       router.push("/promotions");

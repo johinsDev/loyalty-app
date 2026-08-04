@@ -32,7 +32,11 @@ export const LIST_CACHED_ENTITIES = new Set([
   "customers",
   "purchases",
   "rewards",
-  "promotions",
+  // The router segment is Spanish (`promociones`), and the middleware derives
+  // the entity from the mutation path. Spelling it "promotions" here meant
+  // `promociones.archive` matched nothing, so the version was never bumped and
+  // an archived promo kept reading as published for the whole 60s TTL.
+  "promociones",
   "banners",
   "campaigns",
   "employees",
