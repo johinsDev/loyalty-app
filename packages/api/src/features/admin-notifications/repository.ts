@@ -1,6 +1,13 @@
 import type { Role } from "@loyalty/auth/server";
 import type { db as Db } from "@loyalty/db";
-import { adminNotification, member, storeStaff, user } from "@loyalty/db/schema";
+import {
+  adminNotification,
+  campaign,
+  customer,
+  member,
+  storeStaff,
+  user,
+} from "@loyalty/db/schema";
 import type {
   AdminDatabaseNotificationInput,
   AdminDatabaseNotificationRepository,
@@ -309,6 +316,60 @@ export class AdminNotificationRepository
         ),
       );
     return rows.map((r) => r.userId);
+  }
+
+  /**
+   * Display names for the copy ("Ana le ajustó 500 puntos a Lucía"), resolved
+   * in one place so the job never touches Drizzle. A missing name degrades the
+   * wording; it never fails the alert.
+   */
+  async resolveDisplayNames(
+    entity: { type: string; id: string } | undefined,
+    actorUserId: string | null | undefined,
+  ): Promise<{ entityName: string | null; actorName: string | null }> {
+    const [entityName, actorName] = await Promise.all([
+      entity ? this.#entityName(entity) : Promise.resolve(null),
+      actorUserId ? this.#userName(actorUserId) : Promise.resolve(null),
+    ]);
+    return { entityName, actorName };
+  }
+
+  async #entityName(entity: { type: string; id: string }): Promise<string | null> {
+    try {
+      if (entity.type === "employee") return await this.#userName(entity.id);
+      if (entity.type === "customer") {
+        const rows = await this.db
+          .select({ name: customer.name })
+          .from(customer)
+          .where(eq(customer.id, entity.id))
+          .limit(1);
+        return rows[0]?.name ?? null;
+      }
+      if (entity.type === "campaign") {
+        const rows = await this.db
+          .select({ name: campaign.name })
+          .from(campaign)
+          .where(eq(campaign.id, entity.id))
+          .limit(1);
+        return rows[0]?.name ?? null;
+      }
+    } catch {
+      // Fall through to the generic wording.
+    }
+    return null;
+  }
+
+  async #userName(userId: string): Promise<string | null> {
+    try {
+      const rows = await this.db
+        .select({ name: user.name, email: user.email })
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
+      return rows[0]?.name ?? rows[0]?.email ?? null;
+    } catch {
+      return null;
+    }
   }
 
   /** Retention: archived rows past the window are dropped. */

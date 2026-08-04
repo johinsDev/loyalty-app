@@ -1,3 +1,4 @@
+import { AdminNotificationRepository } from "@loyalty/api/features/admin-notifications";
 import {
   DrizzleNotifiableRepository,
   DrizzleNotificationPreferences,
@@ -39,7 +40,12 @@ function build(): Notifier {
       push: new PushChannel(push),
       whatsapp: new WhatsAppChannel(whatsapp),
       realtime: new RealtimeChannel(realtime),
-      database: new DatabaseChannel(new NotificationRepository(db)),
+      // Two feeds, one channel: customer rows go to `notification`, staff
+      // alerts to `admin_notification`.
+      database: new DatabaseChannel(
+        new NotificationRepository(db),
+        new AdminNotificationRepository(db),
+      ),
     },
     notifiables: new DrizzleNotifiableRepository(db),
     preferences: new DrizzleNotificationPreferences(db),

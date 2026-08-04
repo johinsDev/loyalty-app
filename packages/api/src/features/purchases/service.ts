@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 
 import type { db as Db } from "@loyalty/db";
 
+import { emitAdminAlert } from "../_shared/audit-alert";
 import { earnsPoints, earnsStamps, getLoyaltyConfig } from "../_shared/localize";
 import type { ListResult } from "../_shared/list";
 import type { PurchasesRepository } from "./repository";
@@ -160,6 +161,20 @@ export class PurchasesService {
         payload: { stamps: res.reversal.stamps, points: res.reversal.points },
       })
       .catch(() => {});
+    // …and tell the operators, since a void reverses money and loyalty at once.
+    await emitAdminAlert({
+      organizationId,
+      alertType: "purchase-voided",
+      storeId: res.storeId,
+      actorUserId: userId,
+      entity: { type: "purchase", id: purchaseId },
+      payload: {
+        reason,
+        customerId: res.customerId,
+        stamps: res.reversal.stamps,
+        points: res.reversal.points,
+      },
+    });
     return { voided: true };
   }
 }

@@ -293,6 +293,21 @@ export const sendCampaignTask = task({
 
     if (!p.pulse) await repo.setSendState(p.campaignId, "sent", { sentAt: new Date() });
     const output = { recipients: recipients.length, sent, skipped, failed };
+
+    // Tell the operators how it went. Evergreen/drip pulses stay quiet: they
+    // run every day, and one alert per pulse is exactly the noise this inbox
+    // exists to avoid.
+    if (!p.pulse) {
+      await tasks
+        .trigger("send-admin-alert", {
+          organizationId: p.organizationId,
+          alertType: failed > 0 ? "campaign-failures" : "campaign-finished",
+          entity: { type: "campaign", id: p.campaignId },
+          payload: output,
+        })
+        .catch(() => {});
+    }
+
     logger.info("send-campaign done", output);
     return output;
   },

@@ -1,7 +1,8 @@
-import type { Role } from "@loyalty/auth/server";
+import { rolesAtOrAbove } from "@loyalty/auth/server";
 import { TRPCError } from "@trpc/server";
 
 import type { ListResult } from "../_shared/list";
+import { ADMIN_ALERTS, type AdminAlertType } from "./catalog";
 import type { AdminNotificationRepository } from "./repository";
 import type { AdminAlertListItem, AdminAlertsListInput } from "./schemas";
 
@@ -81,11 +82,32 @@ export class AdminNotificationService {
     return { updated };
   }
 
-  resolveAudience(
+  /**
+   * Who should hear about an alert of this type. The role floor and the
+   * store-scoping rule come from the catalog, so callers (the send job) only
+   * need the type — they never reason about roles themselves.
+   *
+   * `actorUserId` is excluded: nobody needs an alert about their own action.
+   */
+  async audienceFor(
     organizationId: string,
-    roles: Role[],
+    alertType: AdminAlertType,
     storeId: string | null,
+    actorUserId?: string | null,
   ): Promise<string[]> {
-    return this.repo.resolveAudience(organizationId, roles, storeId);
+    const def = ADMIN_ALERTS[alertType];
+    const users = await this.repo.resolveAudience(
+      organizationId,
+      rolesAtOrAbove(def.minRole),
+      def.storeScoped ? storeId : null,
+    );
+    return actorUserId ? users.filter((id) => id !== actorUserId) : users;
+  }
+
+  resolveDisplayNames(
+    entity: { type: string; id: string } | undefined,
+    actorUserId: string | null | undefined,
+  ): Promise<{ entityName: string | null; actorName: string | null }> {
+    return this.repo.resolveDisplayNames(entity, actorUserId);
   }
 }

@@ -1,7 +1,7 @@
-import { recordAudit } from "@loyalty/db";
 import { tasks } from "@trigger.dev/sdk/v3";
 
 import type { RealtimeBinding } from "../../trpc";
+import { recordAuditWithAlert } from "../_shared/audit-alert";
 import type { StampsRepository } from "./repository";
 import type {
   HistoryInput,
@@ -189,7 +189,7 @@ export class StampsService {
       addedByUserId,
       acc,
     });
-    await recordAudit({
+    await recordAuditWithAlert({
       organizationId,
       actorUserId: addedByUserId,
       targetUserId: customerId,

@@ -1,6 +1,8 @@
 import { auth } from "@loyalty/auth/server";
 import type { Role } from "@loyalty/auth/server";
 import { recordAudit } from "@loyalty/db";
+
+import { recordAuditWithAlert } from "../_shared/audit-alert";
 import { TRPCError } from "@trpc/server";
 import { tasks } from "@trigger.dev/sdk/v3";
 
@@ -543,7 +545,7 @@ export class EmployeesService {
       inv.assignedStoreIds ?? [],
     );
     await this.repo.setInvitationStatus(inv.id, "accepted");
-    await recordAudit({
+    await recordAuditWithAlert({
       organizationId: inv.organizationId,
       actorUserId: actor.userId,
       targetUserId: actor.userId,
@@ -564,7 +566,7 @@ export class EmployeesService {
     if (input.rating !== undefined) memberPatch.rating = input.rating;
     if (input.role && input.role !== row.member.role) {
       memberPatch.role = input.role;
-      await recordAudit({
+      await recordAuditWithAlert({
         organizationId: orgId,
         actorUserId: actor.userId,
         targetUserId: row.user.id,
@@ -623,7 +625,7 @@ export class EmployeesService {
       body: { userId: row.user.id, banReason: reason },
       headers: actor.headers,
     });
-    await recordAudit({
+    await recordAuditWithAlert({
       organizationId: orgId,
       actorUserId: actor.userId,
       targetUserId: row.user.id,
@@ -761,7 +763,7 @@ export class EmployeesService {
     if (member && member.role === "owner") {
       throw new TRPCError({ code: "FORBIDDEN" });
     }
-    await recordAudit({
+    await recordAuditWithAlert({
       organizationId: orgId,
       actorUserId: actor.userId,
       targetUserId: userId,
