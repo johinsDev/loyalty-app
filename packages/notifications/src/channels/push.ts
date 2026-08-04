@@ -37,6 +37,11 @@ export class PushChannel implements NotificationChannel {
     if (!render.toPush) {
       return { channel: this.name, status: "skipped", reason: "no-method" };
     }
+    // Push tokens are registered by the customer PWA only — a staff user has
+    // no device to address, so skip rather than send into the void.
+    if (notifiable.kind === "user") {
+      return { channel: this.name, status: "skipped", reason: "not-registered" };
+    }
     const contract = await normalizeContract<PushContract>(
       await render.toPush(notifiable),
     );

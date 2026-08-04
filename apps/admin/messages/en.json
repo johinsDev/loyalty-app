@@ -1582,14 +1582,71 @@
     "title": "Notifications",
     "inbox": "Inbox",
     "archive": "Archive",
-    "empty": "No notifications.",
-    "archiveEmpty": "Nothing archived.",
+    "empty": "All caught up. No pending alerts.",
+    "archiveEmpty": "Nothing archived yet.",
     "archiveAll": "Archive all",
-    "promoLive": "2×1 promo published and pushed to members.",
-    "fraudReplay": "Fraud: same redemption code used 3×.",
-    "campaignSent": "Win-back campaign sent to 128 members.",
-    "capReached": "T4 Norte register hit the daily stamp cap.",
-    "settings": "Notification settings"
+    "markAllRead": "Mark all as read",
+    "unarchive": "Unarchive",
+    "viewAll": "View all",
+    "settings": "Configure alerts",
+    "loading": "Loading…",
+    "severity": {
+      "info": "Info",
+      "success": "All good",
+      "warning": "Heads-up",
+      "critical": "Critical"
+    },
+    "types": {
+      "staff-role-changed": "Role changed",
+      "staff-disabled": "Employee disabled",
+      "impersonation-started": "Impersonation started",
+      "invite-accepted": "New team member",
+      "customer-banned": "Customer banned",
+      "points-adjusted": "Manual points adjustment",
+      "stamps-adjusted": "Manual stamps adjustment",
+      "purchase-voided": "Purchase voided",
+      "campaign-finished": "Campaign sent",
+      "campaign-failures": "Campaign had failures",
+      "customer-signup": "New customer",
+      "daily-digest": "Daily summary"
+    },
+    "entity": {
+      "customer": "View customer",
+      "purchase": "View purchase",
+      "campaign": "View campaign",
+      "employee": "View employee"
+    },
+    "selectAll": "Select all",
+    "selectRow": "Select row",
+    "colAlert": "Alert",
+    "colType": "Type",
+    "colSeverity": "Severity",
+    "colWhen": "When",
+    "colStatus": "Status",
+    "read": "Read",
+    "unread": "Unread",
+    "markRead": "Mark as read",
+    "archiveSelected": "Archive",
+    "archived": "Archived",
+    "unarchived": "Unarchived",
+    "searchPlaceholder": "Search your alerts…",
+    "total": "{count, plural, =0 {No alerts} one {# alert} other {# alerts}}",
+    "typeDesc": {
+      "staff-role-changed": "When someone changes an employee's role.",
+      "staff-disabled": "When an employee is disabled.",
+      "impersonation-started": "When someone signs in as another person.",
+      "invite-accepted": "When someone accepts their team invitation.",
+      "customer-banned": "When a customer is banned.",
+      "points-adjusted": "Large manual points adjustments. Small ones go to the daily summary.",
+      "stamps-adjusted": "Large manual stamp adjustments. Small ones go to the daily summary.",
+      "purchase-voided": "When a purchase is voided and its loyalty reversed.",
+      "campaign-finished": "When a campaign finishes sending.",
+      "campaign-failures": "When a campaign finishes with failed sends.",
+      "customer-signup": "New customers. Counted in the daily summary only.",
+      "daily-digest": "Each day's close: sales, new customers, redemptions and adjustments."
+    },
+    "markAllReadShort": "Mark read",
+    "toastAction": "View"
   },
   "Wizard": {
     "back": "Back",
@@ -2187,7 +2244,10 @@
       "tier-up": "Tier up",
       "tier-down": "Tier down",
       "tier-near": "Near next tier",
-      "phone-changed": "Phone changed"
+      "phone-changed": "Phone changed",
+      "loyalty-mode": "Loyalty mode changed",
+      "purchase-receipt": "Purchase receipt",
+      "purchase-voided": "Purchase voided"
     },
     "triggerDesc": {
       "new-user": "Sent when a customer signs up for the first time.",
@@ -2206,7 +2266,10 @@
       "tier-up": "Sent when the customer moves up a tier.",
       "tier-down": "Sent when the customer moves down a tier.",
       "tier-near": "Sent when they're close to the next tier.",
-      "phone-changed": "Alert when their phone changes. Always on for security."
+      "phone-changed": "Alert when their phone changes. Always on for security.",
+      "loyalty-mode": "Sent when you switch between stamps and points.",
+      "purchase-receipt": "Sends the customer their purchase detail.",
+      "purchase-voided": "Tells the customer when their purchase is voided."
     },
     "automatedChannelsLabel": "Sent via:",
     "automatedChannelsHint": "Tap a channel to turn it on or off. The Inbox always keeps a record.",
@@ -2245,7 +2308,10 @@
     "previewEmpty": "Write a message to see the preview.",
     "previewNow": "now",
     "previewTitlePlaceholder": "Message title",
-    "previewBodyPlaceholder": "Your campaign message body goes here."
+    "previewBodyPlaceholder": "Your campaign message body goes here.",
+    "teamAlertsTitle": "To your team",
+    "teamAlertsSubtitle": "Alerts you and your team get in the panel's bell. Customers never see these.",
+    "teamAlertOffBody": "You and your team stop getting this alert in the bell. You can turn it back on any time."
   },
   "Banners": {
     "title": "Banners",

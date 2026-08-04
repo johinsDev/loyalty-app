@@ -4,6 +4,7 @@
   "main": "src/server.ts",
   "compatibilityDate": "2026-01-01",
   "parties": {
-    "customer": "src/parties/customer.ts"
+    "customer": "src/parties/customer.ts",
+    "org": "src/parties/org.ts"
   }
 }

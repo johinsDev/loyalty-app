@@ -8,7 +8,7 @@ const SECRET = "test-secret-32-bytes-long-padding-pad";
 describe("signTicket + verifyTicket", () => {
   it("round-trips a valid ticket", async () => {
     const ticket = await signTicket({
-      customerId: "c_123",
+      subject: "c_123",
       roomId: "customer:c_123",
       secret: SECRET,
     });
@@ -19,7 +19,7 @@ describe("signTicket + verifyTicket", () => {
   it("returns expiresAt approximately ttl seconds from now", async () => {
     const before = Date.now();
     const ticket = await signTicket({
-      customerId: "c_1",
+      subject: "c_1",
       roomId: "customer:c_1",
       secret: SECRET,
       ttlSeconds: 60,
@@ -31,7 +31,7 @@ describe("signTicket + verifyTicket", () => {
 
   it("rejects when the secret is wrong", async () => {
     const ticket = await signTicket({
-      customerId: "c_1",
+      subject: "c_1",
       roomId: "customer:c_1",
       secret: SECRET,
     });
@@ -42,7 +42,7 @@ describe("signTicket + verifyTicket", () => {
 
   it("rejects when the room id doesn't match", async () => {
     const ticket = await signTicket({
-      customerId: "c_1",
+      subject: "c_1",
       roomId: "customer:c_1",
       secret: SECRET,
     });
@@ -53,7 +53,7 @@ describe("signTicket + verifyTicket", () => {
 
   it("rejects an expired ticket", async () => {
     const ticket = await signTicket({
-      customerId: "c_1",
+      subject: "c_1",
       roomId: "customer:c_1",
       secret: SECRET,
       ttlSeconds: -1, // already expired
@@ -63,15 +63,15 @@ describe("signTicket + verifyTicket", () => {
     ).rejects.toThrow();
   });
 
-  it("requires a customer id", async () => {
+  it("requires a subject", async () => {
     await expect(
-      signTicket({ customerId: "", roomId: "customer:c", secret: SECRET }),
-    ).rejects.toThrow(/customerId/);
+      signTicket({ subject: "", roomId: "customer:c", secret: SECRET }),
+    ).rejects.toThrow(/subject/);
   });
 
   it("requires a secret", async () => {
     await expect(
-      signTicket({ customerId: "c_1", roomId: "customer:c_1", secret: "" }),
+      signTicket({ subject: "c_1", roomId: "customer:c_1", secret: "" }),
     ).rejects.toThrow(/secret/);
   });
 });

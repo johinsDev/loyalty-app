@@ -15,6 +15,7 @@ import type {
   SendOptions,
   SendResult,
 } from "./types";
+import { recipientId } from "./types";
 
 export interface NotifierConfig {
   /** Channels injected by the bootstrap, keyed by name. */
@@ -71,22 +72,32 @@ export class Notifier {
       declared = declared.filter((c) => allow.has(c));
     }
 
-    const allowed = await resolveChannels({
-      declared,
-      category: notification.category,
-      customerId: who.customerId,
-      organizationId: who.organizationId,
-      preferences: this.#preferences,
-    });
+    // Marketing opt-outs are a customer concept: staff never opted into
+    // anything, and an internal alert is not suppressible. For a user
+    // recipient every declared channel is allowed.
+    const allowed =
+      who.kind === "user"
+        ? new Set<ChannelName>(declared)
+        : await resolveChannels({
+            declared,
+            category: notification.category,
+            customerId: who.customerId,
+            organizationId: who.organizationId,
+            preferences: this.#preferences,
+          });
 
     const results = await Promise.all(
       declared.map((name) => this.#sendOne(name, allowed, notification, who)),
     );
 
+    const recipient = {
+      kind: who.kind,
+      id: recipientId(who),
+    } as const;
     const ok = results.every((r) => r.status !== "failed");
     this.#log("info", {
       notification: notification.constructor.name,
-      customerId: who.customerId,
+      recipient,
       category: notification.category,
       results: results.map((r) => ({ channel: r.channel, status: r.status })),
       ok,
@@ -94,7 +105,7 @@ export class Notifier {
 
     return {
       notification: notification.constructor.name,
-      customerId: who.customerId,
+      recipient,
       category: notification.category,
       results,
       ok,
@@ -123,11 +134,43 @@ export class Notifier {
   }
 
   async #resolve(target: NotifiableInput): Promise<ResolvedNotifiable> {
+    if (target.kind === "user") {
+      if (isFullyResolved(target)) {
+        return {
+          kind: "user",
+          userId: target.userId,
+          organizationId: target.organizationId,
+          storeId: target.storeId ?? null,
+          phone: target.phone ?? null,
+          email: target.email ?? null,
+          name: target.name ?? null,
+        };
+      }
+      if (!this.#notifiables.resolveUser) {
+        throw new Error(
+          "Notifiable repository cannot resolve staff users: implement `resolveUser`",
+        );
+      }
+      const resolved = await this.#notifiables.resolveUser(
+        target.userId,
+        target.organizationId,
+      );
+      if (!resolved) {
+        throw new Error(
+          `Notifiable user "${target.userId}" not found in org "${target.organizationId}"`,
+        );
+      }
+      // The caller's store scope wins — the repository knows the person, not
+      // which branch this particular alert is about.
+      return { ...resolved, storeId: target.storeId ?? resolved.storeId };
+    }
+
     if (isFullyResolved(target)) {
       return {
+        kind: "customer",
         customerId: target.customerId,
         organizationId: target.organizationId,
-        phone: target.phone,
+        phone: target.phone as string,
         email: target.email ?? null,
         name: target.name ?? null,
       };

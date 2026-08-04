@@ -7,4 +7,5 @@ export {
   OWNER_ONLY,
   coerceRole,
   isStaffRole,
+  rolesAtOrAbove,
 } from "./roles";

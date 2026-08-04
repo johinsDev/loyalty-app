@@ -1,4 +1,6 @@
 import { type db as Db } from "@loyalty/db";
+
+import { ADMIN_ALERTS } from "../admin-notifications/catalog";
 import { TRPCError } from "@trpc/server";
 
 import { managerProcedure, orgId, protectedProcedure, rateLimit, router, staffProcedure } from "../../trpc";
@@ -6,6 +8,7 @@ import { NotificationConfigRepository } from "./config-repository";
 import { DrizzleNotificationPreferences } from "./preferences-repository";
 import { NotificationRepository } from "./repository";
 import {
+  adminAlertKeySchema,
   deleteInputSchema,
   listCustomersInputSchema,
   listMineInputSchema,
@@ -111,6 +114,39 @@ export const notificationsRouter = router({
       };
     });
   }),
+
+  /**
+   * Same shape as `configList`, for the operator-facing alerts. A separate
+   * procedure (not a widened `configList`) so the customer-facing screen can't
+   * accidentally list, or send, an internal alert.
+   */
+  adminConfigList: managerProcedure.query(
+    async ({ ctx }): Promise<NotificationConfigView[]> => {
+      const stored = new Map(
+        (await new NotificationConfigRepository(ctx.db).list(orgId(ctx))).map(
+          (r) => [r.notificationKey, r],
+        ),
+      );
+      // Digest-only alerts never emit on their own (the nightly job rolls them
+      // up), so a switch for them would be inert. The digest itself IS listed.
+      return adminAlertKeySchema.options
+        .filter((key) => ADMIN_ALERTS[key].delivery !== "digest")
+        .map((key) => {
+          const row = stored.get(key);
+          return {
+            notificationKey: key,
+            enabled: row?.enabled ?? true,
+            // Default to what the alert declares, not null: null renders as
+            // "every channel on" and promises SMS/push a staff recipient never
+            // receives.
+            channels: row?.channels ?? [...ADMIN_ALERTS[key].channels],
+            // Nothing here is protected: an owner may silence any of their own
+            // alerts. The inbox channel stays locked on in the UI regardless.
+            isProtected: false,
+          };
+        });
+    },
+  ),
 
   setConfig: managerProcedure
     .input(setConfigInputSchema)

@@ -35,6 +35,7 @@ const STORE_SCOPED = new Set([
   "employees",
   "settings",
   "shortlinks",
+  "notifications",
 ]);
 
 type HrefObject = {

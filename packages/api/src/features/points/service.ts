@@ -1,8 +1,8 @@
-import { recordAudit } from "@loyalty/db";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { TRPCError } from "@trpc/server";
 
 import type { RealtimeBinding } from "../../trpc";
+import { recordAuditWithAlert } from "../_shared/audit-alert";
 import {
   EARN_PER,
   EARN_POINTS,
@@ -304,7 +304,7 @@ export class PointsService {
     addedByUserId: string,
   ): Promise<{ balance: number }> {
     const res = await this.adjust(organizationId, customerId, points, reason, { addedByUserId });
-    await recordAudit({
+    await recordAuditWithAlert({
       organizationId,
       actorUserId: addedByUserId,
       targetUserId: customerId,

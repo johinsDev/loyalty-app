@@ -1,4 +1,8 @@
-import type { Notifiable, ResolvedNotifiable } from "./types";
+import type {
+  Notifiable,
+  ResolvedCustomerNotifiable,
+  ResolvedUserNotifiable,
+} from "./types";
 
 /**
  * Resolves a recipient's contact info from persistent storage. The concrete
@@ -11,21 +15,27 @@ export interface NotifiableRepository {
   resolve(
     customerId: string,
     organizationId: string,
-  ): Promise<ResolvedNotifiable | null>;
+  ): Promise<ResolvedCustomerNotifiable | null>;
+  /**
+   * Same for a staff `user`. Optional so implementations that only ever
+   * notify customers stay valid — the notifier raises a clear error if a
+   * `kind: "user"` recipient arrives without it.
+   */
+  resolveUser?(
+    userId: string,
+    organizationId: string,
+  ): Promise<ResolvedUserNotifiable | null>;
 }
 
 /**
  * True when a `Notifiable` already carries every field a channel might need,
- * so the engine can skip the repository lookup. `phone` is mandatory on the
- * resolved shape, so a missing phone always forces a lookup.
+ * so the engine can skip the repository lookup. For customers `phone` is
+ * mandatory on the resolved shape, so a missing phone always forces a lookup;
+ * for staff users a null phone is legitimate, but it must be stated explicitly
+ * (`undefined` still means "go look it up").
  */
-export function isFullyResolved(
-  n: Notifiable,
-): n is Notifiable & ResolvedNotifiable {
-  return (
-    typeof n.phone === "string" &&
-    n.phone.length > 0 &&
-    n.email !== undefined &&
-    n.name !== undefined
-  );
+export function isFullyResolved(n: Notifiable): boolean {
+  if (n.email === undefined || n.name === undefined) return false;
+  if (n.kind === "user") return n.phone !== undefined;
+  return typeof n.phone === "string" && n.phone.length > 0;
 }

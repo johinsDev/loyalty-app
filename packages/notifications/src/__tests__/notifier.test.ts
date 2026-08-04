@@ -6,7 +6,7 @@ import { RealtimeChannel } from "../channels/realtime";
 import { SmsChannel } from "../channels/sms";
 import { Notification } from "../notification";
 import { Notifier } from "../notifier";
-import type { ChannelName, ResolvedNotifiable } from "../types";
+import type { ChannelName, ResolvedCustomerNotifiable } from "../types";
 import {
   NewUserNotification,
   ORG,
@@ -18,7 +18,8 @@ import {
   fakeRealtime,
 } from "../test-fixtures";
 
-const resolved: ResolvedNotifiable = {
+const resolved: ResolvedCustomerNotifiable = {
+  kind: "customer",
   customerId: "cust-1",
   organizationId: ORG,
   phone: "+5491155555555",
@@ -28,7 +29,7 @@ const resolved: ResolvedNotifiable = {
 
 function buildNotifier(opts?: {
   optedOut?: Set<ChannelName>;
-  rows?: Record<string, ResolvedNotifiable>;
+  rows?: Record<string, ResolvedCustomerNotifiable>;
 }) {
   const mail = recordingGateway();
   const sms = recordingGateway();

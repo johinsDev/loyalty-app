@@ -1,3 +1,4 @@
+import { isStaffRole, type Role } from "@loyalty/auth/server";
 import {
   parseRoom,
   signTicket,
@@ -17,6 +18,10 @@ interface AuthorizedCaller {
    * future hardening: derive this from session metadata.
    */
   customerId: string;
+  /** App role (`member.role`). Only resolved for org rooms. */
+  role?: Role;
+  /** The org the caller belongs to, for org-room authorization. */
+  organizationId?: string | null;
 }
 
 export class RealtimeService {
@@ -42,9 +47,10 @@ export class RealtimeService {
    *   - `customer:<id>` — only the customer themselves (TODO: enforce
    *     once the user↔customer mapping is in place). For now we trust
    *     the caller, same as `pushTokens.register`.
-   *   - `org:<id>` — NOT ALLOWED in v1. The party class doesn't exist
+   *   - `org:<id>` — staff of that org only, enforced (the room is
+   *     shared by every operator, so this one can't be trusted input).
+   *   - `chat:<id>` — NOT ALLOWED in v1. The party class doesn't exist
    *     yet; reject so a typo doesn't accidentally grant access.
-   *   - `chat:<id>` — NOT ALLOWED in v1. Same reason.
    */
   async issueTicket(
     input: IssueTicketInput,
@@ -62,14 +68,40 @@ export class RealtimeService {
       // stays the real customer id.
       const actualRoom = `${kind}:${this.cfg.roomPrefix ?? ""}${body}` as RoomName;
       return signTicket({
-        customerId: body,
+        subject: body,
         roomId: actualRoom,
         secret: this.cfg.secret,
         ttlSeconds: this.cfg.ttlSeconds,
       });
     }
 
-    if (kind === "org" || kind === "chat") {
+    if (kind === "org") {
+      // Unlike the customer branch this is enforced, not trusted: the room is
+      // shared by every operator, so the ticket must prove both that the
+      // caller is staff and that it's THEIR org. `sub` is the user id, which
+      // is what the party sees on the connection.
+      if (!caller.role || !isStaffRole(caller.role)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "org rooms are for staff",
+        });
+      }
+      if (!caller.organizationId || caller.organizationId !== body) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "not your organization",
+        });
+      }
+      const actualRoom = `${kind}:${this.cfg.roomPrefix ?? ""}${body}` as RoomName;
+      return signTicket({
+        subject: caller.userId,
+        roomId: actualRoom,
+        secret: this.cfg.secret,
+        ttlSeconds: this.cfg.ttlSeconds,
+      });
+    }
+
+    if (kind === "chat") {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: `Room kind "${kind}" is not enabled yet. See .claude/skills/realtime/SKILL.md for the rollout plan.`,

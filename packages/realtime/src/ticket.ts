@@ -9,7 +9,8 @@ const DEFAULT_TTL_SECONDS = 300; // 5 minutes
  * The party verifies the same signature with the same secret and
  * confirms the room id matches.
  *
- * - `sub` = customerId (whichever entity is authorized for this room)
+ * - `sub` = the entity authorized for this room: a customer id for
+ *   `customer:` rooms, a staff user id for `org:` rooms
  * - `room` = the room id the ticket grants access to (one ticket = one room)
  * - `exp` = signTime + ttl
  *
@@ -17,15 +18,14 @@ const DEFAULT_TTL_SECONDS = 300; // 5 minutes
  * via the React hook, so there's no UX cost to a 5-minute TTL.
  */
 export async function signTicket(params: {
-  customerId: string;
+  subject: string;
   roomId: RoomName;
   secret: string;
   ttlSeconds?: number;
 }): Promise<RealtimeTicket> {
-  const { customerId, roomId, secret, ttlSeconds = DEFAULT_TTL_SECONDS } =
-    params;
+  const { subject, roomId, secret, ttlSeconds = DEFAULT_TTL_SECONDS } = params;
   if (!secret) throw new Error("signTicket: secret is required");
-  if (!customerId) throw new Error("signTicket: customerId is required");
+  if (!subject) throw new Error("signTicket: subject is required");
 
   const key = new TextEncoder().encode(secret);
   const nowSeconds = Math.floor(Date.now() / 1000);
@@ -33,7 +33,7 @@ export async function signTicket(params: {
 
   const token = await new SignJWT({ room: roomId })
     .setProtectedHeader({ alg: "HS256" })
-    .setSubject(customerId)
+    .setSubject(subject)
     .setIssuedAt(nowSeconds)
     .setExpirationTime(expSeconds)
     .sign(key);

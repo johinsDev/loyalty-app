@@ -90,6 +90,10 @@ export const routing = defineRouting({
       es: "/[storeId]/tiendas/[id]/editar",
       en: "/[storeId]/stores/[id]/edit",
     },
+    "/[storeId]/notifications": {
+      es: "/[storeId]/notificaciones",
+      en: "/[storeId]/notifications",
+    },
     "/[storeId]/employees": { es: "/[storeId]/empleados", en: "/[storeId]/employees" },
     "/[storeId]/employees/new": { es: "/[storeId]/empleados/nuevo", en: "/[storeId]/employees/new" },
     "/[storeId]/employees/audit": {

@@ -1,4 +1,5 @@
 import { addonsRouter } from "../features/addons";
+import { adminNotificationsRouter } from "../features/admin-notifications";
 import { bannersRouter } from "../features/banners";
 import { catalogCategoriesRouter } from "../features/catalog-categories";
 import { campaignsRouter } from "../features/campaigns";
@@ -53,6 +54,7 @@ export const appRouter = router({
   settings: settingsRouter,
   employees: employeesRouter,
   notifications: notificationsRouter,
+  adminNotifications: adminNotificationsRouter,
   promociones: promocionesRouter,
   purchases: purchasesRouter,
   emailOutbox: emailOutboxRouter,

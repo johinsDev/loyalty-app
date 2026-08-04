@@ -36,6 +36,26 @@ export const MANAGER_OR_ABOVE: readonly Role[] = [ROLES.manager, ROLES.owner];
 
 export const OWNER_ONLY: readonly Role[] = [ROLES.owner];
 
+/**
+ * Seniority ladder. Only meaningful for the three operator roles — `customer`
+ * sits below the floor and is never an operator.
+ */
+const RANK: Record<Role, number> = {
+  [ROLES.customer]: 0,
+  [ROLES.staff]: 1,
+  [ROLES.manager]: 2,
+  [ROLES.owner]: 3,
+};
+
+/**
+ * Every operator role at or above `min`, for fanning something out to "managers
+ * and up". Returns concrete roles (not a predicate) so callers can push the
+ * filter down into SQL with an `inArray`.
+ */
+export function rolesAtOrAbove(min: Role): Role[] {
+  return STAFF_OR_ABOVE.filter((r) => RANK[r] >= RANK[min]);
+}
+
 const KNOWN_ROLES: readonly string[] = Object.values(ROLES);
 
 /**

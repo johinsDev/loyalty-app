@@ -1,5 +1,7 @@
 import { auth } from "@loyalty/auth/server";
 import { phoneNumberInUse, recordAudit } from "@loyalty/db";
+
+import { recordAuditWithAlert } from "../_shared/audit-alert";
 import { TRPCError } from "@trpc/server";
 
 import type { ListResult } from "../_shared/list";
@@ -117,7 +119,7 @@ export class CustomersService extends CustomersReadService {
     await adminApi().banUser({ body: { userId: customerId, banReason: reason }, headers: actor.headers });
     // Revoke active sessions so a banned customer is kicked out immediately.
     await adminApi().revokeUserSessions({ body: { userId: customerId }, headers: actor.headers });
-    await recordAudit({
+    await recordAuditWithAlert({
       organizationId: orgId,
       actorUserId: actor.userId,
       targetUserId: customerId,

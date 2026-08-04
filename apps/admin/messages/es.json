@@ -1582,14 +1582,71 @@
     "title": "Notificaciones",
     "inbox": "Bandeja",
     "archive": "Archivadas",
-    "empty": "Sin notificaciones.",
-    "archiveEmpty": "Nada archivado.",
-    "archiveAll": "Archivar todo",
-    "promoLive": "Promo 2×1 publicada y notificada a socios.",
-    "fraudReplay": "Fraude: mismo código de canje usado 3×.",
-    "campaignSent": "Campaña Win-back enviada a 128 socios.",
-    "capReached": "Caja T4 Norte alcanzó el tope diario de sellos.",
-    "settings": "Ajustes de notificaciones"
+    "empty": "Todo al día. Sin alertas pendientes.",
+    "archiveEmpty": "Nada archivado todavía.",
+    "archiveAll": "Archivar todas",
+    "markAllRead": "Marcar todas como leídas",
+    "unarchive": "Desarchivar",
+    "viewAll": "Ver todas",
+    "settings": "Configurar alertas",
+    "loading": "Cargando…",
+    "severity": {
+      "info": "Información",
+      "success": "Todo bien",
+      "warning": "Atención",
+      "critical": "Crítico"
+    },
+    "types": {
+      "staff-role-changed": "Cambio de rol",
+      "staff-disabled": "Empleado inhabilitado",
+      "impersonation-started": "Sesión suplantada",
+      "invite-accepted": "Nuevo miembro del equipo",
+      "customer-banned": "Cliente bloqueado",
+      "points-adjusted": "Ajuste manual de puntos",
+      "stamps-adjusted": "Ajuste manual de sellos",
+      "purchase-voided": "Compra anulada",
+      "campaign-finished": "Campaña enviada",
+      "campaign-failures": "Campaña con fallos",
+      "customer-signup": "Cliente nuevo",
+      "daily-digest": "Resumen del día"
+    },
+    "entity": {
+      "customer": "Ver cliente",
+      "purchase": "Ver compra",
+      "campaign": "Ver campaña",
+      "employee": "Ver empleado"
+    },
+    "selectAll": "Seleccionar todo",
+    "selectRow": "Seleccionar fila",
+    "colAlert": "Alerta",
+    "colType": "Tipo",
+    "colSeverity": "Severidad",
+    "colWhen": "Cuándo",
+    "colStatus": "Estado",
+    "read": "Leídas",
+    "unread": "Sin leer",
+    "markRead": "Marcar como leída",
+    "archiveSelected": "Archivar",
+    "archived": "Archivadas",
+    "unarchived": "Desarchivadas",
+    "searchPlaceholder": "Buscar en tus alertas…",
+    "total": "{count, plural, =0 {Sin alertas} one {# alerta} other {# alertas}}",
+    "typeDesc": {
+      "staff-role-changed": "Cuando alguien cambia el rol de un empleado.",
+      "staff-disabled": "Cuando se inhabilita a un empleado.",
+      "impersonation-started": "Cuando alguien entra a la cuenta de otra persona.",
+      "invite-accepted": "Cuando alguien acepta su invitación al equipo.",
+      "customer-banned": "Cuando se bloquea a un cliente.",
+      "points-adjusted": "Ajustes manuales de puntos grandes. Los pequeños van al resumen del día.",
+      "stamps-adjusted": "Ajustes manuales de sellos grandes. Los pequeños van al resumen del día.",
+      "purchase-voided": "Cuando se anula una compra y se revierte su lealtad.",
+      "campaign-finished": "Cuando termina de enviarse una campaña.",
+      "campaign-failures": "Cuando una campaña termina con envíos fallidos.",
+      "customer-signup": "Clientes nuevos. Sólo se cuentan en el resumen del día.",
+      "daily-digest": "El cierre de cada día: ventas, clientes nuevos, canjes y ajustes."
+    },
+    "markAllReadShort": "Marcar leídas",
+    "toastAction": "Ver"
   },
   "Wizard": {
     "back": "Atrás",
@@ -2187,7 +2244,10 @@
       "tier-up": "Subió de nivel",
       "tier-down": "Bajó de nivel",
       "tier-near": "Cerca del siguiente nivel",
-      "phone-changed": "Cambio de teléfono"
+      "phone-changed": "Cambio de teléfono",
+      "loyalty-mode": "Cambio de modo de lealtad",
+      "purchase-receipt": "Recibo de compra",
+      "purchase-voided": "Compra anulada"
     },
     "triggerDesc": {
       "new-user": "Se envía cuando un cliente se registra por primera vez.",
@@ -2206,7 +2266,10 @@
       "tier-up": "Se envía cuando el cliente sube de nivel.",
       "tier-down": "Se envía cuando el cliente baja de nivel.",
       "tier-near": "Se envía cuando está cerca del siguiente nivel.",
-      "phone-changed": "Aviso cuando cambia su teléfono. Siempre activo por seguridad."
+      "phone-changed": "Aviso cuando cambia su teléfono. Siempre activo por seguridad.",
+      "loyalty-mode": "Se envía cuando cambias entre sellos y puntos.",
+      "purchase-receipt": "Se envía el detalle de la compra al cliente.",
+      "purchase-voided": "Se avisa al cliente cuando se anula su compra."
     },
     "automatedChannelsLabel": "Se envía por:",
     "automatedChannelsHint": "Toca un canal para activarlo o desactivarlo. El Inbox siempre queda como historial.",
@@ -2245,7 +2308,10 @@
     "previewEmpty": "Escribe un mensaje para ver la vista previa.",
     "previewNow": "ahora",
     "previewTitlePlaceholder": "Título del mensaje",
-    "previewBodyPlaceholder": "Aquí va el cuerpo del mensaje de tu campaña."
+    "previewBodyPlaceholder": "Aquí va el cuerpo del mensaje de tu campaña.",
+    "teamAlertsTitle": "A tu equipo",
+    "teamAlertsSubtitle": "Alertas que reciben vos y tu equipo en la campana del panel. No las ven los clientes.",
+    "teamAlertOffBody": "Vos y tu equipo dejarán de recibir esta alerta en la campana. Podés reactivarla cuando quieras."
   },
   "Banners": {
     "title": "Banners",

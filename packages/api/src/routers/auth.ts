@@ -21,7 +21,14 @@ export const authRouter = router({
       cachedRead(ctx, roleCacheKey(userId), ROLE_TTL_SECONDS, () => getUserRole(userId)),
       customerExistsForUser(userId),
     ]);
-    return { user: ctx.session.user, role, isCustomer };
+    // `organizationId` rides along because it's already resolved (and cached)
+    // on the context: the admin needs it client-side to join its `org:` room.
+    return {
+      user: ctx.session.user,
+      role,
+      isCustomer,
+      organizationId: ctx.organizationId ?? null,
+    };
   }),
 
   /**

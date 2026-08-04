@@ -438,7 +438,11 @@ export class PurchasesRepository {
     reason: string,
     userId: string,
   ): Promise<
-    | { customerId: string; reversal: { stamps: number; points: number } }
+    | {
+        customerId: string;
+        storeId: string | null;
+        reversal: { stamps: number; points: number };
+      }
     | "not_found"
     | "already_voided"
   > {
@@ -563,7 +567,11 @@ export class PurchasesRepository {
         })
         .where(eq(purchase.id, purchaseId));
 
-      return { customerId: p.customerId, reversal: { stamps: granted, points: earned } };
+      return {
+        customerId: p.customerId,
+        storeId: p.storeId,
+        reversal: { stamps: granted, points: earned },
+      };
     });
   }
 
