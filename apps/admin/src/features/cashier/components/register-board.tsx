@@ -42,6 +42,7 @@ import { useActiveStoreId } from "../use-active-store";
 
 import { ProductPicker, type PickedLine } from "./product-picker";
 import { ConfirmSale, type ConfirmDiscount } from "./confirm-sale";
+import { DecisionBar, type Decision } from "./decision-bar";
 
 type WalletView = inferRouterOutputs<AppRouter>["stamps"]["walletForCustomer"];
 export type SaleResult = inferRouterOutputs<AppRouter>["stamps"]["recordPurchase"];
@@ -178,9 +179,7 @@ export function RegisterBoard({
   );
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [promoFilter, setPromoFilter] = useState<"customer" | "all">("customer");
-  /** Show every upsell nudge instead of the two best. */
-  const [upsellOpen, setUpsellOpen] = useState(false);
-  /** Show every applicable promo instead of the six biggest. */
+  /** Show the promos the register didn't apply, so one can be swapped in. */
   const [promosOpen, setPromosOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   // The cashier declined the promo outright. Needed because the server picks the
@@ -294,6 +293,8 @@ export function RegisterBoard({
   // get out of the last row's way. Starts true: a list that doesn't overflow
   // never fires a scroll event, and it has nothing to scroll to either.
   const [rewardsAtEnd, setRewardsAtEnd] = useState(true);
+  /** Whether the rewards this cart can't satisfy are expanded. */
+  const [rewardsShowAll, setRewardsShowAll] = useState(false);
   const syncRewardsEnd = (el: HTMLDivElement | null) => {
     if (!el) return;
     const atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
@@ -442,24 +443,43 @@ export function RegisterBoard({
    * the automatic pick is the biggest (and by how much), or the cashier
    * overrode it and is leaving money on the table.
    */
-  const promoChoice = useMemo(() => {
+  /** The best promo the register did NOT apply. `promos` arrives sorted by
+   *  discount desc, so the first non-applied row is the alternative worth
+   *  naming. */
+  const promoRunnerUp = useMemo(() => {
     if (!appliedPromo || promos.length < 2) return null;
-    // `promos` arrives sorted by discount desc, so the first non-applied row is
-    // the best alternative.
-    const other = promos.find((p) => p.promo.id !== appliedPromo.promo.id);
-    if (!other) return null;
-    const delta = appliedPromo.discountCents - other.discountCents;
+    return promos.find((p) => p.promo.id !== appliedPromo.promo.id) ?? null;
+  }, [appliedPromo, promos]);
+
+  /** Two promos worth exactly the same. Neither answer is wrong, so the
+   *  register stops narrating and asks — see the decision bar. */
+  const promoTie =
+    appliedPromo != null &&
+    promoRunnerUp != null &&
+    appliedPromo.discountCents === promoRunnerUp.discountCents;
+
+  /**
+   * Why THIS promo. Only one can ride a purchase and the register picks the
+   * biggest, which turned a followed upsell into a bait and switch: the cashier
+   * adds a drink chasing "$5.000 de descuento" and the ticket says "Segunda
+   * unidad al 50%". It's the better deal, it just never said so.
+   *
+   * This is the sentence the panel leads with — the "tell". A tie says nothing
+   * here on purpose: it's a question, and it lives in the decision bar.
+   */
+  const promoChoice = useMemo(() => {
+    if (!appliedPromo || !promoRunnerUp) return null;
+    const delta = appliedPromo.discountCents - promoRunnerUp.discountCents;
     if (delta > 0)
       return t("promoWhyBest", { name: appliedPromo.promo.name, delta: formatCop(delta) });
     if (delta < 0)
       return t("promoWhySmaller", {
         name: appliedPromo.promo.name,
-        other: other.promo.name,
+        other: promoRunnerUp.promo.name,
         delta: formatCop(-delta),
       });
-    // A tie said nothing at all, which reads as the register having no reason.
-    return t("promoWhyTie", { name: appliedPromo.promo.name, other: other.promo.name });
-  }, [appliedPromo, promos, t]);
+    return null;
+  }, [appliedPromo, promoRunnerUp, t]);
 
   // Same three discounts the cart draws, so the review sheet can't disagree
   // with the line the cashier just read.
@@ -669,8 +689,85 @@ export function RegisterBoard({
     });
   };
 
+  /**
+   * A reward the cart can't satisfy. Only meaningful once a preview actually
+   * succeeded for this cart — otherwise a missing entry would read as "doesn't
+   * apply" while the preview is still in flight.
+   */
+  const rewardIneligible = (rw: AvailableReward) => {
+    const elig = eligByReward.get(rw.rewardId);
+    return cartEvaluated && elig != null && !elig.eligible;
+  };
+
   /** What stays inside the scroller — the applied reward is pinned above it. */
   const listedRewards = rewards.filter((rw) => rw.rewardId !== chosenReward?.rewardId);
+  /** In a typical cart 6 of 11 rewards don't apply. They used to be drawn in
+   *  grey with their reason, burying the ones the cashier can actually offer. */
+  const listedEligible = listedRewards.filter((rw) => !rewardIneligible(rw));
+  const listedIneligible = listedRewards.filter(rewardIneligible);
+  const eligibleCount = rewards.filter((rw) => !rewardIneligible(rw)).length;
+
+  /**
+   * One promo row. `lead` is the applied one: it's the panel's statement, so it
+   * carries the largest type in the panel. The rest only appear once the
+   * cashier opens the list, at data weight.
+   */
+  const renderPromoRow = (a: (typeof promos)[number], lead: boolean) => {
+    const active = a.promo.id === chosenPromoId;
+    return (
+      <button
+        key={a.promo.id}
+        type="button"
+        onClick={() =>
+          setDetailView({
+            title: a.promo.name,
+            lines: [a.promo.shortDescription || a.promo.benefitSummary || ""].filter(
+              Boolean,
+            ) as string[],
+            cost: promoWorth(a),
+            apply: {
+              label: active ? t("promoRemove") : t("promoApply"),
+              run: () => {
+                setCashierPromoId(active ? null : a.promo.id);
+                setPromoOptOut(active);
+              },
+            },
+          })
+        }
+        className={`flex w-full items-center gap-2 rounded-xl border p-2 text-left transition-colors ${
+          active ? "border-primary bg-primary/5" : "border-transparent bg-muted/50 hover:bg-muted"
+        }`}
+      >
+        <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
+          <Tag className="size-3" />
+        </span>
+        {/* Two lines rather than truncating: "Segunda unidad al 5…" cuts off the
+            very number the cashier needs. The amount stays pinned right. */}
+        <span
+          className={`line-clamp-2 min-w-0 flex-1 font-bold ${lead ? "text-sm" : "text-xs"}`}
+        >
+          {a.promo.name}
+          {/* A promo that fired twice looked identical to one that fired once —
+              five drinks under "segunda unidad al 50%" quietly took half off
+              two of them. */}
+          {a.applications > 1 ? (
+            <span className="text-muted-foreground ml-1 font-extrabold">×{a.applications}</span>
+          ) : null}
+        </span>
+        <span
+          className={`flex-none font-extrabold whitespace-nowrap ${lead ? "text-sm" : "text-xs"} ${
+            active ? "text-primary" : "text-muted-foreground"
+          }`}
+        >
+          {promoWorth(a)}
+        </span>
+        {/* Always holds its width. Appearing on select stole space from the
+            name, which re-wrapped and changed the row's height — that was the
+            jump. */}
+        <Check className={`text-primary size-3.5 flex-none ${active ? "" : "invisible"}`} />
+      </button>
+    );
+  };
 
   /** One row of the "listos para canjear" list. Extracted because the selected
    *  reward is rendered twice — pinned above the scroller and, when nothing is
@@ -678,9 +775,8 @@ export function RegisterBoard({
   const renderRewardRow = (rw: AvailableReward) => {
     const active = rw.rewardId === inlineRewardId;
     const elig = eligByReward.get(rw.rewardId);
-    // Ineligible only once a preview actually succeeded for this cart; the
-    // selected reward stays clickable so it can be deselected.
-    const ineligible = cartEvaluated && elig != null && !elig.eligible;
+    // The selected reward stays clickable so it can be deselected.
+    const ineligible = rewardIneligible(rw);
     // Enabled only once it can actually be redeemed, mirroring the promos
     // panel. An empty cart made every reward look clickable when none of them
     // could be applied to anything — a reward always discounts something.
@@ -756,8 +852,8 @@ export function RegisterBoard({
           ? t("birthdayToday")
           : t("birthdaySoon", { days: register.birthdayInDays }),
     });
-  if (rewards.length > 0)
-    tips.push({ icon: <Gift className="size-3.5" />, text: t("tipReadyReward", { count: rewards.length }) });
+  // No "tiene N premios listos" tip: the rewards panel's heading now states
+  // exactly that, and better — it counts the ones this cart can satisfy.
   if (register?.topProduct)
     tips.push({ icon: <Sparkles className="size-3.5" />, text: t("tipFavorite", { product: register.topProduct }) });
 
@@ -799,6 +895,60 @@ export function RegisterBoard({
     rewardSuppressed ||
     // Charging off a stale preview would take the previous cart's money.
     pricingStale;
+
+  /**
+   * Everything the register needs an answer to, in one strip above the columns.
+   *
+   * Blocking first — both entries below also feed `recordDisabled`, so the bar
+   * always explains a disabled Cobrar button rather than leaving the cashier to
+   * guess why it went grey.
+   */
+  const decisions: Decision[] = [];
+  if (pricingStale)
+    decisions.push({
+      id: "stale",
+      tone: "blocking",
+      message: t("pricingStale"),
+      actions: [{ label: t("retry"), onClick: () => void preview.refetch() }],
+    });
+  if (rewardSuppressed)
+    decisions.push({
+      id: "reward-conflict",
+      tone: "blocking",
+      message: t("rewardNotCombinable", { promo: promoDiscountLabel }),
+      actions: [
+        { label: t("removeReward"), onClick: () => setInlineRewardId(null) },
+        {
+          label: t("dropPromoForReward"),
+          onClick: () => {
+            setCashierPromoId(null);
+            setPromoOptOut(true);
+          },
+        },
+      ],
+    });
+  // Only while the register is the one that chose. Once the cashier answers,
+  // asking again — with the two names merely swapped — reads as the register
+  // not having accepted the answer.
+  if (promoTie && cashierPromoId == null && appliedPromo && promoRunnerUp)
+    decisions.push({
+      id: "promo-tie",
+      tone: "choice",
+      message: t("promoTieAsk", {
+        name: appliedPromo.promo.name,
+        other: promoRunnerUp.promo.name,
+      }),
+      actions: [
+        {
+          label: appliedPromo.promo.name,
+          onClick: () => setCashierPromoId(appliedPromo.promo.id),
+        },
+        {
+          label: promoRunnerUp.promo.name,
+          onClick: () => setCashierPromoId(promoRunnerUp.promo.id),
+        },
+      ],
+    });
 
   return (
     <div className="flex flex-col gap-3 p-3 sm:p-4 lg:h-full lg:min-h-0">
@@ -874,30 +1024,30 @@ export function RegisterBoard({
         </div>
       ) : null}
 
+      {/* ── DECISIONS — the one place the register asks for something ────── */}
+      <DecisionBar decisions={decisions} />
+
       {/* ── THREE COLUMNS — each scrolls independently, fills the height ── */}
       <div className="flex flex-col gap-4 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[340px_minmax(0,1fr)_420px] lg:gap-4">
         {/* LEFT — customer intelligence (this column scrolls on desktop) */}
         <div className="space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
-          {/* Ideas de upsell. The server ranks them by what the customer nets,
-              so the strongest pitch is row one. Only the top two are open: this
-              panel used to render every nudge and pushed promos, rewards and
-              tips off the fold, and a cashier mid-order reads one suggestion,
-              not six. */}
-          {/* The reward nudge belongs here too, and doesn't need a promo to be
-              worth saying — so the panel opens for either. */}
-          {upsell.length > 0 || availableRewards.nextReward ? (
+          {/* "Qué ofrecerle" — everything the cashier can say to this customer,
+              in one panel, strongest first: the upsells carry money, the reward
+              nudge is the next thing within reach, and the tips (birthday,
+              favourite) are colour. They used to be two bordered boxes saying
+              overlapping things.
+
+              The server ranks the upsells by what the customer nets, so the
+              strongest pitch is row one, and only the top two are drawn: a
+              cashier mid-order reads one suggestion, not six. */}
+          {upsell.length > 0 || availableRewards.nextReward || tips.length > 0 ? (
             <div className="border-primary/40 bg-primary/[0.06] rounded-3xl border-2 p-3.5 shadow-sm">
-              <div className="text-primary mb-2.5 flex items-center gap-1.5 text-sm font-extrabold">
+              <div className="text-primary mb-2.5 flex items-center gap-1.5 text-sm font-bold">
                 <Lightbulb className="size-4 flex-none" />
-                {t("upsellHeading")}
-                {upsell.length > 0 ? (
-                  <span className="bg-primary/10 ml-auto rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold">
-                    {upsell.length}
-                  </span>
-                ) : null}
+                {t("offerHeading")}
               </div>
               <div className="space-y-1.5">
-                {(upsellOpen ? upsell : upsell.slice(0, 2)).map((u, i) => {
+                {upsell.slice(0, 2).map((u, i) => {
                   const v = upsellView(u);
                   return (
                     <button
@@ -954,14 +1104,21 @@ export function RegisterBoard({
                   </span>
                 </div>
               ) : null}
-              {upsell.length > 2 ? (
-                <button
-                  type="button"
-                  onClick={() => setUpsellOpen((o) => !o)}
-                  className="text-primary mt-2 text-[0.6875rem] font-extrabold underline underline-offset-2"
-                >
-                  {upsellOpen ? t("upsellLess") : t("upsellMore", { count: upsell.length - 2 })}
-                </button>
+              {/* Birthday and favourite drink: worth saying, never worth their
+                  own bordered panel competing with the pitch above. Support
+                  weight, at the bottom. */}
+              {tips.length > 0 ? (
+                <div className="border-primary/15 mt-2.5 space-y-1.5 border-t pt-2.5">
+                  {tips.map((tip) => (
+                    <div
+                      key={tip.text}
+                      className="text-muted-foreground flex items-start gap-2 text-[0.6875rem] leading-snug"
+                    >
+                      <span className="text-primary/70 mt-px flex-none">{tip.icon}</span>
+                      <span className="min-w-0">{tip.text}</span>
+                    </div>
+                  ))}
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -986,9 +1143,12 @@ export function RegisterBoard({
             <div className="space-y-1.5">
               {promoFilter === "customer" ? (
                 // A failed preview leaves the previous cart's promos listed,
-                // with their old amounts, looking applicable.
+                // with their old amounts, looking applicable. Said quietly here
+                // — the decision bar is already shouting it with the retry.
+                // This line only explains why the panel has nothing, so it
+                // doesn't read as "no promo applies".
                 pricingStale ? (
-                  <p className="text-xs leading-snug font-semibold text-red-600 dark:text-red-400">
+                  <p className="text-muted-foreground text-[0.6875rem] leading-snug">
                     {t("promosStale")}
                   </p>
                 ) : promos.length === 0 ? (
@@ -997,94 +1157,48 @@ export function RegisterBoard({
                   </p>
                 ) : (
                   <>
-                    {(promosOpen ? promos : promos.slice(0, 6)).map((a) => {
-                      const active = a.promo.id === chosenPromoId;
-                      return (
-                        <div key={a.promo.id} className="flex items-stretch gap-1">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDetailView({
-                                title: a.promo.name,
-                                lines: [
-                                  a.promo.shortDescription || a.promo.benefitSummary || "",
-                                ].filter(Boolean) as string[],
-                                cost: promoWorth(a),
-                                apply: {
-                                  label: active ? t("promoRemove") : t("promoApply"),
-                                  run: () => {
-                                    setCashierPromoId(active ? null : a.promo.id);
-                                    setPromoOptOut(active);
-                                  },
-                                },
-                              })
-                            }
-                            className={`flex flex-1 items-center gap-2 rounded-xl border p-2 text-left transition-colors ${
-                              active
-                                ? "border-primary bg-primary/5"
-                                : "border-transparent bg-muted/50 hover:bg-muted"
-                            }`}
-                          >
-                            <span className="bg-primary/10 text-primary grid size-6 flex-none place-items-center rounded-lg">
-                              <Tag className="size-3" />
-                            </span>
-                            {/* Two lines rather than truncating: "Segunda unidad
-                                al 5…" cuts off the very number the cashier
-                                needs. The amount stays pinned on the right. */}
-                            <span className="line-clamp-2 min-w-0 flex-1 text-xs font-bold">
-                              {a.promo.name}
-                              {/* A promo that fired twice looked identical to
-                                  one that fired once — five drinks under
-                                  "segunda unidad al 50%" quietly took half off
-                                  two of them. */}
-                              {a.applications > 1 ? (
-                                <span className="text-muted-foreground ml-1 font-extrabold">
-                                  ×{a.applications}
-                                </span>
-                              ) : null}
-                            </span>
-                            <span
-                              className={`flex-none text-xs font-extrabold whitespace-nowrap ${active ? "text-primary" : "text-muted-foreground"}`}
-                            >
-                              {promoWorth(a)}
-                            </span>
-                            {/* Always holds its width. Appearing on select stole
-                                space from the name, which re-wrapped and changed
-                                the row's height — that was the jump. */}
-                            <Check
-                              className={`text-primary size-3.5 flex-none ${active ? "" : "invisible"}`}
-                            />
-                          </button>
-                        </div>
-                      );
-                    })}
-                    {/* Why THIS one. Only one promo can ride a purchase, so the
-                        register silently picks the biggest — which turned a
-                        followed upsell into a bait and switch: the cashier adds
-                        a drink chasing "$5.000 de descuento" and the ticket
-                        comes back saying "Segunda unidad al 50%". It's the
-                        better deal, it just never said so. */}
+                    {/* The register states what it did, in one row, instead of
+                        listing six candidates of equal weight and leaving the
+                        cashier to work out which one won. */}
+                    {appliedPromo ? (
+                      renderPromoRow(appliedPromo, true)
+                    ) : (
+                      <p className="text-muted-foreground text-xs font-semibold">
+                        {t("promoNoneApplied")}
+                      </p>
+                    )}
+                    {/* The reason, promoted from a grey footnote under six rows
+                        to the sentence right under the one that won. */}
                     {promoChoice ? (
-                      <p className="text-muted-foreground pt-1 text-[0.6875rem] leading-snug font-semibold">
+                      <p className="text-foreground pt-0.5 text-xs leading-snug font-semibold">
                         {promoChoice}
                       </p>
                     ) : null}
+                    {/* The rest exist and are reachable, but they don't get to
+                        occupy the panel: a count hints at them without listing
+                        them. */}
                     {promos.length > 1 ? (
-                      <p className="text-muted-foreground/70 pt-0.5 text-[0.6875rem] font-semibold">
-                        {t("promoTapToSwitch")}
-                      </p>
-                    ) : null}
-                    {/* With a full catalog a cart can qualify for a dozen. Six
-                        were drawn and the rest were unreachable — including,
-                        on some carts, ones the cashier would want to switch to. */}
-                    {promos.length > 6 ? (
                       <button
                         type="button"
                         onClick={() => setPromosOpen((o) => !o)}
-                        className="text-primary text-[0.6875rem] font-extrabold underline underline-offset-2"
+                        className="text-primary pt-0.5 text-[0.6875rem] font-bold underline underline-offset-2"
                       >
-                        {promosOpen ? t("promoLess") : t("promoMore", { count: promos.length - 6 })}
+                        {promosOpen
+                          ? t("promoLess")
+                          : t("promoMore", { count: promos.length - (appliedPromo ? 1 : 0) })}
                       </button>
+                    ) : null}
+                    {promosOpen ? (
+                      <div className="space-y-1.5 pt-1">
+                        {/* Interface instruction, so it appears exactly when the
+                            switchable list does — not permanently above it. */}
+                        <p className="text-muted-foreground text-[0.6875rem]">
+                          {t("promoTapToSwitch")}
+                        </p>
+                        {promos
+                          .filter((a) => a.promo.id !== appliedPromo?.promo.id)
+                          .map((a) => renderPromoRow(a, false))}
+                      </div>
                     ) : null}
                   </>
                 )
@@ -1124,10 +1238,15 @@ export function RegisterBoard({
               is itemized: an empty list is a message, not an absence. */}
           {mode === "items" ? (
             <div className="bg-card border-border rounded-3xl border p-4 shadow-sm">
-              <div className="text-primary mb-2 flex items-center gap-1.5 text-xs font-extrabold">
-                <Gift className="size-4" />
-                {t("readyToRedeem")}
-                {rewards.length > 0 ? (
+              {/* The heading states the answer to "is there anything to offer
+                  this customer" instead of making the cashier count a scroller
+                  of eleven rows to find out. */}
+              <div className="text-primary mb-2 flex items-center gap-1.5 text-sm font-bold">
+                <Gift className="size-4 flex-none" />
+                {cartEvaluated && rewards.length > 0
+                  ? t("rewardsApplyCount", { count: eligibleCount, total: rewards.length })
+                  : t("readyToRedeem")}
+                {!cartEvaluated && rewards.length > 0 ? (
                   <span className="bg-primary/10 text-primary ml-auto rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold">
                     {rewards.length}
                   </span>
@@ -1237,14 +1356,32 @@ export function RegisterBoard({
 
                   {/* The pinned one is drawn above; leaving it here too would
                       show the same reward twice. */}
-                  {listedRewards.map(renderRewardRow)}
+                  {listedEligible.map(renderRewardRow)}
+
+                  {/* The ones this cart can't satisfy, with the same row and the
+                      same reason as before — just no longer competing with what
+                      the cashier can actually offer. */}
+                  {listedIneligible.length > 0 ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setRewardsShowAll((s) => !s)}
+                        className="text-primary pt-0.5 text-[0.6875rem] font-bold underline underline-offset-2"
+                      >
+                        {rewardsShowAll
+                          ? t("rewardsLess")
+                          : t("rewardsShowAll", { count: listedIneligible.length })}
+                      </button>
+                      {rewardsShowAll ? listedIneligible.map(renderRewardRow) : null}
+                    </>
+                  ) : null}
                 </div>
                 {/* Scroll affordance: a fade + a tappable down-arrow when the list
                     overflows (the hidden scrollbar didn't read as scrollable).
                     Both disappear at the end of the list — they used to sit on
                     top of the last reward, blurring its name and covering its
                     detail button, which is exactly when they're useless. */}
-                {listedRewards.length > 3 && !rewardsAtEnd ? (
+                {listedEligible.length > 3 && !rewardsAtEnd ? (
                   <>
                     <div className="from-card pointer-events-none absolute inset-x-0 bottom-0 h-8 rounded-b-3xl bg-gradient-to-t to-transparent" />
                     <button
@@ -1270,28 +1407,9 @@ export function RegisterBoard({
             </div>
           ) : null}
 
-          {/* Tips para el cajero */}
-          {tips.length > 0 ? (
-            <div className="border-primary/25 bg-primary/[0.04] rounded-3xl border p-4 shadow-sm">
-              <div className="text-primary mb-2.5 flex items-center gap-1.5 text-sm font-extrabold">
-                <Sparkles className="size-4" />
-                {t("tipsTitle")}
-              </div>
-              <div className="space-y-2">
-                {tips.map((tip) => (
-                  <div
-                    key={tip.text}
-                    className="border-primary/15 bg-card text-foreground flex items-start gap-2.5 rounded-xl border p-2.5 text-sm font-semibold"
-                  >
-                    <span className="bg-primary/10 text-primary mt-0.5 grid size-6 flex-none place-items-center rounded-lg">
-                      {tip.icon}
-                    </span>
-                    <span className="min-w-0 leading-snug">{tip.text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          {/* The cashier tips used to be a third bordered panel here. They live
+              at the foot of "Qué ofrecerle" now, where they read as colour on
+              the pitch instead of competing with it. */}
         </div>
 
         {/* MIDDLE — catalog (products scroll internally) */}
@@ -1685,55 +1803,11 @@ export function RegisterBoard({
                   })}
                 </p>
               ) : null}
-              {/* An exclusive promo and a reward can't share a ticket, and the
-                  server refuses the sale outright. Surfaced here, beside the
-                  money and the button, with both ways out — otherwise the
-                  cashier finds out by pressing Cobrar and getting an error. */}
-              {/* The numbers above are the previous cart's. Said plainly, next
-                  to them, because `keepPreviousData` makes them look current. */}
-              {pricingStale ? (
-                <div className="mt-3 space-y-2 rounded-2xl bg-red-500/15 p-3">
-                  <p className="text-xs leading-snug font-semibold text-red-200">
-                    {t("pricingStale")}
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-10 border-white/20 bg-transparent text-white hover:bg-white/10"
-                    onClick={() => void preview.refetch()}
-                  >
-                    {t("retry")}
-                  </Button>
-                </div>
-              ) : null}
-              {rewardSuppressed ? (
-                <div className="mt-3 space-y-2 rounded-2xl bg-amber-400/10 p-3">
-                  <p className="text-xs leading-snug font-semibold text-amber-200">
-                    {t("rewardNotCombinable", { promo: promoDiscountLabel })}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-10 border-white/20 bg-transparent text-white hover:bg-white/10"
-                      onClick={() => setInlineRewardId(null)}
-                    >
-                      {t("removeReward")}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-10 text-white hover:bg-white/10"
-                      onClick={() => {
-                        setCashierPromoId(null);
-                        setPromoOptOut(true);
-                      }}
-                    >
-                      {t("dropPromoForReward")}
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
+              {/* Both warnings that used to sit here — stale pricing and the
+                  reward/promo conflict — now live in the decision bar above the
+                  columns, with their ways out as buttons. They still disable
+                  Cobrar through `recordDisabled`; only where they're drawn
+                  changed. */}
               <Button
                 size="lg"
                 disabled={recordDisabled}
