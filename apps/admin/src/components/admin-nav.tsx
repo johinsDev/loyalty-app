@@ -45,6 +45,7 @@ import { useCommandPalette } from "@/lib/command-palette-context";
 import { compactNumber } from "@/lib/money";
 import { useTRPC } from "@/lib/trpc/client";
 import { NotificationsInbox } from "@/components/notifications-inbox";
+import { OrgAlertsListener } from "@/features/realtime/components/org-alerts-listener";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Link, usePathname, useRouter } from "@/i18n/nav";
 
@@ -247,6 +248,8 @@ export function AdminNav({ role, name }: { role: Role; name: string }) {
       <div className="border-border flex items-center gap-1 border-t p-2">
         <UserMenu name={name} />
         <NotificationsInbox />
+        {/* Renders nothing; keeps the bell live off the org room. */}
+        <OrgAlertsListener />
       </div>
     </div>
   );

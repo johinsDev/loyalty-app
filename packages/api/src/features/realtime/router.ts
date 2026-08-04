@@ -1,7 +1,15 @@
+import { getUserRole } from "@loyalty/auth/server";
 import { parseRoom, type RoomName } from "@loyalty/realtime";
 import { TRPCError } from "@trpc/server";
 
-import { protectedProcedure, rateLimit, router } from "../../trpc";
+import {
+  cachedRead,
+  protectedProcedure,
+  rateLimit,
+  ROLE_TTL_SECONDS,
+  roleCacheKey,
+  router,
+} from "../../trpc";
 import {
   issueTicketInputSchema,
   publishHelloInputSchema,
@@ -42,11 +50,24 @@ export const realtimeRouter = router({
         secret,
         roomPrefix: process.env.REALTIME_ROOM_PREFIX,
       });
+      // Org rooms are staff-only and enforced, so they need the caller's role.
+      // Resolved lazily — customer tickets are the hot path and shouldn't pay
+      // for a lookup they don't use. Same 60s cache `enforceRole` uses.
+      const role = input.roomId.startsWith("org:")
+        ? await cachedRead(
+            ctx,
+            roleCacheKey(ctx.session.user.id),
+            ROLE_TTL_SECONDS,
+            () => getUserRole(ctx.session.user.id),
+          )
+        : undefined;
       // v1: assume userId == customerId until the user↔customer table
       // mapping lands. Same TODO as pushTokens.register.
       return service.issueTicket(input, {
         userId: ctx.session.user.id,
         customerId: ctx.session.user.id,
+        role,
+        organizationId: ctx.organizationId,
       });
     }),
 
