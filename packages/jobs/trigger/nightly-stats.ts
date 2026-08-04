@@ -19,7 +19,10 @@ export const nightlyStatsTask = schedules.task({
   id: "nightly-stats",
   cron: "0 3 * * *",
   run: async (payload) => {
-    const to = startOfUtcDay(payload.timestamp);
+    // `timestamp` is present on scheduled runs but absent when the task is
+    // fired ad hoc; without the fallback the window becomes Invalid Date and
+    // every count silently comes back zero.
+    const to = startOfUtcDay(payload?.timestamp ?? new Date());
     const from = new Date(to.getTime() - 86_400_000);
 
     const service = new AdminNotificationService(

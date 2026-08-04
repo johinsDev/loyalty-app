@@ -13,7 +13,6 @@ import {
   Input,
   ResponsiveModal,
   ResponsiveModalContent,
-  ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from "@loyalty/ui";
 import {
@@ -23,7 +22,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Archive, ArchiveRestore, Check } from "lucide-react";
+import { Archive, ArchiveRestore } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   parseAsArrayOf,
@@ -47,11 +46,11 @@ import {
   tableParsers,
 } from "@/components/data-table";
 import { useDataTable } from "@/components/data-table/use-data-table";
-import { Link } from "@/i18n/nav";
 import { useStoreScope } from "@/lib/store-scope";
 import { useTRPC } from "@/lib/trpc/client";
 
-import { alertIcon, entityHref, severityTone } from "../alert-meta";
+import { alertIcon, severityTone } from "../alert-meta";
+import { AlertDetail } from "./alert-detail";
 import {
   ALERT_TYPE_VALUES,
   buildAlertsInput,
@@ -316,9 +315,6 @@ export function AdminNotificationsView({
   });
 
   const detail = rows.find((r) => r.id === detailId);
-  const detailHref = detail
-    ? entityHref(detail.entityType, detail.entityId)
-    : null;
 
   // Opening an alert is reading it. Keyed on the id (not the object) so the
   // refetch that follows — which flips `readAt` — doesn't re-fire this.
@@ -507,74 +503,27 @@ export function AdminNotificationsView({
           if (!open) void setDetailId(null);
         }}
       >
-        <ResponsiveModalContent className="sm:max-w-lg">
+        <ResponsiveModalContent
+          showCloseButton={false}
+          mobileClassName="mx-auto w-full max-w-md"
+          desktopClassName="sm:max-w-lg p-0 overflow-hidden"
+        >
+          <ResponsiveModalTitle className="sr-only">
+            {detail?.title ?? t("title")}
+          </ResponsiveModalTitle>
           {detail ? (
-            <>
-              <ResponsiveModalHeader>
-                <ResponsiveModalTitle>{detail.title}</ResponsiveModalTitle>
-              </ResponsiveModalHeader>
-              <div className="space-y-4 px-4 pb-4 sm:px-0">
-                <p className="text-sm leading-relaxed">{detail.body}</p>
-                <dl className="text-muted-foreground grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <dt className="font-semibold">{t("colType")}</dt>
-                    <dd>{tt(detail.type)}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-semibold">{t("colWhen")}</dt>
-                    <dd>{formatDateTime(detail.createdAt, { locale })}</dd>
-                  </div>
-                </dl>
-                <div className="flex flex-wrap gap-2">
-                  {detailHref ? (
-                    <Link
-                      href={detailHref}
-                      className="bg-primary text-primary-foreground inline-flex h-9 items-center rounded-lg px-3 text-sm font-semibold"
-                    >
-                      {t(`entity.${detail.entityType}`)}
-                    </Link>
-                  ) : null}
-                  {detail.archivedAt ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 rounded-lg"
-                      onClick={() => {
-                        unarchive.mutate({ ids: [detail.id] });
-                        void setDetailId(null);
-                      }}
-                    >
-                      <ArchiveRestore className="size-4" />
-                      {t("unarchive")}
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 rounded-lg"
-                      onClick={() => {
-                        archive.mutate({ ids: [detail.id] });
-                        void setDetailId(null);
-                      }}
-                    >
-                      <Archive className="size-4" />
-                      {t("archiveSelected")}
-                    </Button>
-                  )}
-                  {detail.readAt ? null : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-1.5 rounded-lg"
-                      onClick={() => markRead.mutate({ id: detail.id })}
-                    >
-                      <Check className="size-4" />
-                      {t("markRead")}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </>
+            <AlertDetail
+              alert={detail}
+              onNavigate={() => void setDetailId(null)}
+              onArchive={() => {
+                archive.mutate({ ids: [detail.id] });
+                void setDetailId(null);
+              }}
+              onUnarchive={() => {
+                unarchive.mutate({ ids: [detail.id] });
+                void setDetailId(null);
+              }}
+            />
           ) : null}
         </ResponsiveModalContent>
       </ResponsiveModal>

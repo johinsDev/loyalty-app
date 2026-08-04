@@ -107,6 +107,11 @@ function str(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+/** "1 canje" / "3 canjes" — the digest reads as a sentence, not a counter. */
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
 /** Signed amount, so a deduction reads as a deduction. */
 function signed(value: number): string {
   return value > 0 ? `+${value}` : String(value);
@@ -186,12 +191,14 @@ function buildCopy(
       };
     case "daily-digest": {
       const bits = [
-        `${num(p.purchases)} ventas`,
-        `${num(p.signups)} clientes nuevos`,
-        `${num(p.redemptions)} canjes`,
+        plural(num(p.purchases), "venta", "ventas"),
+        plural(num(p.signups), "cliente nuevo", "clientes nuevos"),
+        plural(num(p.redemptions), "canje", "canjes"),
       ];
       const adjustments = num(p.adjustments);
-      if (adjustments > 0) bits.push(`${adjustments} ajustes manuales`);
+      if (adjustments > 0) {
+        bits.push(plural(adjustments, "ajuste manual", "ajustes manuales"));
+      }
       return {
         title: "Resumen del día",
         body: `Ayer: ${bits.join(", ")}.`,

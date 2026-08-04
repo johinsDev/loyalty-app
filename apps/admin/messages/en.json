@@ -2304,7 +2304,8 @@
     "previewTitlePlaceholder": "Message title",
     "previewBodyPlaceholder": "Your campaign message body goes here.",
     "teamAlertsTitle": "To your team",
-    "teamAlertsSubtitle": "Alerts you and your team get in the panel's bell. Customers never see these."
+    "teamAlertsSubtitle": "Alerts you and your team get in the panel's bell. Customers never see these.",
+    "teamAlertOffBody": "You and your team stop getting this alert in the bell. You can turn it back on any time."
   },
   "Banners": {
     "title": "Banners",

@@ -49,6 +49,8 @@ export function AutomatedTriggers() {
     key: string;
     name: string;
     channels: string[] | null;
+    /** Whose messages stop — the wording differs entirely. */
+    audience?: "customers" | "team";
   } | null>(null);
 
   const save = (key: string, enabled: boolean, channels: string[] | null) => {
@@ -141,6 +143,7 @@ export function AutomatedTriggers() {
             save={save}
             onRequestOff={setConfirmOff}
             availableChannels={TEAM_CHANNELS}
+            audience="team"
           />
         ))}
       </div>
@@ -152,7 +155,11 @@ export function AutomatedTriggers() {
               {confirmOff ? t("automatedOffTitle", { name: confirmOff.name }) : ""}
             </ResponsiveModalTitle>
           </ResponsiveModalHeader>
-          <p className="text-muted-foreground px-4 pb-2 text-sm">{t("automatedOffBody")}</p>
+          <p className="text-muted-foreground px-4 pb-2 text-sm">
+            {confirmOff?.audience === "team"
+              ? t("teamAlertOffBody")
+              : t("automatedOffBody")}
+          </p>
           <ResponsiveModalFooter className="gap-3">
             <Button
               type="button"
@@ -195,14 +202,21 @@ function TriggerCard({
   save,
   onRequestOff,
   availableChannels = CONFIG_CHANNELS,
+  audience = "customers",
 }: {
   row: ConfigRow;
   name: string;
   description: string;
   save: (key: string, enabled: boolean, channels: string[] | null) => void;
-  onRequestOff: (v: { key: string; name: string; channels: string[] | null }) => void;
+  onRequestOff: (v: {
+    key: string;
+    name: string;
+    channels: string[] | null;
+    audience?: "customers" | "team";
+  }) => void;
   /** Channels this trigger can actually use. Defaults to all customer channels. */
   availableChannels?: readonly string[];
+  audience?: "customers" | "team";
 }) {
   const t = useTranslations("Campaigns");
 
@@ -247,6 +261,7 @@ function TriggerCard({
                       key: row.notificationKey,
                       name,
                       channels: row.channels,
+                      audience,
                     });
                 }}
               />

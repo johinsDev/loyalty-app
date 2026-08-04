@@ -2304,7 +2304,8 @@
     "previewTitlePlaceholder": "Título del mensaje",
     "previewBodyPlaceholder": "Aquí va el cuerpo del mensaje de tu campaña.",
     "teamAlertsTitle": "A tu equipo",
-    "teamAlertsSubtitle": "Alertas que reciben vos y tu equipo en la campana del panel. No las ven los clientes."
+    "teamAlertsSubtitle": "Alertas que reciben vos y tu equipo en la campana del panel. No las ven los clientes.",
+    "teamAlertOffBody": "Vos y tu equipo dejarán de recibir esta alerta en la campana. Podés reactivarla cuando quieras."
   },
   "Banners": {
     "title": "Banners",
