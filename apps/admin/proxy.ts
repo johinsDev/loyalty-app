@@ -67,7 +67,14 @@ export default function proxy(request: NextRequest) {
 
   if (isPublicPath(pathname)) return intlResponse;
 
-  const session = getSessionCookie(request);
+  // Must match the prefix the Worker issues with (see AUTH_COOKIE_PREFIX in
+  // packages/auth/src/server.ts) — otherwise the proxy looks for a cookie name
+  // nobody sets and bounces every request to sign-in.
+  const session = getSessionCookie(request, {
+    ...(process.env.AUTH_COOKIE_PREFIX && {
+      cookiePrefix: process.env.AUTH_COOKIE_PREFIX,
+    }),
+  });
   if (session) return intlResponse;
 
   const redirectUrl = request.nextUrl.clone();

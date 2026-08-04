@@ -41,6 +41,11 @@ export function PromotionRowActions({ promo }: { promo: PromoActionsRow }) {
   const name = promo.name || t("list.namePlaceholder");
   const invalidate = () => {
     void queryClient.invalidateQueries(trpc.promociones.adminList.queryFilter());
+    // The detail's own read as well, so opening the row after archiving from
+    // here doesn't show a stale published copy.
+    void queryClient.invalidateQueries(
+      trpc.promociones.get.queryFilter({ id: promo.id }),
+    );
     router.refresh();
   };
 

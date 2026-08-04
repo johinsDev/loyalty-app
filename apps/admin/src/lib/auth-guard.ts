@@ -11,6 +11,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
+import { isSignedOut, trpcErrorData } from "./trpc-errors";
+import { log } from "./log";
 import { trpc } from "./trpc/server";
 
 /**
@@ -27,6 +29,34 @@ const viaWorker = !!process.env.NEXT_PUBLIC_API_URL;
 type SessionUser = { id: string; name?: string | null };
 
 /**
+ * Ask the Worker who this is.
+ *
+ * Only `UNAUTHORIZED` means "signed out". Everything else — a 429 from the rate
+ * limiter, a 5xx, a cookie the Worker rejected, a network blip — is an outage,
+ * and it must NOT be reported as a missing session: the guards below turn `null`
+ * into `redirect("/sign-in")`, so swallowing every error here logs the user out
+ * on a server fault and leaves no trace anywhere. That is exactly what made the
+ * preview "logs in, bounces straight back to sign-in" impossible to diagnose.
+ *
+ * So: log it (with the tRPC code + HTTP status, which is the bit you actually
+ * need) and rethrow. An error boundary that Sentry captures beats a silent
+ * logout loop.
+ */
+async function fetchMe() {
+  try {
+    return await (await trpc()).auth.me();
+  } catch (err) {
+    if (isSignedOut(err)) return null;
+    const data = trpcErrorData(err);
+    log.error(
+      { err, code: data?.code, httpStatus: data?.httpStatus },
+      "authGuard.me.failed — NOT signed out; the Worker call failed",
+    );
+    throw err;
+  }
+}
+
+/**
  * Session + role for the current request, resolved **once** and deduped via
  * React `cache()`. The layout chain (`(dashboard)` → `[storeId]`, +`employees`)
  * and pages all gate through this, so what used to be 2–3 independent `auth.me()`
@@ -35,7 +65,7 @@ type SessionUser = { id: string; name?: string | null };
 export const getMe = cache(
   async (): Promise<{ user: SessionUser; role: Role } | null> => {
     if (viaWorker) {
-      const me = await (await trpc()).auth.me().catch(() => null);
+      const me = await fetchMe();
       return me?.user ? { user: me.user, role: me.role } : null;
     }
     const session = await auth.api.getSession({ headers: await headers() });

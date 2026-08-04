@@ -105,6 +105,33 @@ const extraTrustedOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
 // where cookies are already shared across ports).
 const cookieDomain = process.env.AUTH_COOKIE_DOMAIN;
 
+/**
+ * Namespaces the auth cookie names (`__Secure-<prefix>.session_token`).
+ *
+ * Prod scopes its cookie to `.t4diverclub.app`, which matches EVERY subdomain —
+ * including `admin.pr-<n>.t4diverclub.app`. A preview scoping its own cookie to
+ * `.pr-<n>.t4diverclub.app` therefore ends up with two cookies of the same name
+ * in one request; the browser sends both (oldest first, RFC 6265) and the server
+ * reads whichever comes first. When that is prod's token, the preview Worker —
+ * a different database, whose cloned session tokens are scrubbed by the masking
+ * script — rejects it, and the user bounces back to sign-in.
+ *
+ * Previews set this to `pr-<n>` so the names cannot collide. Prod and local dev
+ * leave it unset and keep Better Auth's default prefix, so no existing session
+ * is invalidated.
+ */
+const cookiePrefix = process.env.AUTH_COOKIE_PREFIX;
+
+// ONE `advanced` object. Two conditional spreads would each carry their own
+// `advanced` key and the later one would silently win — the same clobber that
+// dropped `storeSessionInDatabase` when `session` was spread twice.
+const advanced = {
+  ...(cookieDomain && {
+    crossSubDomainCookies: { enabled: true, domain: cookieDomain },
+  }),
+  ...(cookiePrefix && { cookiePrefix }),
+};
+
 export function createAuth(
   deps: AuthDeps = {},
   options: CreateAuthOptions = {},
@@ -143,13 +170,11 @@ export function createAuth(
       "https://*.vercel.app",
       ...extraTrustedOrigins,
     ],
-    // Cross-subdomain session cookie for the standalone-Worker issuer. Omitted
-    // (host-only cookie) unless AUTH_COOKIE_DOMAIN is set.
-    ...(cookieDomain && {
-      advanced: {
-        crossSubDomainCookies: { enabled: true, domain: cookieDomain },
-      },
-    }),
+    // Cross-subdomain session cookie for the standalone-Worker issuer, plus the
+    // per-environment cookie name prefix. Omitted entirely when neither
+    // AUTH_COOKIE_DOMAIN nor AUTH_COOKIE_PREFIX is set (host-only cookie with
+    // Better Auth's default name — local dev).
+    ...(Object.keys(advanced).length > 0 && { advanced }),
     // Skip the session DB lookup on most requests: Better Auth caches the
     // resolved session + user in a **signed cookie** for `maxAge` seconds, so
     // `getSession` — run on every tRPC request (`createContext`) and the RSC
