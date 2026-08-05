@@ -9,6 +9,8 @@ import {
 import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { CASHIER } from "./chrome";
+
 /**
  * Post-sale confirmation.
  *
@@ -82,7 +84,7 @@ export function SaleSuccess({
           <Button
             size="lg"
             onClick={onClose}
-            className="mt-6 h-11 w-full rounded-2xl text-base font-extrabold"
+            className={`mt-6 ${CASHIER.action} w-full rounded-2xl text-base font-extrabold`}
           >
             {t("nextMember")}
           </Button>

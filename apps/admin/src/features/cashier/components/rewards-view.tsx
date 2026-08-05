@@ -1,13 +1,6 @@
 "use client";
 
 import type { AppRouter } from "@loyalty/api";
-import {
-  ResponsiveModal,
-  ResponsiveModalClose,
-  ResponsiveModalContent,
-  ResponsiveModalDescription,
-  ResponsiveModalTitle,
-} from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import { Gift, Store, Tag } from "lucide-react";
@@ -19,26 +12,37 @@ import { useTRPC } from "@/lib/trpc/client";
 
 import { CATALOG_STALE_MS } from "../catalog-cache";
 
+import {
+  CashierBadge,
+  CashierEmpty,
+  CashierListSkeleton,
+  CashierMedia,
+  CashierPage,
+  CashierRow,
+  CashierSection,
+} from "./chrome";
+import { CashierDetailSheet, type CashierDetail } from "./detail-sheet";
+
 type StaffPromo = inferRouterOutputs<AppRouter>["promociones"]["staffCatalog"][number];
 type StaffReward = inferRouterOutputs<AppRouter>["rewards"]["staffCatalog"][number];
 
-type Detail = {
-  name: string;
-  description: string | null;
-  storeSpecific: boolean;
-  exclusive?: boolean;
-};
-
 /**
  * Premios tab — the live catalog for the cashier: active promos + the reward
- * catalog, each tagged org-wide vs store-specific (and exclusive promos). Read-
- * only reference wired to `promociones.staffCatalog` / `rewards.staffCatalog`.
+ * catalog, each tagged org-wide vs store-specific (and exclusive promos).
+ * Read-only reference wired to `promociones.staffCatalog` /
+ * `rewards.staffCatalog`.
+ *
+ * Details open through the same `CashierDetailSheet` the register uses. This
+ * tab used to build its own modal from a stripped-down object that kept only
+ * the name, a description and two badges — so a reward browsed here hid the
+ * very cost its own list row was printing one tap earlier, and a promo read
+ * differently depending on whether the cashier was mid-sale.
  */
 export function RewardsView() {
   const t = useTranslations("Cashier");
   const fade = useFadeUp();
   const trpc = useTRPC();
-  const [selected, setSelected] = useState<Detail | null>(null);
+  const [detail, setDetail] = useState<CashierDetail | null>(null);
 
   const promos = useQuery(
     trpc.promociones.staffCatalog.queryOptions(undefined, { staleTime: CATALOG_STALE_MS }),
@@ -47,6 +51,7 @@ export function RewardsView() {
     trpc.rewards.staffCatalog.queryOptions(undefined, { staleTime: CATALOG_STALE_MS }),
   );
 
+  /** "9 sellos", "150 puntos", or both joined the way the reward is paid. */
   const rewardCost = (r: StaffReward): string => {
     const parts: string[] = [];
     if (r.stampsRequired != null) parts.push(t("costStamps", { count: r.stampsRequired }));
@@ -54,171 +59,106 @@ export function RewardsView() {
     return parts.join(r.costMode === "and" ? " + " : " / ") || t("rewardFree");
   };
 
-  return (
-    <div className="mx-auto w-full max-w-2xl px-5 py-5 lg:max-w-4xl">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">{t("tabRewards")}</h1>
+  const scopeBadge = (storeSpecific: boolean) => (
+    <CashierBadge tone={storeSpecific ? "primary" : "neutral"} icon={<Store className="size-3" />}>
+      {storeSpecific ? t("scopeStoreSpecific") : t("scopeAllStores")}
+    </CashierBadge>
+  );
 
-      <Section title={t("promosActive")}>
+  return (
+    <CashierPage title={t("tabRewards")}>
+      <CashierSection icon={<Tag className="size-3.5" />} label={t("promosActive")}>
         {promos.isPending ? (
-          <p className="text-muted-foreground text-sm">{t("searching")}</p>
+          <CashierListSkeleton count={4} grid />
         ) : (promos.data?.length ?? 0) === 0 ? (
-          <p className="text-muted-foreground text-sm">{t("noPromos")}</p>
+          // Not `noPromos` — that one says "none apply to this cart", which is
+          // the register's sentence; this tab lists the org's promos, cart or no
+          // cart.
+          <CashierEmpty icon={<Tag className="size-6" />} title={t("promosEmpty")} />
         ) : (
-          promos.data?.map((p: StaffPromo, i) => (
-            <Item
-              key={p.id}
-              icon={<Tag className="size-5" />}
-              name={p.name}
-              meta={p.benefitSummary ?? p.shortDescription ?? ""}
-              storeSpecific={(p.storeIds?.length ?? 0) > 0}
-              exclusive={p.exclusive}
-              t={t}
-              style={fade(i)}
-              onClick={() =>
-                setSelected({
-                  name: p.name,
-                  description: p.shortDescription ?? p.benefitSummary,
-                  storeSpecific: (p.storeIds?.length ?? 0) > 0,
-                  exclusive: p.exclusive,
-                })
-              }
-            />
-          ))
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {promos.data?.map((p: StaffPromo, i) => {
+              const storeSpecific = (p.storeIds?.length ?? 0) > 0;
+              return (
+                <CashierRow
+                  key={p.id}
+                  style={fade(i)}
+                  // A promo carries its own image and background from the
+                  // wizard; the tab used to flatten every one of them into the
+                  // same grey square with a generic tag in it.
+                  media={
+                    <CashierMedia
+                      url={p.mainImageUrl}
+                      background={p.backgroundCss}
+                      icon={<Tag className="size-5" />}
+                    />
+                  }
+                  title={p.name}
+                  meta={p.benefitSummary ?? p.shortDescription ?? ""}
+                  badges={
+                    <>
+                      {scopeBadge(storeSpecific)}
+                      {p.exclusive ? (
+                        <CashierBadge tone="warning">{t("promoExclusiveBadge")}</CashierBadge>
+                      ) : null}
+                    </>
+                  }
+                  onClick={() =>
+                    setDetail({
+                      title: p.name,
+                      benefit: p.benefitSummary,
+                      lines: [p.shortDescription, p.badgeLabel].filter(
+                        (l): l is string => Boolean(l),
+                      ),
+                      warning: p.exclusive ? t("promoExclusiveHint") : null,
+                    })
+                  }
+                />
+              );
+            })}
+          </div>
         )}
-      </Section>
+      </CashierSection>
 
-      <Section title={t("rewardsClaimable")}>
+      <CashierSection icon={<Gift className="size-3.5" />} label={t("rewardsClaimable")}>
         {rewards.isPending ? (
-          <p className="text-muted-foreground text-sm">{t("searching")}</p>
+          <CashierListSkeleton count={4} grid />
         ) : (rewards.data?.length ?? 0) === 0 ? (
-          <p className="text-muted-foreground text-sm">{t("rewardsEmpty")}</p>
+          <CashierEmpty icon={<Gift className="size-6" />} title={t("rewardsEmpty")} />
         ) : (
-          rewards.data?.map((r: StaffReward, i) => (
-            <Item
-              key={r.id}
-              icon={<Gift className="size-5" />}
-              name={r.name}
-              meta={rewardCost(r)}
-              storeSpecific={(r.storeIds?.length ?? 0) > 0}
-              t={t}
-              style={fade(i)}
-              onClick={() =>
-                setSelected({
-                  name: r.name,
-                  description: r.benefitSummary,
-                  storeSpecific: (r.storeIds?.length ?? 0) > 0,
-                })
-              }
-            />
-          ))
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {rewards.data?.map((r: StaffReward, i) => {
+              const storeSpecific = (r.storeIds?.length ?? 0) > 0;
+              return (
+                <CashierRow
+                  key={r.id}
+                  style={fade(i)}
+                  media={<CashierMedia icon={<Gift className="size-5" />} />}
+                  title={r.name}
+                  meta={rewardCost(r)}
+                  badges={scopeBadge(storeSpecific)}
+                  onClick={() =>
+                    setDetail({
+                      title: r.name,
+                      benefit: r.benefitSummary,
+                      // The cost was the one thing the old sheet dropped, and
+                      // it's the first thing a customer asks about.
+                      cost: rewardCost(r),
+                      lines: r.description ? [r.description] : [],
+                      scope: r.scopeNames,
+                      note: r.fulfillmentNote,
+                    })
+                  }
+                />
+              );
+            })}
+          </div>
         )}
-      </Section>
+      </CashierSection>
 
-      <ResponsiveModal open={selected !== null} onOpenChange={(o) => !o && setSelected(null)}>
-        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
-          {selected ? (
-            <div className="flex flex-col px-6 pt-2 pb-6">
-              <ResponsiveModalTitle className="font-display text-2xl font-semibold tracking-tight">
-                {selected.name}
-              </ResponsiveModalTitle>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <StoreBadge specific={selected.storeSpecific} t={t} />
-                {selected.exclusive ? (
-                  <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-extrabold text-amber-600">
-                    {t("promoExclusiveBadge")}
-                  </span>
-                ) : null}
-              </div>
-              {selected.description ? (
-                <ResponsiveModalDescription className="text-foreground mt-3 text-sm leading-relaxed">
-                  {selected.description}
-                </ResponsiveModalDescription>
-              ) : null}
-              <ResponsiveModalClose
-                variant="secondary"
-                className="mt-6 h-14 w-full rounded-2xl text-base"
-              >
-                {t("close")}
-              </ResponsiveModalClose>
-            </div>
-          ) : null}
-        </ResponsiveModalContent>
-      </ResponsiveModal>
-    </div>
-  );
-}
-
-function StoreBadge({
-  specific,
-  t,
-}: {
-  specific: boolean;
-  t: ReturnType<typeof useTranslations>;
-}) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-extrabold ${specific ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
-    >
-      <Store className="size-3" />
-      {specific ? t("scopeStoreSpecific") : t("scopeAllStores")}
-    </span>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="mt-6">
-      <div className="text-muted-foreground/70 mb-2.5 text-xs font-extrabold tracking-wider">
-        {title}
-      </div>
-      <div className="grid gap-2.5 sm:grid-cols-2">{children}</div>
-    </div>
-  );
-}
-
-function Item({
-  icon,
-  name,
-  meta,
-  storeSpecific,
-  exclusive,
-  t,
-  style,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  name: string;
-  meta: string;
-  storeSpecific: boolean;
-  exclusive?: boolean;
-  t: ReturnType<typeof useTranslations>;
-  style?: React.CSSProperties;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={style}
-      className="border-border bg-card flex items-center gap-3 rounded-2xl border p-3.5 text-left shadow-sm transition-transform active:scale-[0.99]"
-    >
-      <span className="bg-muted text-muted-foreground grid size-11 flex-none place-items-center rounded-xl">
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-bold">{name}</div>
-        {meta ? (
-          <div className="text-muted-foreground/70 truncate text-xs font-semibold">{meta}</div>
-        ) : null}
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          <StoreBadge specific={storeSpecific} t={t} />
-          {exclusive ? (
-            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-extrabold text-amber-600">
-              {t("promoExclusiveBadge")}
-            </span>
-          ) : null}
-        </div>
-      </div>
-    </button>
+      {/* No `onScopeClick`: this tab has no cart to add the qualifying product
+          to, so the scope chips stay labels. */}
+      <CashierDetailSheet detail={detail} onClose={() => setDetail(null)} />
+    </CashierPage>
   );
 }

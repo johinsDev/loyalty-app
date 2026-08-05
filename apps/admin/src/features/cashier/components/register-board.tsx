@@ -38,8 +38,11 @@ import { Link } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { CATALOG_STALE_MS } from "../catalog-cache";
+import { useCashierMoney } from "../format";
 import { useActiveStoreId } from "../use-active-store";
 
+import { CashierChip } from "./chrome";
+import { CashierDetailSheet, type CashierDetail } from "./detail-sheet";
 import { ProductPicker, type PickedLine } from "./product-picker";
 import { ConfirmSale, type ConfirmDiscount } from "./confirm-sale";
 import { DecisionBar, type Decision } from "./decision-bar";
@@ -94,13 +97,6 @@ type CartItem = {
 
 const CURRENCY = "COP";
 
-const formatCop = (cents: number): string =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: CURRENCY,
-    maximumFractionDigits: 0,
-  }).format(Math.round(cents) / 100);
-
 function inlineRewardCurrency(rw: AvailableReward): "stamps" | "points" | "both" {
   if (rw.costMode === "and") return "both";
   if (rw.affordableWith.includes("stamps")) return "stamps";
@@ -149,6 +145,7 @@ export function RegisterBoard({
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const activeStoreId = useActiveStoreId();
+  const formatCop = useCashierMoney(CURRENCY);
 
   const [mode, setMode] = useState<"items" | "total">("items");
   const [priceCop, setPriceCop] = useState<number | undefined>(undefined);
@@ -302,25 +299,7 @@ export function RegisterBoard({
     // which re-ran the ref, which set again — "Maximum update depth exceeded".
     setRewardsAtEnd((prev) => (prev === atEnd ? prev : atEnd));
   };
-  // `apply` turns the detail sheet into a decision instead of a dead end: the
-  // cashier reads what the reward does and redeems it without hunting back for
-  // the row. Absent for promo details, which have no equivalent commit step.
-  const [detailView, setDetailView] = useState<{
-    title: string;
-    /** Promo details stay a plain paragraph list. */
-    lines: string[];
-    /** Reward details are structured so the sheet can rank them: what it gives
-     *  reads as the headline, what qualifies as chips, the rest as support.
-     *  Flattening all of it into `lines` rendered one wall of identical text. */
-    benefit?: string | null;
-    scope?: string[];
-    cost?: string | null;
-    note?: string | null;
-    /** Upsell only: the step that unlocks the promo, spelled out. */
-    how?: string | null;
-    warning?: string | null;
-    apply?: { label: string; disabled?: boolean; run: () => void };
-  } | null>(null);
+  const [detailView, setDetailView] = useState<CashierDetail | null>(null);
 
   // Drop an explicit promo choice once the cart stops satisfying it, so the
   // register falls back to the server's best-of instead of asking for a promo
@@ -953,7 +932,7 @@ export function RegisterBoard({
   return (
     <div className="flex flex-col gap-3 p-3 sm:p-4 lg:h-full lg:min-h-0">
       {/* ── IDENTITY BAR ─────────────────────────────────────────────────── */}
-      <div className="flex flex-none flex-wrap items-center gap-3 rounded-3xl bg-[#161b22] p-4 text-white">
+      <div className="flex flex-none flex-wrap items-center gap-3 rounded-3xl bg-[var(--cashier-ink)] p-4 text-white">
         <button
           type="button"
           onClick={() => setInfoModalOpen(true)}
@@ -1446,13 +1425,13 @@ export function RegisterBoard({
                 />
               </div>
               <div className="scrollbar-hide -mx-1 mt-2.5 flex gap-2 overflow-x-auto px-1 pb-1">
-                <Chip active={!cat} onClick={() => setCat(null)}>
+                <CashierChip active={!cat} onClick={() => setCat(null)}>
                   {t("all")}
-                </Chip>
+                </CashierChip>
                 {(categories.data ?? []).map((c) => (
-                  <Chip key={c.id} active={cat === c.slug} onClick={() => setCat(cat === c.slug ? null : c.slug)}>
+                  <CashierChip key={c.id} active={cat === c.slug} onClick={() => setCat(cat === c.slug ? null : c.slug)}>
                     {c.name}
-                  </Chip>
+                  </CashierChip>
                 ))}
               </div>
               <div className="scrollbar-hide mt-3 grid grid-cols-2 content-start gap-2.5 xl:grid-cols-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
@@ -1508,7 +1487,7 @@ export function RegisterBoard({
 
         {/* RIGHT — dark cart (fills the column; lines scroll internally) */}
         <div className="flex flex-col gap-4 lg:min-h-0">
-          <div className="flex flex-col rounded-3xl bg-[#161b22] p-4 text-white lg:min-h-0 lg:flex-1">
+          <div className="flex flex-col rounded-3xl bg-[var(--cashier-ink)] p-4 text-white lg:min-h-0 lg:flex-1">
             <div className="flex flex-none items-center justify-between">
               <span className="font-display text-base font-bold">{t("cartTitle")}</span>
               <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold">
@@ -1990,140 +1969,43 @@ export function RegisterBoard({
         formatMoney={formatCop}
       />
 
-      {/* Promo / reward detail — what it is + the condition to meet. */}
-      <ResponsiveModal open={detailView !== null} onOpenChange={(o) => !o && setDetailView(null)}>
-        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-sm">
-          <div className="flex flex-col px-6 pt-2 pb-6">
-            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
-              {detailView?.title}
-            </ResponsiveModalTitle>
-            {/* What it gives, first and largest — it's the sentence the cashier
-                repeats to the customer. Everything else supports it. */}
-            {detailView?.benefit ? (
-              <p className="text-primary mt-2 text-lg leading-snug font-extrabold">
-                {detailView.benefit}
-              </p>
-            ) : null}
-
-            {detailView?.cost ? (
-              <div className="mt-2.5">
-                <span className="bg-primary/10 text-primary inline-block rounded-full px-2.5 py-1 text-xs font-extrabold">
-                  {detailView.cost}
-                </span>
-              </div>
-            ) : null}
-
-            <div className="mt-3 space-y-2">
-              {/* Index-keyed: two lines can legitimately be the same string, and
-                  a bare `key={l}` dropped the duplicate. */}
-              {detailView?.lines.map((l, i) => (
-                <p key={`${i}-${l}`} className="text-muted-foreground text-sm leading-relaxed">
-                  {l}
-                </p>
-              ))}
-              {!detailView?.benefit && (detailView?.lines ?? []).length === 0 ? (
-                <p className="text-muted-foreground text-sm">{t("noDetail")}</p>
-              ) : null}
-            </div>
-
-            {/* Chips, not a comma list: the cashier is scanning for one name.
-                Tapping one points the menu at it — a category filters the grid,
-                a product searches for it — because the next thing the cashier
-                does with "needs a Classic Milk Tea" is add one. Navigating to a
-                product page would have cost them the cart. */}
-            {(detailView?.scope ?? []).length > 0 ? (
-              <div className="border-border mt-4 border-t pt-3.5">
-                <p className="text-muted-foreground/70 text-[0.625rem] font-extrabold tracking-wider uppercase">
-                  {t("rewardScopeLabel")}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {detailView?.scope?.map((s) => {
-                    const category = (categories.data ?? []).find((c) => c.name === s);
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => {
-                          // A product chip opens its picker straight away — the
-                          // cashier's next move on "needs a Classic Milk Tea" is
-                          // to add one, and making them close the sheet, find it
-                          // in the grid and tap again was three steps for one
-                          // intent. A category can't be added, so it filters.
-                          // An upsell names a variant ("Taro Milk Tea · Grande")
-                          // — the product is the part before the separator.
-                          const productName = s.split(" · ")[0] ?? s;
-                          const product = products.find(
-                            (p) => p.name === s || p.name === productName,
-                          );
-                          if (category) {
-                            setCat(category.slug);
-                            setQuery("");
-                          } else if (product) {
-                            setPicker({
-                              slug: product.slug,
-                              name: product.name,
-                              priceCents: product.priceCents,
-                            });
-                          } else {
-                            setQuery(productName);
-                            setCat(null);
-                          }
-                          setDetailView(null);
-                        }}
-                        className="bg-muted hover:bg-primary/10 hover:text-primary text-foreground flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors"
-                      >
-                        {category ? <Tag className="size-3" /> : <Search className="size-3" />}
-                        {s}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-muted-foreground/70 mt-2 text-[0.6875rem] font-semibold">
-                  {t("rewardScopeHint")}
-                </p>
-              </div>
-            ) : null}
-
-            {/* Upsell: the step that unlocks the promo, stated as an action. */}
-            {detailView?.how ? (
-              <div className="border-primary/25 bg-primary/5 mt-3.5 rounded-xl border px-3.5 py-2.5">
-                <p className="text-primary/70 text-[0.625rem] font-extrabold tracking-wider uppercase">
-                  {t("upsellHowLabel")}
-                </p>
-                <p className="text-foreground mt-1 text-sm font-semibold">{detailView.how}</p>
-              </div>
-            ) : null}
-
-            {detailView?.note ? (
-              <div className="border-border mt-3.5 rounded-xl border border-dashed px-3.5 py-2.5">
-                <p className="text-muted-foreground/70 text-[0.625rem] font-extrabold tracking-wider uppercase">
-                  {t("rewardFulfillmentLabel")}
-                </p>
-                <p className="text-foreground mt-1 text-sm font-semibold">{detailView.note}</p>
-              </div>
-            ) : null}
-
-            {detailView?.warning ? (
-              <p className="mt-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-sm font-semibold text-amber-700 dark:text-amber-400">
-                {detailView.warning}
-              </p>
-            ) : null}
-            {detailView?.apply ? (
-              <Button
-                size="lg"
-                disabled={detailView.apply.disabled}
-                onClick={() => {
-                  detailView.apply?.run();
-                  setDetailView(null);
-                }}
-                className="mt-5 h-11 w-full rounded-2xl text-base font-extrabold"
-              >
-                {detailView.apply.label}
-              </Button>
-            ) : null}
-          </div>
-        </ResponsiveModalContent>
-      </ResponsiveModal>
+      {/* Promo / reward detail — what it is + the condition to meet. Shared
+          with the Premios tab so the same reward reads the same either way. */}
+      <CashierDetailSheet
+        detail={detailView}
+        onClose={() => setDetailView(null)}
+        scopeIcon={(s) =>
+          (categories.data ?? []).some((c) => c.name === s) ? (
+            <Tag className="size-3" />
+          ) : (
+            <Search className="size-3" />
+          )
+        }
+        onScopeClick={(s) => {
+          // A product chip opens its picker straight away — the cashier's next
+          // move on "needs a Classic Milk Tea" is to add one, and making them
+          // close the sheet, find it in the grid and tap again was three steps
+          // for one intent. A category can't be added, so it filters. An upsell
+          // names a variant ("Taro Milk Tea · Grande") — the product is the
+          // part before the separator.
+          const category = (categories.data ?? []).find((c) => c.name === s);
+          const productName = s.split(" · ")[0] ?? s;
+          const product = products.find((p) => p.name === s || p.name === productName);
+          if (category) {
+            setCat(category.slug);
+            setQuery("");
+          } else if (product) {
+            setPicker({
+              slug: product.slug,
+              name: product.name,
+              priceCents: product.priceCents,
+            });
+          } else {
+            setQuery(productName);
+            setCat(null);
+          }
+        }}
+      />
     </div>
   );
 }
@@ -2322,22 +2204,3 @@ function Row({
   );
 }
 
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`h-8 flex-none rounded-full border px-3.5 text-xs font-bold whitespace-nowrap ${active ? "bg-foreground text-background border-foreground" : "bg-card text-muted-foreground border-border"}`}
-    >
-      {children}
-    </button>
-  );
-}

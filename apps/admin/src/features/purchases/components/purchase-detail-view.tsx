@@ -20,7 +20,13 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
-import { type ReactNode, useState } from "react";
+import {
+  type ComponentProps,
+  createContext,
+  type ReactNode,
+  useContext,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
 import { Link } from "@/i18n/nav";
@@ -35,21 +41,57 @@ type PurchaseAdminDetail = NonNullable<
   inferRouterOutputs<AppRouter>["purchases"]["adminGet"]
 >;
 
+/**
+ * Whether the entity rows deep-link into the CRM.
+ *
+ * They always did, which is right on `/purchases/[id]` and wrong in the
+ * register: the cashier tapping a customer name to check a sale was thrown out
+ * of the POS into the admin, mid-shift, with no way back but the browser's
+ * Back button.
+ */
+const LinkedContext = createContext(true);
+
+/** A CRM deep-link, or the same content as plain text when links are off. */
+function MaybeLink({
+  href,
+  className,
+  plainClassName,
+  children,
+}: {
+  href: ComponentProps<typeof Link>["href"];
+  className?: string;
+  /** Linked styling (primary colour, underline on hover) reads as a broken
+   *  affordance when nothing happens on tap, so unlinked rows restyle. */
+  plainClassName?: string;
+  children: ReactNode;
+}) {
+  const linked = useContext(LinkedContext);
+  if (!linked) return <span className={plainClassName ?? className}>{children}</span>;
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 const TIER_KEYS = ["hoja", "flor", "oro"] as const;
 
 /**
- * The admin "radiografía" of one purchase. Rendered both as the `?detalle=`
- * quick-view modal (`variant="modal"`) and the full `/purchases/[id]` page
- * (`variant="page"`). Read-only in v1; every entity (customer/store/promo/
- * reward/product) deep-links to its own admin detail.
+ * The admin "radiografía" of one purchase. Rendered as the `?detalle=`
+ * quick-view modal (`variant="modal"`), the full `/purchases/[id]` page
+ * (`variant="page"`), and the register's shift feed (`variant="cashier"`).
+ * Read-only in v1; every entity (customer/store/promo/reward/product)
+ * deep-links to its own admin detail — except in the register, which is a
+ * closed surface the cashier shouldn't be navigated out of.
  */
 export function PurchaseDetailView({
   detail,
   variant = "page",
 }: {
   detail: PurchaseAdminDetail;
-  variant?: "page" | "modal";
+  variant?: "page" | "modal" | "cashier";
 }) {
+  const cashier = variant === "cashier";
   const t = useTranslations("Purchases");
   const locale = useLocale();
   const format = useFormatter();
@@ -85,7 +127,7 @@ export function PurchaseDetailView({
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
         <div
-          className={`font-display text-3xl font-semibold tracking-tight ${voided ? "text-muted-foreground line-through" : ""}`}
+          className={`font-display font-semibold tracking-tight ${cashier ? "text-2xl" : "text-3xl"} ${voided ? "text-muted-foreground line-through" : ""}`}
         >
           {money(format, detail.totalCents, detail.currency)}
         </div>
@@ -147,20 +189,24 @@ export function PurchaseDetailView({
     <VoidPurchaseDialog purchaseId={detail.id} open={voidOpen} onOpenChange={setVoidOpen} />
   );
 
-  if (variant === "modal") {
+  if (variant === "modal" || cashier) {
     return (
-      <div className="max-h-[85dvh] space-y-5 overflow-y-auto p-5">
-        {header}
-        {voidBanner}
-        {customerBlock}
-        {transactionBlock}
-        {itemsBlock}
-        {redeemBlock}
-        {breakdownBlock}
-        {loyaltyBlock}
-        {timelineBlock}
-        {voidDialog}
-      </div>
+      // Same block composition either way — the register just doesn't hand out
+      // exits from the POS.
+      <LinkedContext.Provider value={!cashier}>
+        <div className="max-h-[85dvh] space-y-5 overflow-y-auto p-5">
+          {header}
+          {voidBanner}
+          {customerBlock}
+          {transactionBlock}
+          {itemsBlock}
+          {redeemBlock}
+          {breakdownBlock}
+          {loyaltyBlock}
+          {timelineBlock}
+          {voidDialog}
+        </div>
+      </LinkedContext.Provider>
     );
   }
 
@@ -220,6 +266,7 @@ function CustomerBlock({ detail }: { detail: PurchaseAdminDetail }) {
   const t = useTranslations("Purchases");
   const format = useFormatter();
   const now = useNow();
+  const linked = useContext(LinkedContext);
   const c = detail.customer;
   const tierKey = (TIER_KEYS as readonly string[]).includes(c.tierKey ?? "")
     ? (c.tierKey as (typeof TIER_KEYS)[number])
@@ -227,9 +274,10 @@ function CustomerBlock({ detail }: { detail: PurchaseAdminDetail }) {
 
   return (
     <Section icon={<UserIcon className="size-3.5" />} label={t("customer")}>
-      <Link
+      <MaybeLink
         href={{ pathname: "/customers/[id]", params: { id: c.id } }}
         className="border-border hover:bg-muted/40 flex items-center gap-3 rounded-2xl border p-3.5 transition-colors"
+        plainClassName="border-border flex items-center gap-3 rounded-2xl border p-3.5"
       >
         <span className="bg-primary/10 text-primary grid size-10 flex-none place-items-center rounded-full text-sm font-bold">
           {initials(c.name)}
@@ -243,8 +291,8 @@ function CustomerBlock({ detail }: { detail: PurchaseAdminDetail }) {
           </span>
         </div>
         <Badge variant="outline">{t(`tier.${tierKey}`)}</Badge>
-        <ChevronRight className="text-muted-foreground/50 size-4 shrink-0" />
-      </Link>
+        {linked ? <ChevronRight className="text-muted-foreground/50 size-4 shrink-0" /> : null}
+      </MaybeLink>
     </Section>
   );
 }
@@ -265,13 +313,14 @@ function TransactionBlock({ detail }: { detail: PurchaseAdminDetail }) {
         <Row label={t("txDate")}>{formatDate(detail.createdAt, { locale, preset: "long" })}</Row>
         <Row label={t("txStore")}>
           {detail.storeId && detail.storeName ? (
-            <Link
+            <MaybeLink
               href={{ pathname: "/stores/[id]", params: { id: detail.storeId } }}
               className="text-primary inline-flex items-center gap-1 font-semibold hover:underline"
+              plainClassName="inline-flex items-center gap-1 font-semibold"
             >
               <StoreIcon className="size-3.5" />
               {detail.storeName}
-            </Link>
+            </MaybeLink>
           ) : (
             <span className="text-muted-foreground">—</span>
           )}
@@ -281,21 +330,23 @@ function TransactionBlock({ detail }: { detail: PurchaseAdminDetail }) {
         </Row>
         <Row label={t("txAttribution")}>
           {detail.promo ? (
-            <Link
+            <MaybeLink
               href={{ pathname: "/promotions/[id]", params: { id: detail.promo.promoId } }}
               className="text-primary inline-flex items-center gap-1 font-semibold hover:underline"
+              plainClassName="inline-flex items-center gap-1 font-semibold"
             >
               <Tag className="size-3.5" />
               {detail.promo.name ?? t("promoApplied")}
-            </Link>
+            </MaybeLink>
           ) : detail.entrySource === "campaign" && detail.attributionCampaignId ? (
-            <Link
+            <MaybeLink
               href={{ pathname: "/campaigns/[id]", params: { id: detail.attributionCampaignId } }}
               className="text-primary inline-flex items-center gap-1 font-semibold hover:underline"
+              plainClassName="inline-flex items-center gap-1 font-semibold"
             >
               <Megaphone className="size-3.5" />
               {t("entry.campaign")}
-            </Link>
+            </MaybeLink>
           ) : detail.entrySource === "campaign" ? (
             <span className="inline-flex items-center gap-1">
               <Megaphone className="size-3.5" />
@@ -380,13 +431,14 @@ function ItemsBlock({ items }: { items: PurchaseAdminDetail["items"] }) {
             </>
           );
           return item.name ? (
-            <Link
+            <MaybeLink
               key={item.id}
               href={{ pathname: "/products/[id]", params: { id: item.productId } }}
               className="hover:bg-muted/40 flex items-center gap-3 px-3.5 py-2.5 transition-colors"
+              plainClassName="flex items-center gap-3 px-3.5 py-2.5"
             >
               {inner}
-            </Link>
+            </MaybeLink>
           ) : (
             <div key={item.id} className="flex items-center gap-3 px-3.5 py-2.5">
               {inner}
@@ -400,12 +452,14 @@ function ItemsBlock({ items }: { items: PurchaseAdminDetail["items"] }) {
 
 function RedeemBlock({ reward }: { reward: NonNullable<PurchaseAdminDetail["reward"]> }) {
   const t = useTranslations("Purchases");
+  const linked = useContext(LinkedContext);
 
   return (
     <Section icon={<Gift className="size-3.5" />} label={t("rewardRedeemed")}>
-      <Link
+      <MaybeLink
         href={{ pathname: "/rewards/[id]", params: { id: reward.rewardId } }}
         className="border-border hover:bg-muted/40 flex items-center gap-3 rounded-2xl border p-3.5 transition-colors"
+        plainClassName="border-border flex items-center gap-3 rounded-2xl border p-3.5"
       >
         <span className="bg-primary/10 text-primary grid size-10 flex-none place-items-center overflow-hidden rounded-xl">
           {reward.imageUrl ? (
@@ -442,8 +496,8 @@ function RedeemBlock({ reward }: { reward: NonNullable<PurchaseAdminDetail["rewa
             </span>
           ) : null}
         </div>
-        <ChevronRight className="text-muted-foreground/50 size-4 shrink-0" />
-      </Link>
+        {linked ? <ChevronRight className="text-muted-foreground/50 size-4 shrink-0" /> : null}
+      </MaybeLink>
     </Section>
   );
 }

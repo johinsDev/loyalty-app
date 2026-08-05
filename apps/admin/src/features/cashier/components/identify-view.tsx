@@ -14,6 +14,7 @@ import { useTRPC } from "@/lib/trpc/client";
 
 import { CATALOG_STALE_MS } from "../catalog-cache";
 
+import { CASHIER, CashierPage, LABEL, SURFACE } from "./chrome";
 import { IdentifyPane } from "./identify-pane";
 import { QrScanner } from "./qr-scanner";
 
@@ -110,7 +111,7 @@ export function IdentifyView() {
         <Button
           size="lg"
           onClick={() => setClaimed(false)}
-          className="mt-3 h-10 w-full max-w-xs rounded-2xl text-base font-extrabold"
+          className={`mt-3 ${CASHIER.action} w-full max-w-xs rounded-2xl text-base font-extrabold`}
         >
           {t("done")}
         </Button>
@@ -119,13 +120,8 @@ export function IdentifyView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md px-5 py-6">
-      <div className="mb-5 text-center">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{t("identifyTitle")}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{t("identifyTabsHint")}</p>
-      </div>
-
-      <div className="bg-card border-border rounded-3xl border p-5 shadow-sm">
+    <CashierPage narrow title={t("identifyTitle")} subtitle={t("identifyTabsHint")}>
+      <div className={SURFACE.panel}>
         {/* Tab toggle. */}
         <div className="bg-muted mb-5 grid grid-cols-2 gap-1 rounded-2xl p-1">
           {(
@@ -138,7 +134,7 @@ export function IdentifyView() {
               key={id}
               type="button"
               onClick={() => setTab(id)}
-              className={`flex h-10 items-center justify-center gap-1.5 rounded-xl text-sm font-extrabold transition ${
+              className={`flex ${CASHIER.control} items-center justify-center gap-1.5 rounded-xl text-sm font-extrabold transition ${
                 tab === id
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -166,21 +162,19 @@ export function IdentifyView() {
               </div>
             ) : null}
             <div className="border-border mt-4 border-t pt-4">
-              <label className="text-muted-foreground/70 mb-1.5 block text-[0.6875rem] font-extrabold tracking-wider">
-                {t("pasteCodeLabel")}
-              </label>
+              <label className={`${LABEL} mb-1.5 block`}>{t("pasteCodeLabel")}</label>
               <div className="flex gap-2">
                 <input
                   value={pastedCode}
                   onChange={(e) => setPastedCode(e.target.value)}
                   placeholder={t("pasteCodePlaceholder")}
-                  className="border-border bg-muted placeholder:text-muted-foreground/70 h-10 w-full rounded-2xl border px-3.5 text-sm font-semibold outline-none"
+                  className={`border-border bg-muted placeholder:text-muted-foreground/70 ${CASHIER.control} w-full rounded-2xl border px-3.5 text-sm font-semibold outline-none`}
                 />
                 <Button
                   size="lg"
                   disabled={pastedCode.trim().length === 0 || isClaiming}
                   onClick={() => void onScanResult(pastedCode.trim())}
-                  className="h-10 flex-none rounded-2xl px-4 font-extrabold"
+                  className={`${CASHIER.control} flex-none rounded-2xl px-4 font-extrabold`}
                 >
                   {t("pasteCodeCta")}
                 </Button>
@@ -189,6 +183,6 @@ export function IdentifyView() {
           </div>
         )}
       </div>
-    </div>
+    </CashierPage>
   );
 }

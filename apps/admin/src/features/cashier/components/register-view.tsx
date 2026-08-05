@@ -1,22 +1,18 @@
 "use client";
 
-import { Button } from "@loyalty/ui";
+import { Button, Spinner } from "@loyalty/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
 import { useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { useCashierMoney } from "../format";
+
+import { CASHIER } from "./chrome";
 import { RegisterBoard, type PreselectReward, type SaleResult } from "./register-board";
 import { SaleSuccess } from "./sale-success";
-
-const formatCop = (cents: number): string =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(Math.round(cents) / 100);
 
 /**
  * `/caja/cliente/[customerId]` — the register for one identified socio. Loads
@@ -34,33 +30,54 @@ export function RegisterView({
   const t = useTranslations("Cashier");
   const trpc = useTRPC();
   const router = useRouter();
+  const formatCop = useCashierMoney();
 
   const [success, setSuccess] = useState<SaleResult | null>(null);
+  const [leaving, startLeaving] = useTransition();
 
   const wallet = useQuery(trpc.stamps.walletForCustomer.queryOptions({ customerId }));
   const register = useQuery(trpc.customers.registerContext.queryOptions({ customerId }));
   const available = useQuery(trpc.rewards.availableForCustomer.queryOptions({ customerId }));
 
-  const backToIdentify = () => router.push("/register");
-
-  // `replace`, not `push`: after a sale is recorded, leaving the charged
-  // customer's register in the history means Back lands on it with an empty
-  // cart — the shortest path to charging the same person twice.
-  // `replace`, not `push`: leaving the charged customer's register in the
-  // history means Back lands on it, which is the shortest path to a double sale.
-  //
-  // KNOWN BLOCKER (pre-existing, not caused by the modal): leaving
-  // `/caja/cliente/[id]` doesn't commit. The history entry is pushed but the URL
-  // never changes. Reproduced on a fresh dev server with `Cambiar cliente` and a
-  // plain <Link> too, so it is the route, not this call. Consistent with the
-  // tRPC batch bug where a failed query stays pending forever: an App Router
-  // navigation runs in a transition, and a never-resolving suspense keeps it
-  // from committing. Clearing the cart on success (see register-board) is what
-  // actually defuses the double-charge in the meantime.
-  const doneWithSale = () => {
+  /**
+   * Leave this customer's register.
+   *
+   * The socio is a URL segment, so leaving is a route change — and a route
+   * change runs in a transition, which by design keeps the OLD screen on
+   * until the new one is ready. That is what "Cambiar cliente no hace nada"
+   * was: the push did fire and did commit (a few hundred ms on localhost,
+   * longer on the shop's tablet against the Worker), but for that whole window
+   * the register sat there unchanged — same customer, same name, same
+   * balances, button not even depressed. So the cashier tapped it again.
+   * Worse after a sale: the socio who just paid stayed on screen next to an
+   * emptied cart, which is precisely the "charge them twice" shape the cart
+   * clearing was added to defuse.
+   *
+   * Holding the transition ourselves lets the screen answer the tap on the
+   * spot: `leaving` swaps the board for a neutral hand-off, so the previous
+   * customer is gone the instant the cashier asks for it, and the navigation
+   * commits underneath.
+   *
+   * `replace`, not `push`, in both cases: leaving a customer's register in the
+   * history means Back lands on it with an empty cart, which is the shortest
+   * path to charging the same person twice.
+   */
+  const leaveRegister = () => {
     setSuccess(null);
-    router.replace("/register");
+    startLeaving(() => router.replace("/register"));
   };
+
+  // The hand-off. Drawn before every other branch — once the cashier has asked
+  // to move on, nothing about the previous socio should still be on screen,
+  // including a stale error or spinner from their queries.
+  if (leaving) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+        <Spinner className="text-muted-foreground size-6" />
+        <p className="text-muted-foreground text-sm font-semibold">{t("leavingRegister")}</p>
+      </div>
+    );
+  }
 
   // A failed wallet read used to sit on "Buscando…" forever, indistinguishable
   // from a slow one.
@@ -68,7 +85,12 @@ export function RegisterView({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="text-muted-foreground text-sm font-semibold">{t("walletError")}</p>
-        <Button variant="outline" size="sm" className="h-10" onClick={() => void wallet.refetch()}>
+        <Button
+          variant="outline"
+          size="sm"
+          className={CASHIER.control}
+          onClick={() => void wallet.refetch()}
+        >
           {t("retry")}
         </Button>
       </div>
@@ -103,14 +125,14 @@ export function RegisterView({
         }}
         preselect={preselect}
         onSuccess={(result) => setSuccess(result)}
-        onRewardPending={backToIdentify}
-        onCancel={backToIdentify}
-        onScan={backToIdentify}
+        onRewardPending={leaveRegister}
+        onCancel={leaveRegister}
+        onScan={leaveRegister}
       />
       {success ? (
         <SaleSuccess
           open
-          onClose={doneWithSale}
+          onClose={leaveRegister}
           totalCents={success.totalCents}
           earned={success.earned}
           pointsBalance={success.pointsBalance}
