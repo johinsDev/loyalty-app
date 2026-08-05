@@ -44,6 +44,7 @@ import {
   type TopCustomerRow,
   type TopProductRow,
 } from "./schemas";
+import { buildSeries, seriesStart } from "./series";
 
 function daysAgo(now: Date, days: number): Date {
   return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
@@ -51,10 +52,6 @@ function daysAgo(now: Date, days: number): Date {
 
 function stat(current: number, previous: number): KpiStat {
   return { value: current, deltaPct: computeDeltaPct(current, previous) };
-}
-
-function isoDay(d: Date): string {
-  return d.toISOString().slice(0, 10);
 }
 
 /** Drizzle aggregates for the admin dashboard (Tier-1 real stats).
@@ -140,8 +137,9 @@ export class DashboardRepository {
   }
 
   async series(orgId: string, period: Period, now = new Date()): Promise<DashboardSeriesPoint[]> {
-    const days = PERIOD_DAYS[period];
-    const start = daysAgo(now, days);
+    // Bucket boundary, not "exactly N units ago": below a day the chart is
+    // hourly, and an unaligned start reads rows for a bucket it never draws.
+    const start = seriesStart(period, now);
     // Members and revenue ride along here rather than in endpoints of their
     // own: the analytics overview drew a made-up growth curve and a made-up
     // revenue bar chart because no series carried either, and one more column
@@ -170,33 +168,7 @@ export class DashboardRepository {
         .where(and(eq(customer.organizationId, orgId), gte(customer.createdAt, start))),
     ]);
 
-    // Pre-seed every day in the window so the chart has no gaps.
-    type Bucket = { purchases: number; redemptions: number; members: number; revenueCents: number };
-    const buckets = new Map<string, Bucket>();
-    for (let i = 0; i < days; i++) {
-      buckets.set(isoDay(daysAgo(now, days - 1 - i)), {
-        purchases: 0,
-        redemptions: 0,
-        members: 0,
-        revenueCents: 0,
-      });
-    }
-    for (const p of purchases) {
-      const b = buckets.get(isoDay(p.createdAt));
-      if (b) {
-        b.purchases += 1;
-        b.revenueCents += p.priceCents;
-      }
-    }
-    for (const r of redemptions) {
-      const b = buckets.get(isoDay(r.createdAt));
-      if (b) b.redemptions += 1;
-    }
-    for (const c of members) {
-      const b = buckets.get(isoDay(c.createdAt));
-      if (b) b.members += 1;
-    }
-    return [...buckets.entries()].map(([date, v]) => ({ date, ...v }));
+    return buildSeries({ purchases, redemptions, members }, period, now);
   }
 
   async recentPurchases(orgId: string, limit: number): Promise<RecentPurchaseRow[]> {

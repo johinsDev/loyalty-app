@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/nav";
 import { trpc } from "@/lib/trpc/server";
 
-import type { DashboardPeriod } from "../list-params";
+import { DASHBOARD_PERIOD_DAYS, type DashboardPeriod } from "../list-params";
 import { agoOf, deltaStr, fmtCop, fmtCopCompact, fmtNum, initialsOf } from "../lib/format";
 import { getOverview, getSeries } from "../lib/queries";
 import { AreaChart, Donut } from "./charts";
@@ -27,19 +27,46 @@ export async function HeroRevenue({ period, storeId }: WidgetProps) {
   );
 }
 
-/** The 4 KPI cards (sparkline = purchases series). */
+/** The 4 KPI cards. */
 export async function KpiRow({ period, storeId }: WidgetProps) {
   const t = await getTranslations("Dashboard");
   const [ov, series] = await Promise.all([
     getOverview(period, storeId),
     getSeries(period, storeId),
   ]);
-  const spark = series.map((p) => p.purchases);
+  // Each card sparks its OWN metric. They all drew the purchases series
+  // before, so four different numbers shared one shape — and a card reading
+  // "0 premios canjeados" still showed a spike, which is just a lie in
+  // chart form.
   const cards = [
-    { key: "activeCustomers", value: fmtNum(ov.totalMembers), sub: "last30d", ...deltaStr(ov.members.deltaPct) },
-    { key: "purchasesTracked", value: fmtNum(ov.purchases.value), sub: "perVisit", ...deltaStr(ov.purchases.deltaPct) },
-    { key: "revenueInfluenced", value: fmtCop(ov.revenueCents.value), sub: "loyaltyTied", ...deltaStr(ov.revenueCents.deltaPct) },
-    { key: "rewardsRedeemed", value: fmtNum(ov.redemptions.value), sub: "claimRate", ...deltaStr(ov.redemptions.deltaPct) },
+    {
+      key: "activeCustomers",
+      value: fmtNum(ov.totalMembers),
+      sub: "window",
+      spark: series.map((p) => p.members),
+      ...deltaStr(ov.members.deltaPct),
+    },
+    {
+      key: "purchasesTracked",
+      value: fmtNum(ov.purchases.value),
+      sub: "perVisit",
+      spark: series.map((p) => p.purchases),
+      ...deltaStr(ov.purchases.deltaPct),
+    },
+    {
+      key: "revenueInfluenced",
+      value: fmtCop(ov.revenueCents.value),
+      sub: "loyaltyTied",
+      spark: series.map((p) => p.revenueCents),
+      ...deltaStr(ov.revenueCents.deltaPct),
+    },
+    {
+      key: "rewardsRedeemed",
+      value: fmtNum(ov.redemptions.value),
+      sub: "claimRate",
+      spark: series.map((p) => p.redemptions),
+      ...deltaStr(ov.redemptions.deltaPct),
+    },
   ];
   return (
     <>
@@ -47,11 +74,17 @@ export async function KpiRow({ period, storeId }: WidgetProps) {
         <KpiCard
           key={k.key}
           label={t(`kpi.${k.key}`)}
-          sub={t(`kpiSub.${k.sub}`)}
+          sub={
+            k.sub === "window"
+              ? period === "1d"
+                ? t("kpiSub.lastHours")
+                : t("kpiSub.lastDays", { days: DASHBOARD_PERIOD_DAYS[period] })
+              : t(`kpiSub.${k.sub}`)
+          }
           value={k.value}
           delta={k.delta}
           trend={k.trend}
-          spark={spark}
+          spark={k.spark}
         />
       ))}
     </>
