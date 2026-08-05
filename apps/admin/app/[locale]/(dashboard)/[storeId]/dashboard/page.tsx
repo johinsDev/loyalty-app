@@ -11,6 +11,7 @@ import {
   KpiRowSkeleton,
   ListSkeletonRows,
 } from "@/features/dashboard/components/dashboard-primitives";
+import { SeriesSubtitle } from "@/features/dashboard/components/series-subtitle";
 import { DText } from "@/features/dashboard/components/dashboard-text";
 import { PeriodBar } from "@/features/dashboard/components/period-bar";
 import { SetupChecklist } from "@/features/dashboard/components/setup-checklist";
@@ -167,7 +168,7 @@ export default function DashboardPage({ params, searchParams }: Props) {
       <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <ChartCard
           title={<DText k="purchasesTitle" />}
-          subtitle={<DText k="purchasesSubtitle" />}
+          subtitle={<SeriesSubtitle k="purchasesSubtitle" />}
           className="lg:col-span-2"
         >
           <div className="h-52">
@@ -198,7 +199,7 @@ export default function DashboardPage({ params, searchParams }: Props) {
             </p>
           </div>
         </ChartCard>
-        <ChartCard title={<DText k="redemptionTitle" />} subtitle={<DText k="redemptionSubtitle" />}>
+        <ChartCard title={<DText k="redemptionTitle" />} subtitle={<SeriesSubtitle k="redemptionSubtitle" />}>
           <div className="h-40">
             <Hole fallback={<Skeleton className="size-full rounded-xl" />}>
               <Widget

@@ -171,7 +171,9 @@
       "claimRate": "78% claim rate",
       "noVisit60d": "no visit 60 d",
       "thisMonth": "this month",
-      "scoreOf100": "score / 100"
+      "scoreOf100": "score / 100",
+      "lastHours": "last 24 h",
+      "lastDays": "last {days} d"
     },
     "purchasesTitle": "Purchases over time",
     "purchasesSubtitle": "Volume + revenue via loyalty",
@@ -187,7 +189,7 @@
     "dauSubtitle": "Visits & QR scans, last 30 d",
     "dauAvg": "Avg {n} / day",
     "redemptionTitle": "Reward redemption trend",
-    "redemptionSubtitle": "Daily claims, last 30 d",
+    "redemptionSubtitle": "Redemptions over time",
     "cohortsTitle": "Retention cohorts",
     "cohortsSubtitle": "Weekly cohorts, 5-week return",
     "cohort": "Cohort",
@@ -259,7 +261,9 @@
     "categoryNone": "No category",
     "categoryRest": "Others",
     "revenueShort": "revenue",
-    "period24hHint": "Last 24 hours (rolling window, not the calendar day)"
+    "period24hHint": "Last 24 hours (rolling window, not the calendar day)",
+    "scaleHourly": "hourly, last 24 h",
+    "scaleDaily": "daily, last {days} d"
   },
   "Customers": {
     "title": "Customers",

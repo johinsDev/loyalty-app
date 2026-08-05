@@ -50,7 +50,11 @@ export interface DashboardOverview {
 }
 
 export interface DashboardSeriesPoint {
-  /** ISO date (YYYY-MM-DD). */
+  /**
+   * Bucket key: `YYYY-MM-DD` for multi-day periods, `YYYY-MM-DDTHH` for `1d`,
+   * which is bucketed hourly (a day cut into days is a single point, and a
+   * line chart with one point is a dot). UTC, like every other aggregate here.
+   */
   date: string;
   purchases: number;
   redemptions: number;

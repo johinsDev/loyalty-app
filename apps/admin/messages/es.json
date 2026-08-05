@@ -171,7 +171,9 @@
       "claimRate": "78% de reclamo",
       "noVisit60d": "sin visita 60 d",
       "thisMonth": "este mes",
-      "scoreOf100": "puntaje / 100"
+      "scoreOf100": "puntaje / 100",
+      "lastHours": "últimas 24 h",
+      "lastDays": "últimos {days} d"
     },
     "purchasesTitle": "Compras en el tiempo",
     "purchasesSubtitle": "Volumen + ingresos vía lealtad",
@@ -187,7 +189,7 @@
     "dauSubtitle": "Visitas y escaneos QR, últimos 30 d",
     "dauAvg": "Prom {n} / día",
     "redemptionTitle": "Tendencia de canjes",
-    "redemptionSubtitle": "Canjes diarios, últimos 30 d",
+    "redemptionSubtitle": "Canjes en el tiempo",
     "cohortsTitle": "Cohortes de retención",
     "cohortsSubtitle": "Cohortes semanales, retorno a 5 semanas",
     "cohort": "Cohorte",
@@ -259,7 +261,9 @@
     "categoryNone": "Sin categoría",
     "categoryRest": "Otras",
     "revenueShort": "ingresos",
-    "period24hHint": "Últimas 24 horas (ventana rodante, no el día calendario)"
+    "period24hHint": "Últimas 24 horas (ventana rodante, no el día calendario)",
+    "scaleHourly": "por hora, últimas 24 h",
+    "scaleDaily": "por día, últimos {days} d"
   },
   "Customers": {
     "title": "Clientes",
