@@ -75,10 +75,32 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
   const results = search.data ?? [];
   const notFound = searched && valid && !search.isFetching && results.length === 0;
 
-  // A single match goes straight to the register — no extra tap.
+  /**
+   * A single match goes straight to the register — no extra tap.
+   *
+   * `setSearched(false)` first, and that is load-bearing: it consumes the
+   * search so the jump can never replay. Leaving a register sends the cashier
+   * back here, and the App Router keeps this screen's React state in its client
+   * cache — typed number, `searched: true`, the one cached result and all. On
+   * return the effect's deps settled again and this fired a second time, so
+   * "Cambiar cliente" and "Listo · siguiente socio" both bounced straight back
+   * into the register of the socio they had just left:
+   *
+   *     replace -> /caja
+   *     push    -> /caja/cliente/<same id>
+   *
+   * which read as the sale never having closed. A search is now acted on once;
+   * a new one needs a new tap on Buscar, which sets `searched` again.
+   */
   useEffect(() => {
     if (searched && valid && !search.isFetching && results.length === 1) {
       const hit = results[0]!;
+      setSearched(false);
+      // And blank the number, for the same reason: the cashier coming back here
+      // is starting on the next socio, not resuming the last one. Leaving it
+      // typed made "Buscar" a one-tap trip back into the register they just
+      // closed.
+      setDigits("");
       onSelect({ id: hit.id, name: hit.name, phone: hit.phone });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
