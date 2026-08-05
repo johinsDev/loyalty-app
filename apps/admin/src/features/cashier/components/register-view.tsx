@@ -8,15 +8,11 @@ import { useState } from "react";
 import { useRouter } from "@/i18n/nav";
 import { useTRPC } from "@/lib/trpc/client";
 
+import { useCashierMoney } from "../format";
+
+import { CASHIER } from "./chrome";
 import { RegisterBoard, type PreselectReward, type SaleResult } from "./register-board";
 import { SaleSuccess } from "./sale-success";
-
-const formatCop = (cents: number): string =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(Math.round(cents) / 100);
 
 /**
  * `/caja/cliente/[customerId]` — the register for one identified socio. Loads
@@ -34,6 +30,7 @@ export function RegisterView({
   const t = useTranslations("Cashier");
   const trpc = useTRPC();
   const router = useRouter();
+  const formatCop = useCashierMoney();
 
   const [success, setSuccess] = useState<SaleResult | null>(null);
 
@@ -68,7 +65,12 @@ export function RegisterView({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="text-muted-foreground text-sm font-semibold">{t("walletError")}</p>
-        <Button variant="outline" size="sm" className="h-10" onClick={() => void wallet.refetch()}>
+        <Button
+          variant="outline"
+          size="sm"
+          className={CASHIER.control}
+          onClick={() => void wallet.refetch()}
+        >
           {t("retry")}
         </Button>
       </div>

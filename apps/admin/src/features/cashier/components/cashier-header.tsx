@@ -9,6 +9,8 @@ import { useHasRole } from "@/lib/role-context";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { useActiveStoreId } from "../use-active-store";
+
+import { CASHIER, LABEL } from "./chrome";
 import { StoreSwitcher } from "./store-switcher";
 
 /**
@@ -77,7 +79,7 @@ export function CashierHeader() {
         <button
           type="button"
           onClick={() => router.push("/dashboard")}
-          className="border-border bg-card text-muted-foreground hover:text-foreground flex h-10 flex-none items-center gap-2 rounded-xl border px-3 text-sm font-bold"
+          className={`border-border bg-card text-muted-foreground hover:text-foreground flex ${CASHIER.chip} flex-none items-center gap-2 rounded-xl border px-3 text-sm font-bold`}
         >
           <LayoutDashboard className="size-4" />
           <span className="hidden sm:inline">{t("goToDashboard")}</span>
@@ -87,7 +89,7 @@ export function CashierHeader() {
           type="button"
           onClick={() => router.push("/dashboard")}
           aria-label={t("exit")}
-          className="border-border bg-card text-muted-foreground hover:text-foreground grid size-10 flex-none place-items-center rounded-xl border"
+          className={`border-border bg-card text-muted-foreground hover:text-foreground grid ${CASHIER.chip} aspect-square flex-none place-items-center rounded-xl border`}
         >
           <LogOut className="size-4" />
         </button>
@@ -99,7 +101,7 @@ export function CashierHeader() {
 function Kpi({ label, value }: { label: string; value: number }) {
   return (
     <div className="leading-tight">
-      <div className="text-muted-foreground/70 text-[0.6875rem] font-extrabold tracking-wider">
+      <div className={LABEL}>
         {label}
       </div>
       <div className="text-foreground text-sm font-extrabold tabular-nums">{value}</div>

@@ -19,6 +19,7 @@ import { useTRPC } from "@/lib/trpc/client";
 
 import { useActiveStoreId } from "../use-active-store";
 
+import { CASHIER, LABEL } from "./chrome";
 import { NumpadPhone } from "./numpad-phone";
 
 export type IdentifiedCustomer = { id: string; name: string | null; phone: string };
@@ -138,7 +139,7 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
           {t("registerPinTitle")}
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">{t("registerPinHint", { phone })}</p>
-        <label className="text-muted-foreground/70 mt-4 mb-1.5 block text-[0.6875rem] font-extrabold tracking-wider">
+        <label className={`${LABEL} mt-4 mb-1.5 block`}>
           {t("codeLabel")}
         </label>
         <input
@@ -147,14 +148,14 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
           inputMode="numeric"
           autoComplete="one-time-code"
           placeholder="••••••"
-          className="border-border bg-muted placeholder:text-muted-foreground/50 font-display h-12 w-full rounded-2xl border px-3.5 text-center text-2xl font-semibold tracking-[0.4em] tabular-nums outline-none"
+          className={`border-border bg-muted placeholder:text-muted-foreground/50 font-display ${CASHIER.control} w-full rounded-2xl border px-3.5 text-center text-2xl font-semibold tracking-[0.4em] tabular-nums outline-none`}
         />
         <Button
           variant="default"
           size="lg"
           disabled={pin.trim().length !== 6 || confirmPin.isPending}
           onClick={() => void confirmRegister()}
-          className="mt-4 h-10 w-full gap-2 rounded-2xl text-base font-extrabold"
+          className={`mt-4 ${CASHIER.action} w-full gap-2 rounded-2xl text-base font-extrabold`}
         >
           <Check className="size-5" />
           {t("registerPinConfirm")}
@@ -188,7 +189,7 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
         size="lg"
         disabled={!valid || search.isFetching}
         onClick={() => setSearched(true)}
-        className="mt-4 h-12 w-full gap-2 rounded-2xl text-base font-extrabold"
+        className={`mt-4 ${CASHIER.action} w-full gap-2 rounded-2xl text-base font-extrabold`}
       >
         <Search className="size-5" />
         {search.isFetching ? t("searching") : t("searchCta")}
@@ -231,7 +232,7 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
               {t("quickRegisterNotFound")}
             </ResponsiveModalTitle>
             <div className="border-border bg-muted mt-3 rounded-2xl border p-3 text-center">
-              <div className="text-muted-foreground/70 text-[0.625rem] font-extrabold tracking-wider uppercase">
+              <div className={LABEL}>
                 {t("numberSearched")}
               </div>
               <div className="font-display mt-0.5 text-xl font-semibold tabular-nums">
@@ -245,14 +246,14 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
               value={regName}
               onChange={(e) => setRegName(e.target.value)}
               placeholder={t("quickRegisterName")}
-              className="border-border bg-card placeholder:text-muted-foreground/70 mt-3 h-10 w-full rounded-2xl border px-3.5 text-sm font-semibold outline-none"
+              className={`border-border bg-card placeholder:text-muted-foreground/70 mt-3 ${CASHIER.control} w-full rounded-2xl border px-3.5 text-sm font-semibold outline-none`}
             />
             <Button
               variant="default"
               size="lg"
               disabled={requestPin.isPending}
               onClick={() => void startRegister()}
-              className="mt-3 h-11 w-full gap-2 rounded-2xl text-base font-extrabold"
+              className={`mt-3 ${CASHIER.action} w-full gap-2 rounded-2xl text-base font-extrabold`}
             >
               <KeyRound className="size-4" />
               {t("quickRegisterSend")}

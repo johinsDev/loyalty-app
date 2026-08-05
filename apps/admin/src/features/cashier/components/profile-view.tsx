@@ -1,103 +1,65 @@
 "use client";
 
 import { authClient } from "@loyalty/auth/client";
-import {
-  Button,
-  DateWheelPicker,
-  type DateValue,
-  Input,
-  ResponsiveModal,
-  ResponsiveModalClose,
-  ResponsiveModalContent,
-  ResponsiveModalDescription,
-  ResponsiveModalTitle,
-} from "@loyalty/ui";
-import {
-  Cake,
-  Camera,
-  ChevronRight,
-  KeyRound,
-  LogOut,
-  Upload,
-} from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
-import { useRef, useState } from "react";
-import { toast } from "sonner";
+import { Button, cn, Skeleton } from "@loyalty/ui";
+import { useQuery } from "@tanstack/react-query";
+import { LogOut, Store } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useRouter } from "@/i18n/nav";
+import { useFadeUp } from "@/lib/animate";
+import { useTRPC } from "@/lib/trpc/client";
 
-import { AVATAR_ACCEPT, AVATAR_MAX_BYTES, cashier, teaAvatars } from "../data";
-
-type EditField = "name" | "nick" | null;
+import { CASHIER, CashierPage, CashierPanel } from "./chrome";
 
 /**
- * Perfil tab — the cashier configures their own account (avatar, name, nickname,
- * birthday) and preferences (language, theme), changes the shift PIN and signs
- * out. Name/nickname edit in a modal and the avatar (predefined tea avatars or
- * a custom upload) match the customer profile. Design-first: local until the
- * cashier-account backend lands.
+ * Perfil tab — who is signed in at this register, the two preferences that are
+ * really theirs (language, theme), and the way out.
+ *
+ * It used to be a design mock: name, nickname, birthday and a tea-avatar picker
+ * driven by `useState` seeded from a hardcoded "Lucía Fernández", with three
+ * modals that edited values nothing ever saved. Reloading the tab reverted
+ * everything, and every cashier in every shop saw the same invented person.
+ * There is no self-service employee endpoint to hang it on either —
+ * `employees.update` is owner-only — so the screen now shows the real session
+ * and says plainly who does own the account.
  */
 export function ProfileView() {
   const t = useTranslations("Cashier");
-  const locale = useLocale();
+  // The role labels already exist for the team screens; a second set under
+  // Cashier would be the same three words maintained twice.
+  const tRole = useTranslations("Employees");
+  const fade = useFadeUp();
   const router = useRouter();
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const [name, setName] = useState(cashier.name);
-  const [nick, setNick] = useState("lulifer");
-  const [birthday, setBirthday] = useState<DateValue>({
-    day: 9,
-    month: 7,
-    year: 1998,
-  });
-  const [avatarId, setAvatarId] = useState<string>(teaAvatars[0]!.id);
-  const [customAvatar, setCustomAvatar] = useState<string | null>(null);
-
-  const [edit, setEdit] = useState<EditField>(null);
-  const [draft, setDraft] = useState("");
-  const [bdayOpen, setBdayOpen] = useState(false);
-  const [avatarOpen, setAvatarOpen] = useState(false);
+  const trpc = useTRPC();
   const [signingOut, setSigningOut] = useState(false);
 
-  const months = Array.from({ length: 12 }, (_, i) =>
-    new Intl.DateTimeFormat(locale, { month: "long" }).format(
-      new Date(2000, i, 1),
-    ),
-  );
-  const birthdayText = new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "long",
-  }).format(new Date(birthday.year, birthday.month - 1, birthday.day));
-  const avatar = teaAvatars.find((a) => a.id === avatarId) ?? teaAvatars[0]!;
+  const { data: session } = authClient.useSession();
+  const { data: stores } = useQuery(trpc.employees.myStores.queryOptions());
 
-  const openEdit = (field: "name" | "nick") => {
-    setDraft(field === "name" ? name : nick);
-    setEdit(field);
-  };
-  const saveEdit = () => {
-    const v = draft.trim();
-    if (edit === "name") setName(v || cashier.name);
-    else if (edit === "nick") setNick((v || nick).replace(/^@/, ""));
-    setEdit(null);
-  };
+  // `useSession` reads Better Auth's client store, which is already populated on
+  // the very first client render but empty during SSR — so the identity rendered
+  // "—" on the server and "PA / Preview Admin" on the client, and React threw a
+  // hydration mismatch. Holding the block until mount makes the two agree; the
+  // session lands a tick later either way.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    if (!AVATAR_ACCEPT.includes(file.type as (typeof AVATAR_ACCEPT)[number])) {
-      toast.error(t("avatarErrorType"));
-      return;
-    }
-    if (file.size > AVATAR_MAX_BYTES) {
-      toast.error(t("avatarErrorSize", { mb: AVATAR_MAX_BYTES / 1024 / 1024 }));
-      return;
-    }
-    setCustomAvatar(URL.createObjectURL(file));
-    setAvatarOpen(false);
-  };
+  // The role comes from `auth.me`, not `useRole()`: the cashier shell's RoleGate
+  // covers the header only, and widening it to wrap the page took every cashier
+  // route down (see the layout's note). Better Auth's `getActiveMember()` is no
+  // use here either — an operator session carries no active organization, so it
+  // answers NO_ACTIVE_ORGANIZATION. `auth.me` is the same lookup the shell does,
+  // already role-cached server-side.
+  const { data: me } = useQuery(trpc.auth.me.queryOptions());
+  const role = me?.role ?? null;
+
+  const user = mounted ? session?.user : undefined;
+  const name = user?.name?.trim() || user?.email || null;
+  const storeNames = (stores ?? []).map((s) => s.name);
 
   const onSignOut = async () => {
     setSigningOut(true);
@@ -106,302 +68,116 @@ export function ProfileView() {
   };
 
   return (
-    // Same width as every other cashier tab (`max-w-2xl lg:max-w-4xl`); this
-    // one was stuck at `max-w-md`, so switching to Perfil visibly narrowed the
-    // page. The extra room then goes to columns instead of a long thin ribbon:
-    // account on the left, preferences and session on the right from `sm` up,
-    // one column on a phone.
-    <div className="mx-auto w-full max-w-2xl px-5 py-5 lg:max-w-4xl">
-      <input
-        ref={fileRef}
-        type="file"
-        accept={AVATAR_ACCEPT.join(",")}
-        onChange={onPickFile}
-        className="hidden"
-      />
-
-      {/* Header */}
-      <div className="bg-primary/10 flex items-center gap-4 rounded-3xl p-5">
-        <button
-          type="button"
-          onClick={() => setAvatarOpen(true)}
-          className="relative size-16 flex-none"
-          aria-label={t("avatarTitle")}
-        >
-          <AvatarFace avatar={avatar} custom={customAvatar} />
-          <span className="text-primary absolute -right-1 -bottom-1 grid size-6 place-items-center rounded-full border-2 border-white bg-white">
-            <Camera className="size-3" />
-          </span>
-        </button>
-        <div className="min-w-0">
-          <div className="truncate text-lg font-extrabold">{name}</div>
-          <div className="text-muted-foreground text-sm font-semibold">
-            @{nick}
+    <CashierPage title={t("tabProfile")}>
+      <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-2">
+        <CashierPanel title={t("profileAccount")} className="min-w-0" >
+          <div style={fade(0)} className="flex items-center gap-3.5">
+            {name === null ? (
+              <>
+                <Skeleton className="size-14 flex-none rounded-2xl" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="bg-primary/10 text-primary font-display grid size-14 flex-none place-items-center rounded-2xl text-lg font-semibold">
+                  {initials(name)}
+                </span>
+                <div className="min-w-0">
+                  <div className="truncate text-base font-extrabold">{name}</div>
+                  {user?.email ? (
+                    <div className="text-muted-foreground truncate text-sm font-semibold">
+                      {user.email}
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            )}
           </div>
-        </div>
-      </div>
 
-      <div className="mt-4 grid grid-cols-1 items-start gap-x-5 sm:grid-cols-2">
-        <div>
-          {/* Account */}
-          <Section label={t("profileAccount")}>
-            <Row
-              label={t("name")}
-              value={name}
-              onClick={() => openEdit("name")}
+          <dl className="divide-border mt-4 divide-y border-t pt-1">
+            <InfoRow label={t("profileRole")} value={role ? tRole(`role.${role}`) : "—"} />
+            <InfoRow
+              label={t("profileStores")}
+              value={storeNames.length > 0 ? storeNames.join(" · ") : t("profileAllStores")}
+              icon={<Store className="size-3.5" />}
             />
-            <Row
-              label={t("nickname")}
-              value={`@${nick}`}
-              onClick={() => openEdit("nick")}
-            />
-            <Row
-              icon={<Cake className="size-5" />}
-              label={t("birthday")}
-              value={birthdayText}
-              onClick={() => setBdayOpen(true)}
-            />
-          </Section>
-        </div>
+          </dl>
 
-        <div>
-          {/* Preferences */}
-          <Section label={t("preferences")}>
-            <div className="flex items-center justify-between px-4 py-3.5">
-              <span className="text-sm font-bold">{t("language")}</span>
-              <LocaleSwitcher />
+          {/* Not shown to the owner — they ARE who administers it. */}
+          {role !== null && role !== "owner" ? (
+            <p className="text-muted-foreground/70 mt-3 text-xs font-semibold">
+              {t("profileReadOnly")}
+            </p>
+          ) : null}
+        </CashierPanel>
+
+        <div className="flex min-w-0 flex-col gap-5">
+          <CashierPanel title={t("preferences")}>
+            <div className="divide-border divide-y">
+              <div className="flex items-center justify-between gap-3 py-2.5 first:pt-0">
+                <span className="text-sm font-bold">{t("language")}</span>
+                <LocaleSwitcher />
+              </div>
+              <div className="flex items-center justify-between gap-3 py-2.5">
+                <span className="text-sm font-bold">{t("theme")}</span>
+                <ThemeToggle />
+              </div>
             </div>
-            <div className="border-border flex items-center justify-between border-t px-4 py-3.5">
-              <span className="text-sm font-bold">{t("theme")}</span>
-              <ThemeToggle />
-            </div>
-          </Section>
+          </CashierPanel>
 
-          {/* Shift + session */}
-          <Section>
-            <Row
-              icon={<KeyRound className="size-5" />}
-              label={t("changePin")}
-              onClick={() => {
-                /* seam: shift-PIN keypad lands with the shift model */
-              }}
-            />
-            <button
+          <CashierPanel title={t("profileSession")}>
+            <Button
               type="button"
+              variant="outline"
               onClick={() => void onSignOut()}
               disabled={signingOut}
-              className="flex w-full items-center gap-3.5 px-4 py-4 text-left font-semibold text-rose-500 disabled:opacity-60"
+              className={cn(
+                CASHIER.control,
+                // `text-destructive`, not the hand-picked rose this screen used
+                // to carry — the token is what the rest of admin destroys with.
+                "text-destructive hover:text-destructive w-full justify-start gap-3 rounded-2xl font-bold",
+              )}
             >
-              <span className="grid size-10 flex-none place-items-center rounded-xl bg-rose-500/10">
-                <LogOut className="size-5" />
-              </span>
+              <LogOut className="size-5" />
               {signingOut ? t("signingOut") : t("signOut")}
-            </button>
-          </Section>
-        </div>
-      </div>
-
-      {/* Edit name / nick */}
-      <ResponsiveModal
-        open={edit !== null}
-        onOpenChange={(o) => !o && setEdit(null)}
-      >
-        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
-          <div className="flex flex-col px-6 pt-2 pb-6">
-            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
-              {edit === "nick" ? t("nickname") : t("name")}
-            </ResponsiveModalTitle>
-            <ResponsiveModalDescription className="sr-only">
-              {edit === "nick" ? t("nickname") : t("name")}
-            </ResponsiveModalDescription>
-            <Input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              className="mt-4 h-12 rounded-xl"
-              autoFocus
-            />
-            <Button
-              variant="gradient"
-              size="lg"
-              onClick={saveEdit}
-              className="mt-4 h-14 w-full rounded-2xl text-base font-extrabold"
-            >
-              {t("save")}
             </Button>
-          </div>
-        </ResponsiveModalContent>
-      </ResponsiveModal>
-
-      {/* Birthday */}
-      <ResponsiveModal open={bdayOpen} onOpenChange={setBdayOpen}>
-        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
-          <div className="flex flex-col px-6 pt-2 pb-6">
-            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
-              {t("birthday")}
-            </ResponsiveModalTitle>
-            <ResponsiveModalDescription className="text-muted-foreground mt-1 mb-4 text-sm">
-              {t("birthdayHint")}
-            </ResponsiveModalDescription>
-            <DateWheelPicker
-              value={birthday}
-              onValueChange={setBirthday}
-              monthLabels={months}
-              dayLabel={t("dayLabel")}
-              monthLabel={t("monthLabel")}
-              yearLabel={t("yearLabel")}
-            />
-            <ResponsiveModalClose
-              variant="gradient"
-              className="mt-5 h-14 w-full rounded-2xl text-base"
-            >
-              {t("done")}
-            </ResponsiveModalClose>
-          </div>
-        </ResponsiveModalContent>
-      </ResponsiveModal>
-
-      {/* Avatar */}
-      <ResponsiveModal open={avatarOpen} onOpenChange={setAvatarOpen}>
-        <ResponsiveModalContent mobileClassName="mx-auto w-full max-w-md">
-          <div className="flex flex-col px-6 pt-2 pb-6">
-            <ResponsiveModalTitle className="font-display text-xl font-semibold tracking-tight">
-              {t("avatarTitle")}
-            </ResponsiveModalTitle>
-            <ResponsiveModalDescription className="text-muted-foreground mt-1 mb-4 text-sm">
-              {t("avatarHint")}
-            </ResponsiveModalDescription>
-            <div className="grid grid-cols-4 gap-3">
-              {teaAvatars.map((a) => {
-                const active = !customAvatar && a.id === avatarId;
-                return (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => {
-                      setCustomAvatar(null);
-                      setAvatarId(a.id);
-                      setAvatarOpen(false);
-                    }}
-                    aria-pressed={active}
-                    style={{
-                      backgroundImage: `linear-gradient(150deg, ${a.gradient[0]}, ${a.gradient[1]})`,
-                    }}
-                    className={`grid aspect-square place-items-center rounded-full text-3xl ${active ? "ring-primary ring-offset-background ring-2 ring-offset-2" : ""}`}
-                  >
-                    {a.emoji}
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                aria-label={t("avatarUpload")}
-                className={`border-border text-muted-foreground relative grid aspect-square place-items-center overflow-hidden rounded-full border-2 border-dashed ${customAvatar ? "ring-primary ring-offset-background ring-2 ring-offset-2" : ""}`}
-              >
-                {customAvatar ? (
-                  <img
-                    src={customAvatar}
-                    alt=""
-                    className="absolute inset-0 size-full object-cover"
-                  />
-                ) : (
-                  <Upload className="size-5" />
-                )}
-              </button>
-            </div>
-            <ResponsiveModalClose
-              variant="secondary"
-              className="mt-6 h-14 w-full rounded-2xl text-base"
-            >
-              {t("done")}
-            </ResponsiveModalClose>
-          </div>
-        </ResponsiveModalContent>
-      </ResponsiveModal>
-    </div>
-  );
-}
-
-function AvatarFace({
-  avatar,
-  custom,
-}: {
-  avatar: { emoji: string; gradient: readonly [string, string] };
-  custom: string | null;
-}) {
-  if (custom) {
-    return (
-      <span className="relative block size-16 overflow-hidden rounded-full">
-        <img
-          src={custom}
-          alt=""
-          className="absolute inset-0 size-full object-cover"
-        />
-      </span>
-    );
-  }
-  return (
-    <span
-      className="grid size-16 place-items-center rounded-full text-3xl"
-      style={{
-        backgroundImage: `linear-gradient(150deg, ${avatar.gradient[0]}, ${avatar.gradient[1]})`,
-      }}
-    >
-      {avatar.emoji}
-    </span>
-  );
-}
-
-function Section({
-  label,
-  children,
-}: {
-  label?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="mt-6">
-      {label ? (
-        <div className="text-muted-foreground/70 mb-2.5 px-1 text-xs font-extrabold tracking-wider">
-          {label}
+          </CashierPanel>
         </div>
-      ) : null}
-      <div className="bg-card divide-border border-border divide-y overflow-hidden rounded-3xl border shadow-sm">
-        {children}
       </div>
-    </div>
+    </CashierPage>
   );
 }
 
-function Row({
-  icon,
+function InfoRow({
   label,
   value,
-  onClick,
+  icon,
 }: {
-  icon?: React.ReactNode;
   label: string;
-  value?: string;
-  onClick: () => void;
+  value: string;
+  icon?: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left"
-    >
-      {icon ? (
-        <span className="bg-muted text-muted-foreground grid size-10 flex-none place-items-center rounded-xl">
-          {icon}
-        </span>
-      ) : null}
-      <span className="flex-1 text-sm font-bold">{label}</span>
-      {value ? (
-        <span className="text-muted-foreground max-w-[55%] truncate text-sm font-semibold">
-          {value}
-        </span>
-      ) : null}
-      <ChevronRight className="text-muted-foreground/50 size-4 flex-none" />
-    </button>
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <dt className="text-muted-foreground flex items-center gap-1.5 text-sm font-semibold">
+        {icon}
+        {label}
+      </dt>
+      <dd className="max-w-[60%] truncate text-sm font-bold">{value}</dd>
+    </div>
+  );
+}
+
+/** "Lucía Fernández" → "LF". */
+function initials(name: string): string {
+  const parts = name.split(/\s+/).filter(Boolean);
+  return (
+    parts
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() ?? "")
+      .join("") || "?"
   );
 }

@@ -9,6 +9,8 @@ import {
 import { Store } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { CASHIER } from "./chrome";
+
 export type ConfirmLine = {
   key: string;
   name: string;
@@ -157,7 +159,7 @@ export function ConfirmSale({
             <Button
               variant="secondary"
               onClick={() => onOpenChange(false)}
-              className="h-10 flex-1 rounded-2xl font-bold"
+              className={`${CASHIER.control} flex-1 rounded-2xl font-bold`}
             >
               {t("confirmSaleCancel")}
             </Button>
@@ -165,7 +167,7 @@ export function ConfirmSale({
               variant="default"
               disabled={pending}
               onClick={onConfirm}
-              className="h-10 flex-1 rounded-2xl font-extrabold"
+              className={`${CASHIER.action} flex-1 rounded-2xl font-extrabold`}
             >
               {pending ? t("confirmSalePending") : t("confirmSaleConfirm")}
             </Button>

@@ -17,6 +17,9 @@ import { useMemo, useState } from "react";
 import { useTRPC } from "@/lib/trpc/client";
 
 import { CATALOG_STALE_MS } from "../catalog-cache";
+import { useCashierMoney } from "../format";
+
+import { CASHIER, LABEL } from "./chrome";
 
 type ProductDetail = NonNullable<inferRouterOutputs<AppRouter>["menu"]["productBySlug"]>;
 type DetailVariant = ProductDetail["variants"][number];
@@ -44,15 +47,6 @@ export type PickedLine = {
   removedLabels: string[];
 };
 
-const formatCop = (cents: number): string =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(Math.round(cents) / 100);
-
-const deltaLabel = (cents: number): string =>
-  cents === 0 ? "base" : `${cents > 0 ? "+" : ""}${formatCop(cents)}`;
 
 /** The product's rich-text description arrives as HTML; the cashier box shows it
  *  as plain text (the customer app is the surface that renders the markup). */
@@ -95,6 +89,9 @@ export function ProductPicker({
 }) {
   const t = useTranslations("Cashier");
   const trpc = useTRPC();
+  const formatCop = useCashierMoney();
+  const deltaLabel = (cents: number): string =>
+    cents === 0 ? "base" : `${cents > 0 ? "+" : ""}${formatCop(cents)}`;
   const detail = useQuery(
     trpc.menu.productBySlug.queryOptions({ slug }, { staleTime: CATALOG_STALE_MS }),
   );
@@ -207,7 +204,7 @@ export function ProductPicker({
             </ResponsiveModalTitle>
             {product?.description ? (
               <ResponsiveModalDescription className="bg-muted text-foreground mt-3 rounded-2xl p-3 text-sm leading-relaxed">
-                <span className="text-muted-foreground/70 mb-1 block text-[0.625rem] font-extrabold tracking-wider uppercase">
+                <span className={`${LABEL} mb-1 block`}>
                   {t("pickerContains")}
                 </span>
                 {plainText(product.description)}
@@ -243,7 +240,7 @@ export function ProductPicker({
                             </span>
                           ) : null}
                         </div>
-                        <div className="text-muted-foreground/70 text-[0.625rem] font-bold">
+                        <div className="text-muted-foreground/70 text-[0.6875rem] font-bold">
                           {deltaLabel(delta)}
                         </div>
                       </button>
@@ -309,7 +306,7 @@ export function ProductPicker({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder={t("pickerNotePlaceholder")}
-              className="border-border bg-muted placeholder:text-muted-foreground/70 h-11 w-full rounded-2xl border px-3.5 text-sm font-semibold outline-none"
+              className={`border-border bg-muted placeholder:text-muted-foreground/70 ${CASHIER.control} w-full rounded-2xl border px-3.5 text-sm font-semibold outline-none`}
             />
           </div>
 
@@ -338,7 +335,7 @@ export function ProductPicker({
               size="lg"
               disabled={detail.isPending || !product}
               onClick={add}
-              className="h-12 flex-1 gap-2 rounded-2xl text-base font-extrabold"
+              className={`${CASHIER.action} flex-1 gap-2 rounded-2xl text-base font-extrabold`}
             >
               {t("pickerAdd", { price: formatCop(unit * qty) })}
             </Button>

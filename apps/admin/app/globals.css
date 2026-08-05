@@ -256,6 +256,23 @@
   border-radius: var(--radius-lg);
 }
 
+/* The register (POS) segment. Same shielding trick as `.preview-customer`: the
+   cashier screens speak in soft rectangles, not Luma pills, and a screen that
+   mixes `<Button>` with a hand-rolled `<button>` — the register has 21 of the
+   latter next to 6 of the former — otherwise draws the two side by side with
+   different radii. Scoped, so nothing in @loyalty/ui is forked. */
+.cashier-scope [data-slot="button"] {
+  border-radius: var(--radius-2xl);
+}
+
+/* The register's ink surface (identity bar, live cart). It was the literal hex
+   `#161b22` repeated inline, invisible to the theme system; the value is
+   unchanged, it just has a name now. The cart deliberately keeps its own light
+   palette on top of this (see the contrast notes in register-board). */
+.cashier-scope {
+  --cashier-ink: #161b22;
+}
+
 /* Staggered entrance shared across the cashier views (see @/lib/animate). */
 @keyframes tw-fade-up {
   from {

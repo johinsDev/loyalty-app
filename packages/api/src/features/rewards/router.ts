@@ -4,6 +4,13 @@ import { z } from "zod";
 import { managerProcedure, orgId, protectedProcedure, rateLimit, router, staffProcedure, type CacheBinding, type RealtimeBinding } from "../../trpc";
 import { loadLocaleContext } from "../_shared/localize";
 import { cachedListRead } from "../_shared/list-cache";
+// Straight at the module, NOT the `../promotions` barrel: that barrel also
+// exports `promocionesRouter`, so importing it from a router puts a router in
+// another router's init path. The cycle left the binding undefined in the
+// bundled Worker and authenticated requests then hung until workerd gave up with
+// "the script will never generate a response" — which surfaced as an unparseable
+// body on EVERY admin route, not just the rewards ones.
+import { PromoRepository } from "../promotions/repository";
 import { rewardBenefitSummary } from "./format";
 import { RewardsRepository } from "./repository";
 import { RewardsService } from "./service";
@@ -52,21 +59,42 @@ export const rewardsRouter = router({
     }),
 
   /** Cashier catalog — published rewards with cost, type, store scope and a
-   *  human benefit summary (what it gives / requires). Staff-safe reference. */
+   *  human benefit summary (what it gives / requires). Staff-safe reference.
+   *
+   *  Carries the same fields as `availableForCustomer` (scope names, hand-over
+   *  note, description) because the Premios tab and the register now open the
+   *  SAME detail sheet: without them, browsing a reward from the tab showed
+   *  strictly less about it than opening it mid-sale. Scope resolution is one
+   *  batched query for the whole page, as in the service. */
   staffCatalog: staffProcedure.query(async ({ ctx }) => {
     const { rows } = await new RewardsRepository(ctx.db).listCatalog(orgId(ctx), {
       limit: 100,
     });
-    return rows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      type: r.type,
-      stampsRequired: r.stampsRequired,
-      pointsCost: r.pointsCost,
-      costMode: r.costMode,
-      storeIds: r.storeIds,
-      benefitSummary: rewardBenefitSummary(r.benefit, "es"),
-    }));
+    const allRefs = rows.flatMap((r) =>
+      r.benefit && "refs" in r.benefit ? (r.benefit.refs ?? []) : [],
+    );
+    const names =
+      allRefs.length > 0
+        ? await new PromoRepository(ctx.db).refNames(allRefs).catch(() => new Map())
+        : new Map<string, string>();
+    return rows.map((r) => {
+      const refs = r.benefit && "refs" in r.benefit ? (r.benefit.refs ?? []) : [];
+      return {
+        id: r.id,
+        name: r.name,
+        type: r.type,
+        stampsRequired: r.stampsRequired,
+        pointsCost: r.pointsCost,
+        costMode: r.costMode,
+        storeIds: r.storeIds,
+        benefitSummary: rewardBenefitSummary(r.benefit, "es", names),
+        description: r.description,
+        fulfillmentNote: r.fulfillmentNote,
+        scopeNames: refs
+          .map((ref) => names.get(ref.id))
+          .filter((n): n is string => Boolean(n)),
+      };
+    });
   }),
 
   // ---- Admin wizard / data-table -------------------------------------
