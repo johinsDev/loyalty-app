@@ -77,15 +77,19 @@ export function LoyaltyTab({ customerId }: { customerId: string }) {
 
       {isOwner ? (
         <>
+          {/* The balances are already loaded up top; the dialog needs them to
+              show what the adjustment turns them into. */}
           <AdjustLoyaltyDialog
             customerId={customerId}
             currency="stamps"
+            currentBalance={wallet.data?.currentStamps ?? 0}
             open={stampsOpen}
             onOpenChange={setStampsOpen}
           />
           <AdjustLoyaltyDialog
             customerId={customerId}
             currency="points"
+            currentBalance={points.data?.balance ?? 0}
             open={pointsOpen}
             onOpenChange={setPointsOpen}
           />
