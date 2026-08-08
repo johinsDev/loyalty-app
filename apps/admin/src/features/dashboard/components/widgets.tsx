@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/nav";
 import { trpc } from "@/lib/trpc/server";
+import { Link } from "@/i18n/nav";
 
 import { DASHBOARD_PERIOD_DAYS, type DashboardPeriod } from "../list-params";
 import { agoOf, deltaStr, fmtCop, fmtCopCompact, fmtNum, initialsOf } from "../lib/format";
@@ -204,29 +205,28 @@ export async function CohortsTable() {
 export async function RecentPurchases({ storeId }: Pick<WidgetProps, "storeId">) {
   const rows = await (await trpc()).dashboard.recentPurchases({ limit: 6, storeId });
   const now = Date.now();
+  const scope = storeId ?? "all";
   return (
     <ul className="divide-border divide-y">
       {rows.map((r) => (
-        <li key={r.id}>
-          {/* The obvious next question about a sale on this list is "what was
-              in it", and the answer already has a page. */}
+        <li key={r.id} className="flex items-center gap-3 py-2.5">
           <Link
-            href={{ pathname: "/purchases/[id]", params: { id: r.id } }}
-            className="hover:bg-muted/40 -mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors"
+            href={{ pathname: "/[storeId]/purchases/[id]", params: { storeId: scope, id: r.id } }}
+            className="hover:bg-muted -m-1.5 flex w-full items-center gap-3 rounded-xl p-1.5"
           >
-            <AvatarChip initials={initialsOf(r.customerName)} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-bold">{r.customerName}</div>
-              {r.storeName ? (
-                <div className="text-muted-foreground/70 truncate text-xs font-semibold">
-                  {r.storeName}
-                </div>
-              ) : null}
-            </div>
-            <div className="text-right text-sm font-bold">{fmtCop(r.amountCents)}</div>
-            <span className="text-muted-foreground/70 w-12 text-right text-xs font-semibold">
-              {agoOf(r.createdAt, now)}
-            </span>
+          <AvatarChip initials={initialsOf(r.customerName)} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-bold">{r.customerName}</div>
+            {r.storeName ? (
+              <div className="text-muted-foreground/70 truncate text-xs font-semibold">
+                {r.storeName}
+              </div>
+            ) : null}
+          </div>
+          <div className="text-right text-sm font-bold">{fmtCop(r.amountCents)}</div>
+          <span className="text-muted-foreground/70 w-12 text-right text-xs font-semibold">
+            {agoOf(r.createdAt, now)}
+          </span>
           </Link>
         </li>
       ))}
@@ -238,19 +238,25 @@ export async function RecentPurchases({ storeId }: Pick<WidgetProps, "storeId">)
 export async function TopCustomers({ period, storeId }: WidgetProps) {
   const t = await getTranslations("Dashboard");
   const rows = await (await trpc()).dashboard.topCustomers({ period, limit: 6, storeId });
+  const scope = storeId ?? "all";
   return (
     <ul className="divide-border divide-y">
       {rows.map((c, idx) => (
         <li key={c.id} className="flex items-center gap-3 py-2.5">
-          <span className="text-muted-foreground/60 w-4 text-sm font-bold">{idx + 1}</span>
-          <AvatarChip initials={initialsOf(c.name)} />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-bold">{c.name}</div>
-            <div className="text-muted-foreground/70 text-xs font-semibold">
-              {t("visits", { count: c.visits })}
+          <Link
+            href={{ pathname: "/[storeId]/customers/[id]", params: { storeId: scope, id: c.id } }}
+            className="hover:bg-muted -m-1.5 flex w-full items-center gap-3 rounded-xl p-1.5"
+          >
+            <span className="text-muted-foreground/60 w-4 text-sm font-bold">{idx + 1}</span>
+            <AvatarChip initials={initialsOf(c.name)} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-bold">{c.name}</div>
+              <div className="text-muted-foreground/70 text-xs font-semibold">
+                {t("visits", { count: c.visits })}
+              </div>
             </div>
-          </div>
-          <span className="text-primary text-sm font-extrabold">{fmtCop(c.ltvCents)}</span>
+            <span className="text-primary text-sm font-extrabold">{fmtCop(c.ltvCents)}</span>
+          </Link>
         </li>
       ))}
     </ul>
@@ -290,6 +296,7 @@ export async function RecentClaims() {
 export async function AtRisk({ storeId }: Pick<WidgetProps, "storeId">) {
   const t = await getTranslations("Dashboard");
   const rows = await (await trpc()).dashboard.atRisk({ days: 30, limit: 5, storeId });
+  const scope = storeId ?? "all";
   if (rows.length === 0) {
     return <p className="text-muted-foreground py-4 text-sm font-semibold">{t("atRiskEmpty")}</p>;
   }
@@ -297,13 +304,18 @@ export async function AtRisk({ storeId }: Pick<WidgetProps, "storeId">) {
     <ul className="divide-border divide-y">
       {rows.map((c) => (
         <li key={c.id} className="flex items-center gap-3 py-2.5">
-          <AvatarChip initials={initialsOf(c.name)} />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-bold">{c.name}</div>
-            <div className="text-muted-foreground/70 text-xs font-semibold">
-              {t("lastVisitAgo", { ago: `${c.daysSince} d` })}
+          <Link
+            href={{ pathname: "/[storeId]/customers/[id]", params: { storeId: scope, id: c.id } }}
+            className="hover:bg-muted -m-1.5 flex w-full items-center gap-3 rounded-xl p-1.5"
+          >
+            <AvatarChip initials={initialsOf(c.name)} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-bold">{c.name}</div>
+              <div className="text-muted-foreground/70 text-xs font-semibold">
+                {t("lastVisitAgo", { ago: `${c.daysSince} d` })}
+              </div>
             </div>
-          </div>
+          </Link>
         </li>
       ))}
     </ul>
@@ -348,6 +360,7 @@ export async function LiabilityStats({ period }: Pick<WidgetProps, "period">) {
 export async function TopProducts({ period, storeId }: WidgetProps) {
   const t = await getTranslations("Dashboard");
   const rows = await (await trpc()).dashboard.topProducts({ period, limit: 6, storeId });
+  const scope = storeId ?? "all";
   if (rows.length === 0) {
     return <p className="text-muted-foreground py-4 text-sm font-semibold">{t("noData")}</p>;
   }
@@ -355,19 +368,24 @@ export async function TopProducts({ period, storeId }: WidgetProps) {
     <ul className="divide-border divide-y">
       {rows.map((p, idx) => (
         <li key={p.productId} className="flex items-center gap-3 py-2.5">
-          <span className="text-muted-foreground/60 w-4 text-sm font-bold">{idx + 1}</span>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-bold">{p.name}</div>
-            <div className="text-muted-foreground/70 text-xs font-semibold">
-              {t("unitsSold", { n: p.units })}
+          <Link
+            href={{ pathname: "/[storeId]/products/[id]", params: { storeId: scope, id: p.productId } }}
+            className="hover:bg-muted -m-1.5 flex w-full items-center gap-3 rounded-xl p-1.5"
+          >
+            <span className="text-muted-foreground/60 w-4 text-sm font-bold">{idx + 1}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-bold">{p.name}</div>
+              <div className="text-muted-foreground/70 text-xs font-semibold">
+                {t("unitsSold", { n: p.units })}
+              </div>
             </div>
-          </div>
-          <div className="text-right">
-            <div className="text-sm font-bold">{fmtCop(p.revenueCents)}</div>
-            <div className="text-primary text-xs font-extrabold">
-              {p.marginPct != null ? t("marginShort", { pct: p.marginPct }) : "—"}
+            <div className="text-right">
+              <div className="text-sm font-bold">{fmtCop(p.revenueCents)}</div>
+              <div className="text-primary text-xs font-extrabold">
+                {p.marginPct != null ? t("marginShort", { pct: p.marginPct }) : "—"}
+              </div>
             </div>
-          </div>
+          </Link>
         </li>
       ))}
     </ul>

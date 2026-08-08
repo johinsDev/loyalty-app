@@ -105,17 +105,6 @@ export async function PurchasesTable({
       ),
     },
     {
-      id: "itemSummary",
-      label: t("col.detail"),
-      header: <span className="text-muted-foreground text-xs font-bold">{t("col.detail")}</span>,
-      cell: (p) =>
-        p.itemSummary ? (
-          <span className="text-muted-foreground text-sm">{p.itemSummary}</span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        ),
-    },
-    {
       id: "storeName",
       label: t("col.store"),
       header: <span className="text-muted-foreground text-xs font-bold">{t("col.store")}</span>,
@@ -158,24 +147,6 @@ export async function PurchasesTable({
           {money(format, p.totalCents, p.currency)}
         </span>
       ),
-    },
-    {
-      id: "stampsEarned",
-      align: "right",
-      label: t("col.stamps"),
-      header: <span className="text-muted-foreground text-xs font-bold">{t("col.stamps")}</span>,
-      cell: (p) => {
-        if (p.stampsEarned <= 0) return <span className="text-muted-foreground text-sm">—</span>;
-        const voided = p.voidedAt != null;
-        return (
-          <span
-            title={voided ? t("col.reverted") : undefined}
-            className={`text-sm font-semibold ${voided ? "text-muted-foreground" : ""}`}
-          >
-            {voided ? `↩ ${p.stampsEarned}` : `+${p.stampsEarned}`}
-          </span>
-        );
-      },
     },
     {
       id: "pointsEarned",
