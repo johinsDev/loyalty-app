@@ -1,6 +1,5 @@
 import { getTranslations } from "next-intl/server";
 
-import { Link } from "@/i18n/nav";
 import { trpc } from "@/lib/trpc/server";
 import { Link } from "@/i18n/nav";
 
