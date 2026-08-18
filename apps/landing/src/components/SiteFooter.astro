@@ -1,0 +1,52 @@
+---
+import { brand, legal } from "../data/site";
+
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-ink/8 bg-cream px-5 py-14 sm:px-8">
+  <div class="mx-auto max-w-6xl">
+    <div class="flex flex-col gap-10 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <p class="font-display text-2xl font-semibold tracking-tight">{brand.name}</p>
+        <p class="mt-2 max-w-xs text-sm text-ink-soft">{brand.tagline}</p>
+      </div>
+
+      <div class="flex gap-12 text-sm">
+        <div class="space-y-2.5">
+          <a href="#menu" class="block text-ink-soft transition-colors hover:text-ink">Menú</a>
+          <a href="#club" class="block text-ink-soft transition-colors hover:text-ink">
+            {brand.club}
+          </a>
+          <a href="#visitanos" class="block text-ink-soft transition-colors hover:text-ink">
+            Dónde estamos
+          </a>
+        </div>
+        <div class="space-y-2.5">
+          <a href={brand.portalUrl} class="block text-ink-soft transition-colors hover:text-ink">
+            Portal de clientes
+          </a>
+          <a href={legal.phoneHref} class="block text-ink-soft transition-colors hover:text-ink">
+            {legal.phone}
+          </a>
+          <a
+            href={`mailto:${legal.email}`}
+            class="block text-ink-soft transition-colors hover:text-ink"
+          >
+            {legal.email}
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-12 border-t border-ink/8 pt-7 text-sm text-ink-soft">
+      <p class="font-medium text-ink">{legal.companyName}</p>
+      <p class="mt-1">
+        {legal.taxId} · {legal.address}, {legal.addressExtra} · {legal.city}
+      </p>
+      <p class="mt-4 text-xs text-ink/40">
+        © {year} {legal.companyName}. Todos los derechos reservados.
+      </p>
+    </div>
+  </div>
+</footer>

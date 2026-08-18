@@ -1,0 +1,28 @@
+{
+  "name": "@loyalty/landing",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --port 3004",
+    "build": "astro build",
+    "preview": "astro preview --port 3004",
+    "lint": "oxlint src --ignore-pattern \"**/*.astro\"",
+    "format": "oxlint src --ignore-pattern \"**/*.astro\" --fix",
+    "typecheck": "astro check",
+    "clean": "rm -rf .turbo node_modules dist .astro"
+  },
+  "dependencies": {
+    "astro": "^5.16.0",
+    "motion": "^12.40.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@fontsource-variable/fraunces": "^5.2.5",
+    "@fontsource-variable/inter": "^5.2.5",
+    "@tailwindcss/vite": "^4.0.0",
+    "oxlint": "^0.15.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.9.3"
+  }
+}

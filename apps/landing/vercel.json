@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "ignoreCommand": "npx --yes turbo-ignore@^2 @loyalty/landing",
+  "framework": null,
+  "buildCommand": "cd ../.. && bun run turbo build --filter=@loyalty/landing",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && rm -rf node_modules && bun install --frozen-lockfile"
+}

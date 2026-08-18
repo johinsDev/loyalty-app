@@ -1,0 +1,20 @@
+---
+import Club from "../components/Club.astro";
+import Hero from "../components/Hero.astro";
+import Menu from "../components/Menu.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteNav from "../components/SiteNav.astro";
+import Visitanos from "../components/Visitanos.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout>
+  <SiteNav />
+  <main>
+    <Hero />
+    <Menu />
+    <Club />
+    <Visitanos />
+  </main>
+  <SiteFooter />
+</BaseLayout>

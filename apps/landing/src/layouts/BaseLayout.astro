@@ -1,0 +1,76 @@
+---
+import { brand, googleRating, legal, openingHoursSpec } from "../data/site";
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = `${brand.name} — Bubble tea en CC Diverplaza`,
+  description = brand.tagline,
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "CafeOrCoffeeShop",
+  name: brand.name,
+  legalName: legal.companyName,
+  taxID: legal.taxId,
+  description,
+  url: canonical,
+  telephone: legal.phone,
+  email: legal.email,
+  servesCuisine: "Bubble tea",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: `${legal.address}, ${legal.addressExtra}`,
+    addressLocality: "Bogotá",
+    addressRegion: "Bogotá D.C.",
+    postalCode: legal.postalCode,
+    addressCountry: "CO",
+  },
+  openingHoursSpecification: openingHoursSpec.map((h) => ({
+    "@type": "OpeningHoursSpecification",
+    dayOfWeek: h.days,
+    opens: h.opens,
+    closes: h.closes,
+  })),
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: googleRating.score.replace(",", "."),
+    reviewCount: googleRating.reviews,
+  },
+};
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={canonical} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content="es_CO" />
+    <meta name="theme-color" content="#0f2a2e" />
+    <script is:inline>
+      document.documentElement.classList.add("js");
+    </script>
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+  </head>
+  <body class="bg-cream text-ink">
+    <slot />
+    <script>
+      import "../scripts/motion";
+    </script>
+  </body>
+</html>

@@ -1,0 +1,60 @@
+---
+import { hours, legal, mapsUrl, services } from "../data/site";
+---
+
+<section id="visitanos" class="scroll-mt-20 bg-paper px-5 py-24 sm:px-8 sm:py-32">
+  <div class="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[1.1fr_1fr]">
+    <div>
+      <p data-reveal class="text-sm font-semibold tracking-widest text-brand uppercase">
+        Dónde estamos
+      </p>
+      <h2 data-reveal class="mt-4 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+        Piso 3 del CC Diverplaza.
+      </h2>
+      <address data-reveal class="mt-6 text-lg text-ink-soft not-italic">
+        {legal.address}<br />
+        {legal.addressExtra}<br />
+        {legal.city}
+      </address>
+      <div data-reveal class="mt-8 flex flex-wrap gap-3">
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="rounded-full bg-ink px-7 py-3.5 font-semibold text-cream transition-transform hover:-translate-y-0.5"
+        >
+          Cómo llegar
+        </a>
+        <a
+          href={legal.phoneHref}
+          class="rounded-full border border-ink/15 px-7 py-3.5 font-semibold transition-colors hover:bg-cream"
+        >
+          {legal.phone}
+        </a>
+      </div>
+    </div>
+
+    <div data-reveal class="rounded-card border border-ink/8 bg-cream p-8">
+      <p class="text-xs font-semibold tracking-widest text-ink/40 uppercase">Horarios</p>
+      <ul class="mt-5 flex flex-wrap gap-2">
+        {
+          services.map((s) => (
+            <li class="rounded-full bg-brand/10 px-3 py-1.5 text-sm font-medium text-brand-deep">
+              {s}
+            </li>
+          ))
+        }
+      </ul>
+      <dl class="mt-6 divide-y divide-ink/8">
+        {
+          hours.map((h) => (
+            <div class="flex items-baseline justify-between gap-4 py-4">
+              <dt class="text-ink-soft">{h.days}</dt>
+              <dd class="font-display text-lg font-semibold whitespace-nowrap">{h.time}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </div>
+  </div>
+</section>

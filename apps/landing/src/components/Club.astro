@@ -1,0 +1,92 @@
+---
+import { STAMP_GOAL, brand, clubBenefits } from "../data/site";
+
+const stamps = Array.from({ length: STAMP_GOAL }, (_, i) => i);
+---
+
+<section id="club" class="scroll-mt-20 bg-brand-dark px-5 py-24 text-cream sm:px-8 sm:py-32">
+  <div class="mx-auto grid max-w-6xl items-center gap-16 lg:grid-cols-2">
+    <div>
+      <p data-reveal class="text-sm font-semibold tracking-widest text-brand uppercase">
+        {brand.club}
+      </p>
+      <h2 data-reveal class="mt-4 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+        Tu tarjeta de sellos, en el teléfono.
+      </h2>
+      <p data-reveal class="mt-5 text-lg text-cream/70">
+        Te registras con tu número, muestras el QR en caja y cada visita suma. Nada que descargar
+        desde una tienda de apps: se instala desde el navegador.
+      </p>
+
+      <dl class="mt-10 space-y-8">
+        {
+          clubBenefits.map((b) => (
+            <div data-reveal class="border-l-2 border-brand/40 pl-5">
+              <dt class="font-display text-xl font-semibold">{b.title}</dt>
+              <dd class="mt-1.5 text-cream/65">{b.body}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <a
+        data-reveal
+        href={brand.portalUrl}
+        class="mt-10 inline-block rounded-full bg-brand px-8 py-4 font-semibold text-white transition-transform hover:-translate-y-0.5"
+      >
+        Abrir el {brand.club}
+      </a>
+    </div>
+
+    <div data-reveal class="flex justify-center lg:justify-end">
+      <div
+        class="relative w-full max-w-[300px] rounded-[2.75rem] border border-cream/15 bg-brand-deep p-3 shadow-2xl"
+        aria-hidden="true"
+      >
+        <div class="absolute top-3 left-1/2 h-6 w-28 -translate-x-1/2 rounded-b-2xl bg-brand-dark"></div>
+
+        <div class="overflow-hidden rounded-[2.25rem] bg-cream px-6 pt-12 pb-8 text-ink">
+          <p class="text-xs font-semibold tracking-widest text-ink/40 uppercase">Tu tarjeta</p>
+          <p class="mt-1 font-display text-2xl font-semibold">Diver Club</p>
+
+          <div class="mt-7 flex justify-between">
+            {
+              stamps.map((i) => (
+                <span
+                  data-stamp={i}
+                  class="grid size-11 place-items-center rounded-full border-2 border-dashed border-ink/15 text-ink/20"
+                >
+                  <svg viewBox="0 0 24 24" class="size-5" fill="currentColor">
+                    <path d="M4 8h13a3 3 0 0 1 0 6h-1.1A6 6 0 0 1 4 13V8Zm13 2v2a1 1 0 0 0 0-2ZM3 20h15v2H3v-2Z" />
+                  </svg>
+                </span>
+              ))
+            }
+          </div>
+
+          <div class="mt-7">
+            <div class="h-1.5 overflow-hidden rounded-full bg-ink/8">
+              <div data-progress class="h-full w-0 rounded-full bg-brand"></div>
+            </div>
+            <p data-progress-label class="mt-2.5 text-sm text-ink-soft">
+              Te faltan {STAMP_GOAL} sellos
+            </p>
+          </div>
+
+          <div
+            data-reward
+            class="mt-6 flex items-center gap-3 rounded-2xl border border-ink/8 bg-paper p-4 opacity-40"
+          >
+            <span class="grid size-10 shrink-0 place-items-center rounded-full bg-brand/15 text-lg">
+              🧋
+            </span>
+            <div>
+              <p class="text-sm font-semibold">Bebida gratis</p>
+              <p data-reward-label class="text-xs text-ink-soft">Completa tu tarjeta</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
