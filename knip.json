@@ -191,6 +191,21 @@
         "log.ts",
         "whatsapp.ts"
       ]
+    },
+    "apps/landing": {
+      "entry": [
+        "src/scripts/*.ts",
+        "src/data/*.ts",
+        "astro.config.mjs"
+      ],
+      "project": [
+        "**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@fontsource-variable/fraunces",
+        "@fontsource-variable/inter",
+        "tailwindcss"
+      ]
     }
   },
   "ignoreDependencies": [

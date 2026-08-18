@@ -1,0 +1,33 @@
+---
+import { brand } from "../data/site";
+---
+
+<header class="sticky top-0 z-50 border-b border-ink/5 bg-cream/80 backdrop-blur-md">
+  <nav class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
+    <a href="/" class="flex items-baseline gap-2">
+      <span class="font-display text-2xl font-semibold tracking-tight">T4</span>
+      <span class="text-sm font-medium tracking-wide text-ink-soft">Diverplaza</span>
+    </a>
+
+    <div class="flex items-center gap-6">
+      <a
+        href="#menu"
+        class="hidden text-sm font-medium text-ink-soft transition-colors hover:text-ink sm:block"
+      >
+        Menú
+      </a>
+      <a
+        href="#visitanos"
+        class="hidden text-sm font-medium text-ink-soft transition-colors hover:text-ink sm:block"
+      >
+        Dónde estamos
+      </a>
+      <a
+        href={brand.portalUrl}
+        class="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-cream transition-transform hover:-translate-y-0.5"
+      >
+        Únete al club
+      </a>
+    </div>
+  </nav>
+</header>

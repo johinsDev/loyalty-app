@@ -1,0 +1,88 @@
+---
+import { brand, googleRating, legal } from "../data/site";
+
+const headline = ["El", "té", "que", "te", "hace", "volver."];
+const pearls = [
+  { size: 56, top: "14%", left: "7%", delay: 0, ring: false },
+  { size: 28, top: "66%", left: "13%", delay: 0.4, ring: true },
+  { size: 74, top: "24%", left: "84%", delay: 0.2, ring: false },
+  { size: 38, top: "72%", left: "89%", delay: 0.6, ring: true },
+  { size: 20, top: "46%", left: "93%", delay: 0.8, ring: false },
+  { size: 44, top: "82%", left: "48%", delay: 0.3, ring: true },
+  { size: 16, top: "34%", left: "18%", delay: 0.5, ring: false },
+];
+---
+
+<section class="relative isolate overflow-hidden px-5 pt-16 pb-24 sm:px-8 sm:pt-24 sm:pb-32">
+  <div
+    class="pointer-events-none absolute inset-0 -z-10 opacity-70"
+    style="background: radial-gradient(60% 50% at 50% 0%, oklch(0.674 0.115 183.1 / 0.18), transparent 70%);"
+    aria-hidden="true"
+  >
+  </div>
+
+  <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+    {
+      pearls.map((p) => (
+        <span
+          data-pearl
+          data-delay={p.delay}
+          class:list={[
+            "absolute rounded-full",
+            p.ring ? "border-2 border-brand/30" : "bg-brand/18",
+          ]}
+          style={`width:${p.size}px;height:${p.size}px;top:${p.top};left:${p.left}`}
+        />
+      ))
+    }
+  </div>
+
+  <div class="mx-auto max-w-4xl text-center">
+    <p
+      data-reveal
+      class="mb-6 inline-flex items-center gap-2 rounded-full border border-ink/10 bg-paper px-4 py-1.5 text-xs font-medium tracking-wide text-ink-soft"
+    >
+      <span class="size-1.5 rounded-full bg-brand"></span>
+      {legal.addressExtra}
+    </p>
+
+    <h1 class="font-display text-5xl leading-[0.95] font-semibold tracking-tight sm:text-7xl md:text-8xl">
+      {
+        headline.map((word) => (
+          <span class="inline-block overflow-hidden pb-1 align-bottom">
+            <span data-reveal class="inline-block">
+              {word}&nbsp;
+            </span>
+          </span>
+        ))
+      }
+    </h1>
+
+    <p data-reveal class="mx-auto mt-8 max-w-xl text-lg text-ink-soft sm:text-xl">
+      {brand.tagline}
+    </p>
+
+    <div data-reveal class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+      <a
+        href={brand.portalUrl}
+        class="w-full rounded-full bg-brand px-8 py-4 text-base font-semibold text-white shadow-lg shadow-brand/25 transition-transform hover:-translate-y-0.5 sm:w-auto"
+      >
+        Únete al {brand.club}
+      </a>
+      <a
+        href="#menu"
+        class="w-full rounded-full border border-ink/15 px-8 py-4 text-base font-semibold transition-colors hover:bg-paper sm:w-auto"
+      >
+        Ver qué tomamos
+      </a>
+    </div>
+
+    <p data-reveal class="mt-8 flex items-center justify-center gap-2 text-sm text-ink-soft">
+      <span class="text-berry" aria-hidden="true">★★★★★</span>
+      <span>
+        <strong class="font-semibold text-ink">{googleRating.score}</strong>
+        en Google · {googleRating.reviews} opiniones
+      </span>
+    </p>
+  </div>
+</section>

@@ -1,0 +1,81 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/fraunces";
+
+@theme {
+  --color-cream: oklch(0.976 0.014 92);
+  --color-paper: oklch(0.995 0.005 92);
+  --color-ink: oklch(0.19 0.012 250);
+  --color-ink-soft: oklch(0.44 0.014 250);
+  --color-brand: oklch(0.674 0.115 183.1);
+  --color-brand-deep: oklch(0.3 0.05 190);
+  --color-brand-dark: oklch(0.21 0.035 195);
+  --color-berry: oklch(0.72 0.15 20);
+
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+
+  --radius-card: 1.5rem;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background-color: var(--color-brand);
+    color: white;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 3px;
+  }
+}
+
+/* Entrance states apply only once JS is confirmed (the `js` class is set inline
+   in <head>), so a failed script leaves the page fully readable instead of blank. */
+@layer utilities {
+  html.js [data-reveal] {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  html.js [data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  html.js [data-pearl] {
+    opacity: 0;
+    transition: opacity 1.2s ease-out;
+  }
+
+  html.js [data-pearl].is-visible {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  html.js [data-reveal],
+  html.js [data-pearl] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

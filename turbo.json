@@ -1,6 +1,10 @@
 {
   "$schema": "https://v2-10-6.turborepo.dev/schema.json",
-  "globalDependencies": [".env", "tsconfig.json", ".oxlintrc.json"],
+  "globalDependencies": [
+    ".env",
+    "tsconfig.json",
+    ".oxlintrc.json"
+  ],
   "globalEnv": [
     "DATABASE_URL",
     "TURSO_AUTH_TOKEN",
@@ -47,32 +51,53 @@
   ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**", "storybook-static/**"],
-      "env": ["NEXT_PUBLIC_*"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**",
+        "storybook-static/**"
+      ],
+      "env": [
+        "NEXT_PUBLIC_*"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "format": {
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["^build"],
-      "outputs": ["*.tsbuildinfo"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "*.tsbuildinfo"
+      ]
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "test:coverage": {
-      "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "coverage/**"
+      ]
     },
     "clean": {
       "cache": false
@@ -82,6 +107,12 @@
     },
     "db:migrate": {
       "cache": false
+    },
+    "@loyalty/landing#typecheck": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": []
     }
   }
 }

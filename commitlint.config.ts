@@ -19,6 +19,7 @@ const config: UserConfig = {
         "feature-flags",
         "image-loader",
         "jobs",
+        "landing",
         "log",
         "notifications",
         "push",
