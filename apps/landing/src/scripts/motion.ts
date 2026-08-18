@@ -1,6 +1,8 @@
 import { inView } from "motion";
 import { animate } from "motion/mini";
 
+document.documentElement.setAttribute("data-motion-ready", "");
+
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

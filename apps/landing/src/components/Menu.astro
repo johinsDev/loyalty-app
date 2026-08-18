@@ -1,5 +1,5 @@
 ---
-import { categories, customizations } from "../data/site";
+import { categories, customizations, toppings } from "../data/site";
 ---
 
 <section id="menu" class="scroll-mt-20 border-t border-ink/5 bg-paper px-5 py-24 sm:px-8 sm:py-32">
@@ -7,14 +7,14 @@ import { categories, customizations } from "../data/site";
     <div class="max-w-2xl">
       <p data-reveal class="text-sm font-semibold tracking-widest text-brand uppercase">Qué tomamos</p>
       <h2 data-reveal class="mt-4 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-        Cuatro formas de tomar té.
+        Seis formas de tomar té.
       </h2>
       <p data-reveal class="mt-5 text-lg text-ink-soft">
-        Todo se prepara al momento y se arma a tu gusto: el tamaño, el dulce y lo que le pongas encima.
+        Todo se prepara al momento y se arma a tu gusto: el dulce, el hielo y lo que le pongas encima.
       </p>
     </div>
 
-    <div class="mt-14 grid gap-5 sm:grid-cols-2">
+    <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {
         categories.map((cat, i) => (
           <article
@@ -37,7 +37,18 @@ import { categories, customizations } from "../data/site";
       }
     </div>
 
-    <div data-reveal class="mt-14 grid gap-px overflow-hidden rounded-card border border-ink/8 bg-ink/8 sm:grid-cols-3">
+    <div data-reveal class="mt-14 rounded-card border border-ink/8 bg-cream p-8">
+      <p class="text-xs font-semibold tracking-widest text-brand uppercase">Toppings</p>
+      <ul class="mt-4 flex flex-wrap gap-2">
+        {
+          toppings.map((t) => (
+            <li class="rounded-full border border-ink/10 bg-paper px-3 py-1.5 text-sm font-medium">{t}</li>
+          ))
+        }
+      </ul>
+    </div>
+
+    <div data-reveal class="mt-5 grid gap-px overflow-hidden rounded-card border border-ink/8 bg-ink/8 sm:grid-cols-3">
       {
         customizations.map((c) => (
           <div class="bg-cream p-7">
