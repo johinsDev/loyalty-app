@@ -63,7 +63,14 @@ const structuredData = {
     <meta property="og:locale" content="es_CO" />
     <meta name="theme-color" content="#0f2a2e" />
     <script is:inline>
+      // The entrance styles hide content until the motion module reveals it, so if that
+      // module never runs the page would stay blank. Drop the gate if it hasn't signalled.
       document.documentElement.classList.add("js");
+      setTimeout(function () {
+        if (!document.documentElement.hasAttribute("data-motion-ready")) {
+          document.documentElement.classList.remove("js");
+        }
+      }, 2500);
     </script>
     <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />
   </head>

@@ -42,35 +42,60 @@ export const openingHoursSpec = [
 
 export const categories = [
   {
-    slug: "milk-tea",
-    name: "Milk Tea",
-    blurb: "El clásico cremoso con perlas de tapioca recién cocidas. Brown sugar, taro o el de siempre.",
-    picks: ["Brown Sugar Boba", "Taro Milk Tea", "Classic Milk Tea"],
+    slug: "especiales-taiwan",
+    name: "Especiales de Taiwán",
+    blurb: "Los sabores que hicieron famoso al bubble tea. Té y crema no láctea con perlas, jelly o pasta de taro.",
+    picks: ["Pearl Milk Tea", "Taro Boba", "Taipei Special", "QQ Style"],
   },
   {
-    slug: "matcha",
-    name: "Matcha",
-    blurb: "Matcha ceremonial batido al momento, con leche de avena o una nube de fresa encima.",
-    picks: ["Iced Matcha Latte", "Matcha Strawberry"],
+    slug: "tes-refrescantes",
+    name: "Tés Refrescantes",
+    blurb: "Extractos frutales y florales sobre té verde, royal o negro. Ligeros y sin lácteos.",
+    picks: ["Frutos Rojos", "Maracuyá Royal", "Elegant Rose", "Lychee Negro"],
   },
   {
-    slug: "frutales",
-    name: "Frutales",
-    blurb: "Té de verdad con fruta de verdad. Ligeros, sin lácteos, para los días de calor.",
-    picks: ["Peach Oolong", "Strawberry Cloud", "Mango Tango"],
+    slug: "especiales-leche",
+    name: "Especiales en Leche",
+    blurb: "Cremosos de verdad: té con crema no láctea, leche y coronas de crema.",
+    picks: ["Té clásico", "Rosa Clásica", "Fresas con Crema", "Oolong Peach"],
   },
   {
-    slug: "especiales",
-    name: "Especiales",
-    blurb: "Ediciones de temporada que rotan. Cuando se acaban, se acaban.",
-    picks: ["Spring Drop", "Dragon Fruit Fizz"],
+    slug: "smoothies",
+    name: "Smoothies",
+    blurb: "Granizados para el calor de Bogotá, con fruta, té royal y leche condensada.",
+    picks: ["Maracuyá Smoothie", "Wild Berries", "Limonada de Coco", "Taro Batido"],
+  },
+  {
+    slug: "super-alimentos",
+    name: "Super Alimentos",
+    blurb: "La opción nutritiva: matcha molido, jengibre, chía y agar.",
+    picks: ["Kyoto Matcha", "Matchia", "Ginger Cítrico", "Agar Milk Tea"],
+  },
+  {
+    slug: "clasicos-taiwan",
+    name: "Tés Clásicos de Taiwán",
+    blurb: "Para los que aman el té puro. Sin fruta, sin leche: solo la infusión.",
+    picks: ["Jadeite Royal", "Jasmine Verde", "Earl Grey", "Tieguanyin Oolong"],
   },
 ] as const;
 
+export const toppings = [
+  "Perlas",
+  "Mini perlas",
+  "Perlas de melón",
+  "Perlas de arándanos",
+  "Coffee jelly",
+  "Tropical jelly",
+  "Pudín",
+  "Aloe",
+  "Agar",
+  "Semillas de chía",
+] as const;
+
 export const customizations = [
-  { label: "Tamaño", options: "Mediano · Grande" },
-  { label: "Azúcar", options: "0% · 50% · 100%" },
-  { label: "Toppings", options: "Perlas · Pudín · Jelly" },
+  { label: "Azúcar", options: "Sin · Poca · Normal · Mucha" },
+  { label: "Hielo", options: "Sin · Poco · Normal · Mucho" },
+  { label: "Agrandado", options: "700 ml · 24 oz" },
 ] as const;
 
 export const clubBenefits = [
