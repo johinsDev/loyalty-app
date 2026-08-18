@@ -1,5 +1,5 @@
 ---
-import { brand, googleRating, hours, legal } from "../data/site";
+import { brand, googleRating, legal, openingHoursSpec } from "../data/site";
 import "../styles/global.css";
 
 interface Props {
@@ -33,7 +33,12 @@ const structuredData = {
     postalCode: legal.postalCode,
     addressCountry: "CO",
   },
-  openingHours: hours.map((h) => `${h.days} ${h.time}`),
+  openingHoursSpecification: openingHoursSpec.map((h) => ({
+    "@type": "OpeningHoursSpecification",
+    dayOfWeek: h.days,
+    opens: h.opens,
+    closes: h.closes,
+  })),
   aggregateRating: {
     "@type": "AggregateRating",
     ratingValue: googleRating.score.replace(",", "."),

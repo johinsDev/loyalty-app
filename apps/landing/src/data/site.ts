@@ -30,6 +30,16 @@ export const hours = [
   { days: "Domingos", time: "10:30 – 21:00" },
 ] as const;
 
+/** schema.org sólo entiende días en inglés y horas en 24h; `hours` es para leer. */
+export const openingHoursSpec = [
+  {
+    days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    opens: "10:30",
+    closes: "21:30",
+  },
+  { days: ["Sunday"], opens: "10:30", closes: "21:00" },
+] as const;
+
 export const categories = [
   {
     slug: "milk-tea",
