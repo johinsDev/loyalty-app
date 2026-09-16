@@ -65,7 +65,7 @@ export default function PurchasesPage({ params, searchParams }: Props) {
         <PurchasesToolbar />
         <div className="mt-4">
           <IslandBoundary>
-            <Suspense fallback={<DataTableSkeleton columns={11} />}>
+            <Suspense fallback={<DataTableSkeleton columns={9} />}>
               <PurchasesTableSection params={params} searchParams={searchParams} />
             </Suspense>
           </IslandBoundary>

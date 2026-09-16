@@ -24,7 +24,7 @@ import {
   tableParsers,
 } from "@/components/data-table";
 import { useDataTable } from "@/components/data-table/use-data-table";
-import { Link } from "@/i18n/nav";
+import { Link, useRouter } from "@/i18n/nav";
 import { money } from "@/lib/money";
 import { ViewToggle } from "@/components/view-toggle";
 import { useTRPC } from "@/lib/trpc/client";
@@ -50,6 +50,7 @@ export function CustomersView({ initialData }: { initialData?: CustomerListResul
   const format = useFormatter();
   const locale = useLocale();
   const trpc = useTRPC();
+  const router = useRouter();
 
   // ── URL state (facets + q). page/perPage/sort/view/cols live in useDataTable. ─
   const [q, setQ] = useQueryState("q", tableParsers.q);
@@ -216,6 +217,9 @@ export function CustomersView({ initialData }: { initialData?: CustomerListResul
           table={table}
           view={view}
           isFetching={query.isFetching}
+          onRowClick={(c) =>
+            router.push({ pathname: "/customers/[id]", params: { id: c.id } })
+          }
           emptyState={
             <div className="text-muted-foreground grid h-40 place-items-center px-6 text-center">
               <div>

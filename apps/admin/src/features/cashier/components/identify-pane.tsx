@@ -66,6 +66,12 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
     setSearched(false);
   };
 
+  const handleSelect = (c: IdentifiedCustomer) => {
+    setDigits("");
+    setSearched(false);
+    onSelect(c);
+  };
+
   const search = useQuery(
     trpc.customers.search.queryOptions(
       { query: phone, limit: 8 },
@@ -95,13 +101,11 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
   useEffect(() => {
     if (searched && valid && !search.isFetching && results.length === 1) {
       const hit = results[0]!;
-      setSearched(false);
-      // And blank the number, for the same reason: the cashier coming back here
+      // Blank the number, for the same reason: the cashier coming back here
       // is starting on the next socio, not resuming the last one. Leaving it
       // typed made "Buscar" a one-tap trip back into the register they just
       // closed.
-      setDigits("");
-      onSelect({ id: hit.id, name: hit.name, phone: hit.phone });
+      handleSelect({ id: hit.id, name: hit.name, phone: hit.phone });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searched, valid, search.isFetching, results]);
@@ -130,7 +134,7 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
     if (!pendingId) return;
     try {
       const res = await confirmPin.mutateAsync({ pendingId, code: pin.trim() });
-      onSelect({ id: res.id, name: res.name, phone: res.phone });
+      handleSelect({ id: res.id, name: res.name, phone: res.phone });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === "CODE_INVALID") toast.error(t("codeInvalid"));
@@ -226,7 +230,7 @@ export function IdentifyPane({ onSelect }: { onSelect: (c: IdentifiedCustomer) =
               key={hit.id}
               type="button"
               style={fade(i)}
-              onClick={() => onSelect({ id: hit.id, name: hit.name, phone: hit.phone })}
+              onClick={() => handleSelect({ id: hit.id, name: hit.name, phone: hit.phone })}
               className="border-border hover:border-primary/50 hover:bg-muted flex items-center gap-3 rounded-2xl border p-3 text-left"
             >
               <span className="bg-primary/10 text-primary font-display grid size-11 flex-none place-items-center rounded-xl text-sm font-extrabold">
